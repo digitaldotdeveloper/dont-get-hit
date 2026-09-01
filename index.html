@@ -352,7 +352,13 @@ const S = {
   tick(){ tone(1180,0.04,'square',0.035); },
   best(){ [0,1,2,3].forEach((i)=> setTimeout(()=> tone([523,659,784,1047][i],0.22,'triangle',0.17), i*95)); },
   click(){ tone(660,0.06,'square',0.12,880); },
-  land_soft(){ noise(0.09,220,110,0.08,1.2); }
+  land_soft(){ noise(0.09,220,110,0.08,1.2); },
+  slide(){ tone(900,0.45,'sine',0.15,110); },
+  boing(){ tone(520,0.34,'square',0.16,90); tone(260,0.30,'triangle',0.10,70); },
+  splat(){ noise(0.22,420,60,0.3,0.8); tone(90,0.22,'sine',0.2,40); },
+  bonk(){ tone(760,0.13,'square',0.2,180); noise(0.1,1400,300,0.1,1.4); },
+  timber(){ tone(300,0.6,'triangle',0.12,70); },
+  cheer(){ [0,1,2].forEach(i=> setTimeout(()=> tone([784,988,1175][i],0.16,'triangle',0.15), i*70)); }
 };
 /* music: a light 8-step groove that speeds up with the run */
 const BASS=[0,0,3,7, 0,-2,-4,7];
@@ -637,6 +643,91 @@ function poseScared(t, k, p){
   p.sx=1-0.04*k;p.sy=1+0.05*k; return p;
 }
 
+/* ---- comedy death beats: a held, readable pose before the ragdoll ---- */
+function legPair(p,ax,ay,bx,by){
+  legIK(ax,ay,_ik1); legIK(bx,by,_ik2);
+  p.kNx=_ik1.kx;p.kNy=_ik1.ky;p.fNx=_ik1.fx;p.fNy=_ik1.fy;
+  p.kFx=_ik2.kx;p.kFy=_ik2.ky;p.fFx=_ik2.fx;p.fFy=_ik2.fy;
+}
+function poseSlip(t,u,p){                 // banana peel: feet fly out from under him
+  const e = easeOutCubic(clamp(u*1.5,0,1));
+  p.rot=-1.10*e; p.hx=12*e; p.hy=5*e; p.lean=-0.28*e; p.hdr=0.40*e; spine(p);
+  legPair(p, lerp(20,60,e), lerp(70,14,e), lerp(-18,46,e), lerp(66,32,e));
+  const w=Math.sin(t*26)*e;
+  armFK(p, 1, -2.3*e-0.2+0.55*w, 0.5);
+  armFK(p,-1, -2.7*e-0.2-0.55*w, 0.4);
+  p.sx=1; p.sy=1; return p;
+}
+function poseFlat(t,u,p){                 // pancaked by something enormous
+  const e = clamp(u*2.4,0,1);
+  p.rot=0; p.hx=0; p.hy=0; p.lean=0.06; p.hdr=-0.10*e; spine(p);
+  legPair(p, 26+40*e, 68, -24-40*e, 66);
+  armFK(p, 1, 1.35*e+0.1, 0.20);
+  armFK(p,-1,-1.55*e-0.1, 0.20);
+  p.sx = 1+0.62*e; p.sy = 1-0.63*e; return p;
+}
+function poseStiff(t,u,p){                // bonked on the head, tips over like a plank
+  const wob = u<0.45 ? Math.sin(t*30)*(1-u/0.45)*0.11 : 0;
+  const e = u<0.45 ? 0 : easeInCubic((u-0.45)/0.55);
+  p.rot=-1.45*e+wob; p.hx=0; p.hy=0; p.lean=0.02; p.hdr=0.05+wob*0.6; spine(p);
+  const gy = RIG.HIPH - RIG.ANKLE;
+  legPair(p, 5, gy, -5, gy);
+  armFK(p, 1, 0.06, 0.12);
+  armFK(p,-1,-0.06, 0.12);
+  p.sx=1; p.sy=1; return p;
+}
+function poseFacePlant(t,u,p){            // straight over the top of it
+  const e = easeInCubic(clamp(u*1.4,0,1));
+  p.rot=1.30*e; p.hx=-7*e; p.hy=3*e; p.lean=0.16+0.26*e; p.hdr=-0.26*e; spine(p);
+  legPair(p, -14-22*e, 64-8*e, -32-24*e, 58-6*e);
+  armFK(p, 1, 1.45*e+0.1, 0.32);
+  armFK(p,-1, 1.68*e+0.1, 0.28);
+  p.sx=1; p.sy=1; return p;
+}
+function poseDrench(t,u,p){               // wears the coffee
+  const j = Math.sin(t*26)*(1-u)*0.05;
+  p.rot=j*0.5; p.hx=0; p.hy=5; p.lean=-0.14; p.hdr=0.20; spine(p);
+  const gy = RIG.HIPH - RIG.ANKLE - 5;
+  legPair(p, 17, gy, -17, gy);
+  armFK(p, 1, -1.35, 0.32);
+  armFK(p,-1, -1.52, 0.26);
+  p.sx=1.05; p.sy=0.95; return p;
+}
+
+/* ---- showboating: upper-body only, so the legs keep running ---- */
+function flourishApply(name, e, t, p){
+  if(e<=0.001) return 0;
+  let turn=0;
+  if(name==='dust'){                       // brushes the dust off his shoulder
+    const b=Math.sin(t*16);
+    armFK(p, 1, lerp(-0.2,-1.85,e)+0.12*b*e, lerp(1.0,1.95,e));
+    p.hdr += -0.16*e;
+  } else if(name==='gun'){                  // finger guns, straight down the lens
+    armFK(p, 1, lerp(-0.2,-1.05,e), lerp(1.0,0.12,e));
+    turn = 0.82*e; p.hdr += 0.14*e;
+  } else if(name==='guitar'){               // two-second air guitar
+    const b=Math.sin(t*19);
+    armFK(p, 1, -1.25*e+0.32*b*e, 1.0+0.5*b*e);
+    armFK(p,-1, -2.05*e-0.20*b*e, 1.5-0.4*b*e);
+    p.hdr += 0.20*e*b;
+  } else if(name==='flex'){                 // checks his own bicep
+    armFK(p, 1, lerp(-0.2,-1.55,e), lerp(1.0,2.30,e));
+    turn = 0.42*e; p.hdr += -0.10*e;
+  } else if(name==='wave'){                 // waves at whoever is watching
+    const b=Math.sin(t*13);
+    armFK(p, 1, -2.45*e+0.18*b*e, 0.42+0.22*b*e);
+    turn = 0.80*e; p.hdr += 0.12*e;
+  } else if(name==='cheer'){                // he just beat his own record
+    const b=Math.abs(Math.sin(t*9));
+    armFK(p, 1, -2.75*e-0.18*b*e, 0.22);
+    armFK(p,-1, -2.95*e+0.18*b*e, 0.18);
+    p.hdr += 0.18*e;
+  }
+  return turn;
+}
+const FLOURISHES = ['dust','gun','guitar','flex','wave'];
+const FLOURISH_FACE = {dust:'confident', gun:'confident', guitar:'happy', flex:'confident', wave:'happy', cheer:'happy'};
+
 /* ------------ faces ------------ */
 /* brow: -1 angry .. 0 neutral .. 1 raised;  eye: openness; mouth: id */
 const FACES = {
@@ -905,11 +996,14 @@ function drawShoe(kx,ky,fx,fy,col,sole){
    RAGDOLL — verlet, used for the death tumble
    ============================================================ */
 function Ragdoll(){ this.pts=[]; this.cons=[]; this.alive=false; }
-Ragdoll.prototype.build = function(p, x, y, vx, vy, spin){
+Ragdoll.prototype.build = function(p, x, y, vx, vy, spin, rot, sx, sy){
   this.pts.length=0; this.cons.length=0;
-  const hipX = x + p.hx, hipY = y - RIG.HIPH + p.hy;
+  rot=rot||0; sx=sx||1; sy=sy||1;
+  const cs=Math.cos(rot), sn=Math.sin(rot);
+  const hlx = p.hx*sx, hly = (-RIG.HIPH + p.hy)*sy;
   const add=(lx,ly,name)=>{
-    const px = hipX+lx, py = hipY+ly;
+    const ax = hlx + lx*sx, ay = hly + ly*sy;
+    const px = x + ax*cs - ay*sn, py = y + ax*sn + ay*cs;
     const jx = -vx*0.016 - ly*spin*0.010, jy = -vy*0.016 + lx*spin*0.010;
     this.pts.push({x:px,y:py,px:px+jx,py:py+jy,name});
     return this.pts.length-1;

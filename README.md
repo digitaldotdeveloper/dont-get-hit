@@ -59,3 +59,7 @@ Open `index.html`. No build step.
 `index.html?auto=1` skips the menu and starts a run — useful for testing.
 
 Controls: tap / click / <kbd>Space</kbd>. Hold slightly longer for a higher jump.
+
+## Character direction
+
+`chickens.html` is a scratch page for picking the character — four chicken designs, each with its own run cycle, all driven by the same IK rig the game uses. Live at /chickens.html
