@@ -468,9 +468,9 @@ const CK = {
   bodyTilt:0,
   headX:42, headY:-34, headR:32, // = the head's position in the reference itself
   wingX:-4, wingY:-4,  wingA:58, wingB:46,
-  hipX:-20, hipY:30,
-  thigh:54, shin:52, ANKLE:15,
-  standH:140
+  hipX:-26, hipY:33,             // = where the legs meet the body in the reference
+  thigh:23, shin:21, ANKLE:17,   // = hip->ankle measured; the shoe hangs 17 below
+  standH:80
 };
 const HATS = ['cap_snapback','hat_bucket'];
 
@@ -522,7 +522,7 @@ function setLegs(p, ax,ay, bx,by){
 /* ---- the poses ---- */
 /* wing angles: 0 = straight down, more negative = further up */
 function poseRun(ph, speedT, p){
-  const stride=lerp(104,128,speedT), lift=lerp(58,76,speedT), bob=lerp(8,11,speedT);
+  const stride=lerp(44,52,speedT), lift=lerp(22,30,speedT), bob=lerp(5,7,speedT);
   p.y = bob*Math.cos(4*Math.PI*(ph-0.12));
   p.x = 2*Math.sin(4*Math.PI*ph);
   p.rot = lerp(0.08,0.24,speedT) + 0.02*Math.sin(4*Math.PI*ph);
@@ -580,7 +580,7 @@ function poseFly(ph, power, vy, p){
   p.wingF = p.wingN + 0.18;
   p.tipN = tip*amp; p.tipF = tip*0.88*amp;
   p.wingOpen = 1;
-  setLegs(p, -28, 20, -36, 13);                     // feet tucked
+  setLegs(p, -18, 16, -24, 10);                     // feet tucked
   p.tail = tail;
   p.sx = 1 - by*0.005; p.sy = 1 + by*0.005;         // stretches on the upbeat
   return p;
@@ -593,7 +593,7 @@ function poseGlide(t, vy, p){
   const tr = Math.sin(t*22)*0.05*k;
   p.wingN = -1.62 + tr; p.wingF = -1.50 - tr;      // wings held out, trembling in the dive
   p.tipN = 0.16; p.tipF = 0.16; p.wingOpen = 1;
-  setLegs(p, lerp(-20,-30,k), lerp(28,20,k), lerp(-30,-38,k), lerp(22,14,k));
+  setLegs(p, lerp(-13,-19,k), lerp(20,15,k), lerp(-19,-25,k), lerp(16,11,k));
   p.tail = 0.24*k;
   p.sx = 1+0.04*k; p.sy = 1-0.04*k;
   return p;
@@ -602,7 +602,7 @@ function poseLand(k, p){
   p.y = 16*k; p.x = 3*k; p.rot = 0.30*k;
   p.headDY = -8*k; p.headR = -0.24*k;
   const gy = CK.standH - CK.hipY - CK.ANKLE - p.y;
-  setLegs(p, 16-CK.hipX, gy, -14-CK.hipX, gy);
+  setLegs(p, 12-CK.hipX, gy, -11-CK.hipX, gy);
   p.wingN = -1.25-0.5*k; p.wingF = -1.15-0.5*k;
   p.tipN = 0.5; p.tipF = 0.5; p.wingOpen = lerp(0.5,1,k);
   p.tail = -0.2*k;
@@ -615,7 +615,7 @@ function poseIdle(t, p){
   p.headDY = -p.y*1.1 + 0.6*Math.sin(t*1.3);
   p.headR = 0.03*Math.sin(t*1.1);
   const gy = CK.standH - CK.hipY - CK.ANKLE - p.y;
-  setLegs(p, 17-CK.hipX, gy, -16-CK.hipX, gy-1);
+  setLegs(p, 12-CK.hipX, gy, -11-CK.hipX, gy-1);
   p.wingN = -0.52; p.wingF = -0.46; p.tipN = 0.34; p.tipF = 0.34;
   p.wingOpen = 0.34; p.tail = 0.06*br; p.sx=1; p.sy=1;
   return p;
@@ -625,7 +625,7 @@ function posePeck(u, p){                            // menu beat: he pecks the g
   p.y = 5*k; p.x = 4*k; p.rot = 0.24*k;          // a horizontal body needs far less pitch
   p.headDY = 26*k; p.headDX = 14*k; p.headR = 0.75*k;
   const gy = CK.standH - CK.hipY - CK.ANKLE - p.y;
-  setLegs(p, 17-CK.hipX, gy, -16-CK.hipX, gy);
+  setLegs(p, 12-CK.hipX, gy, -11-CK.hipX, gy);
   p.wingN = -0.50-0.3*k; p.wingF = -0.44-0.3*k; p.tipN=0.34; p.tipF=0.34;
   p.wingOpen = 0.36; p.tail = 0.4*k; p.sx=1+0.04*k; p.sy=1-0.04*k;
   return p;
@@ -636,7 +636,7 @@ function poseStrut(t, u, p){                        // menu beat: cocky little s
   p.y = 3*k*s; p.x = 2*k; p.rot = -0.06*k;
   p.headDY = -4*k - 3*k*s; p.headR = 0.16*k;
   const gy = CK.standH - CK.hipY - CK.ANKLE - p.y;
-  setLegs(p, (17+8*s)-CK.hipX, gy, (-16-8*s)-CK.hipX, gy);
+  setLegs(p, (12+6*s)-CK.hipX, gy, (-11-6*s)-CK.hipX, gy);
   p.wingN = -0.66-0.2*k; p.wingF = -0.60-0.2*k; p.tipN=0.4; p.tipF=0.4;
   p.wingOpen = 0.5; p.tail = -0.2*k; p.sx=1; p.sy=1;
   return p;
@@ -646,7 +646,7 @@ function poseHurt(k, p){                            // the instant of impact
   p.headDY = 6*k; p.headDX = -10*k; p.headR = -0.5*k;
   p.wingN = -2.5*k-0.4; p.wingF = -2.6*k-0.4;
   p.tipN = -0.5*k; p.tipF = -0.5*k; p.wingOpen = 1;
-  setLegs(p, 26*k-10, 30, 34*k-16, 24);
+  setLegs(p, 17*k-7, 21, 22*k-11, 17);
   p.tail = 0.5*k;
   p.sx = 1+0.26*k; p.sy = 1-0.20*k;
   return p;
@@ -656,7 +656,7 @@ function poseSit(k, t, p){                          // dazed on the ground after
   p.y = 22*k; p.x = 0; p.rot = -0.10*k + 0.05*wob;
   p.headDY = 4*k; p.headR = 0.12*k + 0.14*wob;
   const gy = CK.standH - CK.hipY - CK.ANKLE - p.y;
-  setLegs(p, lerp(17,34,k)-CK.hipX, gy, lerp(-16,26,k)-CK.hipX, gy);
+  setLegs(p, lerp(12,24,k)-CK.hipX, gy, lerp(-11,18,k)-CK.hipX, gy);
   p.wingN = lerp(-0.5,-0.16,k); p.wingF = lerp(-0.44,-0.10,k);
   p.tipN = 0.3; p.tipF = 0.3; p.wingOpen = lerp(0.36,0.62,k);
   p.tail = 0.3*k; p.sx = 1+0.10*k; p.sy = 1-0.12*k;
@@ -667,7 +667,7 @@ function poseCheer(t, p){                           // beat your own record
   p.y = -12*b; p.x = 0; p.rot = -0.12-0.06*b;
   p.headDY = -3*b; p.headR = 0.18+0.08*b;
   const gy = CK.standH - CK.hipY - CK.ANKLE - p.y;
-  setLegs(p, 14-CK.hipX, gy-12*b, -13-CK.hipX, gy-6*b);
+  setLegs(p, 10-CK.hipX, gy-9*b, -9-CK.hipX, gy-5*b);
   p.wingN = -2.5-0.25*b; p.wingF = -2.6+0.25*b;
   p.tipN = 0.2; p.tipF = 0.2; p.wingOpen = 1;
   p.tail = -0.35; p.sx = 1-0.05*b; p.sy = 1+0.07*b;
@@ -752,7 +752,7 @@ function drawShoePart(kx,ky,fx,fy,col,far){
   ctx.restore();
 }
 function drawSneaker(kx,ky,fx,fy,col){
-  const a=Math.atan2(fx-kx,fy-ky)*0.5;      // the sole stays flatter than the shin
+  const a=Math.atan2(fx-kx,fy-ky)*0.32;     // the sole stays flatter than the shin
   ctx.save(); ctx.translate(fx,fy); ctx.rotate(-a+Math.PI/2);
   ctx.beginPath(); ctx.roundRect(-15,-15,48,22,[11,15,5,11]); cp(col,5);
   ctx.beginPath(); ctx.roundRect(-17,2,53,13,6.5); cp(CKC.shoe,4.2);
@@ -873,9 +873,9 @@ loadPart('body','art/part-bodyref.png', {w:150, ax:0.5000, ay:0.5000});
 loadPart('headref','art/part-headref.png',{w:84, ax:0.5146, ay:0.4978});
 loadPart('head','art/part-head.png',    {w:78, ax:0.4324, ay:0.4607});   // bare head, for other hats
 loadPart('wing','art/part-wing.png', {w:90,   ax:0.6240, ay:0.0852, rot:-0.445});
-loadPart('wingfold','art/part-wingfold.png', {w:82, ax:0.6158, ay:0.0824, rot:-0.162});
+loadPart('wingfold','art/part-wingfold.png', {w:62, ax:0.6158, ay:0.0824, rot:-0.162});
 loadPart('tail','art/part-tail.png', {w:78,   ax:0.9900, ay:0.6989});
-loadPart('shoe','art/part-shoe.png', {w:52,   ax:0.3413, ay:0.020});
+loadPart('shoe','art/part-shoe.png', {w:36,   ax:0.2200, ay:0.220});
 loadPart('leg', 'art/part-leg.png',  {w:17,  ax:0.50, ay:0.00});
 
 /* ---- the head, drawn in the same language as the body ---- */
@@ -1005,8 +1005,8 @@ function drawChicken(x, y, p){
   ctx.scale(p.sx, p.sy);
 
   // far leg
-  drawBone(CK.hipX,CK.hipY, CK.hipX+p.kFx,CK.hipY+p.kFy, 9, CKC.legDark, true);
-  drawBone(CK.hipX+p.kFx,CK.hipY+p.kFy, CK.hipX+p.fFx,CK.hipY+p.fFy, 8, CKC.legDark, true);
+  drawBone(CK.hipX,CK.hipY, CK.hipX+p.kFx,CK.hipY+p.kFy, 6, CKC.legDark, true);
+  drawBone(CK.hipX+p.kFx,CK.hipY+p.kFy, CK.hipX+p.fFx,CK.hipY+p.fFy, 5, CKC.legDark, true);
   drawShoePart(CK.hipX+p.kFx,CK.hipY+p.kFy, CK.hipX+p.fFx,CK.hipY+p.fFy, CKC.shoeDark, true);
 
   // far wing
@@ -1073,8 +1073,8 @@ function drawChicken(x, y, p){
   drawWingPart(CK.wingX, CK.wingY, p.wingN, p.tipN, p.wingOpen, CKC.wing, false);
 
   // near leg
-  drawBone(CK.hipX,CK.hipY, CK.hipX+p.kNx,CK.hipY+p.kNy, 11, CKC.leg, false);
-  drawBone(CK.hipX+p.kNx,CK.hipY+p.kNy, CK.hipX+p.fNx,CK.hipY+p.fNy, 10, CKC.leg, false);
+  drawBone(CK.hipX,CK.hipY, CK.hipX+p.kNx,CK.hipY+p.kNy, 7, CKC.leg, false);
+  drawBone(CK.hipX+p.kNx,CK.hipY+p.kNy, CK.hipX+p.fNx,CK.hipY+p.fNy, 6, CKC.leg, false);
   drawShoePart(CK.hipX+p.kNx,CK.hipY+p.kNy, CK.hipX+p.fNx,CK.hipY+p.fNy, CKC.shoe, false);
 
   if(game.rig){                                   // pivot overlay for aligning parts
@@ -1134,7 +1134,7 @@ const rag = {
     p.tipN = damp(p.tipN, -0.4, 6, dt); p.tipF = p.tipN;
     p.wingOpen = damp(p.wingOpen, 1, 8, dt);
     p.tail = damp(p.tail, 0.5, 5, dt);
-    setLegs(p, -6+Math.sin(t*13)*16, 34, -14+Math.sin(t*13+1.6)*16, 30);
+    setLegs(p, -4+Math.sin(t*13)*11, 24, -9+Math.sin(t*13+1.6)*11, 21);
     p.headR = damp(p.headR, 0.5*Math.sin(t*9), 7, dt);
     p.sx = damp(p.sx,1,8,dt); p.sy = damp(p.sy,1,8,dt);
     p.x=0; p.y=0;
@@ -1709,7 +1709,7 @@ const GATE_TOPS  = ['cone','duck','cake','ball','box','coffee'];
 const GATE_HANGS = ['sofa','sign','vacuum','cart','coffee'];
 function spawnGate(moving){
   const band = GROUND - CEIL;
-  const gap  = clamp(lerp(500, 290, game.diff) * rnd(0.92,1.08), 250, 560);
+  const gap  = clamp(lerp(380, 225, game.diff) * rnd(0.92,1.08), 200, 430);
   const amp  = moving ? rnd(50, 110) : 0;
   const margin = 80 + amp;
   const lo = gap/2 + margin, hi = band - gap/2 - margin;
@@ -2046,7 +2046,7 @@ function updatePlay(dt){
   if(game.spawnT<=0) spawnPattern();
 
   // ---- obstacles ----
-  const pl = p.x-52, pr = p.x+52, pb = p.y+12, pt = p.y+206;
+  const pl = p.x-48, pr = p.x+48, pb = p.y+8, pt = p.y+150;
   for(let i=game.obstacles.length-1;i>=0;i--){
     const o = game.obstacles[i];
     o.x += (o.vx||0)*dt;
