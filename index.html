@@ -706,7 +706,7 @@ function drawWing(a, tip, open, col){
 const SLOTS = ['back','body','neck','head','face']; // also the z-order
 const COSMETICS = {};
 function defineCosmetic(def){ COSMETICS[def.id] = def; return def.id; }
-const Loadout = { back:null, body:null, neck:null, head:'cap_snapback', face:null };
+const Loadout = { back:null, body:null, neck:'chain_code', head:'cap_snapback', face:'shades_art' };
 function equip(slot, id){
   if(!(slot in Loadout)) return false;              // unknown slot: ignored
   if(id && !COSMETICS[id]) return false;            // missing asset: ignored
@@ -781,6 +781,12 @@ defineCosmetic({ id:'shades_code',  slot:'face', draw:(R)=>{
 cosmeticImage('shades_art',  'face', 'art/cos-shades.png',  {w:1.60, ox:11,  oy:-7,  ax:0.42, ay:0.52});
 cosmeticImage('scarf_art',   'neck', 'art/cos-scarf.png',   {w:1.30, ox:14,  oy:-30, ax:0.56, ay:0.50, rot:0.12});
 
+defineCosmetic({ id:'chain_code', slot:'neck', ox:6, oy:-24, draw:(R)=>{
+  ctx.beginPath(); ctx.moveTo(-14,-6); ctx.quadraticCurveTo(4,20, 24,-4);
+  ctx.strokeStyle=CKC.edge; ctx.lineWidth=9; ctx.lineCap='round'; ctx.stroke();
+  ctx.strokeStyle='#FFD54A'; ctx.lineWidth=5.5; ctx.stroke();
+  ctx.beginPath(); ctx.arc(6,10,5.5,0,TAU); cp('#FFD54A',3);
+}});
 defineCosmetic({ id:'hoodie_code', slot:'body', draw:(R)=>{
   ctx.beginPath(); ctx.ellipse(-4,10,CK.bodyRX*0.96,CK.bodyRY*0.72,0.04,Math.PI*0.02,Math.PI*0.98);
   cp('#6BD1FF',5);
