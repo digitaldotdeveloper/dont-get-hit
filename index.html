@@ -751,17 +751,8 @@ defineCosmetic({ id:'shades_code',  slot:'face', draw:(R)=>{
   ctx.strokeStyle=CKC.beak; ctx.lineWidth=R*0.08; ctx.stroke();
   ctx.restore();
 }});
-defineCosmetic({ id:'jetpack_code', slot:'back', ox:-50, oy:-6, scale:0.82, draw:(R)=>{
-  for(const dx of [-6,10]){
-    ctx.beginPath(); ctx.roundRect(dx-13,-30,26,58,12); cp('#F2684F',5);
-    ctx.beginPath(); ctx.roundRect(dx-13,-14,26,9,3); cp(CKC.body,0);
-    ctx.beginPath(); ctx.roundRect(dx-9,-38,18,10,4); cp(CKC.capBand,4);
-    ctx.beginPath(); ctx.roundRect(dx-8,28,16,12,5); cp('#5E6E8C',4);
-  }
-}});
 /* PNG cosmetics from Gemini Studio — same slots, same pivots, no code changes */
 cosmeticImage('shades_art',  'face', 'art/cos-shades.png',  {w:1.60, ox:11,  oy:-7,  ax:0.42, ay:0.52});
-cosmeticImage('jetpack_art', 'back', 'art/cos-jetpack.png', {w:1.42, ox:-48, oy:-8,  ax:0.50, ay:0.50});
 cosmeticImage('scarf_art',   'neck', 'art/cos-scarf.png',   {w:1.30, ox:14,  oy:-30, ax:0.56, ay:0.50, rot:0.12});
 
 defineCosmetic({ id:'hoodie_code', slot:'body', draw:(R)=>{
@@ -843,7 +834,7 @@ function drawChicken(x, y, p){
   });
   ctx.restore();
 
-  drawSlot('back', CK.bodyRX);            // jetpack etc. sits behind the body
+  drawSlot('back', CK.bodyRX);            // capes/packs sit behind the body
 
   // body
   ctx.beginPath(); ctx.ellipse(0,0,CK.bodyRX,CK.bodyRY,0.04,0,TAU); cp(CKC.body,5);

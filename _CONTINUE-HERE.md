@@ -24,7 +24,7 @@ parts and was scrapped. Keep the base character in one drawing language.
 
 ```
 BaseChicken            owns idle / run / fly / glide / land / hit / death
-├── BackPivot          jetpack
+├── BackPivot          (free — capes, packs; NOT a jetpack: he has wings)
 ├── BodyPivot          outfit
 ├── NeckPivot          scarf
 ├── HeadPivot          hats
@@ -85,14 +85,15 @@ rules that keep them consistent.
 `?auto=1` start a run · `?demo=1` auto-flap · `?flap=0.5` freeze the wings at one
 point in the cycle · `?hold=0` glide · `?zoom=1.7` zoom on the bird ·
 `?dbg=1` altitude readout in the tab title ·
-`?wear=head:hat_bucket,face:shades_art,back:jetpack_art` set a loadout.
+`?wear=head:hat_bucket,face:shades_art,neck:scarf_art` set a loadout.
 
 ## Known rough edges
 
 - Expression is one eye plus a brow, driven by `p.shockT`. It reads at portrait
   size but there is room for more.
-- The jetpack reads small behind the body, and all five slots at once gets busy.
-  Both are tuning numbers on the cosmetic definitions, not architecture.
+- Wearing every slot at once gets visually busy. Tuning, not architecture.
+- **No jetpack cosmetics.** The bird flies with his own wings; a jetpack would
+  undercut the one idea that keeps this from being a Jetpack Joyride clone.
 - Obstacles are still the ones designed for the jump game. They work, but a
   flyer wants gates and vertical gaps — that is the next real design pass.
 - `chickens.html` keys green in-browser, so it only works over http(s), never
