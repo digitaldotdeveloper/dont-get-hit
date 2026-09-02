@@ -1689,10 +1689,10 @@ try{ game.firstRun = !localStorage.getItem('dgh.played'); }catch(e){}
    jetpack — the lift comes in pulses on the downstroke, so altitude is something
    you keep working at rather than something you switch on. */
 const GRAV = 2600, FLAP_HZ = 4.6;
-/* Lift only happens on the downstroke, and the mean of a half-sine is 1/pi.
-   So the peak has to be ~3.1x the average you actually want. Getting this
-   wrong is why he could not climb. */
-const FLAP_ACC = 13500;                    // mean lift ~4300 vs gravity 2600
+/* Jetpack Joyride mechanics: holding applies CONSTANT lift, not pulses.
+   Pulsed lift made a hold feel like it was not registering, so players tapped
+   instead of holding. The wingbeat is now purely visual. */
+const LIFT = 4300;                         // constant while held, vs gravity 2600
 const VY_UP = -1010, VY_DOWN = 1050;
 /* Re-grabbing after a dive used to take ~1s and 250 units of sink, which read
    as the bird being heavy. The first stroke now bites into the fall instead. */
@@ -2085,10 +2085,10 @@ function updatePlay(dt){
   const ceilH = GROUND - CEIL;                       // usable altitude, in world units
   p.vy += GRAV*dt;
   if(flapping){
-    // lift arrives in pulses on each downstroke, so holding still costs attention
+    // constant lift while held; the wingbeat only drives the animation
+    p.liftRamp = Math.min(1, (p.liftRamp||0) + dt*14);
+    p.vy -= LIFT * p.liftRamp * dt;
     p.flapT += dt*FLAP_HZ;
-    const stroke = Math.max(0, Math.sin(p.flapT*TAU));
-    p.vy -= FLAP_ACC*stroke*dt;
     const beat = Math.floor(p.flapT);
     if(beat !== p.flapBeat){
       p.flapBeat = beat;
@@ -2098,6 +2098,7 @@ function updatePlay(dt){
         s0:70,s1:190, l0:0.18,l1:0.45, r0:3,r1:7, g:120});
     }
   } else {
+    p.liftRamp = 0;
     p.flapT += dt*1.4;                               // wings glide, barely moving
   }
   p.vy = clamp(p.vy, VY_UP, VY_DOWN);
