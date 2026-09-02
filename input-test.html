@@ -8,7 +8,7 @@
 <style>
   html,body{height:100%;margin:0;background:#150827;color:#FFF2DE;
     font-family:ui-monospace,Menlo,Consolas,monospace;
-    -webkit-user-select:none;user-select:none;
+    -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
     overscroll-behavior:none;touch-action:none;-webkit-tap-highlight-color:transparent}
   #pad{position:fixed;inset:0;display:grid;place-items:center;text-align:center}
   #big{font-size:clamp(38px,14vw,90px);font-weight:700;line-height:1.1}
@@ -48,12 +48,13 @@ function press(type, e){ down = 1; note(type, e); }
 function release(type, e){ down = 0; note(type, e); }
 
 const CAP = {passive:true, capture:true};
+const ACT = {passive:false, capture:true};
 // every family, every phase, on every plausible target
 for(const el of [window, document, document.body]){
-  el.addEventListener('touchstart',   e=>press('touchstart', e), CAP);
+  el.addEventListener('touchstart',   e=>{ if(e.cancelable) e.preventDefault(); press('touchstart', e); }, ACT);
   el.addEventListener('touchend',     e=>release('touchend', e), CAP);
   el.addEventListener('touchcancel',  e=>note('touchcancel', e), CAP);
-  el.addEventListener('touchmove',    e=>note('touchmove', e), CAP);
+  el.addEventListener('touchmove',    e=>{ if(e.cancelable) e.preventDefault(); note('touchmove', e); }, ACT);
   el.addEventListener('pointerdown',  e=>press('pointerdown', e), CAP);
   el.addEventListener('pointerup',    e=>release('pointerup', e), CAP);
   el.addEventListener('pointercancel',e=>note('pointercancel', e), CAP);

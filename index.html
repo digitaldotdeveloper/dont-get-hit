@@ -29,7 +29,7 @@
     font-family:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif;
     color:var(--cream);
     -webkit-tap-highlight-color:transparent;
-    -webkit-user-select:none;user-select:none;
+    -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
     overscroll-behavior:none;touch-action:none;
   }
   #stage{position:fixed;inset:0;overflow:hidden}
@@ -1860,7 +1860,7 @@ function releaseJump(){ player.jumpHeld = false; }
    pressJump/releaseJump are idempotent, so overlapping families are harmless.
    Every raw down is counted before any filtering, so the readout can tell
    "no event arrived" apart from "event arrived and was filtered". */
-const BUILD = 'b2142';   // shown in ?dbg=1 so a cached build is obvious
+const BUILD = 'b2219';   // shown in ?dbg=1 so a cached build is obvious
 const TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints||0) > 0;
 /* Only the mute button may swallow a press. Filtering on any <button> was the
    bug: on device every tap reported lastEv=start with taps=0, because the target
@@ -1878,16 +1878,28 @@ function downFrom(e){
   try{ audioInit(); }catch(err){}
 }
 const CAP = {passive:true, capture:true};
+const ACT = {passive:false, capture:true};      // active: may preventDefault
+function touchDown(e){
+  game.lastEv = 'start';
+  const btn = e.target && e.target.closest ? e.target.closest('button') : null;
+  // Keeping the touch alive is the whole point: without preventDefault the
+  // browser's long-press handling ends it and sends touchend by itself.
+  // Buttons are left alone so their click still works.
+  if(!btn && e.cancelable) e.preventDefault();
+  if(btn && btn.id === 'mute') return;
+  downFrom(e);
+}
 function bindDown(el){
   if(!el) return;
-  el.addEventListener('touchstart', e=>{ game.lastEv='start'; downFrom(e); }, CAP);
+  el.addEventListener('touchstart', touchDown, ACT);
   el.addEventListener('pointerdown', e=>{ game.lastEv='pdown'; downFrom(e); }, CAP);
   el.addEventListener('mousedown',  e=>{ game.lastEv='mdown'; downFrom(e); }, CAP);
 }
-bindDown(window); bindDown(document); bindDown(cv);
+bindDown(window); bindDown(cv);
 
 window.addEventListener('touchmove', e=>{
   game.lastEv='move';
+  if(e.cancelable) e.preventDefault();          // stop scroll/gesture killing the touch
   if(e.touches && e.touches.length > 0 && !player.jumpHeld && game.mode==='play') pressJump();
 }, CAP);
 window.addEventListener('touchend', e=>{
