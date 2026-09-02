@@ -418,12 +418,13 @@ function musicVol(v){ if(A.started) A.musicGain.gain.setTargetAtTime(v, A.ctx.cu
    Local space: origin = body core, +x forward, +y down.
    ============================================================ */
 const CK = {
-  bodyRX:47, bodyRY:41,
-  headX:33, headY:-60, headR:37,
-  wingX:10, wingY:-15, wingA:56, wingB:46,
-  hipX:-4,  hipY:30,
-  thigh:37, shin:35, ANKLE:10,
-  standH:92
+  bodyRX:52, bodyRY:40,          // fallback shape only; the part carries the real body
+  bodyTilt:-0.13,
+  headX:40, headY:-96, headR:23,
+  wingX:12, wingY:-46, wingA:84, wingB:70,
+  hipX:-10, hipY:30,
+  thigh:46, shin:44, ANKLE:14,
+  standH:118
 };
 const HATS = ['cap_snapback','hat_bucket'];
 
@@ -475,7 +476,7 @@ function setLegs(p, ax,ay, bx,by){
 /* ---- the poses ---- */
 /* wing angles: 0 = straight down, more negative = further up */
 function poseRun(ph, speedT, p){
-  const stride=lerp(54,70,speedT), lift=lerp(36,52,speedT), bob=lerp(7,10,speedT);
+  const stride=lerp(70,88,speedT), lift=lerp(48,64,speedT), bob=lerp(8,11,speedT);
   p.y = bob*Math.cos(4*Math.PI*(ph-0.12));
   p.x = 2*Math.sin(4*Math.PI*ph);
   p.rot = lerp(0.08,0.24,speedT) + 0.02*Math.sin(4*Math.PI*ph);
@@ -488,9 +489,9 @@ function poseRun(ph, speedT, p){
   setLegs(p, _fp1.x-CK.hipX, _fp1.y, _fp2.x-CK.hipX, _fp2.y);
   // a running chicken pumps its wings for balance — out of phase with the legs
   const w = Math.sin(ph*TAU), w2 = Math.sin(ph*TAU + 1.15);
-  p.wingN = -0.86 + w*0.58; p.wingF = -0.72 - w*0.52;
+  p.wingN = -0.72 + w*0.46; p.wingF = -0.62 - w*0.42;
   p.tipN  = 0.34 + w2*0.40; p.tipF = 0.30 - w2*0.34;
-  p.wingOpen = 0.52 + 0.20*Math.max(0,w);
+  p.wingOpen = 0.22 + 0.13*Math.max(0,w);
   p.tail = 0.16*w - 0.04;
   p.sx = 1 - 0.02*w; p.sy = 1 + 0.02*w;
   return p;
@@ -663,23 +664,46 @@ function capsule(x1,y1,x2,y2,w,col){
   ctx.strokeStyle=CKC.edge; ctx.lineWidth=w+8; ctx.stroke();
   ctx.strokeStyle=col;     ctx.lineWidth=w;   ctx.stroke();
 }
-function drawSneaker(kx,ky,fx,fy,col){
-  const a=Math.atan2(fx-kx,fy-ky);
+function drawWingPart(px, py, ang, tip, open, col, far){
+  ctx.save(); ctx.translate(px, py);
+  if(partReady('wing')){
+    ctx.rotate(-ang);                           // canvas rotate(t) sends dir(a) to dir(a-t)
+    ctx.save();
+    if(far){ ctx.globalAlpha = 0.92; }
+    drawPart('wing', 1, lerp(0.42, 1, open));   // folding shortens the wing
+    ctx.restore();
+  } else {
+    drawWing(ang, tip, open, col);
+  }
+  ctx.restore();
+}
+function drawShoePart(kx,ky,fx,fy,col,far){
+  if(!partReady('shoe')) return drawSneaker(kx,ky,fx,fy,col);
+  const a=Math.atan2(fx-kx,fy-ky)*0.5;
   ctx.save(); ctx.translate(fx,fy); ctx.rotate(-a+Math.PI/2);
-  ctx.beginPath(); ctx.roundRect(-11,-10,33,15,[7,10,4,7]); cp(col,4.6);
-  ctx.beginPath(); ctx.roundRect(-13,1,37,9,4.5); cp(CKC.shoe,3.8);
-  ctx.beginPath(); ctx.moveTo(-2,-8); ctx.quadraticCurveTo(7,-3,14,-6);
-  ctx.strokeStyle=CKC.lace; ctx.lineWidth=4.4; ctx.lineCap='round'; ctx.stroke();
+  ctx.save(); if(far) ctx.globalAlpha=0.9;
+  drawPart('shoe'); ctx.restore();
+  ctx.restore();
+}
+function drawSneaker(kx,ky,fx,fy,col){
+  const a=Math.atan2(fx-kx,fy-ky)*0.5;      // the sole stays flatter than the shin
+  ctx.save(); ctx.translate(fx,fy); ctx.rotate(-a+Math.PI/2);
+  ctx.beginPath(); ctx.roundRect(-15,-15,48,22,[11,15,5,11]); cp(col,5);
+  ctx.beginPath(); ctx.roundRect(-17,2,53,13,6.5); cp(CKC.shoe,4.2);
+  ctx.beginPath(); ctx.moveTo(-4,-12); ctx.quadraticCurveTo(9,-5,20,-9);
+  ctx.strokeStyle=CKC.lace; ctx.lineWidth=5; ctx.lineCap='round'; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-2,-4); ctx.lineTo(16,-1);
+  ctx.strokeStyle='rgba(11,21,38,.30)'; ctx.lineWidth=2.6; ctx.stroke();
   ctx.restore();
 }
 function drawWing(a, tip, open, col){
   // a blade, not a tube: leading edge bulges, trailing edge cuts back
-  const L1=CK.wingA*lerp(0.72,1,open), L2=CK.wingB*lerp(0.6,1,open);
+  const L1=CK.wingA*lerp(0.38,1,open), L2=CK.wingB*lerp(0.26,1,open);
   const ex=dirX(a)*L1, ey=dirY(a)*L1;
   const b=a+tip;
   const tx=ex+dirX(b)*L2, ty=ey+dirY(b)*L2;
   let nx=-(ty), ny=(tx); const nl=Math.hypot(nx,ny)||1; nx/=nl; ny/=nl;
-  const wIn=25*lerp(0.8,1,open), wOut=10;
+  const wIn=30*lerp(0.8,1,open), wOut=9;
   ctx.beginPath();
   ctx.moveTo(0,0);
   ctx.quadraticCurveTo(ex+nx*wIn*1.5, ey+ny*wIn*1.5, tx+nx*wOut, ty+ny*wOut);
@@ -741,6 +765,48 @@ function cosmeticImage(id, slot, src, opt){
   defineCosmetic(Object.assign({id, slot, img:im}, opt||{}));
 }
 
+/* ============================================================
+   PARTS
+   Painted pieces cut from the reference art, hung on the same rig.
+   Every part is optional: if its image is missing the procedural
+   version draws instead, so the character can never disappear.
+   `w` is the part's width in world units; ax/ay are its anchor as a
+   fraction of the image, i.e. the point the pivot holds it by.
+   ============================================================ */
+const PARTS = {};
+function loadPart(id, src, opt){
+  const im = new Image(); im.src = src;
+  PARTS[id] = Object.assign({ img:im, w:100, ax:0.5, ay:0.5, rot:0, tint:null }, opt||{});
+}
+function partReady(id){
+  const q = PARTS[id];
+  return !!(q && q.img.complete && q.img.naturalWidth > 0);
+}
+/* draws at the current origin; returns false so callers can fall back */
+function drawPart(id, scaleX, scaleY){
+  if(!partReady(id)) return false;
+  const q = PARTS[id];
+  const w = q.w, h = w*(q.img.naturalHeight/q.img.naturalWidth);
+  ctx.save();
+  if(q.rot) ctx.rotate(q.rot);
+  if(scaleX!==undefined || scaleY!==undefined) ctx.scale(scaleX===undefined?1:scaleX, scaleY===undefined?1:scaleY);
+  if(q.dark){ ctx.globalAlpha = 1; }
+  ctx.drawImage(q.img, -w*q.ax, -h*q.ay, w, h);
+  if(q.dark){                                   // far-side limbs read as shadow
+    ctx.globalCompositeOperation='source-atop';
+    ctx.fillStyle='rgba(70,40,20,.30)';
+    ctx.fillRect(-w*q.ax, -h*q.ay, w, h);
+    ctx.globalCompositeOperation='source-over';
+  }
+  ctx.restore();
+  return true;
+}
+loadPart('body','art/part-body.png', {w:104, ax:0.50, ay:0.70, rot:0.10});
+loadPart('head','art/part-head.png', {w:74,  ax:0.42, ay:0.52});
+loadPart('wing','art/part-wing.png', {w:90,  ax:0.78, ay:0.12, rot:-0.65});
+loadPart('tail','art/part-tail.png', {w:70,  ax:0.95, ay:0.45});
+loadPart('shoe','art/part-shoe.png', {w:52,  ax:0.32, ay:0.22});
+
 /* ---- the head, drawn in the same language as the body ---- */
 function hatSnapback(R){
   ctx.beginPath();
@@ -800,6 +866,23 @@ defineCosmetic({ id:'hoodie_code', slot:'body', draw:(R)=>{
 
 function drawHead(p){
   const R = CK.headR;
+  if(partReady('head')){
+    drawPart('head');
+    // the painted head has its own skull and eye, so the cosmetics shift onto them
+    // measured off the part: skull centre sits at (-2,-8) from the pivot, eye at (+9,-12)
+    ctx.save(); ctx.translate(-2,-8); drawSlot('head', R); ctx.restore();
+    ctx.save(); ctx.translate( 2,-8); drawSlot('face', R); ctx.restore();
+    if(p.shockT>0.02){
+      ctx.save(); ctx.globalAlpha=clamp(p.shockT*2,0,1);
+      ctx.strokeStyle=CKC.edge; ctx.lineWidth=3; ctx.lineCap='round';
+      for(let i=0;i<3;i++){ const a=-0.9+i*0.5;
+        ctx.beginPath();
+        ctx.moveTo(-R*1.5+Math.sin(a)*8, -R*1.4+Math.cos(a)*8);
+        ctx.lineTo(-R*1.5+Math.sin(a)*20,-R*1.4+Math.cos(a)*20); ctx.stroke(); }
+      ctx.restore();
+    }
+    return;
+  }
   // wattle
   ctx.beginPath(); ctx.ellipse(R*0.56,R*0.70,R*0.17,R*0.32,0.22,0,TAU); cp(CKC.comb,4);
   // skull
@@ -810,9 +893,9 @@ function drawHead(p){
   ctx.fillStyle=hg; ctx.fillRect(-R-2,-R-2,R*2+4,R*2+4); ctx.restore();
   // beak
   ctx.beginPath();
-  ctx.moveTo(R*0.70,-R*0.12); ctx.lineTo(R*1.66,R*0.16); ctx.lineTo(R*0.70,R*0.46);
-  ctx.closePath(); cp(CKC.beak,4.4);
-  ctx.beginPath(); ctx.moveTo(R*0.74,R*0.17); ctx.lineTo(R*1.54,R*0.18);
+  ctx.moveTo(R*0.66,-R*0.20); ctx.lineTo(R*1.92,R*0.18); ctx.lineTo(R*0.66,R*0.54);
+  ctx.closePath(); cp(CKC.beak,4.6);
+  ctx.beginPath(); ctx.moveTo(R*0.70,R*0.18); ctx.lineTo(R*1.78,R*0.19);
   ctx.strokeStyle=CKC.edge; ctx.lineWidth=2.6; ctx.stroke();
   // eye: half lidded, one raised brow. That is the whole personality.
   const open = clamp(0.42 + p.shockT*1.5, 0, 1.25);
@@ -832,12 +915,12 @@ function drawHead(p){
   // hat, then the comb bursting up in front of it
   drawSlot('head', R);
   ctx.beginPath();
-  ctx.moveTo(R*0.16,-R*1.02);
-  ctx.quadraticCurveTo(R*0.30,-R*1.62, R*0.56,-R*1.24);
-  ctx.quadraticCurveTo(R*0.76,-R*1.74, R*0.92,-R*1.14);
-  ctx.quadraticCurveTo(R*1.10,-R*1.40, R*1.02,-R*0.74);
-  ctx.quadraticCurveTo(R*0.60,-R*0.86, R*0.16,-R*1.02);
-  ctx.closePath(); cp(CKC.comb,4.6);
+  ctx.moveTo(R*0.24,-R*1.00);
+  ctx.quadraticCurveTo(R*0.34,-R*1.42, R*0.56,-R*1.12);
+  ctx.quadraticCurveTo(R*0.72,-R*1.50, R*0.86,-R*1.06);
+  ctx.quadraticCurveTo(R*1.00,-R*1.26, R*0.96,-R*0.78);
+  ctx.quadraticCurveTo(R*0.60,-R*0.84, R*0.24,-R*1.00);
+  ctx.closePath(); cp(CKC.comb,4.4);
   drawSlot('face', R);
 }
 
@@ -851,35 +934,48 @@ function drawChicken(x, y, p){
   // far leg
   capsule(CK.hipX,CK.hipY, CK.hipX+p.kFx,CK.hipY+p.kFy, 9, CKC.legDark);
   capsule(CK.hipX+p.kFx,CK.hipY+p.kFy, CK.hipX+p.fFx,CK.hipY+p.fFy, 7, CKC.legDark);
-  drawSneaker(CK.hipX+p.kFx,CK.hipY+p.kFy, CK.hipX+p.fFx,CK.hipY+p.fFy, CKC.shoeDark);
+  drawShoePart(CK.hipX+p.kFx,CK.hipY+p.kFy, CK.hipX+p.fFx,CK.hipY+p.fFy, CKC.shoeDark, true);
 
   // far wing
-  ctx.save(); ctx.translate(-CK.wingX, CK.wingY);
-  drawWing(p.wingF, p.tipF, p.wingOpen, CKC.shade); ctx.restore();
+  drawWingPart(-CK.wingX, CK.wingY, p.wingF, p.tipF, p.wingOpen, CKC.shade, true);
 
-  // tail
-  ctx.save(); ctx.translate(-CK.bodyRX*0.86, -6);
-  CKC.tail.forEach((c,i)=>{
-    ctx.save();
-    ctx.rotate(-0.30 - i*0.30 + p.tail + spring.tail*0.22);
-    ctx.beginPath(); ctx.moveTo(0,0);
-    ctx.quadraticCurveTo(-30,-26,-56-i*7,-32-i*9);
-    ctx.quadraticCurveTo(-26,-2,-4,13);
-    ctx.closePath(); cp(c,4.4);
-    ctx.restore();
-  });
-  ctx.restore();
+  // tail — one swept cream shape that grows out of the body
+  ctx.save();
+  ctx.translate(-46, -30);
+  ctx.rotate(p.tail*0.6 + spring.tail*0.18);
+  ctx.rotate(-0.34);
+  if(drawPart('tail')){ ctx.restore(); } else {
+  ctx.beginPath();
+  ctx.moveTo( 14,-20);
+  ctx.quadraticCurveTo(-20,-38,-50,-26);
+  ctx.quadraticCurveTo(-34,-10,-42,  4);
+  ctx.quadraticCurveTo(-14, -2, 14, 14);
+  ctx.closePath(); cp(CKC.body,5);
+  ctx.strokeStyle='rgba(11,21,38,.24)'; ctx.lineWidth=2.6; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(-6,-18); ctx.lineTo(-34,-22); ctx.stroke();
+  ctx.restore(); }
 
   drawSlot('back', CK.bodyRX);            // capes/packs sit behind the body
 
   // body
-  ctx.beginPath(); ctx.ellipse(0,0,CK.bodyRX,CK.bodyRY,0.04,0,TAU); cp(CKC.body,5);
-  ctx.save(); ctx.clip();
-  const bg = ctx.createLinearGradient(-CK.bodyRX,-CK.bodyRY*0.6, CK.bodyRX,CK.bodyRY*0.6);
-  bg.addColorStop(0, CKC.shade); bg.addColorStop(0.42, CKC.body); bg.addColorStop(1, '#FFEDCC');
-  ctx.fillStyle=bg; ctx.fillRect(-CK.bodyRX-2,-CK.bodyRY-2,CK.bodyRX*2+4,CK.bodyRY*2+4);
-  ctx.restore();
+  if(partReady('body')){
+    ctx.save(); ctx.rotate(CK.bodyTilt); drawPart('body'); ctx.restore();
+  } else {
+    ctx.beginPath(); ctx.ellipse(0,0,CK.bodyRX,CK.bodyRY,CK.bodyTilt,0,TAU); cp(CKC.body,5);
+    ctx.save(); ctx.clip();
+    const bg = ctx.createLinearGradient(-CK.bodyRX,-CK.bodyRY*0.6, CK.bodyRX,CK.bodyRY*0.6);
+    bg.addColorStop(0, CKC.shade); bg.addColorStop(0.42, CKC.body); bg.addColorStop(1, '#FFEDCC');
+    ctx.fillStyle=bg; ctx.fillRect(-CK.bodyRX-2,-CK.bodyRY-2,CK.bodyRX*2+4,CK.bodyRY*2+4);
+    ctx.restore();
+  }
   drawSlot('body', CK.bodyRX);            // outfit rides the body pivot
+  // neck: joins body to head so the silhouette is one animal
+  if(!partReady('body')){
+    const hx=CK.headX+p.headDX, hy=CK.headY+p.headDY;
+    ctx.beginPath(); ctx.moveTo(hx-4, hy+6); ctx.lineTo(hx+14, hy+10);
+    ctx.lineTo(CK.bodyRX*0.44, -CK.bodyRY*0.30); ctx.lineTo(CK.bodyRX*0.10, -CK.bodyRY*0.42);
+    ctx.closePath(); cp(CKC.body,5);
+  }
   drawSlot('neck', CK.bodyRX);            // scarf etc.
 
   // head (painted sprite carries hat + face)
@@ -901,13 +997,30 @@ function drawChicken(x, y, p){
   ctx.restore();
 
   // near wing
-  ctx.save(); ctx.translate(CK.wingX, CK.wingY);
-  drawWing(p.wingN, p.tipN, p.wingOpen, CKC.wing); ctx.restore();
+  drawWingPart(CK.wingX, CK.wingY, p.wingN, p.tipN, p.wingOpen, CKC.wing, false);
 
   // near leg
-  capsule(CK.hipX,CK.hipY, CK.hipX+p.kNx,CK.hipY+p.kNy, 10, CKC.leg);
-  capsule(CK.hipX+p.kNx,CK.hipY+p.kNy, CK.hipX+p.fNx,CK.hipY+p.fNy, 8, CKC.leg);
-  drawSneaker(CK.hipX+p.kNx,CK.hipY+p.kNy, CK.hipX+p.fNx,CK.hipY+p.fNy, CKC.shoe);
+  capsule(CK.hipX,CK.hipY, CK.hipX+p.kNx,CK.hipY+p.kNy, 11, CKC.leg);
+  capsule(CK.hipX+p.kNx,CK.hipY+p.kNy, CK.hipX+p.fNx,CK.hipY+p.fNy, 9, CKC.leg);
+  drawShoePart(CK.hipX+p.kNx,CK.hipY+p.kNy, CK.hipX+p.fNx,CK.hipY+p.fNy, CKC.shoe, false);
+
+  if(game.rig){                                   // pivot overlay for aligning parts
+    const mark=(x,y,c,lbl)=>{
+      ctx.strokeStyle=c; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(x-9,y); ctx.lineTo(x+9,y);
+      ctx.moveTo(x,y-9); ctx.lineTo(x,y+9); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x,y,4,0,TAU); ctx.stroke();
+      ctx.fillStyle=c; ctx.font='700 11px Archivo, sans-serif'; ctx.fillText(lbl,x+11,y-4);
+    };
+    ctx.strokeStyle='rgba(63,224,176,.45)'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(-160,CK.standH); ctx.lineTo(160,CK.standH); ctx.stroke();  // ground
+    mark(0,0,'#FF456E','core');
+    mark(CK.headX+p.headDX, CK.headY+p.headDY, '#6BD1FF', 'head');
+    mark(CK.wingX, CK.wingY, '#FFD54A', 'wing');
+    mark(-46, -30, '#3FE0B0', 'tail');
+    mark(CK.hipX, CK.hipY, '#F2684F', 'hip');
+    mark(CK.hipX+p.fNx, CK.hipY+p.fNy, '#FFF2DE', 'ankle');
+  }
 
   ctx.restore();
 }
@@ -1809,7 +1922,7 @@ function updatePlay(dt){
   if(game.spawnT<=0) spawnPattern();
 
   // ---- obstacles ----
-  const pl = p.x-34, pr = p.x+34, pb = p.y+10, pt = p.y+168;
+  const pl = p.x-42, pr = p.x+42, pb = p.y+12, pt = p.y+205;
   for(let i=game.obstacles.length-1;i>=0;i--){
     const o = game.obstacles[i];
     o.x += (o.vx||0)*dt;
@@ -2323,6 +2436,7 @@ function boot(){
   if(/[?&]demo/.test(location.search)) game.demo = true;
   if(/[?&]dbg/.test(location.search)) game.dbg = true;
   if(/[?&]stage/.test(location.search)) game.stage = true;
+  if(/[?&]rig/.test(location.search)) game.rig = true;
   if(/[?&]solo/.test(location.search)){ game.solo = true; document.body.classList.add('solo'); }
   const rmv=/[?&]run=([0-9.]+)/.exec(location.search); if(rmv) game.demoRun=parseFloat(rmv[1]);
   const sz=/[?&]sz=([0-9.]+)/.exec(location.search); if(sz) game.soloZoom=parseFloat(sz[1]);

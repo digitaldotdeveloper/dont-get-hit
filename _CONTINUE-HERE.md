@@ -14,11 +14,36 @@ Everything is in **index.html** plus four PNGs in `art/`. No build step.
 
 ## The character — read this before touching him
 
-**One animated chicken, drawn entirely in code, plus interchangeable cosmetic
-layers.** There are no per-outfit animations and there never should be.
+**One animated chicken assembled from five painted parts, plus interchangeable
+cosmetic layers.** There are no per-outfit animations and there never should be.
 
-An earlier version glued a painted head onto a code body; it read as assembled
-parts and was scrapped. Keep the base character in one drawing language.
+### Parts (the important bit)
+
+`art/part-{body,head,wing,tail,shoe}.png` are cut from the Gemini reference art
+and hung on the rig by `loadPart` / `drawPart`. The rig moves the pieces; it does
+not draw the character. This is why he looks like the reference — he *is* the
+reference art.
+
+Each part has `w` (width in world units) and `ax`/`ay` (the anchor, as a fraction
+of the image, i.e. the point the pivot holds it by). **Do not eyeball these.**
+Measure the PNG (cream centroid, eyeball centroid) and set the numbers from the
+measurement — guessing cost several rounds.
+
+Two traps that already bit:
+- `ctx.rotate(t)` maps `dir(a)` to `dir(a-t)`, **not** `a+t`. The wing part must
+  be rotated by `-ang`, with `rot:-0.65` squaring the asset to "straight down".
+  Get this backwards and "wings up" draws wings down.
+- Head cosmetics sit on the *painted* skull, not the pivot: `(-2,-8)` for the hat
+  slot and `(2,-8)` for the face slot, both measured off `part-head.png`.
+
+**Every part is optional.** If an image is missing, the fully procedural chicken
+draws instead (`partReady` guards every call), so the character can never vanish.
+Do not delete the procedural path.
+
+Earlier attempts, for the record: a painted *head* on a code body read as
+assembled parts and was scrapped; a fully code-drawn chicken never matched the
+reference. Generated per-frame sprite sheets were rejected because the character
+drifts between frames.
 
 ### Cosmetic system
 
@@ -53,6 +78,7 @@ rules that keep them consistent.
 | What | Marker |
 |---|---|
 | Chicken rig constants | `const CK = {` |
+| Painted parts | `const PARTS`, `loadPart`, `drawPart`, `partReady` |
 | Cosmetic registry / slots | `const SLOTS`, `defineCosmetic`, `equip` |
 | Cosmetic draw hook | `function drawSlot` |
 | All poses | `function poseRun` … `function poseCheer` |
@@ -91,7 +117,9 @@ rules that keep them consistent.
 
 `?auto=1` start a run · `?demo=1` auto-flap · `?flap=0.5` freeze the wings at one
 point in the cycle · `?hold=0` glide · `?zoom=1.7` zoom on the bird ·
-`?dbg=1` altitude readout in the tab title · `?stage=1` drop three gates in front ·
+`?dbg=1` altitude readout · `?stage=1` drop three gates in front · `?solo=1` character only,
+no world or HUD · `?run=0.3` freeze a stride frame · `?pose=land:1` freeze any state ·
+`?sz=2` zoom the solo view · `?rig=1` draw the pivot crosshairs (use this before tuning parts) ·
 `?wear=head:hat_bucket,face:shades_art,neck:scarf_art` set a loadout.
 
 ## Animation
