@@ -288,7 +288,7 @@ function resize(){
   // Portrait is the target. Flying is a vertical game, so we trade some
   // horizontal view for a bigger bird rather than the other way round.
   PORTRAIT = CH > CW*1.15;
-  SCALE = PORTRAIT ? Math.min(CH/1300, CW/700) : Math.min(CH/880, CW/1300);
+  SCALE = PORTRAIT ? Math.min(CH/1450, CW/790) : Math.min(CH/980, CW/1450);
   VW = CW/SCALE; VH = CH/SCALE;
   const roadH = clamp(VH*0.16, 150, 260);
   GROUND = VH - roadH;
@@ -491,21 +491,47 @@ function poseRun(ph, speedT, p){
   p.wingOpen = 0.42; p.tail = 0.1*w; p.sx=1; p.sy=1;
   return p;
 }
-function poseFly(flap, lag, rising, p){
-  // flap: -1 wings fully down .. +1 wings fully up
-  p.y = -flap*7;                                   // the body rides the flap
-  p.x = 2;
-  p.rot = -0.16 - flap*0.10 + (rising?0:0.14);
-  p.headDY = flap*4; p.headDX = 1;
-  p.headR = 0.10 + flap*0.06;
-  const a = lerp(-0.22, -2.92, (flap+1)/2);   // sweeps up over the back, down past the belly
-  p.wingN = a; p.wingF = a + 0.16;
-  p.tipN = 0.62*lag; p.tipF = 0.62*lag;
+/* Periodic Catmull-Rom through hand-placed keys. Non-uniform timing is the
+   whole point: the power stroke is fast and the recovery is slow, which is what
+   a sine cannot give you and what makes a flap read as effort. */
+function sampleTrack(keys, t){
+  t = t - Math.floor(t);
+  const n = keys.length;
+  let i = 0;
+  while(i < n-1 && keys[i+1][0] <= t) i++;
+  const k1=keys[i], k2=keys[(i+1)%n], k0=keys[(i-1+n)%n], k3=keys[(i+2)%n];
+  let t1=k1[0], t2=k2[0]; if(t2<=t1) t2+=1;
+  const u=(t-t1)/(t2-t1), u2=u*u, u3=u2*u;
+  const out=[];
+  for(let j=1;j<k1.length;j++){
+    const p0=k0[j],p1=k1[j],p2=k2[j],p3=k3[j];
+    out.push(0.5*((2*p1)+(-p0+p2)*u+(2*p0-5*p1+4*p2-p3)*u2+(-p0+3*p1-3*p2+p3)*u3));
+  }
+  return out;
+}
+/*      t     wing    tip   bodyY   rot    head   tail  */
+const FLAP_TRACK = [
+  [0.00, -2.88, -0.30,   5, -0.09,  0.17, -0.30],   // top of the upstroke, wings cocked
+  [0.10, -2.30,  0.40,   3, -0.14,  0.14, -0.24],   // snap into the power stroke
+  [0.24, -1.10,  0.88,  -5, -0.23,  0.06, -0.10],   // through the middle, max lift
+  [0.36, -0.18,  0.60, -10, -0.21,  0.01,  0.02],   // bottom, body punched upward
+  [0.50, -0.80, -0.10,  -5, -0.14,  0.08, -0.08],   // wing folds, recovery begins
+  [0.74, -1.95, -0.42,   2, -0.09,  0.15, -0.24]    // slow sweep back to the top
+];
+function poseFly(ph, power, vy, p){
+  const [wing, tip, by, rot, hr, tail] = sampleTrack(FLAP_TRACK, ph);
+  const amp = 1 + power*0.26;                       // the catch stroke swings wider
+  p.y = by*amp; p.x = 2;
+  p.rot = rot + clamp(vy/2800, -0.10, 0.26);        // banks nose-down as he drops
+  p.headDX = 1; p.headDY = -by*0.55;                // head hangs back off the body pump
+  p.headR = hr - clamp(vy/3200, -0.08, 0.20);
+  p.wingN = -1.55 + (wing + 1.55)*amp;
+  p.wingF = p.wingN + 0.18;
+  p.tipN = tip*amp; p.tipF = tip*0.88*amp;
   p.wingOpen = 1;
-  // legs tucked up and back while airborne
-  setLegs(p, -28, 20, -36, 13);
-  p.tail = -0.16 - flap*0.12;
-  p.sx = 1+flap*0.03; p.sy = 1-flap*0.03;
+  setLegs(p, -28, 20, -36, 13);                     // feet tucked
+  p.tail = tail;
+  p.sx = 1 - by*0.005; p.sy = 1 + by*0.005;         // stretches on the upbeat
   return p;
 }
 function poseGlide(t, vy, p){
@@ -1307,8 +1333,11 @@ const GRAV = 2600, FLAP_HZ = 4.6;
 /* Lift only happens on the downstroke, and the mean of a half-sine is 1/pi.
    So the peak has to be ~3.1x the average you actually want. Getting this
    wrong is why he could not climb. */
-const FLAP_ACC = 11000;                    // mean lift ~3500 vs gravity 2600
-const VY_UP = -900, VY_DOWN = 1250;
+const FLAP_ACC = 13500;                    // mean lift ~4300 vs gravity 2600
+const VY_UP = -900, VY_DOWN = 1050;
+/* Re-grabbing after a dive used to take ~1s and 250 units of sink, which read
+   as the bird being heavy. The first stroke now bites into the fall instead. */
+const CATCH = 0.45;
 
 /* ---------- DOM ---------- */
 const $ = s => document.querySelector(s);
@@ -1430,7 +1459,14 @@ function pressJump(){
   if(game.mode==='menu'){ startRun(); return; }
   if(game.mode==='dead'){ if(game.deadT>0.35) startRun(); return; }
   if(game.mode!=='play') return;
-  if(!player.jumpHeld) player.flapT = 0.08;   // start near the top of a downstroke
+  if(!player.jumpHeld){
+    player.flapT = 0.13;                       // start the downstroke immediately
+    if(player.vy > 200){                       // a hard catch out of a dive
+      player.vy *= CATCH; player.powerT = 1;
+      S.flap(); addShake(2);
+      featherBurst(player.x-24, GROUND-player.y-30, 4, 210);
+    }
+  }
   player.jumpHeld = true;
   if(game.tut){ game.tut=false; elTut.classList.remove('show'); }
 }
@@ -1620,6 +1656,7 @@ function updatePlay(dt){
   if(Math.floor(game.score/50) !== Math.floor(before/50)) S.tick();
 
   // ---- flight ----
+  p.powerT = Math.max(0, (p.powerT||0) - dt*3.2);
   if(game.demo){
     p.jumpHeld = game.holdOff ? false : (game.demoFlap!==undefined ? true : Math.sin(game.runT*2.3) > -0.15);
     if(game.demoFlap!==undefined) p.flapT = game.demoFlap;
@@ -1787,9 +1824,7 @@ function buildPlayerPose(dt, speedT){
     if(p.stateT>0.24 && p.onGround) p.state='run';
   } else {
     if(p.jumpHeld){
-      const flap = Math.cos(p.flapT*TAU);            // +1 wings up, -1 wings down
-      p.flapLag = damp(p.flapLag, flap, 16, dt);
-      poseFly(flap, clamp((flap-p.flapLag)*1.6,-1,1), p.vy<0, target);
+      poseFly(p.flapT, p.powerT||0, p.vy, target);
     } else {
       poseGlide(game.t, p.vy, target);
     }
@@ -1808,7 +1843,9 @@ function buildPlayerPose(dt, speedT){
     target.shockT = clamp(k,0,1);
   }
 
-  blendPose(p.pose, target, dt, p.state==='run' ? 30 : 24);
+  if(game.demoFlap!==undefined){                     // inspection: show the exact key
+    for(let i=0;i<POSE_KEYS.length;i++) p.pose[POSE_KEYS[i]] = target[POSE_KEYS[i]];
+  } else blendPose(p.pose, target, dt, p.state==='run' ? 30 : 24);
   p.pose.shockT = target.shockT;                     // the pop must not be smoothed away
   springUpdate(dt, 0, -p.vy*0.02);
 }

@@ -56,6 +56,7 @@ rules that keep them consistent.
 | Cosmetic registry / slots | `const SLOTS`, `defineCosmetic`, `equip` |
 | Cosmetic draw hook | `function drawSlot` |
 | All poses | `function poseRun` … `function poseCheer` |
+| Flap keyframes | `const FLAP_TRACK`, `function sampleTrack` |
 | Flap-driven flight pose | `function poseFly` |
 | Character renderer | `function drawChicken` |
 | Wing shape | `function drawWing` |
@@ -68,14 +69,18 @@ rules that keep them consistent.
 
 ## Feel numbers that matter
 
-- `GRAV 2600`, `FLAP_ACC 11000`, `FLAP_HZ 4.6`. Lift arrives **in pulses on the
-  downstroke**, not as constant thrust — that is what stops it feeling like a
-  jetpack. **The mean of a half-sine is 1/pi**, so peak lift must be about 3.1x
-  the average you actually want; getting this wrong once made holding the screen
-  push him *down* and the game looked dead. `VY_UP/VY_DOWN` clamp climb and dive.
+- `GRAV 2600`, `FLAP_ACC 13500`, `FLAP_HZ 4.6`, `VY_DOWN 1050`. Lift arrives
+  **in pulses on the downstroke**, not as constant thrust — that is what stops it
+  feeling like a jetpack. **The mean of a half-sine is 1/pi**, so peak lift must
+  be about 3.1x the average you actually want; getting this wrong once made
+  holding the screen push him *down* and the game looked dead.
+- `CATCH 0.45` — re-pressing while diving kills 45% of downward speed and fires a
+  wider power stroke. Without it, recovering from a full-speed fall cost 250
+  units of sink over 0.95s and the bird read as heavy. With it: 0.07s, no sink.
+  If you change `VY_DOWN` or `FLAP_ACC`, re-check that recovery.
 - Speed ramps `430 → 730` over 85s. Much slower than the old jump version: you
   are steering continuously, not reacting once.
-- Portrait: `SCALE = min(CH/1300, CW/700)`. Narrower view than landscape on
+- Portrait: `SCALE = min(CH/1450, CW/790)`. Narrower view than landscape on
   purpose — a bigger bird matters more than lead time when the challenge is
   altitude. If you widen it, the bird shrinks.
 - `CEIL` is the altitude cap; air hazards spawn at random heights inside it.
@@ -87,11 +92,23 @@ point in the cycle · `?hold=0` glide · `?zoom=1.7` zoom on the bird ·
 `?dbg=1` altitude readout in the tab title ·
 `?wear=head:hat_bucket,face:shades_art,neck:scarf_art` set a loadout.
 
+## Animation
+
+The flap is **8 hand-placed keys** through a periodic Catmull-Rom (`FLAP_TRACK`),
+not a sine. The uneven timing is the point: the power stroke fires in ~0.10 of
+the cycle and the recovery takes ~0.38, which is what makes a wingbeat read as
+effort. Body pump, head lag and tail all come off the same track.
+
+`?flap=0.375` snaps the pose to that exact key (no blending) so you can inspect
+a single frame — blending made earlier screenshots lie about what the keys were.
+
 ## Known rough edges
 
 - Expression is one eye plus a brow, driven by `p.shockT`. It reads at portrait
   size but there is room for more.
 - Wearing every slot at once gets visually busy. Tuning, not architecture.
+- At the bottom of the flap (`?flap=0.375`) the near leg draws over the wing tip.
+  One line of draw order in `drawChicken` if it starts to matter.
 - **No jetpack cosmetics.** The bird flies with his own wings; a jetpack would
   undercut the one idea that keeps this from being a Jetpack Joyride clone.
 - Obstacles are still the ones designed for the jump game. They work, but a
