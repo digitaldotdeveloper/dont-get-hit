@@ -184,6 +184,32 @@ effort. Body pump, head lag and tail all come off the same track.
 `?flap=0.375` snaps the pose to that exact key (no blending) so you can inspect
 a single frame — blending made earlier screenshots lie about what the keys were.
 
+## Frame animation
+
+`anim/*.webp` are **hand-drawn frames**, generated through Gemini Studio from the
+reference and sliced out of four sheets (run 6, fly 6, jump 4, land 4). Total
+**198 KB for 20 frames** - WebP q88.
+
+How they were made, because it is repeatable:
+- One prompt per *sheet*, not per frame - 4 browser sessions instead of 20.
+- Each prompt attaches the reference and **names the outfit explicitly** (teal cap
+  worn backwards, black shades, gold chain, white sneakers). Naming the clothes is
+  what stops the character drifting between generations.
+- Slice by **column projection**, not connected components: the figures touch, so
+  flood fill merges them. Cells much wider than the median are sub-split at their
+  emptiest interior columns.
+- Each sheet comes back at its own scale, so each is normalised by its median
+  figure height, and every frame stores `lift` - pixels above the sheet's shared
+  ground line - so poses stay registered to the floor.
+
+`SPR` converts frame pixels to world units. `pickFrame` maps state to frame.
+**Every frame is optional**: if an image fails to load, `FR.ready` stays false and
+the procedural puppet draws instead.
+
+**Cosmetics do not apply while frames are in use** - the cap, shades and chain are
+drawn into the frames. That is the trade for hand-drawn art, and it is why the
+puppet path is still worth keeping.
+
 ## Environments
 
 Two themes in `THEMES` (`city`, `farm`), rotated per run by `startRun`. Both are

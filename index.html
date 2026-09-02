@@ -839,6 +839,59 @@ function cosmeticImage(id, slot, src, opt){
 }
 
 /* ============================================================
+   FRAME ANIMATION
+   Hand-drawn frames generated from the reference and sliced from
+   sheets. They carry the cap, shades and chain, so cosmetics are not
+   swappable while frames are in use. If any image fails to load the
+   procedural puppet draws instead - the character can never vanish.
+   ============================================================ */
+const FRAME_DATA = {"run":[{"f":"run0.webp","w":193,"h":188,"lift":0.0},{"f":"run1.webp","w":136,"h":191,"lift":0.0},{"f":"run2.webp","w":178,"h":187,"lift":1.1},{"f":"run3.webp","w":148,"h":198,"lift":26.5},{"f":"run4.webp","w":156,"h":189,"lift":-1.1},{"f":"run5.webp","w":149,"h":190,"lift":-1.1}],"fly":[{"f":"fly0.webp","w":131,"h":221,"lift":0.0},{"f":"fly1.webp","w":148,"h":181,"lift":-0.9},{"f":"fly2.webp","w":162,"h":190,"lift":-0.9},{"f":"fly3.webp","w":141,"h":164,"lift":13.0},{"f":"fly4.webp","w":132,"h":182,"lift":-0.9},{"f":"fly5.webp","w":133,"h":196,"lift":-0.9}],"jump":[{"f":"jump0.webp","w":146,"h":156,"lift":-0.7},{"f":"jump1.webp","w":120,"h":215,"lift":-0.7},{"f":"jump2.webp","w":142,"h":190,"lift":49.0},{"f":"jump3.webp","w":142,"h":168,"lift":56.5}],"land":[{"f":"land0.webp","w":141,"h":190,"lift":22.8},{"f":"land1.webp","w":132,"h":174,"lift":-0.6},{"f":"land2.webp","w":131,"h":151,"lift":-0.6},{"f":"land3.webp","w":135,"h":191,"lift":-0.6}]};
+const FR = { ready:false, n:0, need:0, img:{} };
+const SPR = 175/190;                       // world units per frame pixel
+(function loadFrames(){
+  for(const set in FRAME_DATA) FR.need += FRAME_DATA[set].length;
+  for(const set in FRAME_DATA){
+    FRAME_DATA[set].forEach(fr=>{
+      const im = new Image();
+      im.onload = ()=>{ FR.n++; if(FR.n >= FR.need) FR.ready = true; };
+      im.onerror = ()=>{ FR.need--; };     // missing frame: stay on the puppet
+      im.src = 'anim/' + fr.f;
+      FR.img[fr.f] = im;
+    });
+  }
+})();
+function pickFrame(p){
+  const pl = player;
+  if(pl.state === 'land'){
+    const k = clamp(1 - pl.stateT/0.26, 0, 1);          // 1 at touchdown -> 0 recovered
+    const i = k > 0.66 ? 1 : (k > 0.28 ? 2 : 3);
+    return ['land', i];
+  }
+  if(pl.onGround){
+    if(game.mode !== 'play') return ['land', 3];        // standing, for the menu
+    return ['run', Math.floor((pl.phase % 1 + 1) % 1 * 6) % 6];
+  }
+  if(pl.jumpHeld || (pl.flapLatch||0) > 0)
+    return ['fly', Math.floor((pl.flapT % 1 + 1) % 1 * 6) % 6];
+  if(pl.vy < -120) return ['jump', pl.vy < -600 ? 2 : 3];   // still rising after a tap
+  return ['land', 0];                                    // falling, reaching down
+}
+function drawChickenFrames(x, y, p){
+  const [set, idx] = pickFrame(p);
+  const list = FRAME_DATA[set]; if(!list) return false;
+  const fr = list[Math.min(idx, list.length-1)];
+  const im = FR.img[fr.f]; if(!im || !im.complete || !im.naturalWidth) return false;
+  const w = fr.w * SPR, h = fr.h * SPR, lift = fr.lift * SPR;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(p.rot);
+  ctx.scale(p.sx, p.sy);
+  ctx.drawImage(im, -w*0.46, -h - lift, w, h);
+  ctx.restore();
+  return true;
+}
+
+/* ============================================================
    PARTS
    Painted pieces cut from the reference art, hung on the same rig.
    Every part is optional: if its image is missing the procedural
@@ -1012,6 +1065,7 @@ function drawHead(p){
 }
 
 function drawChicken(x, y, p){
+  if(FR.ready && !game.align && drawChickenFrames(x, y, p)) return;
   ctx.save();
   ctx.translate(x, y);                              // y = ground contact point
   ctx.translate(p.x, -CK.standH + p.y);             // -> body core
