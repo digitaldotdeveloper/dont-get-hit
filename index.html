@@ -522,7 +522,7 @@ function setLegs(p, ax,ay, bx,by){
 /* ---- the poses ---- */
 /* wing angles: 0 = straight down, more negative = further up */
 function poseRun(ph, speedT, p){
-  const stride=lerp(44,52,speedT), lift=lerp(22,30,speedT), bob=lerp(5,7,speedT);
+  const stride=lerp(40,48,speedT), lift=lerp(20,28,speedT), bob=lerp(5,7,speedT);
   p.y = bob*Math.cos(4*Math.PI*(ph-0.12));
   p.x = 2*Math.sin(4*Math.PI*ph);
   p.rot = lerp(0.08,0.24,speedT) + 0.02*Math.sin(4*Math.PI*ph);
@@ -752,7 +752,7 @@ function drawShoePart(kx,ky,fx,fy,col,far){
   ctx.restore();
 }
 function drawSneaker(kx,ky,fx,fy,col){
-  const a=Math.atan2(fx-kx,fy-ky)*0.32;     // the sole stays flatter than the shin
+  const a=Math.atan2(fx-kx,fy-ky)*0.18;     // the sole stays nearly flat, as it does when planted
   ctx.save(); ctx.translate(fx,fy); ctx.rotate(-a+Math.PI/2);
   ctx.beginPath(); ctx.roundRect(-15,-15,48,22,[11,15,5,11]); cp(col,5);
   ctx.beginPath(); ctx.roundRect(-17,2,53,13,6.5); cp(CKC.shoe,4.2);
@@ -874,8 +874,15 @@ loadPart('headref','art/part-headref.png',{w:84, ax:0.5146, ay:0.4978});
 loadPart('head','art/part-head.png',    {w:78, ax:0.4324, ay:0.4607});   // bare head, for other hats
 loadPart('wing','art/part-wing.png', {w:90,   ax:0.6240, ay:0.0852, rot:-0.445});
 loadPart('wingfold','art/part-wingfold.png', {w:62, ax:0.6158, ay:0.0824, rot:-0.162});
-loadPart('tail','art/part-tail.png', {w:78,   ax:0.9900, ay:0.6989});
+// no tail part: the reference's tail is part of the body silhouette itself
 loadPart('shoe','art/part-shoe.png', {w:36,   ax:0.2200, ay:0.220});
+/* the foot IK aims the ankle ANKLE units above the ground, and the shoe hangs
+   (1-ay)*height below the ankle - so those two must be the same number or the
+   sneakers float or sink. Read it off the art rather than guessing. */
+PARTS['shoe'].img.addEventListener('load', ()=>{
+  const q = PARTS['shoe'];
+  CK.ANKLE = (1-q.ay) * q.w * (q.img.naturalHeight/q.img.naturalWidth);
+}, {once:true});
 loadPart('leg', 'art/part-leg.png',  {w:17,  ax:0.50, ay:0.00});
 
 /* ---- the head, drawn in the same language as the body ---- */
@@ -1629,6 +1636,9 @@ const VY_UP = -900, VY_DOWN = 1050;
 /* Re-grabbing after a dive used to take ~1s and 250 units of sink, which read
    as the bird being heavy. The first stroke now bites into the fall instead. */
 const CATCH = 0.45;
+/* Every press also lands an instant impulse, so a quick tap lifts even if the
+   finger is gone before the downstroke completes. */
+const FLAP_KICK = 340;
 
 /* ---------- DOM ---------- */
 const $ = s => document.querySelector(s);
@@ -1766,23 +1776,35 @@ function pressJump(){
   if(game.mode!=='play') return;
   if(!player.jumpHeld){
     player.flapT = 0.13;                       // start the downstroke immediately
-    if(player.vy > 200){                       // a hard catch out of a dive
+    player.flapLatch = 0.16;                   // ...and guarantee it finishes, even on a fast tap
+    if(player.vy > 120){                       // a hard catch out of a dive
       player.vy *= CATCH; player.powerT = 1;
-      S.flap(); addShake(2);
+      addShake(2);
       featherBurst(player.x-24, GROUND-player.y-30, 4, 210);
     }
+    player.vy -= FLAP_KICK;                    // every press lifts, immediately
+    S.flap();
   }
   player.jumpHeld = true;
   if(game.tut){ game.tut=false; elTut.classList.remove('show'); }
 }
 function releaseJump(){ player.jumpHeld = false; }
+/* Track pointers by id. A phone fires pointercancel on the smallest finger
+   movement, and releasing on that made "hold to fly" stop silently. */
+const held = new Set();
 window.addEventListener('pointerdown', e => {
   audioInit();
   if(e.target.closest('button')) return;
+  held.add(e.pointerId);
   pressJump();
 }, {passive:true});
-window.addEventListener('pointerup', releaseJump, {passive:true});
-window.addEventListener('pointercancel', releaseJump, {passive:true});
+function liftPointer(e){
+  held.delete(e.pointerId);
+  if(held.size === 0) releaseJump();
+}
+window.addEventListener('pointerup', liftPointer, {passive:true});
+window.addEventListener('pointercancel', liftPointer, {passive:true});
+window.addEventListener('blur', ()=>{ held.clear(); releaseJump(); });
 window.addEventListener('keydown', e => {
   if(e.code==='Space'||e.code==='ArrowUp'||e.code==='KeyW'){
     e.preventDefault(); audioInit(); if(!e.repeat) pressJump();
@@ -1987,9 +2009,11 @@ function updatePlay(dt){
     if(game.demoFlap!==undefined) p.flapT = game.demoFlap;
   }
   p.nearCool = Math.max(0, p.nearCool-dt);
+  p.flapLatch = Math.max(0, (p.flapLatch||0) - dt);
+  const flapping = p.jumpHeld || p.flapLatch > 0;
   const ceilH = GROUND - CEIL;                       // usable altitude, in world units
   p.vy += GRAV*dt;
-  if(p.jumpHeld){
+  if(flapping){
     // lift arrives in pulses on each downstroke, so holding still costs attention
     p.flapT += dt*FLAP_HZ;
     const stroke = Math.max(0, Math.sin(p.flapT*TAU));

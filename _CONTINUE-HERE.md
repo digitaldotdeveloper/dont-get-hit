@@ -25,8 +25,15 @@ character finally matches: it is literally the reference art. The head cut keeps
 the cap, shades and chain, so it is used whenever no head/face cosmetic is
 equipped; equip one and `part-head.png` (the bare head) is used instead.
 
-The remaining parts (`part-wing`, `part-wingfold`, `part-tail`, `part-leg`,
-`part-shoe`) are generated pieces in the same style.
+The remaining parts (`part-wing`, `part-wingfold`, `part-leg`, `part-shoe`) are
+generated pieces in the same style.
+
+**There is deliberately no tail part.** The reference's tail is part of the body
+silhouette, and the body cut already contains it; a separate tail was an
+invention that never matched. Do not add one back.
+
+The spread wing could not be cut from `fly.png` either - both wings overlap in
+that pose, so no polygon isolates one. It stays generated.
 
 To re-cut from a reference: flood-fill the body's cream region, dilate ~9px to
 swallow its own outline, cut the head with an ellipse, erase the reference's
@@ -137,6 +144,16 @@ rules that keep them consistent.
   feeling like a jetpack. **The mean of a half-sine is 1/pi**, so peak lift must
   be about 3.1x the average you actually want; getting this wrong once made
   holding the screen push him *down* and the game looked dead.
+- `FLAP_KICK 340` — every press lands an instant upward impulse, and
+  `flapLatch` keeps the downstroke running for 0.16s even if the finger lifts
+  first. Without those, a quick tap could end before the stroke produced lift and
+  the control felt dead in mid-air.
+- Pointers are tracked in a `Set` by id. A phone fires `pointercancel` on the
+  smallest finger movement, and releasing on that made "hold to fly" stop
+  silently mid-flight. Never release on a bare `pointercancel` again.
+- `CK.ANKLE` is **computed from the shoe art** on load: the IK aims the ankle
+  ANKLE units above the ground and the shoe hangs `(1-ay)*height` below it, so
+  those must be the same number or the sneakers float or sink.
 - `CATCH 0.45` — re-pressing while diving kills 45% of downward speed and fires a
   wider power stroke. Without it, recovering from a full-speed fall cost 250
   units of sink over 0.95s and the bird read as heavy. With it: 0.07s, no sink.
