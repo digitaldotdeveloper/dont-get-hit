@@ -3,3 +3,4 @@ _*.html
 *.bak-*
 _*.py
 __pycache__/
+anim_src/
