@@ -1832,6 +1832,7 @@ function spawnPattern(){
    INPUT
    ============================================================ */
 function pressJump(){
+  game.tapCount = (game.tapCount||0) + 1;        // count at ENTRY, before any early return
   if(game.mode==='menu'){ startRun(); }              // fall through: the same press flies
   else if(game.mode==='dead'){
     if(game.deadT>0.35) startRun(); else return;
@@ -1849,7 +1850,6 @@ function pressJump(){
     S.flap();
   }
   player.jumpHeld = true;
-  game.tapCount = (game.tapCount||0)+1;
   if(game.tut){ game.tut=false; elTut.classList.remove('show'); }
 }
 function releaseJump(){ player.jumpHeld = false; }
@@ -1860,6 +1860,7 @@ function releaseJump(){ player.jumpHeld = false; }
    pressJump/releaseJump are idempotent, so overlapping families are harmless.
    Every raw down is counted before any filtering, so the readout can tell
    "no event arrived" apart from "event arrived and was filtered". */
+const BUILD = 'b2142';   // shown in ?dbg=1 so a cached build is obvious
 const TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints||0) > 0;
 /* Only the mute button may swallow a press. Filtering on any <button> was the
    bug: on device every tap reported lastEv=start with taps=0, because the target
@@ -2242,7 +2243,7 @@ function updatePlay(dt){
     const el=document.getElementById('selftest');
     if(el){ el.style.display='block';
       el.textContent =
-        'held='+(p.jumpHeld?1:0)+'  taps='+(game.tapCount||0)+'  raw='+(game.rawDown||0)+
+        BUILD+'  held='+(p.jumpHeld?1:0)+'  taps='+(game.tapCount||0)+'  raw='+(game.rawDown||0)+
         '  ev='+(game.lastEv||'-')+'  touch='+(TOUCH?1:0)+String.fromCharCode(10)+
         'y='+Math.round(p.y)+'  vy='+Math.round(p.vy)+'  lift='+(p.liftRamp||0).toFixed(2)+
         '  ground='+(p.onGround?1:0)+'  mode='+game.mode;
