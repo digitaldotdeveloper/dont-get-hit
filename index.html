@@ -622,8 +622,8 @@ function poseIdle(t, p){
 }
 function posePeck(u, p){                            // menu beat: he pecks the ground
   const k = Math.sin(clamp(u,0,1)*Math.PI);
-  p.y = 6*k; p.x = 4*k; p.rot = 0.55*k;
-  p.headDY = 16*k; p.headDX = 10*k; p.headR = 0.95*k;
+  p.y = 5*k; p.x = 4*k; p.rot = 0.24*k;          // a horizontal body needs far less pitch
+  p.headDY = 26*k; p.headDX = 14*k; p.headR = 0.75*k;
   const gy = CK.standH - CK.hipY - CK.ANKLE - p.y;
   setLegs(p, 17-CK.hipX, gy, -16-CK.hipX, gy);
   p.wingN = -0.50-0.3*k; p.wingF = -0.44-0.3*k; p.tipN=0.34; p.tipF=0.34;
@@ -633,7 +633,7 @@ function posePeck(u, p){                            // menu beat: he pecks the g
 function poseStrut(t, u, p){                        // menu beat: cocky little strut
   const k = Math.sin(clamp(u,0,1)*Math.PI);
   const s = Math.sin(t*7);
-  p.y = 3*k*s; p.x = 2*k; p.rot = -0.10*k;
+  p.y = 3*k*s; p.x = 2*k; p.rot = -0.06*k;
   p.headDY = -4*k - 3*k*s; p.headR = 0.16*k;
   const gy = CK.standH - CK.hipY - CK.ANKLE - p.y;
   setLegs(p, (17+8*s)-CK.hipX, gy, (-16-8*s)-CK.hipX, gy);
