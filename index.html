@@ -1864,7 +1864,7 @@ const pressJump = thrustOn, releaseJump = thrustOff;   // old names, one system
    pressJump/releaseJump are idempotent, so overlapping families are harmless.
    Every raw down is counted before any filtering, so the readout can tell
    "no event arrived" apart from "event arrived and was filtered". */
-const BUILD = 'b2236';   // shown in ?dbg=1 so a cached build is obvious
+const BUILD = 'b2253';   // shown in ?dbg=1 so a cached build is obvious
 const TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints||0) > 0;
 /* Only the mute button may swallow a press. Filtering on any <button> was the
    bug: on device every tap reported lastEv=start with taps=0, because the target
@@ -1896,27 +1896,36 @@ function touchDown(e){
 function bindDown(el){
   if(!el) return;
   el.addEventListener('touchstart', touchDown, ACT);
-  el.addEventListener('pointerdown', e=>{ game.lastEv='pdown'; downFrom(e); }, CAP);
-  el.addEventListener('mousedown',  e=>{ game.lastEv='mdown'; downFrom(e); }, CAP);
+  if(!TOUCH){
+    el.addEventListener('pointerdown', e=>{ game.lastEv='pdown'; downFrom(e); }, CAP);
+    el.addEventListener('mousedown',  e=>{ game.lastEv='mdown'; downFrom(e); }, CAP);
+  }
 }
 bindDown(window); bindDown(cv);
 
 /* touchmove only keeps the gesture alive; it must never start or stop thrust */
-window.addEventListener('touchmove', e=>{
-  if(e.cancelable) e.preventDefault();
-}, ACT);
-window.addEventListener('touchend', e=>{
-  game.lastEv='end';
-  if(!e.touches || e.touches.length === 0) thrustOff();
-}, CAP);
-window.addEventListener('touchcancel', ()=>{ game.lastEv='cancel'; thrustOff(); }, CAP);
-/* desktop */
-window.addEventListener('pointerup',    ()=>{ game.lastEv='pup';  thrustOff(); }, CAP);
-window.addEventListener('pointercancel',()=>{ game.lastEv='pcan'; thrustOff(); }, CAP);
-window.addEventListener('mouseup',      ()=>{ game.lastEv='mup';  thrustOff(); }, CAP);
-window.addEventListener('mouseleave',   ()=>{ game.lastEv='mlv';  thrustOff(); }, CAP);
-document.documentElement.addEventListener('mouseleave', ()=>{ game.lastEv='mlv'; thrustOff(); }, CAP);
-window.addEventListener('blur', ()=>{ game.lastEv='blur'; thrustOff(); });
+window.addEventListener('touchmove', e=>{ if(e.cancelable) e.preventDefault(); }, ACT);
+
+if(TOUCH){
+  /* On a touch device ONLY touch events may stop thrust. blur, mouseleave and
+     the pointer family all fire spuriously on phones - a blur listener alone
+     killed every hold once already. Keep this branch minimal. */
+  window.addEventListener('touchend', e=>{
+    game.lastEv='end';
+    if(!e.touches || e.touches.length === 0) thrustOff();
+  }, CAP);
+  window.addEventListener('touchcancel', e=>{
+    game.lastEv='cancel';
+    if(!e.touches || e.touches.length === 0) thrustOff();
+  }, CAP);
+} else {
+  window.addEventListener('pointerup',    ()=>{ game.lastEv='pup';  thrustOff(); }, CAP);
+  window.addEventListener('pointercancel',()=>{ game.lastEv='pcan'; thrustOff(); }, CAP);
+  window.addEventListener('mouseup',      ()=>{ game.lastEv='mup';  thrustOff(); }, CAP);
+  window.addEventListener('mouseleave',   ()=>{ game.lastEv='mlv';  thrustOff(); }, CAP);
+  document.documentElement.addEventListener('mouseleave', ()=>{ game.lastEv='mlv'; thrustOff(); }, CAP);
+  window.addEventListener('blur', ()=>{ game.lastEv='blur'; thrustOff(); });
+}
 document.addEventListener('visibilitychange', ()=>{ if(document.hidden) thrustOff(); });
 
 window.addEventListener('keydown', e => {
