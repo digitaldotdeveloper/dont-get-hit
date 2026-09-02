@@ -1865,17 +1865,23 @@ function onBtn(e){
 function downFrom(e){ audioInit(); if(onBtn(e)) return; pressJump(); }
 
 if(TOUCH){
-  window.addEventListener('touchstart', downFrom, {passive:true});
-  const endTouch = e => { if(!e.touches || e.touches.length === 0) releaseJump(); };
-  window.addEventListener('touchend',    endTouch, {passive:true});
-  window.addEventListener('touchcancel', endTouch, {passive:true});
+  window.addEventListener('touchstart', e=>{ game.lastEv='start'; downFrom(e); }, {passive:true});
+  // ONLY touchend ends a hold. touchcancel is the twin of pointercancel: a phone
+  // fires it mid-hold and then sends nothing else, so releasing on it strands the
+  // player until the next tap. If a cancel really did end the touch, the next
+  // press re-arms and its touchend releases.
+  window.addEventListener('touchend', e=>{
+    game.lastEv='end';
+    if(!e.touches || e.touches.length === 0) releaseJump();
+  }, {passive:true});
+  window.addEventListener('touchcancel', ()=>{ game.lastEv='cancel'; }, {passive:true});
 } else {
-  window.addEventListener('pointerdown', downFrom, {passive:true});
-  window.addEventListener('pointerup',   releaseJump, {passive:true});
+  window.addEventListener('pointerdown', e=>{ game.lastEv='down'; downFrom(e); }, {passive:true});
+  window.addEventListener('pointerup',   ()=>{ game.lastEv='up'; releaseJump(); }, {passive:true});
   window.addEventListener('mousedown',   downFrom);
   window.addEventListener('mouseup',     releaseJump);
 }
-window.addEventListener('blur', releaseJump);
+// blur can fire on touch on some mobile browsers, so only trust an actual hide
 document.addEventListener('visibilitychange', ()=>{ if(document.hidden) releaseJump(); });
 
 window.addEventListener('keydown', e => {
@@ -2216,9 +2222,11 @@ function updatePlay(dt){
   if(game.dbg){
     const el=document.getElementById('selftest');
     if(el){ el.style.display='block';
-      el.textContent = 'held='+(p.jumpHeld?1:0)+'  latch='+(p.flapLatch||0).toFixed(2)+
-        '  y='+Math.round(p.y)+'  vy='+Math.round(p.vy)+'  ground='+(p.onGround?1:0)+
-        '  mode='+game.mode+'  taps='+(game.tapCount||0);
+      el.textContent =
+        'held='+(p.jumpHeld?1:0)+'  taps='+(game.tapCount||0)+'  lastEv='+(game.lastEv||'-')+
+        '  touch='+(TOUCH?1:0)+String.fromCharCode(10)+
+        'y='+Math.round(p.y)+'  vy='+Math.round(p.vy)+'  lift='+(p.liftRamp||0).toFixed(2)+
+        '  ground='+(p.onGround?1:0)+'  mode='+game.mode;
     }
   }
 }
