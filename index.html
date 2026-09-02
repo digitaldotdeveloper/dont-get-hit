@@ -341,22 +341,48 @@ function audioInit(){
   A.started = true; A.nextNote = A.ctx.currentTime + 0.1;
 }
 function actx(){ if(A.ctx && A.ctx.state==='suspended') A.ctx.resume(); return A.ctx; }
-function tone(freq, dur, type, vol, slide, dest){
+function tone(freq, dur, type, vol, slide, dest, at){
   if(!A.started||!A.on) return; const c = actx(); if(!c) return;
   try{
+  const t = c.currentTime + (at||0);
   const o=c.createOscillator(), g=c.createGain();
-  o.type=type||'square'; o.frequency.setValueAtTime(freq, c.currentTime);
-  if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(20,slide), c.currentTime+dur);
-  g.gain.setValueAtTime(0.0001, c.currentTime);
-  g.gain.exponentialRampToValueAtTime(vol||0.2, c.currentTime+0.008);
-  g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime+dur);
-  o.connect(g); g.connect(dest||A.sfxGain); o.start(); o.stop(c.currentTime+dur+0.02);
+  o.type=type||'square'; o.frequency.setValueAtTime(freq, t);
+  if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(20,slide), t+dur);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol||0.2, t+0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+  o.connect(g); g.connect(dest||A.sfxGain); o.start(t); o.stop(t+dur+0.02);
   }catch(e){ A.err = e.message; }        // audio is never worth breaking gameplay for
 }
-let noiseBuf=null;
-function noise(dur, f0, f1, vol, q){
+/* A tone whose pitch is bent by a second oscillator. That wobble is the whole
+   difference between a beep and a cartoon boing, and between a tone and a
+   squawk -- every comic sound below is built on it. */
+function wob(f0, f1, dur, opt){
   if(!A.started||!A.on) return; const c = actx(); if(!c) return;
   try{
+  const O = opt||{}, t = c.currentTime + (O.at||0);
+  const o=c.createOscillator(), g=c.createGain();
+  o.type = O.type||'triangle';
+  o.frequency.setValueAtTime(f0, t);
+  o.frequency.exponentialRampToValueAtTime(Math.max(20,f1), t+dur);
+  if(O.depth){
+    const lfo=c.createOscillator(), la=c.createGain();
+    lfo.type='sine'; lfo.frequency.setValueAtTime(O.rate||14, t);
+    la.gain.setValueAtTime(O.depth, t);
+    lfo.connect(la); la.connect(o.frequency);
+    lfo.start(t); lfo.stop(t+dur+0.02);
+  }
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(O.vol||0.14, t+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+  o.connect(g); g.connect(A.sfxGain); o.start(t); o.stop(t+dur+0.02);
+  }catch(e){ A.err = e.message; }
+}
+let noiseBuf=null;
+function noise(dur, f0, f1, vol, q, at){
+  if(!A.started||!A.on) return; const c = actx(); if(!c) return;
+  try{
+  const t0 = c.currentTime + (at||0);
   if(!noiseBuf){
     noiseBuf = c.createBuffer(1, c.sampleRate*1.2, c.sampleRate);
     const d = noiseBuf.getChannelData(0);
@@ -364,47 +390,83 @@ function noise(dur, f0, f1, vol, q){
   }
   const s=c.createBufferSource(); s.buffer=noiseBuf; s.loop=true;
   const bp=c.createBiquadFilter(); bp.type='bandpass'; bp.Q.value=q||1.1;
-  bp.frequency.setValueAtTime(f0, c.currentTime);
-  bp.frequency.exponentialRampToValueAtTime(Math.max(40,f1||f0), c.currentTime+dur);
+  bp.frequency.setValueAtTime(f0, t0);
+  bp.frequency.exponentialRampToValueAtTime(Math.max(40,f1||f0), t0+dur);
   const g=c.createGain();
-  g.gain.setValueAtTime(0.0001,c.currentTime);
-  g.gain.exponentialRampToValueAtTime(vol||0.25, c.currentTime+0.01);
-  g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime+dur);
-  s.connect(bp); bp.connect(g); g.connect(A.sfxGain); s.start(); s.stop(c.currentTime+dur+0.02);
+  g.gain.setValueAtTime(0.0001,t0);
+  g.gain.exponentialRampToValueAtTime(vol||0.25, t0+0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+  s.connect(bp); bp.connect(g); g.connect(A.sfxGain); s.start(t0); s.stop(t0+dur+0.02);
   }catch(e){ A.err = e.message; }
 }
+let stepFoot = 0, whooshCool = 0;
+/* One cartoon voice for the whole game. Everything HE does is a short bright
+   shape with a bend in it; everything the world does TO him is blunt and low.
+   All of it kept deliberately quiet apart from the hit, so that the hit lands. */
 const S = {
-  jump(){ tone(300,0.16,'square',0.13,720); noise(0.12,900,2400,0.06,0.8); },
-  step(){                                   // sneaker hitting the ground
-    noise(0.045,1900,700,0.045,2.2);        // the scuff of the rubber
-    tone(96,0.07,'sine',0.085,62);          // the weight behind it
+  /* ---- the chicken ------------------------------------------------- */
+  step(){
+    // light, quick, and never twice the same: the pitch alternates foot to
+    // foot and jitters, which is what stops a footstep loop becoming a rattle
+    stepFoot ^= 1;
+    const j = 1 + (Math.random()-0.5)*0.13;
+    noise(0.032, 2400*j, 900, 0.036, 3.0);                 // rubber on the ground
+    tone((stepFoot ? 342 : 288)*j, 0.045, 'triangle', 0.048, 208*j);
+    if(Math.random() < 0.12) tone(1560*j, 0.028, 'square', 0.018, 2200*j);  // a claw tick
   },
-  land(){                                   // both feet, hard
-    noise(0.17,240,60,0.2,0.9);
-    tone(130,0.14,'sine',0.2,48);
-    noise(0.07,2600,1500,0.05,3.0);         // the squeak on top
+  takeoff(){
+    // leaving the ground: goofy, and RISING -- the opposite shape to land()
+    wob(240, 780, 0.20, {type:'square', vol:0.10, depth:26, rate:19});
+    noise(0.16, 480, 1700, 0.06, 1.3);
+    tone(180, 0.10, 'sine', 0.06, 300);
   },
-  stumble(){ tone(200,0.1,'triangle',0.1,140); noise(0.16,320,140,0.09,1.2); },
-  near(){ noise(0.26,2200,340,0.13,1.6); tone(880,0.1,'sine',0.06,1320); },
-  combo(n){ tone(520*Math.pow(1.16,Math.min(n,8)),0.11,'triangle',0.14,780*Math.pow(1.1,Math.min(n,8))); },
-  hit(){ noise(0.34,700,60,0.4,0.7); tone(150,0.3,'sawtooth',0.22,40); },
-  thud(){ noise(0.16,150,50,0.2,1.0); },
-  tick(){ tone(1180,0.04,'square',0.035); },
-  best(){ [0,1,2,3].forEach((i)=> setTimeout(()=> tone([523,659,784,1047][i],0.22,'triangle',0.17), i*95)); },
-  click(){ tone(660,0.06,'square',0.12,880); },
-  land_soft(){ noise(0.09,220,110,0.08,1.2); tone(110,0.07,'sine',0.06,70); },
-  flap(){                                   // one wingbeat: a whoosh, then the push
-    noise(0.19,340,1500,0.075,1.5);         // air moving over the feathers
-    noise(0.10,900,180,0.06,1.1);
-    tone(150,0.11,'sine',0.05,96);
+  flap(){
+    const j = 1 + (Math.random()-0.5)*0.17;
+    noise(0.18*j, 330, 1450, 0.058, 1.5);                  // air over the feathers
+    noise(0.09, 880, 175, 0.045, 1.1);
+    tone(148*j, 0.10, 'sine', 0.038, 95);
   },
-  cluck(){ tone(700,0.07,'square',0.10,430); setTimeout(()=>tone(520,0.06,'square',0.08,300),70); },
-  slide(){ tone(900,0.45,'sine',0.15,110); },
-  boing(){ tone(520,0.34,'square',0.16,90); tone(260,0.30,'triangle',0.10,70); },
-  splat(){ noise(0.22,420,60,0.3,0.8); tone(90,0.22,'sine',0.2,40); },
-  bonk(){ tone(760,0.13,'square',0.2,180); noise(0.1,1400,300,0.1,1.4); },
-  timber(){ tone(300,0.6,'triangle',0.12,70); },
-  cheer(){ [0,1,2].forEach(i=> setTimeout(()=> tone([784,988,1175][i],0.16,'triangle',0.15), i*70)); }
+  land(){
+    // bouncy and comedic, and FALLING in pitch where takeoff rose
+    wob(520, 150, 0.20, {type:'triangle', vol:0.12, depth:18, rate:11});
+    tone(132, 0.15, 'sine', 0.19, 46);                     // the weight
+    noise(0.13, 260, 70, 0.14, 0.9);
+    noise(0.055, 2700, 1600, 0.04, 3.2, 0.02);             // sneaker squeak
+  },
+  land_soft(){ noise(0.075,240,120,0.055,1.4); tone(120,0.06,'sine',0.045,80); },
+  jump(){ S.takeoff(); },
+  /* ---- getting hit: the whole gag, in four beats -------------------- */
+  hit(){
+    tone(150, 0.34, 'sawtooth', 0.20, 38);                                        // impact
+    noise(0.30, 800, 60, 0.30, 0.8);
+    tone(770, 0.09, 'square', 0.15, 150);                                         // bonk
+    wob(840, 280, 0.28, {type:'sawtooth', vol:0.13, depth:85, rate:23, at:0.03}); // squawk
+    wob(1750, 250, 0.44, {type:'sine', vol:0.09, depth:9, rate:6, at:0.14});      // slide whistle
+    tone(160, 0.13, 'square', 0.10, 92, null, 0.46);                              // and he lands
+  },
+  /* ---- the world --------------------------------------------------- */
+  warn(){                                   // something above is about to drop
+    tone(920, 0.075, 'square', 0.06, 920);
+    tone(920, 0.075, 'square', 0.06, 920, null, 0.12);
+  },
+  whoosh(){ noise(0.17, 260, 1400, 0.045, 1.25); },
+  thud(){ noise(0.18,170,45,0.2,1.0); tone(96,0.16,'sine',0.15,44); },
+  near(){ noise(0.24,2000,320,0.095,1.8); tone(1040,0.08,'sine',0.045,1560); },
+  stumble(){ tone(200,0.1,'triangle',0.09,140); noise(0.16,320,140,0.08,1.2); },
+  /* ---- score and UI ------------------------------------------------ */
+  combo(n){ const k=Math.min(n,8); tone(520*Math.pow(1.16,k),0.11,'triangle',0.12,780*Math.pow(1.1,k)); },
+  tick(){ tone(1180,0.04,'square',0.03); },
+  best(){ [0,1,2,3].forEach(i=> tone([523,659,784,1047][i],0.22,'triangle',0.15,null,null,i*0.095)); },
+  click(){ tone(660,0.06,'square',0.11,880); },
+  cluck(){ wob(720,430,0.09,{type:'square',vol:0.09,depth:40,rate:26});
+           wob(520,300,0.07,{type:'square',vol:0.07,depth:30,rate:26,at:0.075}); },
+  slide(){ wob(900,110,0.45,{type:'sine',vol:0.13,depth:8,rate:5}); },
+  boing(){ wob(520,90,0.34,{type:'square',vol:0.15,depth:70,rate:17});
+           tone(260,0.30,'triangle',0.09,70); },
+  splat(){ noise(0.22,420,60,0.28,0.8); tone(90,0.22,'sine',0.18,40); },
+  bonk(){ tone(760,0.13,'square',0.18,180); noise(0.1,1400,300,0.09,1.4); },
+  timber(){ wob(300,70,0.6,{type:'triangle',vol:0.11,depth:14,rate:5}); },
+  cheer(){ [0,1,2].forEach(i=> tone([784,988,1175][i],0.16,'triangle',0.14,null,null,i*0.07)); }
 };
 /* music: a light 8-step groove that speeds up with the run */
 const BASS=[0,0,3,7, 0,-2,-4,7];
@@ -860,7 +922,7 @@ function cosmeticImage(id, slot, src, opt){
    swappable while frames are in use. If any image fails to load the
    procedural puppet draws instead - the character can never vanish.
    ============================================================ */
-const FRAME_DATA = {"run":[{"f":"run0.webp","w":202,"h":195,"lift":0.0},{"f":"run1.webp","w":142,"h":186,"lift":2.1},{"f":"run2.webp","w":141,"h":187,"lift":2.1},{"f":"run3.webp","w":183,"h":192,"lift":0.0},{"f":"run4.webp","w":148,"h":192,"lift":2.1},{"f":"run5.webp","w":167,"h":182,"lift":0.0}],"jump":[{"f":"jump0.webp","w":132,"h":169,"lift":6.6},{"f":"jump1.webp","w":144,"h":136,"lift":6.6},{"f":"jump2.webp","w":109,"h":202,"lift":0.0},{"f":"jump3.webp","w":152,"h":184,"lift":17.1},{"f":"jump4.webp","w":135,"h":170,"lift":27.7}],"land":[{"f":"land0.webp","w":134,"h":169,"lift":23.2},{"f":"land1.webp","w":135,"h":154,"lift":0.0},{"f":"land2.webp","w":128,"h":128,"lift":0.0},{"f":"land3.webp","w":137,"h":155,"lift":0.0}],"hit":[{"f":"hit0.webp","w":155,"h":175,"lift":5.5},{"f":"hit1.webp","w":215,"h":245,"lift":11.7},{"f":"hit2.webp","w":177,"h":223,"lift":3.9},{"f":"hit3.webp","w":175,"h":207,"lift":6.5},{"f":"hit4.webp","w":149,"h":68,"lift":0.0},{"f":"hit5.webp","w":132,"h":149,"lift":3.5}],"fly":[{"f":"fly0.webp","w":132,"h":171,"lift":0.0},{"f":"fly2.webp","w":121,"h":162,"lift":0.0},{"f":"fly5.webp","w":124,"h":161,"lift":0.0},{"f":"fly1.webp","w":125,"h":169,"lift":0.9},{"f":"fly3.webp","w":124,"h":170,"lift":2.6},{"f":"fly4.webp","w":122,"h":170,"lift":1.7}]};
+const FRAME_DATA = {"run":[{"f":"run0.webp","w":206,"h":199,"ay":199},{"f":"run1.webp","w":138,"h":182,"ay":182},{"f":"run2.webp","w":136,"h":181,"ay":181},{"f":"run3.webp","w":187,"h":196,"ay":196},{"f":"run4.webp","w":140,"h":181,"ay":181},{"f":"run5.webp","w":179,"h":195,"ay":195}],"fly":[{"f":"fly0.webp","w":110,"h":161,"ay":162.3},{"f":"fly1.webp","w":112,"h":158,"ay":163.1},{"f":"fly2.webp","w":163,"h":210,"ay":191.6},{"f":"fly3.webp","w":147,"h":158,"ay":181.3},{"f":"fly4.webp","w":148,"h":186,"ay":187.3},{"f":"fly5.webp","w":130,"h":185,"ay":179.7}],"fall":[{"f":"fall0.webp","w":122,"h":187,"ay":184.0},{"f":"fall1.webp","w":145,"h":199,"ay":186.0},{"f":"fall2.webp","w":174,"h":210,"ay":179.8},{"f":"fall3.webp","w":143,"h":198,"ay":182.3}],"jump":[{"f":"jump0.webp","w":117,"h":150,"ay":170.5},{"f":"jump1.webp","w":151,"h":149,"ay":169.0},{"f":"jump2.webp","w":121,"h":223,"ay":194.1},{"f":"jump3.webp","w":168,"h":203,"ay":183.6},{"f":"jump4.webp","w":139,"h":187,"ay":181.5}],"land":[{"f":"land0.webp","w":145,"h":183,"ay":183},{"f":"land1.webp","w":157,"h":179,"ay":179},{"f":"land2.webp","w":122,"h":121,"ay":121},{"f":"land3.webp","w":165,"h":186,"ay":186}],"hit":[{"f":"hit0.webp","w":145,"h":164,"ay":172.9},{"f":"hit1.webp","w":163,"h":186,"ay":185.1},{"f":"hit2.webp","w":122,"h":154,"ay":173.6},{"f":"hit3.webp","w":106,"h":126,"ay":166.0},{"f":"hit4.webp","w":178,"h":81,"ay":140.5},{"f":"hit5.webp","w":128,"h":146,"ay":173.4}]};
 const FR = { ready:false, n:0, need:0, img:{} };
 const SPR = 175/190;                       // world units per frame pixel
 (function loadFrames(){
@@ -902,19 +964,25 @@ function pickFrame(p){
     const i = pl.vy < -900 ? 1 : pl.vy < -500 ? 2 : pl.vy < -220 ? 3 : 4;
     return ['jump', Math.min(i, j.length-1)];
   }
-  return ['land', 0];                                    // falling, reaching down
+  const fl = FRAME_DATA.fall;                            // dropping: get ready to land
+  if(fl && fl.length){
+    const k = 1 - clamp(pl.y/300, 0, 1);                 // 0 high up, 1 about to touch
+    return ['fall', Math.min(fl.length-1, Math.floor(k*fl.length))];
+  }
+  return ['land', 0];
 }
 function drawChickenFrames(x, y, p){
   const [set, idx] = pickFrame(p);
   const list = FRAME_DATA[set]; if(!list) return false;
   const fr = list[Math.min(idx, list.length-1)];
   const im = FR.img[fr.f]; if(!im || !im.complete || !im.naturalWidth) return false;
-  const w = fr.w * SPR, h = fr.h * SPR, lift = fr.lift * SPR;
+  const w = fr.w * SPR, h = fr.h * SPR;
+  const ay = (fr.ay !== undefined ? fr.ay : fr.h + (fr.lift||0)) * SPR;
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(p.rot);
   ctx.scale(p.sx, p.sy);
-  ctx.drawImage(im, -w*0.46, -h - lift, w, h);
+  ctx.drawImage(im, -w*0.46, -ay, w, h);
   ctx.restore();
   return true;
 }
@@ -1774,10 +1842,10 @@ function slowmo(scale, dur){ if(REDUCED) return; game.tsTarget=scale; game.smT=d
    ============================================================ */
 function tierNow(){
   const t = game.runT;
-  if(t<13) return 0;
-  if(t<28) return 1;
-  if(t<48) return 2;
-  if(t<72) return 3;
+  if(t<22) return 0;
+  if(t<45) return 1;
+  if(t<72) return 2;
+  if(t<100) return 3;
   return 4;
 }
 function poolFor(tier){
@@ -1802,7 +1870,7 @@ function spawnOne(key, aheadTime){
     o.base = clamp(rnd(150, band-260), 140, Math.max(160, band-200));
   }
   if(spec.kind==='fall'){
-    o.landed=false; o.y = 720 + VH*0.1; o.vy = 0; o.warn = 1;
+    o.landed=false; o.y = 720 + VH*0.1; o.vy = 0; o.warn = 1; S.warn();
     // aim so it lands well before the player arrives
     o.x = player.x + closure*(lead + 0.55);
   }
@@ -1814,7 +1882,7 @@ const GATE_TOPS  = ['cone','duck','cake','ball','box','coffee'];
 const GATE_HANGS = ['sofa','sign','vacuum','cart','coffee'];
 function spawnGate(moving){
   const band = GROUND - CEIL;
-  const gap  = clamp(lerp(380, 225, game.diff) * rnd(0.92,1.08), 200, 430);
+  const gap  = clamp(lerp(430, 250, game.diff) * rnd(0.92,1.08), 230, 470);
   const amp  = moving ? rnd(50, 110) : 0;
   const margin = 80 + amp;
   const lo = gap/2 + margin, hi = band - gap/2 - margin;
@@ -1838,26 +1906,26 @@ function spawnPattern(){
   const r = Math.random();
   let gap;
   if(tier===0){                                   // learn the gate
-    spawnGate(false); gap = rnd(1.75, 2.15);
+    spawnGate(false); gap = rnd(2.50, 3.05);
   } else if(tier===1){                            // gates, occasional flock between them
-    if(r<0.82) spawnGate(false); else spawnOne(pick(air),0);
-    gap = rnd(1.45, 1.85);
+    if(r<0.90) spawnGate(false); else spawnOne(pick(air),0);
+    gap = rnd(2.00, 2.50);
   } else if(tier===2){                            // gates start drifting
-    if(r<0.55) spawnGate(false);
-    else if(r<0.80) spawnGate(true);
+    if(r<0.62) spawnGate(false);
+    else if(r<0.86) spawnGate(true);
     else spawnOne(pick(air),0);
-    gap = rnd(1.20, 1.55);
+    gap = rnd(1.65, 2.05);
   } else if(tier===3){
-    if(r<0.35) spawnGate(false);
-    else if(r<0.70) spawnGate(true);
+    if(r<0.42) spawnGate(false);
+    else if(r<0.80) spawnGate(true);
     else { spawnGate(false); spawnOne(pick(air),0.85); }
-    gap = rnd(1.05, 1.35);
+    gap = rnd(1.40, 1.75);
   } else {                                        // gates back to back
-    if(r<0.30) spawnGate(true);
-    else if(r<0.62){ spawnGate(false); spawnGate(true); }
-    else if(r<0.85){ spawnGate(true); spawnOne(pick(air),0.8); }
+    if(r<0.34) spawnGate(true);
+    else if(r<0.54){ spawnGate(false); spawnGate(true); }
+    else if(r<0.78){ spawnGate(true); spawnOne(pick(air),0.8); }
     else spawnGate(false);
-    gap = rnd(0.95, 1.25);
+    gap = rnd(1.20, 1.50);
   }
   game.spawnT = gap;
 }
@@ -1895,7 +1963,7 @@ const pressJump = thrustOn, releaseJump = thrustOff;   // old names, one system
    pressJump/releaseJump are idempotent, so overlapping families are harmless.
    Every raw down is counted before any filtering, so the readout can tell
    "no event arrived" apart from "event arrived and was filtered". */
-const BUILD = 'b2348';   // shown in ?dbg=1 so a cached build is obvious
+const BUILD = 'b0903-0018';   // shown in ?dbg=1 so a cached build is obvious
 const TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints||0) > 0;
 /* Only the mute button may swallow a press. Filtering on any <button> was the
    bug: on device every tap reported lastEv=start with taps=0, because the target
@@ -2000,7 +2068,7 @@ function startRun(){
   applyTheme(game.forceTheme || THEMES[game.runCount % THEMES.length]);
   game.mode='play'; game.runT=0; game.score=0; game.dist=0;
   game.near=0; game.combo=0; game.comboBest=0; game.comboT=0;
-  game.speed=430; game.diff=0; game.spawnT=1.15;
+  game.speed=340; game.diff=0; game.spawnT=2.6;
   game.obstacles.length=0; game.parts.length=0; game.pops.length=0; game.ui.length=0;
   game.freeze=0; game.timeScale=1; game.tsTarget=1; game.shake=0; game.zoom=1; game.zoomT=1;
   game.camY=0; game.camYT=0; game.deadT=0; game.newBest=false;
@@ -2143,9 +2211,9 @@ function updateBlink(p, dt){
 function updatePlay(dt){
   const p = player;
   game.runT += dt;
-  game.diff = clamp(game.runT/85, 0, 1);
-  game.speed = 430 + 300*game.diff;
-  const speedT = clamp((game.speed-430)/300, 0, 1);
+  game.diff = clamp(game.runT/115, 0, 1);
+  game.speed = 340 + 380*game.diff;
+  const speedT = clamp((game.speed-340)/380, 0, 1);
 
   p.x += game.speed*dt;
   game.dist += game.speed*dt;
@@ -2164,6 +2232,7 @@ function updatePlay(dt){
     if(game.demoFlap!==undefined) p.flapT = game.demoFlap;
   }
   p.nearCool = Math.max(0, p.nearCool-dt);
+  whooshCool = Math.max(0, whooshCool-dt);
   const ceilH = GROUND - CEIL;                       // usable altitude, in world units
 
   /* THE movement model. Gravity always pulls; holding adds constant upward
@@ -2204,7 +2273,7 @@ function updatePlay(dt){
       if(impact>700) featherBurst(p.x, GROUND-24, 3, 190);
     }
   } else if(p.y > 2){
-    if(p.onGround){ p.onGround=false; p.state='fly'; p.stateT=0; }
+    if(p.onGround){ p.onGround=false; p.state='fly'; p.stateT=0; S.takeoff(); }
   }
   if(p.onGround){
     if(p.state!=='land') p.state='run';
@@ -2249,6 +2318,10 @@ function updatePlay(dt){
         addShake(6); S.thud();
         spark(o.x, GROUND, 14, {col:'rgba(255,242,222,.6)', a0:Math.PI,a1:TAU, s0:120,s1:340, l0:0.25,l1:0.6, r0:4,r1:11, g:600});
       }
+    }
+    if(!o.wooshed && Math.abs((o.spec && o.spec.roll)||0) > 100 && o.x < p.x - 30){
+      o.wooshed = true;                    // one whoosh as a fast one goes past
+      if(whooshCool <= 0){ S.whoosh(); whooshCool = 0.4; }
     }
     // collision
     const ow = o.w*0.42;
