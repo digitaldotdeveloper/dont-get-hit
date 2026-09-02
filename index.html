@@ -1853,45 +1853,54 @@ function pressJump(){
   if(game.tut){ game.tut=false; elTut.classList.remove('show'); }
 }
 function releaseJump(){ player.jumpHeld = false; }
-/* On a touch device use touch events ONLY. Pointer events are the trap: a phone
-   fires pointercancel mid-hold (a micro finger movement is enough) and any
-   handler that releases on it silently ends the hold, with no further event
-   until the next tap. That is what forced multi-tapping instead of holding. */
+/* Input, made unmissable.
+   taps=0 on device meant no press was reaching pressJump at all. So: listen in
+   the CAPTURE phase (nothing downstream can swallow it), bind to the canvas as
+   well as window, and register touch AND pointer AND mouse rather than choosing.
+   pressJump/releaseJump are idempotent, so overlapping families are harmless.
+   Every raw down is counted before any filtering, so the readout can tell
+   "no event arrived" apart from "event arrived and was filtered". */
 const TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints||0) > 0;
+/* Only the mute button may swallow a press. Filtering on any <button> was the
+   bug: on device every tap reported lastEv=start with taps=0, because the target
+   resolved to a button and downFrom returned before pressJump ever ran.
+   Tapping PLAY or RETRY should fly as well as start the run - that is the
+   behaviour we want anyway. */
 function onBtn(e){
   const t = e.target;
-  return !!(t && t.closest && t.closest('button'));
+  return !!(t && t.closest && t.closest('#mute'));
 }
 function downFrom(e){
-  if(onBtn(e)) return;
-  pressJump();                                  // control first, always
-  try{ audioInit(); }catch(err){}               // audio must never block input
+  game.rawDown = (game.rawDown||0) + 1;
+  if(onBtn(e)) { game.lastEv = 'btn'; return; }
+  pressJump();
+  try{ audioInit(); }catch(err){}
 }
+const CAP = {passive:true, capture:true};
+function bindDown(el){
+  if(!el) return;
+  el.addEventListener('touchstart', e=>{ game.lastEv='start'; downFrom(e); }, CAP);
+  el.addEventListener('pointerdown', e=>{ game.lastEv='pdown'; downFrom(e); }, CAP);
+  el.addEventListener('mousedown',  e=>{ game.lastEv='mdown'; downFrom(e); }, CAP);
+}
+bindDown(window); bindDown(document); bindDown(cv);
 
-if(TOUCH){
-  window.addEventListener('touchstart', e=>{ game.lastEv='start'; downFrom(e); }, {passive:true});
-  // ONLY touchend ends a hold. touchcancel is the twin of pointercancel: a phone
-  // fires it mid-hold and then sends nothing else, so releasing on it strands the
-  // player until the next tap. If a cancel really did end the touch, the next
-  // press re-arms and its touchend releases.
-  window.addEventListener('touchend', e=>{
-    game.lastEv='end';
-    if(!e.touches || e.touches.length === 0) releaseJump();
-  }, {passive:true});
-  window.addEventListener('touchcancel', ()=>{ game.lastEv='cancel'; }, {passive:true});
-  window.addEventListener('touchmove', e=>{
-    game.lastEv='move';
-    if(e.touches && e.touches.length > 0 && !player.jumpHeld && game.mode==='play'){
-      pressJump();                              // re-arm if something cancelled us
-    }
-  }, {passive:true});
-} else {
-  window.addEventListener('pointerdown', e=>{ game.lastEv='down'; downFrom(e); }, {passive:true});
-  window.addEventListener('pointerup',   ()=>{ game.lastEv='up'; releaseJump(); }, {passive:true});
-  window.addEventListener('mousedown',   downFrom);
-  window.addEventListener('mouseup',     releaseJump);
+window.addEventListener('touchmove', e=>{
+  game.lastEv='move';
+  if(e.touches && e.touches.length > 0 && !player.jumpHeld && game.mode==='play') pressJump();
+}, CAP);
+window.addEventListener('touchend', e=>{
+  game.lastEv='end';
+  if(!e.touches || e.touches.length === 0) releaseJump();
+}, CAP);
+/* touchcancel and pointercancel never release: a phone fires them mid-hold and
+   then sends nothing else, which strands the player until the next tap. */
+window.addEventListener('touchcancel',  ()=>{ game.lastEv='cancel'; }, CAP);
+window.addEventListener('pointercancel',()=>{ game.lastEv='pcancel'; }, CAP);
+if(!TOUCH){
+  window.addEventListener('pointerup', ()=>{ game.lastEv='pup'; releaseJump(); }, CAP);
+  window.addEventListener('mouseup',   ()=>{ game.lastEv='mup'; releaseJump(); }, CAP);
 }
-// blur can fire on touch on some mobile browsers, so only trust an actual hide
 document.addEventListener('visibilitychange', ()=>{ if(document.hidden) releaseJump(); });
 
 window.addEventListener('keydown', e => {
@@ -2233,8 +2242,8 @@ function updatePlay(dt){
     const el=document.getElementById('selftest');
     if(el){ el.style.display='block';
       el.textContent =
-        'held='+(p.jumpHeld?1:0)+'  taps='+(game.tapCount||0)+'  lastEv='+(game.lastEv||'-')+
-        '  touch='+(TOUCH?1:0)+String.fromCharCode(10)+
+        'held='+(p.jumpHeld?1:0)+'  taps='+(game.tapCount||0)+'  raw='+(game.rawDown||0)+
+        '  ev='+(game.lastEv||'-')+'  touch='+(TOUCH?1:0)+String.fromCharCode(10)+
         'y='+Math.round(p.y)+'  vy='+Math.round(p.vy)+'  lift='+(p.liftRamp||0).toFixed(2)+
         '  ground='+(p.onGround?1:0)+'  mode='+game.mode;
     }
