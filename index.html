@@ -248,7 +248,7 @@ function pad6(n){ n=Math.max(0,Math.floor(n)); return String(n).padStart(6,'0');
 const REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---------- palette ---------- */
-const C = {
+let C = {
   ink:'#241043', ink2:'#150827',
   skyA:'#241043', skyB:'#5E2569', skyC:'#C4485E', skyD:'#F2794A', skyE:'#FFC46B',
   sun:'#FFE9A8',
@@ -263,6 +263,28 @@ const C = {
   pants:'#324B7A', pantsDark:'#22355A',
   shoe:'#FF5E7A', shoeSole:'#FFF2DE'
 };
+
+/* ---------- environments ----------
+   Two hand-built themes. Everything is drawn in code so the layers tile
+   perfectly and nothing extra has to be downloaded. */
+const THEMES = [
+  { id:'city', name:'SUNSET CITY',
+    skyA:'#241043', skyB:'#5E2569', skyC:'#C4485E', skyD:'#F2794A', skyE:'#FFC46B',
+    sun:'#FFE9A8', far:'#7B4287', mid:'#4E265F', near:'#301648', prop:'#1F0E33',
+    road:'#2A1445', roadLine:'#3E2160', curb:'#3A1C57', rim:'#FFB447' },
+  { id:'farm', name:'DAWN FARM',
+    skyA:'#13284C', skyB:'#3A5E85', skyC:'#E0805E', skyD:'#F6B25E', skyE:'#FFE7AE',
+    sun:'#FFF4CC', far:'#6E8C77', mid:'#46654F', near:'#2C4535', prop:'#1B2C22',
+    road:'#7C5C36', roadLine:'#9A7442', curb:'#5C4526', rim:'#FFDC96' }
+];
+let THEME = THEMES[0];
+function applyTheme(t){
+  THEME = t;
+  C.skyA=t.skyA; C.skyB=t.skyB; C.skyC=t.skyC; C.skyD=t.skyD; C.skyE=t.skyE;
+  C.sun=t.sun; C.far=t.far; C.mid=t.mid; C.near=t.near; C.prop=t.prop;
+  C.road=t.road; C.roadLine=t.roadLine; C.curb=t.curb; C.rim=t.rim;
+  if(SCALE) buildLayers();
+}
 
 /* ---------- canvas ---------- */
 const cv = document.getElementById('game');
@@ -308,6 +330,7 @@ const A = {
   on:true, started:false, nextNote:0, step:0
 };
 function audioInit(){
+  initTrack();
   if(A.started) return;
   const AC = window.AudioContext||window.webkitAudioContext; if(!AC) return;
   A.ctx = new AC();
@@ -371,6 +394,7 @@ const S = {
 const BASS=[0,0,3,7, 0,-2,-4,7];
 function midi(n){ return 440*Math.pow(2,(n-69)/12); }
 function musicTick(){
+  if(TRACK) return;                       // the real track is playing instead
   if(!A.started||!A.on||!A.ctx) return;
   const c=A.ctx, now=c.currentTime;
   const bpm = 118 + 30*game.diff;
@@ -406,6 +430,28 @@ function musicTick(){
     A.nextNote += spb; A.step++;
   }
 }
+let TRACK = null, trackWanted = 0;
+function initTrack(){
+  if(TRACK) return;
+  TRACK = new Audio('audio/theme.mp3');
+  TRACK.loop = true; TRACK.volume = 0; TRACK.preload = 'auto';
+  TRACK.addEventListener('canplaythrough', ()=>{ TRACK.ready = true; }, {once:true});
+  TRACK.addEventListener('error', ()=>{ TRACK = null; });   // fall back to the synth
+}
+function trackVol(v){
+  trackWanted = v;
+  if(!TRACK) return false;
+  if(v > 0){
+    if(TRACK.paused){ const pr = TRACK.play(); if(pr && pr.catch) pr.catch(()=>{}); }
+  }
+  return true;
+}
+function trackTick(dt){
+  if(!TRACK) return;
+  const target = A.on ? trackWanted : 0;
+  TRACK.volume = clamp(TRACK.volume + (target - TRACK.volume) * Math.min(1, dt*2.2), 0, 1);
+  if(TRACK.volume < 0.001 && !TRACK.paused && target === 0) TRACK.pause();
+}
 function musicVol(v){ if(A.started) A.musicGain.gain.setTargetAtTime(v, A.ctx.currentTime, 0.35); }
 
 /* ============================================================
@@ -418,13 +464,13 @@ function musicVol(v){ if(A.started) A.musicGain.gain.setTargetAtTime(v, A.ctx.cu
    Local space: origin = body core, +x forward, +y down.
    ============================================================ */
 const CK = {
-  bodyRX:58, bodyRY:71,          // = half the body art, so rig and art coincide
+  bodyRX:75, bodyRY:38,          // = half the body art, cut from the reference
   bodyTilt:0,
-  headX:36, headY:-64, headR:32, // headR = the art's own skull radius (w = 2R/0.4108)
-  wingX:10, wingY:-30, wingA:58, wingB:46,
-  hipX:-6,  hipY:40,
-  thigh:46, shin:44, ANKLE:14,
-  standH:126
+  headX:42, headY:-34, headR:32, // = the head's position in the reference itself
+  wingX:-4, wingY:-4,  wingA:58, wingB:46,
+  hipX:-20, hipY:30,
+  thigh:54, shin:52, ANKLE:15,
+  standH:140
 };
 const HATS = ['cap_snapback','hat_bucket'];
 
@@ -476,7 +522,7 @@ function setLegs(p, ax,ay, bx,by){
 /* ---- the poses ---- */
 /* wing angles: 0 = straight down, more negative = further up */
 function poseRun(ph, speedT, p){
-  const stride=lerp(70,88,speedT), lift=lerp(48,64,speedT), bob=lerp(8,11,speedT);
+  const stride=lerp(104,128,speedT), lift=lerp(58,76,speedT), bob=lerp(8,11,speedT);
   p.y = bob*Math.cos(4*Math.PI*(ph-0.12));
   p.x = 2*Math.sin(4*Math.PI*ph);
   p.rot = lerp(0.08,0.24,speedT) + 0.02*Math.sin(4*Math.PI*ph);
@@ -489,7 +535,7 @@ function poseRun(ph, speedT, p){
   setLegs(p, _fp1.x-CK.hipX, _fp1.y, _fp2.x-CK.hipX, _fp2.y);
   // a running chicken pumps its wings for balance — out of phase with the legs
   const w = Math.sin(ph*TAU), w2 = Math.sin(ph*TAU + 1.15);
-  p.wingN = -0.72 + w*0.46; p.wingF = -0.62 - w*0.42;
+  p.wingN = -1.48 + w*0.26; p.wingF = -1.38 - w*0.24;   // folded back along the body
   p.tipN  = 0.34 + w2*0.40; p.tipF = 0.30 - w2*0.34;
   p.wingOpen = 0.22 + 0.13*Math.max(0,w);
   p.tail = 0.16*w - 0.04;
@@ -684,11 +730,13 @@ function drawBone(x1,y1,x2,y2,w,col,far){
 }
 function drawWingPart(px, py, ang, tip, open, col, far){
   ctx.save(); ctx.translate(px, py);
-  if(partReady('wing')){
+  // a folded wing is a different shape, not a squashed spread wing
+  const id = (open < 0.55 && partReady('wingfold')) ? 'wingfold' : 'wing';
+  if(partReady(id)){
     ctx.rotate(-ang);                           // canvas rotate(t) sends dir(a) to dir(a-t)
     ctx.save();
     if(far){ ctx.globalAlpha = 0.92; }
-    drawPart('wing', 1, lerp(0.42, 1, open));   // folding shortens the wing
+    drawPart(id, 1, id==='wingfold' ? 1 : lerp(0.42, 1, open));
     ctx.restore();
   } else {
     drawWing(ang, tip, open, col);
@@ -752,7 +800,7 @@ function drawWing(a, tip, open, col){
 const SLOTS = ['back','body','neck','head','face']; // also the z-order
 const COSMETICS = {};
 function defineCosmetic(def){ COSMETICS[def.id] = def; return def.id; }
-const Loadout = { back:null, body:null, neck:'chain_code', head:'cap_snapback', face:'shades_art' };
+const Loadout = { back:null, body:null, neck:null, head:null, face:null };
 function equip(slot, id){
   if(!(slot in Loadout)) return false;              // unknown slot: ignored
   if(id && !COSMETICS[id]) return false;            // missing asset: ignored
@@ -821,11 +869,13 @@ function drawPart(id, scaleX, scaleY){
   ctx.restore();
   return true;
 }
-loadPart('body','art/part-body.png', {w:116, ax:0.500,  ay:0.500});
-loadPart('head','art/part-head.png', {w:78,   ax:0.4324, ay:0.4607});
+loadPart('body','art/part-bodyref.png', {w:150, ax:0.5000, ay:0.5000});
+loadPart('headref','art/part-headref.png',{w:84, ax:0.5146, ay:0.4978});
+loadPart('head','art/part-head.png',    {w:78, ax:0.4324, ay:0.4607});   // bare head, for other hats
 loadPart('wing','art/part-wing.png', {w:90,   ax:0.6240, ay:0.0852, rot:-0.445});
-loadPart('tail','art/part-tail.png', {w:92,   ax:0.9985, ay:0.5761});
-loadPart('shoe','art/part-shoe.png', {w:56,   ax:0.3413, ay:0.020});
+loadPart('wingfold','art/part-wingfold.png', {w:82, ax:0.6158, ay:0.0824, rot:-0.162});
+loadPart('tail','art/part-tail.png', {w:78,   ax:0.9900, ay:0.6989});
+loadPart('shoe','art/part-shoe.png', {w:52,   ax:0.3413, ay:0.020});
 loadPart('leg', 'art/part-leg.png',  {w:17,  ax:0.50, ay:0.00});
 
 /* ---- the head, drawn in the same language as the body ---- */
@@ -887,6 +937,8 @@ defineCosmetic({ id:'hoodie_code', slot:'body', draw:(R)=>{
 
 function drawHead(p){
   const R = CK.headR;
+  const useRef = !Loadout.head && !Loadout.face && partReady('headref');
+  if(useRef){ drawPart('headref'); return; }
   if(partReady('head')){
     drawPart('head');
     // the painted head has its own skull and eye, so the cosmetics shift onto them
@@ -955,7 +1007,6 @@ function drawChicken(x, y, p){
   // far leg
   drawBone(CK.hipX,CK.hipY, CK.hipX+p.kFx,CK.hipY+p.kFy, 9, CKC.legDark, true);
   drawBone(CK.hipX+p.kFx,CK.hipY+p.kFy, CK.hipX+p.fFx,CK.hipY+p.fFy, 8, CKC.legDark, true);
-  drawJoint(CK.hipX+p.kFx, CK.hipY+p.kFy, 6, CKC.legDark, true);
   drawShoePart(CK.hipX+p.kFx,CK.hipY+p.kFy, CK.hipX+p.fFx,CK.hipY+p.fFy, CKC.shoeDark, true);
 
   // far wing
@@ -963,9 +1014,9 @@ function drawChicken(x, y, p){
 
   // tail — one swept cream shape that grows out of the body
   ctx.save();
-  ctx.translate(-46, -26);
+  ctx.translate(-70, -14);
   ctx.rotate(p.tail*0.6 + spring.tail*0.18);
-  ctx.rotate(-0.34);
+  ctx.rotate(-0.10);
   if(drawPart('tail')){ ctx.restore(); } else {
   ctx.beginPath();
   ctx.moveTo( 14,-20);
@@ -1024,7 +1075,6 @@ function drawChicken(x, y, p){
   // near leg
   drawBone(CK.hipX,CK.hipY, CK.hipX+p.kNx,CK.hipY+p.kNy, 11, CKC.leg, false);
   drawBone(CK.hipX+p.kNx,CK.hipY+p.kNy, CK.hipX+p.fNx,CK.hipY+p.fNy, 10, CKC.leg, false);
-  drawJoint(CK.hipX+p.kNx, CK.hipY+p.kNy, 7, CKC.leg, false);
   drawShoePart(CK.hipX+p.kNx,CK.hipY+p.kNy, CK.hipX+p.fNx,CK.hipY+p.fNy, CKC.shoe, false);
 
   if(game.rig){                                   // pivot overlay for aligning parts
@@ -1040,7 +1090,7 @@ function drawChicken(x, y, p){
     mark(0,0,'#FF456E','core');
     mark(CK.headX+p.headDX, CK.headY+p.headDY, '#6BD1FF', 'head');
     mark(CK.wingX, CK.wingY, '#FFD54A', 'wing');
-    mark(-46, -26, '#3FE0B0', 'tail');
+    mark(-70, -14, '#3FE0B0', 'tail');
     mark(CK.hipX, CK.hipY, '#F2684F', 'hip');
     mark(CK.hipX+p.fNx, CK.hipY+p.fNy, '#FFF2DE', 'ankle');
   }
@@ -1430,6 +1480,7 @@ function makeLayer(w, h, drawFn){
 function buildLayers(){
   layers.length = 0;
   const TW = 2400;
+  if(THEME.id==='farm') return buildFarmLayers(TW);
   // far skyline
   layers.push({ f:0.10, y:0, tile: makeLayer(TW, 640, (g)=>{
     g.fillStyle = C.far;
@@ -1487,6 +1538,52 @@ function buildLayers(){
         }
       }
       x += w + 26; i++;
+    }
+  })});
+}
+
+function buildFarmLayers(TW){
+  // far: rolling hills
+  layers.push({ f:0.10, y:0, tile: makeLayer(TW, 620, (g)=>{
+    g.fillStyle=C.far; g.beginPath(); g.moveTo(0,0);
+    for(let x=0;x<=TW;x+=20){
+      const h = 150 + Math.sin(x*0.0042)*70 + Math.sin(x*0.0011+1.3)*95;
+      g.lineTo(x,-h);
+    }
+    g.lineTo(TW,0); g.closePath(); g.fill();
+  })});
+  // mid: fields with a barn, a silo and lit windows
+  layers.push({ f:0.28, y:0, tile: makeLayer(TW, 620, (g)=>{
+    g.fillStyle=C.mid; g.beginPath(); g.moveTo(0,0);
+    for(let x=0;x<=TW;x+=20){
+      const h = 96 + Math.sin(x*0.0075+2.1)*46 + Math.sin(x*0.0019)*40;
+      g.lineTo(x,-h);
+    }
+    g.lineTo(TW,0); g.closePath(); g.fill();
+    for(let i=0;i<3;i++){
+      const x = 240 + i*760 + hash(i*5.1)*180;
+      g.fillStyle='#3A2A22';
+      g.beginPath(); g.rect(x,-150,150,150); g.fill();
+      g.beginPath(); g.moveTo(x-16,-150); g.lineTo(x+75,-216); g.lineTo(x+166,-150); g.closePath(); g.fill();
+      g.fillStyle='rgba(255,196,107,.34)'; g.fillRect(x+54,-96,42,58);
+      g.fillStyle='#3A2A22';
+      g.beginPath(); g.rect(x+196,-190,58,190); g.fill();
+      g.beginPath(); g.arc(x+225,-190,29,Math.PI,0); g.fill();
+    }
+  })});
+  // near: hedgerow and a post fence
+  layers.push({ f:0.54, y:0, tile: makeLayer(TW, 620, (g)=>{
+    g.fillStyle=C.near;
+    let x=0,i=300;
+    while(x<TW){
+      const w=150+hash(i)*120, h=110+hash(i*1.7)*90;
+      g.beginPath(); g.ellipse(x+w/2,-h*0.4,w*0.56,h*0.62,0,0,TAU); g.fill();
+      x += w*0.82; i++;
+    }
+    g.fillStyle='rgba(27,44,34,.9)';
+    for(let fx=0; fx<TW; fx+=104){
+      g.fillRect(fx,-70,11,70);
+      g.fillRect(fx,-58,104,9); g.fillRect(fx,-32,104,9);
     }
   })});
 }
@@ -1702,6 +1799,7 @@ elMute.addEventListener('click', ()=>{
   audioInit(); A.on = !A.on;
   elMute.classList.toggle('muted', !A.on);
   if(A.started) A.master.gain.setTargetAtTime(A.on?0.9:0, A.ctx.currentTime, 0.05);
+  if(TRACK && !A.on) TRACK.pause();
 });
 document.addEventListener('visibilitychange', ()=>{
   if(document.hidden && A.ctx) A.ctx.suspend();
@@ -1712,6 +1810,7 @@ document.addEventListener('visibilitychange', ()=>{
    FLOW
    ============================================================ */
 function toMenu(){
+  applyTheme(THEMES[0]);
   game.mode='menu'; game.obstacles.length=0; game.parts.length=0; game.pops.length=0;
   player.state='idle'; player.stateT=0; player.beat=''; player.beatT=1.2;
   player.y=0; player.vy=0; player.onGround=true;
@@ -1721,6 +1820,8 @@ function toMenu(){
   musicVol(0.0);
 }
 function startRun(){
+  game.runCount = (game.runCount||0) + 1;
+  applyTheme(game.forceTheme || THEMES[game.runCount % THEMES.length]);
   game.mode='play'; game.runT=0; game.score=0; game.dist=0;
   game.near=0; game.combo=0; game.comboBest=0; game.comboT=0;
   game.speed=430; game.diff=0; game.spawnT=1.15;
@@ -1753,7 +1854,7 @@ function startRun(){
   }
   game.tut = game.firstRun;
   elTut.classList.toggle('show', game.tut);
-  musicVol(0.5);
+  musicVol(0.5); trackVol(0.55);
 }
 function die(o){
   if(game.mode!=='play') return;
@@ -1772,7 +1873,7 @@ function die(o){
   const lifted = 300 + Math.random()*180;
   rag.build(player.pose, player.x, gy - player.y, -430 - Math.random()*220, -lifted, rnd(-10,10));
   if(o){ o.hitBy = true; o.spin = rnd(-6,6); o.vy = -420; }
-  musicVol(0.12);
+  musicVol(0.12); trackVol(0.18);
 }
 function finish(){
   game.mode='dead'; game.deadT=0;
@@ -1792,7 +1893,7 @@ function finish(){
   elOver.classList.add('show');
   elHud.classList.remove('on');
   if(game.newBest){ S.best(); confettiBurst(); }
-  musicVol(0.0);
+  musicVol(0.0); trackVol(0);
 }
 function confettiBurst(){
   const cols=[C.gold,C.mint,C.coral,C.cream,'#6BD1FF'];
@@ -1823,7 +1924,7 @@ function update(dt, rawDt){
   else if(game.mode==='dead')  updateDead(dt, rawDt);
 
   updateParticles(dt);
-  musicTick();
+  musicTick(); trackTick(rawDt);
 }
 
 /* --- menu: he idles with personality beats --- */
@@ -1945,7 +2046,7 @@ function updatePlay(dt){
   if(game.spawnT<=0) spawnPattern();
 
   // ---- obstacles ----
-  const pl = p.x-44, pr = p.x+44, pb = p.y+12, pt = p.y+212;
+  const pl = p.x-52, pr = p.x+52, pb = p.y+12, pt = p.y+206;
   for(let i=game.obstacles.length-1;i>=0;i--){
     const o = game.obstacles[i];
     o.x += (o.vx||0)*dt;
@@ -2222,7 +2323,45 @@ function drawLayers(){
     }
   }
 }
+function drawFarmProps(){
+  const spacing=470, first=Math.floor((cam.x-200)/spacing);
+  for(let i=first;i<first+Math.ceil(VW/spacing)+3;i++){
+    const x=i*spacing-cam.x+140, kind=hash(i*3.7);
+    ctx.save(); ctx.translate(x, GROUND);
+    if(kind<0.34){
+      ctx.fillStyle=C.prop;
+      ctx.beginPath(); ctx.moveTo(-16,0); ctx.lineTo(-9,-210); ctx.lineTo(9,-210); ctx.lineTo(16,0); ctx.closePath(); ctx.fill();
+      ctx.save(); ctx.translate(0,-214); ctx.rotate(game.t*0.9+i);
+      for(let b=0;b<4;b++){
+        ctx.rotate(Math.PI/2);
+        ctx.beginPath(); ctx.moveTo(0,-6); ctx.lineTo(86,-16); ctx.lineTo(86,10); ctx.lineTo(0,6); ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
+      ctx.beginPath(); ctx.arc(0,-214,10,0,TAU); ctx.fillStyle='#FFD54A'; ctx.fill();
+    } else if(kind<0.64){
+      ctx.fillStyle=C.prop;
+      ctx.beginPath(); ctx.roundRect(-52,-58,104,58,14); ctx.fill();
+      ctx.beginPath(); ctx.roundRect(-30,-104,64,48,12); ctx.fill();
+      ctx.strokeStyle='rgba(255,216,150,.30)'; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.ellipse(0,-30,44,24,0,0,TAU); ctx.stroke();
+    } else if(kind<0.86){
+      ctx.strokeStyle=C.prop; ctx.lineWidth=12; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-176); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-58,-128); ctx.lineTo(58,-134); ctx.stroke();
+      ctx.fillStyle=C.prop; ctx.beginPath(); ctx.arc(0,-196,26,0,TAU); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-30,-214); ctx.lineTo(30,-214); ctx.lineTo(0,-246); ctx.closePath(); ctx.fill();
+      ctx.fillStyle='rgba(255,216,150,.35)';
+      ctx.beginPath(); ctx.arc(-9,-200,5,0,TAU); ctx.arc(10,-201,5,0,TAU); ctx.fill();
+    } else {
+      ctx.fillStyle=C.prop;
+      ctx.beginPath(); ctx.roundRect(-58,-44,116,44,7); ctx.fill();
+      ctx.fillStyle='rgba(107,209,255,.34)'; ctx.beginPath(); ctx.roundRect(-50,-38,100,14,5); ctx.fill();
+    }
+    ctx.restore();
+  }
+}
 function drawStreetProps(){
+  if(THEME.id==='farm') return drawFarmProps();
   // lamps + trees + hydrants drawn live so they can be lit/animated
   const spacing = 460;
   const first = Math.floor((cam.x-200)/spacing);
@@ -2278,6 +2417,25 @@ function drawGround(){
   ctx.fillStyle=C.rim; ctx.fillRect(0,y-4,VW,5);
   ctx.fillStyle='rgba(255,180,71,.25)'; ctx.fillRect(0,y+1,VW,10);
   ctx.fillStyle=C.curb; ctx.fillRect(0,y+11,VW,16);
+  if(THEME.id==='farm'){
+    ctx.strokeStyle=C.roadLine; ctx.lineWidth=4;
+    ctx.beginPath(); ctx.moveTo(0,y+58); ctx.lineTo(VW,y+58); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,y+104); ctx.lineTo(VW,y+104); ctx.stroke();
+    const gs=52, go=((cam.x%gs)+gs)%gs;
+    ctx.strokeStyle='rgba(120,170,90,.55)'; ctx.lineWidth=3; ctx.lineCap='round';
+    for(let i=-1;i<VW/gs+2;i++){
+      const gx=i*gs-go, hgt=8+hash(i*2.3)*10;
+      ctx.beginPath(); ctx.moveTo(gx,y+2); ctx.lineTo(gx-4,y+2-hgt);
+      ctx.moveTo(gx+6,y+2); ctx.lineTo(gx+9,y+2-hgt*0.8); ctx.stroke();
+    }
+    const sp2=640, f2=Math.floor((cam.x-200)/sp2);
+    for(let i=f2;i<f2+Math.ceil(VW/sp2)+2;i++){
+      const sx2=i*sp2-cam.x+260;
+      ctx.fillStyle='rgba(92,69,38,.55)';
+      ctx.beginPath(); ctx.ellipse(sx2,y+78,58,15,0,0,TAU); ctx.fill();
+    }
+    return;
+  }
   // paving seams
   const slab=170, off=((cam.x%slab)+slab)%slab;
   ctx.strokeStyle=C.roadLine; ctx.lineWidth=3;
@@ -2472,6 +2630,8 @@ function boot(){
   if(/[?&]stage/.test(location.search)) game.stage = true;
   if(/[?&]rig/.test(location.search)) game.rig = true;
   if(/[?&]align/.test(location.search)) game.align = true;
+  const th=/[?&]theme=([a-z]+)/.exec(location.search);
+  if(th) game.forceTheme = THEMES.find(t=>t.id===th[1]) || THEMES[0];
   if(/[?&]solo/.test(location.search)){ game.solo = true; document.body.classList.add('solo'); }
   const rmv=/[?&]run=([0-9.]+)/.exec(location.search); if(rmv) game.demoRun=parseFloat(rmv[1]);
   const sz=/[?&]sz=([0-9.]+)/.exec(location.search); if(sz) game.soloZoom=parseFloat(sz[1]);

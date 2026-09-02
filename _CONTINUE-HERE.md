@@ -19,7 +19,22 @@ cosmetic layers.** There are no per-outfit animations and there never should be.
 
 ### Parts (the important bit)
 
-`art/part-{body,head,wing,tail,leg,shoe}.png` are cut from the Gemini reference art
+`art/part-bodyref.png` and `art/part-headref.png` are **cut directly out of the
+reference render** (`concept_hi/run2.png`) - not redrawn. That is why the
+character finally matches: it is literally the reference art. The head cut keeps
+the cap, shades and chain, so it is used whenever no head/face cosmetic is
+equipped; equip one and `part-head.png` (the bare head) is used instead.
+
+The remaining parts (`part-wing`, `part-wingfold`, `part-tail`, `part-leg`,
+`part-shoe`) are generated pieces in the same style.
+
+To re-cut from a reference: flood-fill the body's cream region, dilate ~9px to
+swallow its own outline, cut the head with an ellipse, erase the reference's
+fist, and repaint the wing area cream inside an eroded mask so the wing can move.
+The head-to-body offset is then measured from the reference itself, which is what
+makes the assembly correct rather than guessed.
+
+The older, fully generated parts
 and hung on the rig by `loadPart` / `drawPart`. The rig moves the pieces; it does
 not draw the character. This is why he looks like the reference — he *is* the
 reference art.
@@ -151,6 +166,19 @@ effort. Body pump, head lag and tail all come off the same track.
 
 `?flap=0.375` snaps the pose to that exact key (no blending) so you can inspect
 a single frame — blending made earlier screenshots lie about what the keys were.
+
+## Environments
+
+Two themes in `THEMES` (`city`, `farm`), rotated per run by `startRun`. Both are
+drawn in code so the parallax layers tile perfectly and nothing extra downloads.
+`?theme=farm` forces one.
+
+## Music
+
+`audio/theme.mp3` is generated through Gemini Studio (`mode:"music"`). It plays
+on a loop through `initTrack`/`trackVol`, and the old synthesised groove stays as
+an automatic fallback if the file fails to load (`musicTick` returns early when a
+track exists). The mute button controls both.
 
 ## Known rough edges
 
