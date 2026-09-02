@@ -343,6 +343,7 @@ function audioInit(){
 function actx(){ if(A.ctx && A.ctx.state==='suspended') A.ctx.resume(); return A.ctx; }
 function tone(freq, dur, type, vol, slide, dest){
   if(!A.started||!A.on) return; const c = actx(); if(!c) return;
+  try{
   const o=c.createOscillator(), g=c.createGain();
   o.type=type||'square'; o.frequency.setValueAtTime(freq, c.currentTime);
   if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(20,slide), c.currentTime+dur);
@@ -350,17 +351,19 @@ function tone(freq, dur, type, vol, slide, dest){
   g.gain.exponentialRampToValueAtTime(vol||0.2, c.currentTime+0.008);
   g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime+dur);
   o.connect(g); g.connect(dest||A.sfxGain); o.start(); o.stop(c.currentTime+dur+0.02);
+  }catch(e){ A.err = e.message; }        // audio is never worth breaking gameplay for
 }
 let noiseBuf=null;
 function noise(dur, f0, f1, vol, q){
   if(!A.started||!A.on) return; const c = actx(); if(!c) return;
+  try{
   if(!noiseBuf){
     noiseBuf = c.createBuffer(1, c.sampleRate*1.2, c.sampleRate);
     const d = noiseBuf.getChannelData(0);
     for(let i=0;i<d.length;i++) d[i] = Math.random()*2-1;
   }
   const s=c.createBufferSource(); s.buffer=noiseBuf; s.loop=true;
-  const bp=c.createBiquadFilter(); bp.type='bandpass'; bp.Q=q||1.1;
+  const bp=c.createBiquadFilter(); bp.type='bandpass'; bp.Q.value=q||1.1;
   bp.frequency.setValueAtTime(f0, c.currentTime);
   bp.frequency.exponentialRampToValueAtTime(Math.max(40,f1||f0), c.currentTime+dur);
   const g=c.createGain();
@@ -368,6 +371,7 @@ function noise(dur, f0, f1, vol, q){
   g.gain.exponentialRampToValueAtTime(vol||0.25, c.currentTime+0.01);
   g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime+dur);
   s.connect(bp); bp.connect(g); g.connect(A.sfxGain); s.start(); s.stop(c.currentTime+dur+0.02);
+  }catch(e){ A.err = e.message; }
 }
 const S = {
   jump(){ tone(300,0.16,'square',0.13,720); noise(0.12,900,2400,0.06,0.8); },
@@ -1846,13 +1850,16 @@ function thrustOn(){
     if(game.deadT>0.35) startRun(); else return;
   }
   if(game.mode!=='play') return;
-  if(!player.thrusting){
+  const wasOff = !player.thrusting;
+  player.thrusting = true;                     // FIRST. Nothing below may block it.
+  if(wasOff){
     player.flapT = 0.13;                       // start the wingbeat animation
     player.powerT = 1;
-    if(!player.onGround) featherBurst(player.x-24, GROUND-player.y-30, 3, 180);
-    S.flap();
+    try{
+      if(!player.onGround) featherBurst(player.x-24, GROUND-player.y-30, 3, 180);
+      S.flap();
+    }catch(e){ game.fxErr = e.message; }
   }
-  player.thrusting = true;
   if(game.tut){ game.tut=false; elTut.classList.remove('show'); }
 }
 function thrustOff(){ player.thrusting = false; }
@@ -1864,7 +1871,7 @@ const pressJump = thrustOn, releaseJump = thrustOff;   // old names, one system
    pressJump/releaseJump are idempotent, so overlapping families are harmless.
    Every raw down is counted before any filtering, so the readout can tell
    "no event arrived" apart from "event arrived and was filtered". */
-const BUILD = 'b2255';   // shown in ?dbg=1 so a cached build is obvious
+const BUILD = 'b2305';   // shown in ?dbg=1 so a cached build is obvious
 const TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints||0) > 0;
 /* Only the mute button may swallow a press. Filtering on any <button> was the
    bug: on device every tap reported lastEv=start with taps=0, because the target
@@ -2810,6 +2817,29 @@ function boot(){
       run('PULSED ', i=>{ if(i%16===2) thrustOn(); if(i%16===8) thrustOff(); }, 120);
       document.getElementById('selftest').textContent = out.join(String.fromCharCode(10));
     }, 40);
+  }
+  /* Every sound, actually played. A throwing WebAudio call used to abort
+     thrustOn() halfway and take the flight controls with it, so sound is now
+     exercised in the same way gameplay exercises it. */
+  if(/[?&]audiotest/.test(location.search)){
+    setTimeout(()=>{
+      const out=[]; let bad=0;
+      try{ audioInit(); }catch(e){ out.push('audioInit THREW: '+e.message); bad++; }
+      A.on = true;
+      out.push('ctx=' + (A.ctx ? A.ctx.state : 'none') + ' started=' + (A.started?1:0));
+      for(const k of Object.keys(S)){
+        A.err = null;
+        try{ S[k](1); }catch(e){ A.err = 'THREW ' + e.message; }
+        if(A.err){ out.push('FAIL ' + k + ': ' + A.err); bad++; }
+      }
+      A.err = null;
+      try{ musicTick(); }catch(e){ A.err='THREW '+e.message; }
+      if(A.err){ out.push('FAIL musicTick: '+A.err); bad++; }
+      out.unshift(bad ? ('AUDIO: ' + bad + ' FAILING') : 'AUDIO: all ' + Object.keys(S).length + ' sounds OK');
+      const el=document.getElementById('selftest');
+      el.style.display='block'; el.style.color = bad ? '#FF456E' : '#0f0';
+      el.textContent = out.join(String.fromCharCode(10));
+    }, 60);
   }
   if(/[?&]solo/.test(location.search)){ game.solo = true; document.body.classList.add('solo'); }
   const rmv=/[?&]run=([0-9.]+)/.exec(location.search); if(rmv) game.demoRun=parseFloat(rmv[1]);
