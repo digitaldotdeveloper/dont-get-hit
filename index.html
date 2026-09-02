@@ -1332,8 +1332,36 @@ function layEgg(x, y, vx){
     col:'#FFFDF6', g:1500, kind:'egg', rot:0, vr:rnd(-7,7), drag:0.999 });
 }
 
+/* Does a line segment touch a box? Liang-Barsky, clipping the segment against
+   the four slabs. Used for the zappers, which are the one hazard that is not
+   a rectangle. Everything is in world space: x along the track, y as height
+   above the ground, same as the player. */
+function segRect(x0,y0,x1,y1, l,b,r,t){
+  let t0=0, t1=1;
+  const dx=x1-x0, dy=y1-y0;
+  const P=[-dx,dx,-dy,dy], Q=[x0-l, r-x0, y0-b, t-y0];
+  for(let i=0;i<4;i++){
+    if(P[i]===0){ if(Q[i]<0) return false; continue; }
+    const u=Q[i]/P[i];
+    if(P[i]<0){ if(u>t1) return false; if(u>t0) t0=u; }
+    else       { if(u<t0) return false; if(u<t1) t1=u; }
+  }
+  return true;
+}
+function segDist(px,py, x0,y0,x1,y1){
+  const dx=x1-x0, dy=y1-y0, L=dx*dx+dy*dy;
+  let u = L ? ((px-x0)*dx + (py-y0)*dy)/L : 0;
+  u = u<0?0:u>1?1:u;
+  const qx=x0+dx*u, qy=y0+dy*u;
+  return Math.hypot(px-qx, py-qy);
+}
+function beamEnds(o){
+  const c=Math.cos(o.ang)*o.len*0.5, sn=Math.sin(o.ang)*o.len*0.5;
+  return [o.x-c, o.cy-sn, o.x+c, o.cy+sn];
+}
+
 /* ============================================================
-   OBSTACLES — 16 of them, all cartoon, all readable in silhouette
+   OBSTACLES — all cartoon, all readable in silhouette
    ============================================================ */
 let SHADOW_OFF = false;
 function shadowEllipse(w, alpha){
@@ -1389,6 +1417,7 @@ hanger:{ kind:'ground', w:104, h:200, tier:0, draw(o,t){
     ctx.restore();
   }},
 /* ---- ground: jump over these ---- */
+zapper:{ kind:'beam', w:200, h:200, tier:2, draw(){} },
 cone:{ kind:'ground', w:70, h:82, tier:0, draw(o,t){
     shadowEllipse(42);
     ctx.beginPath(); ctx.moveTo(-34,0); ctx.lineTo(-13,-78); ctx.quadraticCurveTo(0,-86,13,-78); ctx.lineTo(34,0); ctx.closePath();
@@ -1879,6 +1908,58 @@ function spawnOne(key, aheadTime){
   if(spec.kind==='air') game.lastAirX = o.x; else game.lastGroundX = o.x;
   return o;
 }
+/* The zapper. Jetpack Joyride's signature hazard and the reason its obstacles
+   never needed to be stacked into gates: a bar of electricity anywhere in the
+   column, with clear air all round it, that you fly over or under. */
+function drawZapper(o, sx){
+  const [x0,y0,x1,y1] = beamEnds(o);
+  const ax = sx - (o.x-x0), ay = GROUND - y0;
+  const bx = sx + (x1-o.x), by = GROUND - y1;
+  const pulse = 0.72 + 0.28*Math.sin(game.t*22 + o.seed);
+  ctx.save();
+  ctx.lineCap='round';
+  ctx.globalAlpha = 0.30*pulse;                       // the glow around it
+  ctx.strokeStyle = '#FF456E'; ctx.lineWidth = 22;
+  ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = '#FF456E'; ctx.lineWidth = 11;
+  ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke();
+  ctx.strokeStyle = '#FFF2DE'; ctx.lineWidth = 4*pulse;   // white hot core
+  ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke();
+  for(const [nx,ny] of [[ax,ay],[bx,by]]){              // the emitter caps
+    ctx.beginPath(); ctx.arc(nx,ny,15,0,TAU);
+    ctx.fillStyle='#241043'; ctx.fill();
+    ctx.lineWidth=4; ctx.strokeStyle='#FFD54A'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(nx,ny,5.5,0,TAU); ctx.fillStyle='#FFD54A'; ctx.fill();
+  }
+  ctx.restore();
+}
+function spawnZapper(tier){
+  const band = GROUND - CEIL;
+  const closure = game.speed;
+  const x = player.x + closure*Math.max(1.6, (VW - PX + 220)/closure + 0.25);
+  for(let tryN=0; tryN<24; tryN++){
+    // vertical bars early, then angled ones, then slowly turning ones
+    const vertical = tier < 3 ? Math.random()<0.62 : Math.random()<0.4;
+    const ang = vertical ? Math.PI/2
+              : (Math.random()<0.5 ? 0 : rnd(-0.9, 0.9));
+    const len = vertical ? rnd(150, Math.min(300, band*0.42))
+                         : rnd(190, Math.min(420, band*0.55));
+    const spin = (tier>=4 && Math.random()<0.35) ? rnd(-0.5,0.5) : 0;
+    const cy  = rnd(90, band-90);
+    const half = Math.abs(Math.sin(ang))*len*0.5;
+    const lo = cy-half, hi = cy+half;
+    // it has to leave a corridor he can actually get through
+    if(Math.max(lo, band-hi) < 210) continue;
+    game.obstacles.push({ key:'zapper', spec:OB.zapper, kind:'beam',
+      x, cy, ang, len, spin, seed:rnd(0,TAU), w:len, h:len,
+      vx:0, rot:0, y:0, vy:0, landed:true, warn:0,
+      passed:false, minGap:1e9, counted:false });
+    return true;
+  }
+  return false;
+}
+
 const GATE_TOPS  = ['cone','duck','cake','ball','box','coffee'];
 const GATE_HANGS = ['sofa','sign','vacuum','cart','coffee'];
 function spawnGate(moving){
@@ -1901,32 +1982,64 @@ function spawnGate(moving){
   mk(OB.hanger, true,  band - (c + gap/2),   pick(GATE_HANGS));
   return g;
 }
+/* Jetpack Joyride spacing. One hazard at a time, dropped anywhere in the
+   column with clear air all round it -- never a floor piece and a ceiling
+   piece stacked into a narrow slot. That stacking is Flappy Bird, and it is
+   what made this feel like threading a needle instead of flying. */
+function spawnStandalone(hang){
+  const band = GROUND - CEIL;
+  const spec = hang ? OB.hanger : OB.tower;
+  const h = hang ? rnd(110, Math.min(300, band*0.40))
+                 : rnd(90,  Math.min(280, band*0.38));
+  const closure = game.speed;
+  const x = player.x + closure*Math.max(1.6, (VW - PX + 200)/closure + 0.25);
+  game.obstacles.push({ key: hang?'hanger':'tower', spec, x, kind:'ground', hang,
+    w:spec.w, h, cap: pick(hang?GATE_HANGS:GATE_TOPS), base:0, vx:0, rot:0,
+    bz:0, y:0, vy:0, landed:true, warn:0, passed:false, minGap:1e9, counted:false });
+}
 function spawnPattern(){
   const tier = tierNow();
-  const air  = poolFor(tier).filter(k=>OB[k].kind==='air');
+  const pool = poolFor(tier);
+  const air  = pool.filter(k=>OB[k].kind==='air');
+  // tower and hanger are only ever placed by spawnStandalone, which sets the
+  // height and, for the hanger, hangs it. Reached through the generic pool a
+  // hanger would sit on the floor drawn upside down.
+  const gnd  = pool.filter(k=>OB[k].kind==='ground' && k!=='tower' && k!=='hanger');
+  const fall = pool.filter(k=>OB[k].kind==='fall');
   const r = Math.random();
   let gap;
-  if(tier===0){                                   // learn the gate
-    spawnGate(false); gap = rnd(2.50, 3.05);
-  } else if(tier===1){                            // gates, occasional flock between them
-    if(r<0.90) spawnGate(false); else spawnOne(pick(air),0);
-    gap = rnd(2.00, 2.50);
-  } else if(tier===2){                            // gates start drifting
-    if(r<0.62) spawnGate(false);
-    else if(r<0.86) spawnGate(true);
-    else spawnOne(pick(air),0);
-    gap = rnd(1.65, 2.05);
+  if(tier===0){                                   // just objects on the floor
+    spawnOne(pick(gnd), 0);
+    gap = rnd(2.40, 3.00);
+  } else if(tier===1){                            // things in the air appear
+    if(r<0.58) spawnOne(pick(gnd),0);
+    else if(r<0.86) spawnOne(pick(air),0);
+    else spawnStandalone(false);
+    gap = rnd(1.95, 2.45);
+  } else if(tier===2){                            // and the first zappers
+    if(r<0.30) spawnOne(pick(gnd),0);
+    else if(r<0.54) spawnOne(pick(air),0);
+    else if(r<0.72) spawnZapper(tier);
+    else if(r<0.88) spawnStandalone(Math.random()<0.5);
+    else if(fall.length) spawnOne(pick(fall),0);
+    else spawnOne(pick(gnd),0);
+    gap = rnd(1.60, 2.00);
   } else if(tier===3){
-    if(r<0.42) spawnGate(false);
-    else if(r<0.80) spawnGate(true);
-    else { spawnGate(false); spawnOne(pick(air),0.85); }
-    gap = rnd(1.40, 1.75);
-  } else {                                        // gates back to back
-    if(r<0.34) spawnGate(true);
-    else if(r<0.54){ spawnGate(false); spawnGate(true); }
-    else if(r<0.78){ spawnGate(true); spawnOne(pick(air),0.8); }
-    else spawnGate(false);
-    gap = rnd(1.20, 1.50);
+    if(r<0.22) spawnOne(pick(gnd),0);
+    else if(r<0.44) spawnOne(pick(air),0);
+    else if(r<0.70) spawnZapper(tier);
+    else if(r<0.86) spawnStandalone(Math.random()<0.55);
+    else if(fall.length) spawnOne(pick(fall),0);
+    else spawnZapper(tier);
+    gap = rnd(1.35, 1.70);
+  } else {
+    if(r<0.16) spawnOne(pick(gnd),0);
+    else if(r<0.36) spawnOne(pick(air),0);
+    else if(r<0.68) spawnZapper(tier);
+    else if(r<0.84) spawnStandalone(Math.random()<0.55);
+    else if(fall.length) spawnOne(pick(fall),0);
+    else spawnZapper(tier);
+    gap = rnd(1.15, 1.45);
   }
   game.spawnT = gap;
 }
@@ -1964,7 +2077,7 @@ const pressJump = thrustOn, releaseJump = thrustOff;   // old names, one system
    pressJump/releaseJump are idempotent, so overlapping families are harmless.
    Every raw down is counted before any filtering, so the readout can tell
    "no event arrived" apart from "event arrived and was filtered". */
-const BUILD = 'b0903-0042';   // shown in ?dbg=1 so a cached build is obvious
+const BUILD = 'b0903-0101';   // shown in ?dbg=1 so a cached build is obvious
 const TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints||0) > 0;
 /* Only the mute button may swallow a press. Filtering on any <button> was the
    bug: on device every tap reported lastEv=start with taps=0, because the target
@@ -2067,7 +2180,7 @@ function toMenu(){
 function startRun(){
   game.runCount = (game.runCount||0) + 1;
   applyTheme(game.forceTheme || THEMES[game.runCount % THEMES.length]);
-  game.mode='play'; game.runT=0; game.score=0; game.dist=0;
+  game.mode='play'; game.runT=game.presetRunT||0; game.score=0; game.dist=0;
   game.near=0; game.combo=0; game.comboBest=0; game.comboT=0;
   game.speed=340; game.diff=0; game.spawnT=2.6;
   game.obstacles.length=0; game.parts.length=0; game.pops.length=0; game.ui.length=0;
@@ -2306,6 +2419,19 @@ function updatePlay(dt){
       const g=o.gate;
       const c = g.c + (g.amp ? Math.sin(game.t*g.spd+g.phase)*g.amp : 0);
       o.h = Math.max(0, o.hang ? g.band - (c + g.gap/2) : c - g.gap/2);
+    }
+    if(o.kind==='beam'){
+      if(o.spin) o.ang += o.spin*dt;
+      const [bx0,by0,bx1,by1] = beamEnds(o);
+      if(!o.hitBy && segRect(bx0,by0,bx1,by1, pl, pb-9, pr, pt+9)) die(o);
+      const d = segDist(p.x, p.y+78, bx0,by0,bx1,by1) - 58;
+      if(o.x > p.x-30) o.minGap = Math.min(o.minGap, Math.max(0, d));
+      if(!o.counted && o.x < p.x-30){
+        o.counted = true;
+        if(o.minGap < 52 && game.mode==='play') nearMiss(o);
+      }
+      if(o.x < cam.x - 480) game.obstacles.splice(i,1);
+      continue;
     }
     if(o.spec.roll) o.rot = (o.rot||0) + (o.vx - game.speed)*dt/ (o.w*0.5) * -1;
     if(o.spec.bounce){
@@ -2722,6 +2848,7 @@ function drawObstacles(){
   for(const o of game.obstacles){
     const sx = o.x - cam.x;
     if(sx < -300 || sx > VW+340) continue;
+    if(o.kind==='beam'){ drawZapper(o, sx); continue; }
     // falling telegraph
     if(o.kind==='fall' && !o.landed){
       const k = clamp(1 - o.y/700, 0, 1);
@@ -2892,6 +3019,8 @@ function boot(){
   if(/[?&]demo/.test(location.search)) game.demo = true;
   if(/[?&]dbg/.test(location.search)) game.dbg = true;
   if(/[?&]stage/.test(location.search)) game.stage = true;
+  const rt=/[?&]runt=([0-9.]+)/.exec(location.search);
+  if(rt) game.presetRunT = parseFloat(rt[1]);   // jump to a difficulty tier
   if(/[?&]rig/.test(location.search)) game.rig = true;
   if(/[?&]align/.test(location.search)) game.align = true;
   if(/[?&]selftest/.test(location.search)){
@@ -2919,6 +3048,43 @@ function boot(){
   /* Every sound, actually played. A throwing WebAudio call used to abort
      thrustOn() halfway and take the flight controls with it, so sound is now
      exercised in the same way gameplay exercises it. */
+  /* Spawn every tier a few hundred times and look at what comes out: nothing
+     may stack into a gate, every zapper must leave a corridor, and none of it
+     may throw. */
+  if(/[?&]obtest/.test(location.search)){
+    setTimeout(()=>{
+      const out=[]; let bad=0;
+      const band = GROUND - CEIL;
+      for(let tier=0; tier<=4; tier++){
+        game.runT = [0,30,55,80,120][tier];
+        const kinds={}; let worst=1e9, pairs=0;
+        for(let n=0;n<240;n++){
+          game.obstacles.length = 0;
+          try{ spawnPattern(); }catch(e){ out.push('tier'+tier+' THREW '+e.message); bad++; break; }
+          const os = game.obstacles;
+          for(const o of os) kinds[o.key]=(kinds[o.key]||0)+1;
+          // a floor piece and a ceiling piece at the same x is the thing we removed
+          for(const o of os) for(const q of os)
+            if(o!==q && o.hang!==q.hang && Math.abs(o.x-q.x)<160) pairs++;
+          for(const o of os){
+            if(o.kind==='beam'){
+              const half=Math.abs(Math.sin(o.ang))*o.len*0.5;
+              worst=Math.min(worst, Math.max(o.cy-half, band-(o.cy+half)));
+            } else if(o.hang){ worst=Math.min(worst, band-o.h); }
+            else if(o.kind!=='air' && o.kind!=='fall'){ worst=Math.min(worst, band-o.h); }
+          }
+        }
+        if(pairs){ bad++; out.push('tier'+tier+' STACKED PAIRS: '+pairs); }
+        if(worst<170){ bad++; out.push('tier'+tier+' corridor only '+Math.round(worst)); }
+        out.push('tier'+tier+' corridor>='+Math.round(worst)+'  '+
+          Object.keys(kinds).sort().map(k=>k+':'+kinds[k]).join(' '));
+      }
+      out.unshift(bad ? ('OBSTACLES: '+bad+' PROBLEMS') : 'OBSTACLES: ok, no stacked gates');
+      const el=document.getElementById('selftest');
+      el.style.display='block'; el.style.color = bad ? '#FF456E' : '#0f0';
+      el.textContent = out.join(String.fromCharCode(10));
+    }, 60);
+  }
   if(/[?&]audiotest/.test(location.search)){
     setTimeout(()=>{
       const out=[]; let bad=0;
