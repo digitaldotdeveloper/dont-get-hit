@@ -14,26 +14,47 @@ Everything is in **index.html** plus four PNGs in `art/`. No build step.
 
 ## The character — read this before touching him
 
-He is **a painted head on a procedural body**. That split is the whole design:
+**One animated chicken, drawn entirely in code, plus interchangeable cosmetic
+layers.** There are no per-outfit animations and there never should be.
 
-- `art/head-snapback.png` / `art/head-bucket.png` — the hat, comb, face and beak,
-  cut out of the Gemini Studio hero renders. This carries the identity.
-- Body, wings, tail, legs and sneakers are **drawn in code** (`drawChicken`), so
-  they can squash, flap, plant and ragdoll.
+An earlier version glued a painted head onto a code body; it read as assembled
+parts and was scrapped. Keep the base character in one drawing language.
 
-So: **swapping the hat is swapping one PNG** (`loadHead('bucket')`), and legs or
-accessories become new draw calls, not new art. That is the customisation plan
-from the brief, already wired.
+### Cosmetic system
 
-The heads were produced by `art/snapback.png` → key green → keep the largest
-connected blob of the top 40%. If you regenerate art, redo that step.
+```
+BaseChicken            owns idle / run / fly / glide / land / hit / death
+├── BackPivot          jetpack
+├── BodyPivot          outfit
+├── NeckPivot          scarf
+├── HeadPivot          hats
+└── FacePivot          glasses
+```
+
+A cosmetic is `{id, slot, draw(R,ctx)}` **or** `{id, slot, img, w, ox, oy, ax, ay}`
+— a code drawing or a PNG, same slot, same pivot. Register with
+`defineCosmetic(...)` / `cosmeticImage(id, slot, src, opts)`.
+
+```js
+equip('head','hat_bucket');  equip('face','shades_art');  unequip('back');
+```
+
+Runtime, any time. Unknown slot or missing asset is a silent no-op — a broken
+cosmetic can never break the character. **Adding a cosmetic must never require
+touching a pose function.** Adding a whole new slot is two lines (`SLOTS`,
+`Loadout`) plus one `drawSlot` call at the right z-position in `drawChicken`.
+
+PNG cosmetics come from Gemini Studio, keyed off flat green and trimmed to the
+largest connected blob. See [[feedback-gemini-sprite-sheets]] for the prompt
+rules that keep them consistent.
 
 ## Where things are (search these strings)
 
 | What | Marker |
 |---|---|
 | Chicken rig constants | `const CK = {` |
-| Head loading / hat swap | `function loadHead` |
+| Cosmetic registry / slots | `const SLOTS`, `defineCosmetic`, `equip` |
+| Cosmetic draw hook | `function drawSlot` |
 | All poses | `function poseRun` … `function poseCheer` |
 | Flap-driven flight pose | `function poseFly` |
 | Character renderer | `function drawChicken` |
@@ -47,9 +68,11 @@ connected blob of the top 40%. If you regenerate art, redo that step.
 
 ## Feel numbers that matter
 
-- `GRAV 2950`, `FLAP_ACC 5100`, `FLAP_HZ 5.6`. Lift arrives **in pulses on the
+- `GRAV 2600`, `FLAP_ACC 11000`, `FLAP_HZ 4.6`. Lift arrives **in pulses on the
   downstroke**, not as constant thrust — that is what stops it feeling like a
-  jetpack. `VY_UP/VY_DOWN` clamp the climb and the dive.
+  jetpack. **The mean of a half-sine is 1/pi**, so peak lift must be about 3.1x
+  the average you actually want; getting this wrong once made holding the screen
+  push him *down* and the game looked dead. `VY_UP/VY_DOWN` clamp climb and dive.
 - Speed ramps `430 → 730` over 85s. Much slower than the old jump version: you
   are steering continuously, not reacting once.
 - Portrait: `SCALE = min(CH/1300, CW/700)`. Narrower view than landscape on
@@ -59,14 +82,17 @@ connected blob of the top 40%. If you regenerate art, redo that step.
 
 ## Debug flags
 
-`?auto=1` start a run immediately · `?demo=1` auto-flap · `?flap=0.5` freeze the
-wings at one point in the cycle (0–1) for inspecting the pose.
+`?auto=1` start a run · `?demo=1` auto-flap · `?flap=0.5` freeze the wings at one
+point in the cycle · `?hold=0` glide · `?zoom=1.7` zoom on the bird ·
+`?dbg=1` altitude readout in the tab title ·
+`?wear=head:hat_bucket,face:shades_art,back:jetpack_art` set a loadout.
 
 ## Known rough edges
 
-- Only one expression. The face is baked into the head PNG, so shock/dizzy are
-  done with cartoon marks (`p.shockT`) and body language instead. If expressions
-  turn out to matter, generate 2–3 more head crops and swap on state.
+- Expression is one eye plus a brow, driven by `p.shockT`. It reads at portrait
+  size but there is room for more.
+- The jetpack reads small behind the body, and all five slots at once gets busy.
+  Both are tuning numbers on the cosmetic definitions, not architecture.
 - Obstacles are still the ones designed for the jump game. They work, but a
   flyer wants gates and vertical gaps — that is the next real design pass.
 - `chickens.html` keys green in-browser, so it only works over http(s), never

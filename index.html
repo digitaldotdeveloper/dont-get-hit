@@ -418,21 +418,13 @@ function musicVol(v){ if(A.started) A.musicGain.gain.setTargetAtTime(v, A.ctx.cu
    ============================================================ */
 const CK = {
   bodyRX:47, bodyRY:41,
-  headX:36, headY:-48, headW:104,
+  headX:33, headY:-60, headR:37,
   wingX:10, wingY:-15, wingA:56, wingB:46,
   hipX:-4,  hipY:26,
   thigh:31, shin:29, ANKLE:9,
   standH:64
 };
-const HATS = ['snapback','bucket'];
-const ART = { head:null, hat:HATS[0], ready:false };
-function loadHead(which){
-  const im = new Image();
-  im.onload = ()=>{ ART.head = im; ART.ready = true; };
-  im.onerror = ()=>{ ART.head = null; ART.ready = true; };   // procedural fallback
-  im.src = 'art/head-'+which+'.png';
-  ART.hat = which;
-}
+const HATS = ['cap_snapback','hat_bucket'];
 
 const dirX = a => Math.sin(a), dirY = a => Math.cos(a);
 
@@ -616,7 +608,9 @@ function springUpdate(dt, ax, ay){
 
 /* ---- drawing ---- */
 const CKC = {
-  body:'#F7E6CE', shade:'#DCC0A0', wing:'#FFFBF0', edge:'#0B1526',
+  body:'#F7E6CE', shade:'#DCC0A0', wing:'#FCEEDA', edge:'#0B1526',
+  comb:'#E8443A', beak:'#F5A623',
+  cap:'#2FA898', capDark:'#1B7A70', capBand:'#FFD54A',
   leg:'#F5A623', legDark:'#C97F14',
   shoe:'#FCFCFC', shoeDark:'#D8D8D8', lace:'#F2684F',
   tail:['#F2684F','#FFD54A','#34D9C0']
@@ -661,6 +655,13 @@ function drawWing(a, tip, open, col){
   ctx.quadraticCurveTo(ex+nx*wIn*1.5, ey+ny*wIn*1.5, tx+nx*wOut, ty+ny*wOut);
   ctx.quadraticCurveTo(ex-nx*wIn*0.55, ey-ny*wIn*0.55, 0,0);
   ctx.closePath(); cp(col,5);
+  for(let i=0;i<3;i++){                                  // feather tips
+    const f=0.62+i*0.14;
+    ctx.beginPath();
+    ctx.moveTo(lerp(ex,tx,f)+nx*wIn*0.30, lerp(ey,ty,f)+ny*wIn*0.30);
+    ctx.lineTo(lerp(ex,tx,f+0.30)+nx*wOut*1.5, lerp(ey,ty,f+0.30)+ny*wOut*1.5);
+    ctx.strokeStyle=CKC.edge; ctx.lineWidth=3; ctx.lineCap='round'; ctx.stroke();
+  }
   ctx.strokeStyle='rgba(11,21,38,.28)'; ctx.lineWidth=2.6; ctx.lineCap='round';
   for(let i=1;i<=2;i++){
     const f=i/3;
@@ -670,15 +671,149 @@ function drawWing(a, tip, open, col){
     ctx.stroke();
   }
 }
-function drawHeadFallback(){                        // if the PNG never loads
-  const R=44;
-  ctx.beginPath(); ctx.ellipse(0,0,R,R*0.96,0,0,TAU); cp(CKC.body,5);
-  ctx.beginPath(); ctx.moveTo(R*0.8,-R*0.1); ctx.lineTo(R*1.5,R*0.12); ctx.lineTo(R*0.8,R*0.35);
-  ctx.closePath(); cp(CKC.leg,4);
-  ctx.beginPath(); ctx.arc(R*0.1,-R*0.2,R*0.24,0,TAU); ctx.fillStyle='#fff'; ctx.fill();
-  ctx.lineWidth=3; ctx.strokeStyle=CKC.edge; ctx.stroke();
-  ctx.beginPath(); ctx.arc(R*0.18,-R*0.18,R*0.11,0,TAU); ctx.fillStyle=CKC.edge; ctx.fill();
+/* ============================================================
+   COSMETIC LAYERS
+   The base chicken owns every animation. A cosmetic is just a
+   drawable parented to a named pivot, so it inherits the motion
+   for free and adding one never touches the animation code.
+   ============================================================ */
+const SLOTS = ['back','body','neck','head','face']; // also the z-order
+const COSMETICS = {};
+function defineCosmetic(def){ COSMETICS[def.id] = def; return def.id; }
+const Loadout = { back:null, body:null, neck:null, head:'cap_snapback', face:null };
+function equip(slot, id){
+  if(!(slot in Loadout)) return false;              // unknown slot: ignored
+  if(id && !COSMETICS[id]) return false;            // missing asset: ignored
+  Loadout[slot] = id || null; return true;
 }
+function unequip(slot){ return equip(slot, null); }
+function equipped(slot){ return Loadout[slot]; }
+
+/* pivots are handed to cosmetics as {R} in an already-transformed context,
+   so a cosmetic only ever draws in its own local space */
+function drawSlot(slot, R){
+  const id = Loadout[slot]; if(!id) return;
+  const c = COSMETICS[id];  if(!c) return;          // never break the character
+  ctx.save();
+  ctx.translate(c.ox||0, c.oy||0);
+  if(c.rot) ctx.rotate(c.rot);
+  const sc = c.scale||1; if(sc!==1) ctx.scale(sc,sc);
+  if(c.draw) c.draw(R, ctx);
+  else if(c.img && c.img.complete && c.img.naturalWidth){
+    const w = (c.w||1)*R, h = w*(c.img.naturalHeight/c.img.naturalWidth);
+    ctx.drawImage(c.img, -w*(c.ax!==undefined?c.ax:0.5), -h*(c.ay!==undefined?c.ay:0.5), w, h);
+  }
+  ctx.restore();
+}
+/* a cosmetic can be pure code or a PNG dropped in later — same slot, same pivot */
+function cosmeticImage(id, slot, src, opt){
+  const im = new Image(); im.src = src;
+  defineCosmetic(Object.assign({id, slot, img:im}, opt||{}));
+}
+
+/* ---- the head, drawn in the same language as the body ---- */
+function hatSnapback(R){
+  ctx.beginPath();
+  ctx.moveTo(-R*0.94,-R*0.26);
+  ctx.quadraticCurveTo(-R*1.02,-R*1.26, R*0.10,-R*1.24);
+  ctx.quadraticCurveTo(R*1.04,-R*1.20, R*1.00,-R*0.30);
+  ctx.quadraticCurveTo(R*0.30,-R*0.60,-R*0.94,-R*0.26);
+  ctx.closePath(); cp(CKC.cap,4.8);
+  ctx.beginPath();                                   // brim, worn backwards
+  ctx.moveTo(-R*0.90,-R*0.38);
+  ctx.quadraticCurveTo(-R*1.80,-R*0.66,-R*2.02,-R*0.14);
+  ctx.quadraticCurveTo(-R*1.42, R*0.10,-R*0.86,-R*0.06);
+  ctx.closePath(); cp(CKC.capDark,4.6);
+  ctx.beginPath(); ctx.arc(R*0.08,-R*1.24,R*0.13,0,TAU); cp(CKC.capDark,3);
+  ctx.beginPath(); ctx.roundRect(R*0.56,-R*0.92,R*0.44,R*0.32,4); cp(CKC.capDark,3);
+}
+function hatBucket(R){
+  ctx.beginPath();
+  ctx.moveTo(-R*0.80,-R*0.30); ctx.lineTo(-R*0.62,-R*1.24);
+  ctx.lineTo(R*0.72,-R*1.24);  ctx.lineTo(R*0.94,-R*0.30);
+  ctx.closePath(); cp(CKC.cap,4.8);
+  ctx.save(); ctx.clip();
+  ctx.beginPath(); ctx.rect(-R*1.1,-R*0.86,R*2.2,R*0.26);
+  ctx.fillStyle=CKC.capBand; ctx.fill(); ctx.restore();
+  ctx.beginPath(); ctx.ellipse(R*0.05,-R*0.26,R*1.36,R*0.32,0.02,0,TAU); cp(CKC.capDark,4.8);
+}
+defineCosmetic({ id:'cap_snapback', slot:'head', draw:hatSnapback });
+defineCosmetic({ id:'hat_bucket',   slot:'head', draw:hatBucket });
+defineCosmetic({ id:'shades_code',  slot:'face', draw:(R)=>{
+  ctx.save(); ctx.translate(R*0.30,-R*0.16);
+  ctx.beginPath(); ctx.moveTo(-R*0.44,-R*0.30); ctx.lineTo(R*0.44,-R*0.26);
+  ctx.strokeStyle=CKC.edge; ctx.lineWidth=R*0.10; ctx.lineCap='round'; ctx.stroke();
+  ctx.beginPath(); ctx.roundRect(-R*0.42,-R*0.26,R*0.86,R*0.44,[R*0.10,R*0.20,R*0.22,R*0.08]);
+  cp('#1A1F2E',3.6);
+  ctx.beginPath(); ctx.moveTo(-R*0.26,-R*0.16); ctx.lineTo(R*0.04,-R*0.12);
+  ctx.strokeStyle='rgba(255,255,255,.6)'; ctx.lineWidth=R*0.08; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-R*0.44,-R*0.22); ctx.lineTo(-R*0.80,-R*0.28);
+  ctx.strokeStyle=CKC.beak; ctx.lineWidth=R*0.08; ctx.stroke();
+  ctx.restore();
+}});
+defineCosmetic({ id:'jetpack_code', slot:'back', ox:-50, oy:-6, scale:0.82, draw:(R)=>{
+  for(const dx of [-6,10]){
+    ctx.beginPath(); ctx.roundRect(dx-13,-30,26,58,12); cp('#F2684F',5);
+    ctx.beginPath(); ctx.roundRect(dx-13,-14,26,9,3); cp(CKC.body,0);
+    ctx.beginPath(); ctx.roundRect(dx-9,-38,18,10,4); cp(CKC.capBand,4);
+    ctx.beginPath(); ctx.roundRect(dx-8,28,16,12,5); cp('#5E6E8C',4);
+  }
+}});
+/* PNG cosmetics from Gemini Studio — same slots, same pivots, no code changes */
+cosmeticImage('shades_art',  'face', 'art/cos-shades.png',  {w:1.60, ox:11,  oy:-7,  ax:0.42, ay:0.52});
+cosmeticImage('jetpack_art', 'back', 'art/cos-jetpack.png', {w:1.42, ox:-48, oy:-8,  ax:0.50, ay:0.50});
+cosmeticImage('scarf_art',   'neck', 'art/cos-scarf.png',   {w:1.30, ox:14,  oy:-30, ax:0.56, ay:0.50, rot:0.12});
+
+defineCosmetic({ id:'hoodie_code', slot:'body', draw:(R)=>{
+  ctx.beginPath(); ctx.ellipse(-4,10,CK.bodyRX*0.96,CK.bodyRY*0.72,0.04,Math.PI*0.02,Math.PI*0.98);
+  cp('#6BD1FF',5);
+  ctx.beginPath(); ctx.moveTo(-CK.bodyRX*0.5,6); ctx.quadraticCurveTo(0,20,CK.bodyRX*0.5,4);
+  ctx.strokeStyle='rgba(11,21,38,.35)'; ctx.lineWidth=3; ctx.stroke();
+}});
+
+function drawHead(p){
+  const R = CK.headR;
+  // wattle
+  ctx.beginPath(); ctx.ellipse(R*0.56,R*0.70,R*0.17,R*0.32,0.22,0,TAU); cp(CKC.comb,4);
+  // skull
+  ctx.beginPath(); ctx.ellipse(0,0,R*0.98,R*0.94,0,0,TAU); cp(CKC.body,5);
+  ctx.save(); ctx.clip();
+  const hg = ctx.createLinearGradient(-R,-R*0.5,R,R*0.5);
+  hg.addColorStop(0, CKC.shade); hg.addColorStop(0.45, CKC.body); hg.addColorStop(1, '#FFEDCC');
+  ctx.fillStyle=hg; ctx.fillRect(-R-2,-R-2,R*2+4,R*2+4); ctx.restore();
+  // beak
+  ctx.beginPath();
+  ctx.moveTo(R*0.70,-R*0.12); ctx.lineTo(R*1.66,R*0.16); ctx.lineTo(R*0.70,R*0.46);
+  ctx.closePath(); cp(CKC.beak,4.4);
+  ctx.beginPath(); ctx.moveTo(R*0.74,R*0.17); ctx.lineTo(R*1.54,R*0.18);
+  ctx.strokeStyle=CKC.edge; ctx.lineWidth=2.6; ctx.stroke();
+  // eye: half lidded, one raised brow. That is the whole personality.
+  const open = clamp(0.42 + p.shockT*1.5, 0, 1.25);
+  ctx.beginPath(); ctx.ellipse(R*0.34,-R*0.16,R*0.30,R*0.30,0,0,TAU);
+  ctx.fillStyle='#FFFFFF'; ctx.fill(); ctx.lineWidth=3.4; ctx.strokeStyle=CKC.edge; ctx.stroke();
+  ctx.save();
+  ctx.beginPath(); ctx.ellipse(R*0.34,-R*0.16,R*0.30,R*0.30,0,0,TAU); ctx.clip();
+  ctx.beginPath(); ctx.arc(R*0.40,-R*0.10,R*0.155,0,TAU); ctx.fillStyle=CKC.edge; ctx.fill();
+  ctx.beginPath(); ctx.arc(R*0.46,-R*0.17,R*0.055,0,TAU); ctx.fillStyle='#fff'; ctx.fill();
+  ctx.beginPath();                                    // the lid
+  ctx.rect(R*0.02,-R*0.50,R*0.66,R*0.34*(1-open));
+  ctx.fillStyle=CKC.body; ctx.fill();
+  ctx.restore();
+  ctx.beginPath();
+  ctx.moveTo(R*0.06,-R*0.46-R*0.20*p.shockT); ctx.lineTo(R*0.66,-R*0.58-R*0.26*p.shockT);
+  ctx.strokeStyle=CKC.edge; ctx.lineWidth=R*0.115; ctx.lineCap='round'; ctx.stroke();
+  // hat, then the comb bursting up in front of it
+  drawSlot('head', R);
+  ctx.beginPath();
+  ctx.moveTo(R*0.16,-R*1.02);
+  ctx.quadraticCurveTo(R*0.30,-R*1.62, R*0.56,-R*1.24);
+  ctx.quadraticCurveTo(R*0.76,-R*1.74, R*0.92,-R*1.14);
+  ctx.quadraticCurveTo(R*1.10,-R*1.40, R*1.02,-R*0.74);
+  ctx.quadraticCurveTo(R*0.60,-R*0.86, R*0.16,-R*1.02);
+  ctx.closePath(); cp(CKC.comb,4.6);
+  drawSlot('face', R);
+}
+
 function drawChicken(x, y, p){
   ctx.save();
   ctx.translate(x, y);                              // y = ground contact point
@@ -708,24 +843,23 @@ function drawChicken(x, y, p){
   });
   ctx.restore();
 
+  drawSlot('back', CK.bodyRX);            // jetpack etc. sits behind the body
+
   // body
   ctx.beginPath(); ctx.ellipse(0,0,CK.bodyRX,CK.bodyRY,0.04,0,TAU); cp(CKC.body,5);
   ctx.save(); ctx.clip();
-  ctx.beginPath(); ctx.ellipse(-CK.bodyRX*0.8,-6,34,48,0,0,TAU);
-  ctx.fillStyle=CKC.shade; ctx.fill();
-  ctx.beginPath(); ctx.ellipse(CK.bodyRX*0.55,-2,20,28,0,0,TAU);
-  ctx.fillStyle='rgba(255,180,71,.32)'; ctx.fill();
+  const bg = ctx.createLinearGradient(-CK.bodyRX,-CK.bodyRY*0.6, CK.bodyRX,CK.bodyRY*0.6);
+  bg.addColorStop(0, CKC.shade); bg.addColorStop(0.42, CKC.body); bg.addColorStop(1, '#FFEDCC');
+  ctx.fillStyle=bg; ctx.fillRect(-CK.bodyRX-2,-CK.bodyRY-2,CK.bodyRX*2+4,CK.bodyRY*2+4);
   ctx.restore();
+  drawSlot('body', CK.bodyRX);            // outfit rides the body pivot
+  drawSlot('neck', CK.bodyRX);            // scarf etc.
 
   // head (painted sprite carries hat + face)
   ctx.save();
   ctx.translate(CK.headX+p.headDX, CK.headY+p.headDY);
   ctx.rotate(p.headR);
-  if(ART.head){
-    const s = CK.headW/ART.head.width;
-    ctx.drawImage(ART.head, -ART.head.width*s*0.44, -ART.head.height*s*0.60,
-                  ART.head.width*s, ART.head.height*s);
-  } else drawHeadFallback();
+  drawHead(p);
   if(p.shockT>0){                                   // cartoon shock marks beat a face change at this size
     ctx.save(); ctx.globalAlpha=clamp(p.shockT*2,0,1);
     ctx.fillStyle='#FFF2DE'; ctx.strokeStyle=CKC.edge; ctx.lineWidth=3;
@@ -1178,8 +1312,12 @@ try{ game.firstRun = !localStorage.getItem('dgh.played'); }catch(e){}
 /* Hold to flap. Gravity always pulls; a held wing beats it. Nothing here is a
    jetpack — the lift comes in pulses on the downstroke, so altitude is something
    you keep working at rather than something you switch on. */
-const GRAV = 2950, FLAP_ACC = 5100, FLAP_HZ = 5.6;
-const VY_UP = -1000, VY_DOWN = 1350;
+const GRAV = 2600, FLAP_HZ = 4.6;
+/* Lift only happens on the downstroke, and the mean of a half-sine is 1/pi.
+   So the peak has to be ~3.1x the average you actually want. Getting this
+   wrong is why he could not climb. */
+const FLAP_ACC = 11000;                    // mean lift ~3500 vs gravity 2600
+const VY_UP = -900, VY_DOWN = 1250;
 
 /* ---------- DOM ---------- */
 const $ = s => document.querySelector(s);
@@ -1301,6 +1439,7 @@ function pressJump(){
   if(game.mode==='menu'){ startRun(); return; }
   if(game.mode==='dead'){ if(game.deadT>0.35) startRun(); return; }
   if(game.mode!=='play') return;
+  if(!player.jumpHeld) player.flapT = 0.08;   // start near the top of a downstroke
   player.jumpHeld = true;
   if(game.tut){ game.tut=false; elTut.classList.remove('show'); }
 }
@@ -1490,8 +1629,10 @@ function updatePlay(dt){
   if(Math.floor(game.score/50) !== Math.floor(before/50)) S.tick();
 
   // ---- flight ----
-  if(game.demo){ p.jumpHeld = game.demoFlap!==undefined ? true : Math.sin(game.runT*2.3) > -0.15;
-                 if(game.demoFlap!==undefined) p.flapT = game.demoFlap; }
+  if(game.demo){
+    p.jumpHeld = game.holdOff ? false : (game.demoFlap!==undefined ? true : Math.sin(game.runT*2.3) > -0.15);
+    if(game.demoFlap!==undefined) p.flapT = game.demoFlap;
+  }
   p.nearCool = Math.max(0, p.nearCool-dt);
   const ceilH = GROUND - CEIL;                       // usable altitude, in world units
   p.vy += GRAV*dt;
@@ -1616,6 +1757,8 @@ function updatePlay(dt){
   }
   // HUD
   elScore.textContent = pad6(game.score);
+  if(game.dbg) document.title = 'y='+Math.round(p.y)+' vy='+Math.round(p.vy)+
+    ' held='+(p.jumpHeld?1:0)+' t='+game.runT.toFixed(1);
 }
 
 function nearMiss(o){
@@ -1963,9 +2106,10 @@ function render(){
 
   // camera transform
   ctx.save();
-  ctx.translate(VW/2, VH*0.55);
-  ctx.scale(game.zoom, game.zoom);
-  ctx.translate(-VW/2, -VH*0.55);
+  const Z = game.zoomOverride || game.zoom;
+  const zx = game.zoomOverride ? (player.x-cam.x) : VW/2;
+  const zy = game.zoomOverride ? (GROUND - player.y - 70) : VH*0.55;
+  ctx.translate(zx, zy); ctx.scale(Z, Z); ctx.translate(-zx, -zy);
   ctx.translate(cam.shakeX, cam.shakeY + game.camY);
 
   drawSky();
@@ -2025,13 +2169,19 @@ function frame(now){
 
 /* boot */
 function boot(){
-  loadHead(ART.hat);
   resize();
   toMenu();
   requestAnimationFrame(frame);
   // dev helper: index.html?auto=1 drops you straight into a run
   if(/[?&]auto/.test(location.search)) setTimeout(startRun, 60);
   if(/[?&]demo/.test(location.search)) game.demo = true;
+  if(/[?&]dbg/.test(location.search)) game.dbg = true;
+  if(/[?&]hold=0/.test(location.search)) game.holdOff = true;
+  const wm=/[?&]wear=([^&]+)/.exec(location.search);
+  if(wm) decodeURIComponent(wm[1]).split(',').forEach(pair=>{
+    const [slot,id]=pair.split(':'); equip(slot, id==='none'?null:id);
+  });
+  const zm=/[?&]zoom=([0-9.]+)/.exec(location.search); if(zm) game.zoomOverride=parseFloat(zm[1]);
   const fm=/[?&]flap=([0-9.]+)/.exec(location.search); if(fm) game.demoFlap=parseFloat(fm[1]);
 }
 window.addEventListener('error', e => { document.title = 'ERR: '+e.message+' @'+e.lineno; });
