@@ -1,56 +1,77 @@
 # DON'T GET HIT — handover
 
 Live: https://digitaldotdeveloper.github.io/dont-get-hit/
+Hat picker: https://digitaldotdeveloper.github.io/dont-get-hit/chickens.html
 Repo: https://github.com/digitaldotdeveloper/dont-get-hit
 Local: C:\Users\it\Desktop\jj
 
-Everything is in **index.html**. One file, no build, no assets, no dependencies.
+Portrait one-button arcade flyer. **Hold to flap, release to fall.** The bird
+flies with its own wings — deliberately not a jetpack, so the game reads as its
+own thing rather than a Jetpack Joyride clone. Target is Android with ads later;
+GitHub Pages is only the test harness.
+
+Everything is in **index.html** plus four PNGs in `art/`. No build step.
+
+## The character — read this before touching him
+
+He is **a painted head on a procedural body**. That split is the whole design:
+
+- `art/head-snapback.png` / `art/head-bucket.png` — the hat, comb, face and beak,
+  cut out of the Gemini Studio hero renders. This carries the identity.
+- Body, wings, tail, legs and sneakers are **drawn in code** (`drawChicken`), so
+  they can squash, flap, plant and ragdoll.
+
+So: **swapping the hat is swapping one PNG** (`loadHead('bucket')`), and legs or
+accessories become new draw calls, not new art. That is the customisation plan
+from the brief, already wired.
+
+The heads were produced by `art/snapback.png` → key green → keep the largest
+connected blob of the top 40%. If you regenerate art, redo that step.
 
 ## Where things are (search these strings)
 
 | What | Marker |
 |---|---|
-| Palette | `const C = {` |
-| Canvas / virtual resolution | `function resize()` |
-| Audio + music groove | `const A = {`, `function musicTick()` |
-| Skeleton lengths | `const RIG = {` |
-| Leg IK | `function legIK` |
-| Run cycle foot path | `function footPath` |
-| All 20 animations | `function poseRun` … `function poseScared` |
-| Faces / expressions | `const FACES = {`, `function drawFace` |
-| Character renderer | `function drawCharacter` |
-| Death ragdoll | `function Ragdoll()` |
+| Chicken rig constants | `const CK = {` |
+| Head loading / hat swap | `function loadHead` |
+| All poses | `function poseRun` … `function poseCheer` |
+| Flap-driven flight pose | `function poseFly` |
+| Character renderer | `function drawChicken` |
+| Wing shape | `function drawWing` |
+| Death tumble + egg | `const rag = {`, `function layEgg` |
+| Feathers | `function featherBurst` |
+| Flight physics | `const GRAV`, `// ---- flight ----` |
+| Portrait framing | `function resize()` |
 | Obstacles (16) | `const OB = {` |
-| Parallax bake | `function buildLayers()` |
 | Difficulty tiers | `function tierNow`, `function spawnPattern` |
-| Near-miss + combo | `function nearMiss` |
-| Menus / HUD | the `<style>` block and `.screen` divs |
 
-## Coordinate system
+## Feel numbers that matter
 
-World units, not pixels. `SCALE = min(cssH/880, cssW/1300)` guarantees at least
-1300×880 units are visible, so reaction time is identical on every device.
-`GROUND` is the ground line. Character height ≈ 200 units.
+- `GRAV 2950`, `FLAP_ACC 5100`, `FLAP_HZ 5.6`. Lift arrives **in pulses on the
+  downstroke**, not as constant thrust — that is what stops it feeling like a
+  jetpack. `VY_UP/VY_DOWN` clamp the climb and the dive.
+- Speed ramps `430 → 730` over 85s. Much slower than the old jump version: you
+  are steering continuously, not reacting once.
+- Portrait: `SCALE = min(CH/1300, CW/700)`. Narrower view than landscape on
+  purpose — a bigger bird matters more than lead time when the challenge is
+  altitude. If you widen it, the bird shrinks.
+- `CEIL` is the altitude cap; air hazards spawn at random heights inside it.
 
-Character local space: **origin = hip**, +x forward, +y down.
+## Debug flags
 
-## Tuning numbers that matter
+`?auto=1` start a run immediately · `?demo=1` auto-flap · `?flap=0.5` freeze the
+wings at one point in the cycle (0–1) for inspecting the pose.
 
-- `GRAV = 5250`, `JUMP_V = 1774` (apex 300), `JUMP_CUT = 1485` (apex 210 on a quick tap).
-- Speed ramps `620 → 1080` over 85s (`game.diff`).
-- Air obstacles sit at `base:210, h:230`. The band is deliberately taller than the
-  max jump apex so a jump can **never** sneak over them — that keeps the rule
-  "don't jump into stuff" honest. If you change `JUMP_V`, re-check this.
-- Ground obstacles are 26–158 units tall; even the shortest tap clears them.
+## Known rough edges
 
-## Deliberately not built (yet)
+- Only one expression. The face is baked into the head PNG, so shock/dizzy are
+  done with cartoon marks (`p.shockT`) and body language instead. If expressions
+  turn out to matter, generate 2–3 more head crops and swap on state.
+- Obstacles are still the ones designed for the jump game. They work, but a
+  flyer wants gates and vertical gaps — that is the next real design pass.
+- `chickens.html` keys green in-browser, so it only works over http(s), never
+  `file://` (tainted canvas).
 
-Shops, currencies, missions, customisation, multiplayer, ads, IAP, login.
-The slice exists to prove the loop is fun first.
+## Deliberately not built yet
 
-## Ideas parked for next pass
-
-- A second environment (the parallax bake already supports swapping tile painters).
-- Coins/pickups along the jump arcs to hint safe lines.
-- A "so close" callout when a run ends within a few hundred points of the best.
-- Daily seed / ghost of your best run.
+Shops, currencies, missions, customisation UI, multiplayer, ads, IAP, login.

@@ -1,6 +1,6 @@
 # DON'T GET HIT
 
-A one-tap arcade runner. **Tap to jump over stuff. Don't jump into stuff.**
+A portrait one-button arcade flyer. **Hold to flap. Don't hit anything.**
 That's the whole game — understandable in about three seconds.
 
 **Play:** https://digitaldotdeveloper.github.io/dont-get-hit/
@@ -16,20 +16,20 @@ procedurally on a 2D canvas and every sound is synthesised with the WebAudio API
 
 ## The character
 
-He is not a sprite sheet. He is a **skeletal rig** — IK-solved legs (so his feet
-actually plant on the ground instead of skating), FK arms, and spring-driven hair
-and jacket hem that lag behind his motion. Every animation is a pose function, so
-they blend into each other with automatic follow-through.
+A **painted head on a procedural body**. The hat, comb, face and beak are cut
+from a Gemini Studio render; the body, wings, tail, legs and sneakers are drawn
+in code. That split means the wings can actually flap, the body can squash and
+ragdoll, and swapping the hat — or later the legs and accessories — is a one-line
+change rather than new art.
 
-Animations in the build: idle, run, sprint, jump anticipation, jump, fall, land,
-bad-landing stumble, near-miss reaction, impact, backward launch, verlet ragdoll,
-funny death, recovery, celebration, plus shocked / confused / angry / scared /
-confident acting beats.
+He flies with his own wings on purpose: lift arrives in pulses on each
+downstroke, so altitude is something you keep working at rather than a thrust
+button you hold. No jetpack.
 
-**Signature move:** on a near miss he snaps his head around to stare at whatever
-nearly killed him with a shocked face, then immediately gets back to running.
-A 2D head-turn cheat (`scaleX = cos(π·t)`) makes the flip read as one snappy
-cartoon smear.
+Animations: idle, peck and strut menu beats, ground run with the head locked in
+space the way a real chicken's is, flap, glide, dive, landing squash, near-miss
+flinch with a shock pop, impact, tumbling death with a feather burst — and he
+gets hit hard enough to lay an egg.
 
 ## Obstacles (16)
 
