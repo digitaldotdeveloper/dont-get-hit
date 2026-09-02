@@ -523,12 +523,14 @@ function setLegs(p, ax,ay, bx,by){
 /* ---- the poses ---- */
 /* wing angles: 0 = straight down, more negative = further up */
 function poseRun(ph, speedT, p){
-  const stride=lerp(40,48,speedT), lift=lerp(20,28,speedT), bob=lerp(5,7,speedT);
+  const stride=lerp(40,48,speedT), lift=lerp(22,30,speedT), bob=lerp(9,13,speedT);
   p.y = bob*Math.cos(4*Math.PI*(ph-0.12));
-  p.x = 2*Math.sin(4*Math.PI*ph);
-  p.rot = lerp(0.08,0.24,speedT) + 0.02*Math.sin(4*Math.PI*ph);
+  p.x = 3.5*Math.sin(4*Math.PI*ph);
+  p.rot = lerp(0.10,0.28,speedT) + 0.055*Math.sin(4*Math.PI*ph);
   // the head stays locked in space while the body pumps under it — real chickens do this
-  p.headDY = -p.y*1.18; p.headDX = -p.x*0.55 + 1.6*Math.sin(4*Math.PI*ph+2.2);
+  // the head stays locked in space while the body pumps under it, then thrusts
+  p.headDY = -p.y*1.30 + 1.4*Math.sin(2*Math.PI*ph+0.6);
+  p.headDX = -p.x*0.55 + 4.0*Math.sin(2*Math.PI*ph+2.2);
   p.headR = -p.rot*0.9 + 0.05*Math.sin(4*Math.PI*ph+1.2);
   const gy = CK.standH - CK.hipY - CK.ANKLE - p.y;
   footPath(ph, stride, lift, gy, _fp1);
@@ -536,11 +538,11 @@ function poseRun(ph, speedT, p){
   setLegs(p, _fp1.x-CK.hipX, _fp1.y, _fp2.x-CK.hipX, _fp2.y);
   // a running chicken pumps its wings for balance — out of phase with the legs
   const w = Math.sin(ph*TAU), w2 = Math.sin(ph*TAU + 1.15);
-  p.wingN = -1.48 + w*0.26; p.wingF = -1.38 - w*0.24;   // folded back along the body
-  p.tipN  = 0.34 + w2*0.40; p.tipF = 0.30 - w2*0.34;
-  p.wingOpen = 0.22 + 0.13*Math.max(0,w);
-  p.tail = 0.16*w - 0.04;
-  p.sx = 1 - 0.02*w; p.sy = 1 + 0.02*w;
+  p.wingN = -1.42 + w*0.52; p.wingF = -1.32 - w*0.46;   // wings shuffle for balance
+  p.tipN  = 0.34 + w2*0.55; p.tipF = 0.30 - w2*0.48;
+  p.wingOpen = 0.24 + 0.22*Math.max(0,w);
+  p.tail = 0.26*w - 0.04;
+  p.sx = 1 - 0.045*w; p.sy = 1 + 0.045*w;               // squash and stretch on the bounce
   return p;
 }
 /* Periodic Catmull-Rom through hand-placed keys. Non-uniform timing is the
@@ -563,17 +565,19 @@ function sampleTrack(keys, t){
 }
 /*      t     wing    tip   bodyY   rot    head   tail  */
 const FLAP_TRACK = [
-  [0.00, -2.88, -0.30,   5, -0.09,  0.17, -0.30],   // top of the upstroke, wings cocked
-  [0.10, -2.30,  0.40,   3, -0.14,  0.14, -0.24],   // snap into the power stroke
-  [0.24, -1.10,  0.88,  -5, -0.23,  0.06, -0.10],   // through the middle, max lift
-  [0.36, -0.18,  0.60, -10, -0.21,  0.01,  0.02],   // bottom, body punched upward
-  [0.50, -0.80, -0.10,  -5, -0.14,  0.08, -0.08],   // wing folds, recovery begins
-  [0.74, -1.95, -0.42,   2, -0.09,  0.15, -0.24]    // slow sweep back to the top
+  [0.00, -3.05, -0.34,   9, -0.06,  0.21, -0.34],   // wings cocked high, held a beat
+  [0.08, -2.85, -0.10,   8, -0.09,  0.19, -0.31],   // anticipation before the drive
+  [0.16, -2.05,  0.55,   4, -0.16,  0.13, -0.22],   // snap into the power stroke
+  [0.26, -0.85,  1.00,  -8, -0.27,  0.04, -0.06],   // through the middle, max lift
+  [0.36,  0.10,  0.72, -16, -0.25, -0.02,  0.06],   // bottom, body punched upward
+  [0.48, -0.55, -0.18,  -9, -0.16,  0.06, -0.06],   // wing folds, recovery begins
+  [0.68, -1.85, -0.50,   1, -0.09,  0.15, -0.24],   // slow sweep back up
+  [0.86, -2.70, -0.44,   6, -0.07,  0.19, -0.31]    // easing into the hold
 ];
 function poseFly(ph, power, vy, p){
   const [wing, tip, by, rot, hr, tail] = sampleTrack(FLAP_TRACK, ph);
-  const amp = 1 + power*0.26;                       // the catch stroke swings wider
-  p.y = by*amp; p.x = 2;
+  const amp = 1 + power*0.30;                       // the catch stroke swings wider
+  p.y = by*amp; p.x = 2 + by*0.06;
   p.rot = rot + clamp(vy/2800, -0.10, 0.26);        // banks nose-down as he drops
   p.headDX = 1; p.headDY = -by*0.55;                // head hangs back off the body pump
   p.headR = hr - clamp(vy/3200, -0.08, 0.20);
@@ -583,7 +587,7 @@ function poseFly(ph, power, vy, p){
   p.wingOpen = 1;
   setLegs(p, -18, 16, -24, 10);                     // feet tucked
   p.tail = tail;
-  p.sx = 1 - by*0.005; p.sy = 1 + by*0.005;         // stretches on the upbeat
+  p.sx = 1 - by*0.009; p.sy = 1 + by*0.009;         // stretches on the upbeat
   return p;
 }
 function poseGlide(t, vy, p){
@@ -591,8 +595,8 @@ function poseGlide(t, vy, p){
   p.y = 0; p.x = 0;
   p.rot = 0.06 + 0.42*k;
   p.headDY = 0; p.headR = -0.10 - 0.20*k;
-  const tr = Math.sin(t*22)*0.05*k;
-  p.wingN = -1.62 + tr; p.wingF = -1.50 - tr;      // wings held out, trembling in the dive
+  const tr = Math.sin(t*16)*0.09*k;
+  p.wingN = -1.70 + tr; p.wingF = -1.56 - tr;      // wings held out, trembling in the dive
   p.tipN = 0.16; p.tipF = 0.16; p.wingOpen = 1;
   setLegs(p, lerp(-13,-19,k), lerp(20,15,k), lerp(-19,-25,k), lerp(16,11,k));
   p.tail = 0.24*k;
@@ -875,7 +879,7 @@ function drawPart(id, scaleX, scaleY){
 loadPart('body','art/part-bodyref.png', {w:150, ax:0.5000, ay:0.5000});
 loadPart('headref','art/part-headref.png',{w:84, ax:0.5146, ay:0.4978});
 loadPart('head','art/part-head.png',    {w:78, ax:0.4324, ay:0.4607});   // bare head, for other hats
-loadPart('wing','art/part-wing.png', {w:90,   ax:0.6240, ay:0.0852, rot:-0.445});
+loadPart('wing','art/part-wing.png', {w:78,   ax:0.4282, ay:0.0809, rot:0.409});
 loadPart('wingfold','art/part-wingfold.png', {w:62, ax:0.6158, ay:0.0824, rot:-0.162});
 // no tail part: the reference's tail is part of the body silhouette itself
 loadPart('shoe','art/part-shoe.png', {w:36,   ax:0.2200, ay:0.220});
@@ -1635,13 +1639,13 @@ const GRAV = 2600, FLAP_HZ = 4.6;
    So the peak has to be ~3.1x the average you actually want. Getting this
    wrong is why he could not climb. */
 const FLAP_ACC = 13500;                    // mean lift ~4300 vs gravity 2600
-const VY_UP = -900, VY_DOWN = 1050;
+const VY_UP = -1010, VY_DOWN = 1050;
 /* Re-grabbing after a dive used to take ~1s and 250 units of sink, which read
    as the bird being heavy. The first stroke now bites into the fall instead. */
 const CATCH = 0.45;
 /* Every press also lands an instant impulse, so a quick tap lifts even if the
    finger is gone before the downstroke completes. */
-const FLAP_KICK = 340;
+const FLAP_KICK = 820;
 
 /* ---------- DOM ---------- */
 const $ = s => document.querySelector(s);
@@ -2234,7 +2238,7 @@ function buildPlayerPose(dt, speedT){
 
   if(game.demoFlap!==undefined || game.demoRun!==undefined){   // inspection: show the exact key
     for(let i=0;i<POSE_KEYS.length;i++) p.pose[POSE_KEYS[i]] = target[POSE_KEYS[i]];
-  } else blendPose(p.pose, target, dt, p.state==='run' ? 30 : 24);
+  } else blendPose(p.pose, target, dt, p.state==='run' ? 46 : 38);
   p.pose.shockT = target.shockT;                     // the pop must not be smoothed away
   springUpdate(dt, 0, -p.vy*0.02);
 }
@@ -2674,30 +2678,33 @@ function boot(){
   if(/[?&]rig/.test(location.search)) game.rig = true;
   if(/[?&]align/.test(location.search)) game.align = true;
   if(/[?&]selftest/.test(location.search)){
-    // Drive the REAL pressJump + updatePlay with a fixed step. Headless virtual
-    // time only advances rAF a frame or two, so a live test cannot measure this.
     setTimeout(()=>{
-      startRun();
-      const log=[]; const dt=1/60;
-      for(let i=0;i<170;i++){
-        if(i>30 && i<75){ if(!player.jumpHeld) pressJump(); }
-        else if(player.jumpHeld) releaseJump();
-        updatePlay(dt);
-        if(i%5===0) log.push(
-          (i*dt).toFixed(2)+' y='+Math.round(player.y)+' vy='+Math.round(player.vy)+
-          ' held='+(player.jumpHeld?1:0)+' latch='+(player.flapLatch||0).toFixed(2)+
-          ' g='+(player.onGround?1:0));
+      const dt=1/60, out=[];
+      function run(name, script, n){
+        startRun(); const log=[];
+        for(let i=0;i<n;i++){
+          script(i);
+          updatePlay(dt);
+          log.push({i, y:Math.round(player.y), h:player.jumpHeld?1:0});
+        }
+        const apex = Math.max.apply(null, log.map(r=>r.y));
+        out.push(name+' apex='+apex+'  '+
+          log.filter((_,i)=>i%14===0).map(r=>'y'+r.y+(r.h?'H':'')).join(' '));
       }
-      document.getElementById('selftest').textContent = log.join(String.fromCharCode(10));
+      run('TAP    ', i=>{ if(i===2) pressJump(); if(i===8) releaseJump(); }, 90);
+      run('HOLD   ', i=>{ if(i===2) pressJump(); if(i===62) releaseJump(); }, 120);
+      run('REHOLD ', i=>{ if(i===2) pressJump(); if(i===26) releaseJump();
+                          if(i===52) pressJump(); if(i===96) releaseJump(); }, 130);
+      document.getElementById('selftest').textContent = out.join(String.fromCharCode(10));
     }, 40);
   }
-  const th=/[?&]theme=([a-z]+)/.exec(location.search);
-  if(th) game.forceTheme = THEMES.find(t=>t.id===th[1]) || THEMES[0];
   if(/[?&]solo/.test(location.search)){ game.solo = true; document.body.classList.add('solo'); }
   const rmv=/[?&]run=([0-9.]+)/.exec(location.search); if(rmv) game.demoRun=parseFloat(rmv[1]);
   const sz=/[?&]sz=([0-9.]+)/.exec(location.search); if(sz) game.soloZoom=parseFloat(sz[1]);
   const pm=/[?&]pose=([a-z]+)(?::([0-9.]+))?/.exec(location.search);
   if(pm){ game.demoPose=pm[1]; game.demoPoseK = pm[2]!==undefined?parseFloat(pm[2]):1; }
+  const th=/[?&]theme=([a-z]+)/.exec(location.search);
+  if(th) game.forceTheme = THEMES.find(t=>t.id===th[1]) || THEMES[0];
   if(/[?&]hold=0/.test(location.search)) game.holdOff = true;
   const wm=/[?&]wear=([^&]+)/.exec(location.search);
   if(wm) decodeURIComponent(wm[1]).split(',').forEach(pair=>{
