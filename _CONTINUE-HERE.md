@@ -341,3 +341,67 @@ set happens to be, so adding frames needs no other change.
 is held for `game.mode === 'dead'` behind the score card. The ragdoll's own
 rotation is damped to 25% while frames are ready, because the art already
 tumbles and the two rotations fight each other.
+
+## The intro (prison escape)
+
+The menu IS the cell. `toMenu()` puts him lying on the bunk; `startIntro()`
+runs the sequence; the kick hands over to a normal run.
+
+Timeline in `updateIntro`, constants at the top of the cell block:
+
+    T_UP 0.36   swings upright on the bunk
+    T_STAND 0.72  stands, clocks the door
+    T_CHARGE 1.46 THE KICK -- everything fires on this frame
+    T_OUT 1.86  mode becomes 'play'
+
+`cellPose()` is the single place that decides where he is and which frame he
+is on; `pickFrame` defers to it for both 'menu' and 'intro'. The cell is drawn
+in code (`drawCellBack` / `drawCellFront` / `drawDoor` / `drawLock`), anchored
+at `game.cellX` in **world** space, so once play starts it recedes behind him
+on its own. That receding is what sells the escape -- do not draw it relative
+to the camera.
+
+Two traps this hit, both worth remembering:
+
+- **`if` in the middle of an `else if` chain.** `if(game.door) updateDoor(dt)`
+  went between `else if(intro)` and `else if(play)`, so `updatePlay` bound to
+  the door check and the game stopped dead for the third of a second the door
+  was airborne. Anything added to that dispatch goes after the whole chain.
+- **Dead references after replacing a block.** `drawTitle` still called
+  `cageShake()` from the sequence this replaced and threw every frame. Grep for
+  callers before deleting a block, and check the on-screen error panel.
+
+`?introt=N` freezes the intro at a moment so a beat can be looked at.
+
+## Screenshots
+
+**Do not use `chrome --headless --screenshot` for layout.** It lays the page
+out at 500px wide regardless of `--window-size` and then crops the image to the
+window, which chops the right-hand side off and looks exactly like a layout
+bug. It cost a round of chasing a bug that did not exist in tracks.html.
+
+Use `shot.py` (in the job tmp dir, kept with the session): it drives Chrome over
+CDP, sets `Emulation.setDeviceMetricsOverride`, and prints the real viewport and
+scrollWidth alongside the file so overflow is measured rather than eyeballed.
+Needs `--remote-allow-origins=*` or the websocket handshake is refused.
+
+## Obstacles
+
+`spawnPattern` places ONE hazard at a time anywhere in the column. There are no
+gates any more -- a floor piece and a ceiling piece at the same x is Flappy
+Bird, and it is what made everything look stacked. `tower` and `hanger` are
+placed only by `spawnStandalone`, and are filtered out of the generic ground
+pool, or a hanger spawns sitting on the floor drawn upside down.
+
+Zappers (`kind:'beam'`) are the Jetpack Joyride hazard: a bar at any angle,
+collided with `segRect` so the hitbox is the bar you can see. Every candidate
+is rejected unless it leaves a 210px corridor.
+
+`?obtest=1` spawns 240 patterns at each tier and checks for stacking, corridor
+width and exceptions. `?runt=N` starts a run at a difficulty.
+
+## Themes
+
+Three: `yard` (run one -- the prison he just left), `farm`, `city`. All three
+are code-drawn parallax in `buildLayers` plus a props pass. A new one needs a
+palette entry, a `buildXLayers`, and a branch in `drawProps`.
