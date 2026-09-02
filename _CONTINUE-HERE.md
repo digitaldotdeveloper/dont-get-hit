@@ -139,18 +139,20 @@ rules that keep them consistent.
 
 ## Feel numbers that matter
 
-- `GRAV 2600`, `FLAP_ACC 13500`, `FLAP_HZ 4.6`, `VY_DOWN 1050`. Lift arrives
-  **in pulses on the downstroke**, not as constant thrust — that is what stops it
-  feeling like a jetpack. **The mean of a half-sine is 1/pi**, so peak lift must
-  be about 3.1x the average you actually want; getting this wrong once made
-  holding the screen push him *down* and the game looked dead.
+- `GRAV 2600`, `LIFT 4300` — holding applies **constant** upward acceleration,
+  Jetpack Joyride style, and the wingbeat is purely visual. Lift used to arrive in
+  pulses on each downstroke, which read on a phone as the hold not registering, so
+  players tapped instead of held. Do not reintroduce pulsed lift.
 - `FLAP_KICK 340` — every press lands an instant upward impulse, and
   `flapLatch` keeps the downstroke running for 0.16s even if the finger lifts
   first. Without those, a quick tap could end before the stroke produced lift and
   the control felt dead in mid-air.
-- Pointers are tracked in a `Set` by id. A phone fires `pointercancel` on the
-  smallest finger movement, and releasing on that made "hold to fly" stop
-  silently mid-flight. Never release on a bare `pointercancel` again.
+- **Touch devices use touch events ONLY** (`TOUCH` branch). Pointer events are a
+  trap here: a phone fires `pointercancel` mid-hold from a micro finger movement,
+  and *any* handler that releases on it silently ends the hold with no further
+  event until the next tap. That is what forced multi-tapping instead of holding,
+  and it survived one "fix" because the release was hidden inside a pointer-set
+  handler. Do not add a `pointercancel` listener that releases.
 - `CK.ANKLE` is **computed from the shoe art** on load: the IK aims the ankle
   ANKLE units above the ground and the shoe hangs `(1-ay)*height` below it, so
   those must be the same number or the sneakers float or sink.

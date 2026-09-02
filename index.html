@@ -1853,29 +1853,31 @@ function pressJump(){
   if(game.tut){ game.tut=false; elTut.classList.remove('show'); }
 }
 function releaseJump(){ player.jumpHeld = false; }
-/* Input comes from three families because relying on Pointer Events alone left
-   devices where the hold never registered. pressJump/releaseJump are idempotent,
-   so overlapping events from two families are harmless. */
-const held = new Set();
-function onBtn(e){ const t=e.target; return t && t.closest && t.closest('button'); }
+/* On a touch device use touch events ONLY. Pointer events are the trap: a phone
+   fires pointercancel mid-hold (a micro finger movement is enough) and any
+   handler that releases on it silently ends the hold, with no further event
+   until the next tap. That is what forced multi-tapping instead of holding. */
+const TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints||0) > 0;
+function onBtn(e){
+  const t = e.target;
+  return !!(t && t.closest && t.closest('button'));
+}
 function downFrom(e){ audioInit(); if(onBtn(e)) return; pressJump(); }
 
-window.addEventListener('pointerdown', e => { if(onBtn(e)) return; held.add(e.pointerId); downFrom(e); }, {passive:true});
-function liftPointer(e){
-  held.delete(e.pointerId);
-  if(held.size === 0) releaseJump();
+if(TOUCH){
+  window.addEventListener('touchstart', downFrom, {passive:true});
+  const endTouch = e => { if(!e.touches || e.touches.length === 0) releaseJump(); };
+  window.addEventListener('touchend',    endTouch, {passive:true});
+  window.addEventListener('touchcancel', endTouch, {passive:true});
+} else {
+  window.addEventListener('pointerdown', downFrom, {passive:true});
+  window.addEventListener('pointerup',   releaseJump, {passive:true});
+  window.addEventListener('mousedown',   downFrom);
+  window.addEventListener('mouseup',     releaseJump);
 }
-window.addEventListener('pointerup', liftPointer, {passive:true});
-window.addEventListener('pointercancel', liftPointer, {passive:true});
+window.addEventListener('blur', releaseJump);
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden) releaseJump(); });
 
-window.addEventListener('touchstart', downFrom, {passive:true});
-function touchLift(e){ if(!e.touches || e.touches.length === 0){ held.clear(); releaseJump(); } }
-window.addEventListener('touchend', touchLift, {passive:true});
-window.addEventListener('touchcancel', touchLift, {passive:true});
-
-window.addEventListener('mousedown', downFrom);
-window.addEventListener('mouseup', ()=>{ held.clear(); releaseJump(); });
-window.addEventListener('blur', ()=>{ held.clear(); releaseJump(); });
 window.addEventListener('keydown', e => {
   if(e.code==='Space'||e.code==='ArrowUp'||e.code==='KeyW'){
     e.preventDefault(); audioInit(); if(!e.repeat) pressJump();
