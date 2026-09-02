@@ -871,7 +871,7 @@ function pickFrame(p){
     if(game.mode !== 'play') return ['land', 3];        // standing, for the menu
     return ['run', Math.floor((pl.phase % 1 + 1) % 1 * 6) % 6];
   }
-  if(pl.jumpHeld || (pl.flapLatch||0) > 0)
+  if(pl.thrusting)
     return ['fly', Math.floor((pl.flapT % 1 + 1) % 1 * 6) % 6];
   if(pl.vy < -120) return ['jump', pl.vy < -600 ? 2 : 3];   // still rising after a tap
   return ['land', 0];                                    // falling, reaching down
@@ -1672,7 +1672,7 @@ const game = {
 };
 const player = {
   x:0, y:0, vy:0, onGround:true, phase:0,
-  jumpHeld:false, flapT:0, flapBeat:-1, flapLag:0,
+  thrusting:false, flapT:0, flapBeat:-1, flapLag:0,
   state:'run',              // run|crouch|jump|fall|land|stumble|hit|sit|cheer|idle|beat
   stateT:0, landT:0, stumbleT:0,
   near:0, nearT:0, nearDir:1, nearCool:0,
@@ -1688,6 +1688,12 @@ try{ game.firstRun = !localStorage.getItem('dgh.played'); }catch(e){}
 /* Hold to flap. Gravity always pulls; a held wing beats it. Nothing here is a
    jetpack — the lift comes in pulses on the downstroke, so altitude is something
    you keep working at rather than something you switch on. */
+/* Jetpack Joyride flight, and nothing else layered on top:
+     hold  -> continuous upward thrust, for as long as it is held
+     release -> thrust stops at once, gravity takes over
+   No jump impulse, no fixed jump height, no tap-to-jump. Altitude is controlled
+   purely by how long you hold. Smoothness comes from acceleration plus drag,
+   never from an impulse. */
 const GRAV = 2500, FLAP_HZ = 4.6;
 /* Air drag is what makes flight feel smooth: velocity eases toward a terminal
    value instead of ramping linearly into a hard clamp. Terminal speeds land at
@@ -1696,14 +1702,10 @@ const DRAG = 2.6;
 /* Jetpack Joyride mechanics: holding applies CONSTANT lift, not pulses.
    Pulsed lift made a hold feel like it was not registering, so players tapped
    instead of holding. The wingbeat is now purely visual. */
-const LIFT = 5500;                         // constant while held, vs gravity 2500
-const FLAP_TAP = 300;                      // gentle mid-air response so a press is felt at once
+const THRUST = 5200;                       // continuous while held, vs gravity 2500
 const VY_UP = -1500, VY_DOWN = 1500;       // safety rails only; drag sets the real terminal
 /* Every press also lands an instant impulse, so a quick tap lifts even if the
    finger is gone before the downstroke completes. */
-/* An impulse only makes sense as a jump off the ground. Mid-air it is a jolt,
-   and jolts are exactly what stopped the flying feeling smooth. */
-const FLAP_KICK = 1150;
 
 /* ---------- DOM ---------- */
 const $ = s => document.querySelector(s);
@@ -1835,31 +1837,26 @@ function spawnPattern(){
 /* ============================================================
    INPUT
    ============================================================ */
-function pressJump(){
-  game.tapCount = (game.tapCount||0) + 1;        // count at ENTRY, before any early return
-  if(game.mode==='menu'){ startRun(); }              // fall through: the same press flies
+/* thrustOn / thrustOff are the ONLY movement inputs. They set a flag; all
+   motion happens in one place in updatePlay. */
+function thrustOn(){
+  game.tapCount = (game.tapCount||0) + 1;        // counted at entry, for ?dbg=1
+  if(game.mode==='menu'){ startRun(); }              // the same press also thrusts
   else if(game.mode==='dead'){
     if(game.deadT>0.35) startRun(); else return;
   }
   if(game.mode!=='play') return;
-  if(!player.jumpHeld){
-    player.flapT = 0.13;                       // start the downstroke immediately
-    player.flapLatch = 0.16;                   // ...and guarantee it finishes, even on a fast tap
-    if(player.onGround){
-      player.vy -= FLAP_KICK;                  // a tap off the ground is a jump
-    } else {
-      // a press must be felt immediately or the hold reads as not registering.
-      // Small enough not to be the jolt the old 820 impulse was.
-      player.vy -= FLAP_TAP;
-      player.powerT = 1;
-      featherBurst(player.x-24, GROUND-player.y-30, 3, 180);
-    }
+  if(!player.thrusting){
+    player.flapT = 0.13;                       // start the wingbeat animation
+    player.powerT = 1;
+    if(!player.onGround) featherBurst(player.x-24, GROUND-player.y-30, 3, 180);
     S.flap();
   }
-  player.jumpHeld = true;
+  player.thrusting = true;
   if(game.tut){ game.tut=false; elTut.classList.remove('show'); }
 }
-function releaseJump(){ player.jumpHeld = false; }
+function thrustOff(){ player.thrusting = false; }
+const pressJump = thrustOn, releaseJump = thrustOff;   // old names, one system
 /* Input, made unmissable.
    taps=0 on device meant no press was reaching pressJump at all. So: listen in
    the CAPTURE phase (nothing downstream can swallow it), bind to the canvas as
@@ -1867,7 +1864,7 @@ function releaseJump(){ player.jumpHeld = false; }
    pressJump/releaseJump are idempotent, so overlapping families are harmless.
    Every raw down is counted before any filtering, so the readout can tell
    "no event arrived" apart from "event arrived and was filtered". */
-const BUILD = 'b2234';   // shown in ?dbg=1 so a cached build is obvious
+const BUILD = 'b2236';   // shown in ?dbg=1 so a cached build is obvious
 const TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints||0) > 0;
 /* Only the mute button may swallow a press. Filtering on any <button> was the
    bug: on device every tap reported lastEv=start with taps=0, because the target
@@ -1904,24 +1901,23 @@ function bindDown(el){
 }
 bindDown(window); bindDown(cv);
 
+/* touchmove only keeps the gesture alive; it must never start or stop thrust */
 window.addEventListener('touchmove', e=>{
-  game.lastEv='move';
-  if(e.cancelable) e.preventDefault();          // stop scroll/gesture killing the touch
-  if(e.touches && e.touches.length > 0 && !player.jumpHeld && game.mode==='play') pressJump();
-}, CAP);
+  if(e.cancelable) e.preventDefault();
+}, ACT);
 window.addEventListener('touchend', e=>{
   game.lastEv='end';
-  if(!e.touches || e.touches.length === 0) releaseJump();
+  if(!e.touches || e.touches.length === 0) thrustOff();
 }, CAP);
-/* touchcancel and pointercancel never release: a phone fires them mid-hold and
-   then sends nothing else, which strands the player until the next tap. */
-window.addEventListener('touchcancel',  ()=>{ game.lastEv='cancel'; }, CAP);
-window.addEventListener('pointercancel',()=>{ game.lastEv='pcancel'; }, CAP);
-if(!TOUCH){
-  window.addEventListener('pointerup', ()=>{ game.lastEv='pup'; releaseJump(); }, CAP);
-  window.addEventListener('mouseup',   ()=>{ game.lastEv='mup'; releaseJump(); }, CAP);
-}
-document.addEventListener('visibilitychange', ()=>{ if(document.hidden) releaseJump(); });
+window.addEventListener('touchcancel', ()=>{ game.lastEv='cancel'; thrustOff(); }, CAP);
+/* desktop */
+window.addEventListener('pointerup',    ()=>{ game.lastEv='pup';  thrustOff(); }, CAP);
+window.addEventListener('pointercancel',()=>{ game.lastEv='pcan'; thrustOff(); }, CAP);
+window.addEventListener('mouseup',      ()=>{ game.lastEv='mup';  thrustOff(); }, CAP);
+window.addEventListener('mouseleave',   ()=>{ game.lastEv='mlv';  thrustOff(); }, CAP);
+document.documentElement.addEventListener('mouseleave', ()=>{ game.lastEv='mlv'; thrustOff(); }, CAP);
+window.addEventListener('blur', ()=>{ game.lastEv='blur'; thrustOff(); });
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden) thrustOff(); });
 
 window.addEventListener('keydown', e => {
   if(e.code==='Space'||e.code==='ArrowUp'||e.code==='KeyW'){
@@ -1970,7 +1966,7 @@ function startRun(){
   game.camY=0; game.camYT=0; game.deadT=0; game.newBest=false;
   player.x=0; player.y=0; player.vy=0; player.onGround=true; player.phase=0;
   player.flapT=0; player.flapBeat=-1; player.flapLag=0;
-  player.jumpHeld=false; player.liftRamp=0; player.flapLatch=0;   // never start a run mid-hold
+  player.thrusting=false;                                   // never start a run mid-thrust
   player.state='run'; player.stateT=0; player.landT=0; player.stumbleT=0;
   player.near=0; player.nearT=0; player.nearCool=0;
   player.beat=''; player.beatT=0;
@@ -1980,7 +1976,7 @@ function startRun(){
   elHud.classList.add('on');
   elCard.classList.remove('best');
   if(game.demo){ player.y = 430; player.onGround=false; player.state='fly';
-    player.jumpHeld=true; player.flapT = (game.demoFlap!==undefined?game.demoFlap:0.2); }
+    player.thrusting=true; player.flapT = (game.demoFlap!==undefined?game.demoFlap:0.2); }
   if(game.stage){                                   // drop gates straight in front, for inspection
     game.spawnT = 1e9;
     const band = GROUND-CEIL;
@@ -2118,24 +2114,29 @@ function updatePlay(dt){
   if(Math.floor(game.score/50) !== Math.floor(before/50)) S.tick();
 
   if(game.demoRun!==undefined){                    // freeze one frame of the run cycle
-    p.onGround=true; p.y=0; p.vy=0; p.state='run'; p.jumpHeld=false;
+    p.onGround=true; p.y=0; p.vy=0; p.state='run'; p.thrusting=false;
     p.phase=game.demoRun; buildPlayerPose(dt,speedT); return;
   }
   // ---- flight ----
   p.powerT = Math.max(0, (p.powerT||0) - dt*3.2);
   if(game.demo){
-    p.jumpHeld = game.holdOff ? false : (game.demoFlap!==undefined ? true : Math.sin(game.runT*2.3) > -0.15);
+    p.thrusting = game.holdOff ? false : (game.demoFlap!==undefined ? true : Math.sin(game.runT*2.3) > -0.15);
     if(game.demoFlap!==undefined) p.flapT = game.demoFlap;
   }
   p.nearCool = Math.max(0, p.nearCool-dt);
-  p.flapLatch = Math.max(0, (p.flapLatch||0) - dt);
-  const flapping = p.jumpHeld || p.flapLatch > 0;
   const ceilH = GROUND - CEIL;                       // usable altitude, in world units
+
+  /* THE movement model. Gravity always pulls; holding adds constant upward
+     thrust; releasing removes it that same frame. Drag makes velocity ease
+     toward a terminal speed instead of ramping forever, which is what gives
+     smooth acceleration and deceleration without any impulse. */
   p.vy += GRAV*dt;
-  if(flapping){
-    // constant lift while held; the wingbeat only drives the animation
-    p.liftRamp = Math.min(1, (p.liftRamp||0) + dt*22);   // near-instant: the hold must bite now
-    p.vy -= LIFT * p.liftRamp * dt;
+  if(p.thrusting) p.vy -= THRUST*dt;
+  p.vy -= p.vy * DRAG * dt;
+  p.vy = clamp(p.vy, VY_UP, VY_DOWN);                // safety rails only
+  p.y -= p.vy*dt;
+
+  if(p.thrusting){                                   // wingbeat is animation only
     p.flapT += dt*FLAP_HZ;
     const beat = Math.floor(p.flapT);
     if(beat !== p.flapBeat){
@@ -2146,13 +2147,8 @@ function updatePlay(dt){
         s0:70,s1:190, l0:0.18,l1:0.45, r0:3,r1:7, g:120});
     }
   } else {
-    p.liftRamp = Math.max(0, (p.liftRamp||0) - dt*7);  // ease off, do not cut
-    if(p.liftRamp > 0) p.vy -= LIFT * p.liftRamp * dt;
     p.flapT += dt*1.4;                               // wings glide, barely moving
   }
-  p.vy -= p.vy * DRAG * dt;                          // smooths both climb and fall
-  p.vy = clamp(p.vy, VY_UP, VY_DOWN);
-  p.y -= p.vy*dt;
 
   if(p.y >= ceilH){ p.y = ceilH; if(p.vy<0){ p.vy *= -0.25; addShake(3);
     featherBurst(p.x, GROUND-p.y+10, 3, 150); } }
@@ -2265,9 +2261,9 @@ function updatePlay(dt){
     const el=document.getElementById('selftest');
     if(el){ el.style.display='block';
       el.textContent =
-        BUILD+'  held='+(p.jumpHeld?1:0)+'  taps='+(game.tapCount||0)+'  raw='+(game.rawDown||0)+
+        BUILD+'  held='+(p.thrusting?1:0)+'  taps='+(game.tapCount||0)+'  raw='+(game.rawDown||0)+
         '  ev='+(game.lastEv||'-')+'  touch='+(TOUCH?1:0)+String.fromCharCode(10)+
-        'y='+Math.round(p.y)+'  vy='+Math.round(p.vy)+'  lift='+(p.liftRamp||0).toFixed(2)+
+        'y='+Math.round(p.y)+'  vy='+Math.round(p.vy)+'  thrust='+(p.thrusting?1:0)+
         '  ground='+(p.onGround?1:0)+'  mode='+game.mode;
     }
   }
@@ -2323,7 +2319,7 @@ function buildPlayerPose(dt, speedT){
     poseLand(k, target);
     if(p.stateT>0.24 && p.onGround) p.state='run';
   } else {
-    if(p.jumpHeld){
+    if(p.thrusting){
       poseFly(p.flapT, p.powerT||0, p.vy, target);
     } else {
       poseGlide(game.t, p.vy, target);
@@ -2792,17 +2788,17 @@ function boot(){
         for(let i=0;i<n;i++){
           script(i);
           updatePlay(dt);
-          log.push({i, y:Math.round(player.y), h:player.jumpHeld?1:0});
+          log.push({i, y:Math.round(player.y), h:player.thrusting?1:0});
         }
         const apex = Math.max.apply(null, log.map(r=>r.y));
         out.push(name+' apex='+apex+'  '+
           log.filter((_,i)=>i%5===0).map(r=>'y'+r.y+(r.h?'H':'')).join(' '));
       }
-      run('EARLY  ', i=>{ if(i===2) pressJump(); }, 26);   // first 0.4s of a hold
-      run('TAP    ', i=>{ if(i===2) pressJump(); if(i===8) releaseJump(); }, 90);
-      run('HOLD   ', i=>{ if(i===2) pressJump(); if(i===62) releaseJump(); }, 120);
-      run('REHOLD ', i=>{ if(i===2) pressJump(); if(i===26) releaseJump();
-                          if(i===52) pressJump(); if(i===96) releaseJump(); }, 130);
+      // hold length must map to altitude: short < medium < long
+      run('SHORT  ', i=>{ if(i===2) thrustOn(); if(i===14) thrustOff(); }, 120);
+      run('MEDIUM ', i=>{ if(i===2) thrustOn(); if(i===32) thrustOff(); }, 120);
+      run('LONG   ', i=>{ if(i===2) thrustOn(); if(i===70) thrustOff(); }, 120);
+      run('PULSED ', i=>{ if(i%16===2) thrustOn(); if(i%16===8) thrustOff(); }, 120);
       document.getElementById('selftest').textContent = out.join(String.fromCharCode(10));
     }, 40);
   }

@@ -137,6 +137,33 @@ rules that keep them consistent.
 | Obstacles (16) | `const OB = {` |
 | Difficulty tiers | `function tierNow`, `function spawnPattern` |
 
+## Flight model — one system, do not add a second
+
+Jetpack Joyride mechanics, exactly:
+
+```
+hold    -> continuous upward thrust, for as long as it is held
+release -> thrust stops that frame, gravity takes over
+```
+
+**No jump impulse, no fixed jump height, no tap-to-jump, no tap assist.**
+Altitude is controlled purely by how long you hold. `thrustOn()` / `thrustOff()`
+only set `player.thrusting`; all motion happens in one place in `updatePlay`:
+
+```js
+p.vy += GRAV*dt;
+if(p.thrusting) p.vy -= THRUST*dt;
+p.vy -= p.vy * DRAG * dt;
+```
+
+`DRAG 2.6` is what makes it feel smooth - velocity eases toward a terminal speed
+(about +/-1000 over ~0.4s) instead of ramping linearly into a clamp. `VY_UP` and
+`VY_DOWN` are safety rails only. Impulses, latches and lift ramps were all tried
+and all removed: each one is a second movement system competing with this one.
+
+Measured hold-length to altitude: 0.2s -> 71, 0.5s -> 295, 1.1s -> ceiling,
+rapid tapping -> 22 (tapping must not be a strategy).
+
 ## Feel numbers that matter
 
 - `DRAG 2.6` is what makes flight feel smooth: velocity eases toward a terminal
