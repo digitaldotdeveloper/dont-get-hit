@@ -273,6 +273,10 @@ const THEMES = [
     skyA:'#241043', skyB:'#5E2569', skyC:'#C4485E', skyD:'#F2794A', skyE:'#FFC46B',
     sun:'#FFE9A8', far:'#7B4287', mid:'#4E265F', near:'#301648', prop:'#1F0E33',
     road:'#2A1445', roadLine:'#3E2160', curb:'#3A1C57', rim:'#FFB447' },
+  { id:'yard', name:'PRISON YARD',
+    skyA:'#070C1C', skyB:'#122043', skyC:'#2C3A6B', skyD:'#4A4C7E', skyE:'#8A7CA8',
+    sun:'#DCE4FF', far:'#232B4C', mid:'#1A2140', near:'#121834', prop:'#0B0F22',
+    road:'#3A3A46', roadLine:'#4B4B58', curb:'#2A2A34', rim:'#9FD4FF' },
   { id:'farm', name:'DAWN FARM',
     skyA:'#13284C', skyB:'#3A5E85', skyC:'#E0805E', skyD:'#F6B25E', skyE:'#FFE7AE',
     sun:'#FFF4CC', far:'#6E8C77', mid:'#46654F', near:'#2C4535', prop:'#1B2C22',
@@ -1875,6 +1879,7 @@ function buildLayers(){
   layers.length = 0;
   const TW = 2400;
   if(THEME.id==='farm') return buildFarmLayers(TW);
+  if(THEME.id==='yard') return buildYardLayers(TW);
   // far skyline
   layers.push({ f:0.10, y:0, tile: makeLayer(TW, 640, (g)=>{
     g.fillStyle = C.far;
@@ -1936,6 +1941,63 @@ function buildLayers(){
   })});
 }
 
+/* The yard he has just broken out of: a perimeter wall, cell blocks with a
+   few lights still on, and razor wire. Same three-layer parallax as the
+   others so it costs nothing extra to draw. */
+function buildYardLayers(TW){
+  // far: the cell blocks, long and institutional
+  layers.push({ f:0.10, y:0, tile: makeLayer(TW, 640, (g)=>{
+    g.fillStyle = C.far;
+    let x = 0, i = 0;
+    while(x < TW){
+      const w = 260 + hash(i)*180, h = 210 + hash(i*3.1)*130;
+      g.beginPath(); g.rect(x, -h, w, h); g.fill();
+      g.fillStyle = 'rgba(190,214,255,.13)';                 // barred windows, in rows
+      for(let wy = -h + 34; wy < -40; wy += 46){
+        for(let wx = x + 22; wx < x + w - 26; wx += 42){
+          if(hash(wx*0.7 + wy) > 0.62) continue;
+          g.fillRect(wx, wy, 20, 26);
+        }
+      }
+      g.fillStyle = C.far;
+      x += w + 40 + hash(i*1.9)*40; i++;
+    }
+  })});
+  // mid: guard towers over the perimeter wall
+  layers.push({ f:0.28, y:0, tile: makeLayer(TW, 620, (g)=>{
+    g.fillStyle = C.mid;
+    g.fillRect(0, -132, TW, 132);                            // the wall
+    for(let i=0;i<4;i++){
+      const x = 180 + i*640 + hash(i*4.3)*120;
+      g.fillStyle = C.mid;
+      g.fillRect(x, -300, 26, 300); g.fillRect(x+86, -300, 26, 300);   // legs
+      g.fillRect(x-18, -390, 148, 92);                                 // cabin
+      g.beginPath();                                                   // roof
+      g.moveTo(x-34,-390); g.lineTo(x+56,-436); g.lineTo(x+146,-390); g.closePath(); g.fill();
+      g.fillStyle = 'rgba(255,236,180,.30)';                           // lit window
+      g.fillRect(x+2, -370, 100, 44);
+    }
+  })});
+  // near: the inner fence, with wire along the top
+  layers.push({ f:0.54, y:0, tile: makeLayer(TW, 620, (g)=>{
+    g.strokeStyle = C.near; g.lineWidth = 9;
+    for(let x=0; x<TW; x+=132){                              // posts
+      g.beginPath(); g.moveTo(x, 0); g.lineTo(x, -176); g.stroke();
+    }
+    g.lineWidth = 6;
+    g.beginPath(); g.moveTo(0,-176); g.lineTo(TW,-176); g.stroke();
+    g.beginPath(); g.moveTo(0,-96);  g.lineTo(TW,-96);  g.stroke();
+    g.strokeStyle = 'rgba(159,212,255,.20)'; g.lineWidth = 3;
+    for(let x=0; x<TW; x+=54){                               // coils of wire
+      g.beginPath(); g.arc(x+27, -192, 21, 0, TAU); g.stroke();
+    }
+    g.strokeStyle = 'rgba(159,212,255,.10)'; g.lineWidth = 2; // chain link
+    for(let x=0; x<TW; x+=26){
+      g.beginPath(); g.moveTo(x, -14); g.lineTo(x+26, -168); g.stroke();
+      g.beginPath(); g.moveTo(x+26, -14); g.lineTo(x, -168); g.stroke();
+    }
+  })});
+}
 function buildFarmLayers(TW){
   // far: rolling hills
   layers.push({ f:0.10, y:0, tile: makeLayer(TW, 620, (g)=>{
@@ -2283,7 +2345,7 @@ const pressJump = thrustOn, releaseJump = thrustOff;   // old names, one system
    pressJump/releaseJump are idempotent, so overlapping families are harmless.
    Every raw down is counted before any filtering, so the readout can tell
    "no event arrived" apart from "event arrived and was filtered". */
-const BUILD = 'b0903-0225';   // shown in ?dbg=1 so a cached build is obvious
+const BUILD = 'b0903-0230';   // shown in ?dbg=1 so a cached build is obvious
 const TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints||0) > 0;
 /* Only the mute button may swallow a press. Filtering on any <button> was the
    bug: on device every tap reported lastEv=start with taps=0, because the target
@@ -2374,9 +2436,9 @@ document.addEventListener('visibilitychange', ()=>{
    FLOW
    ============================================================ */
 function toMenu(){
-  // the farm, because that is where he is being held
-  const farm = THEMES.findIndex(t=>t.id==='farm');
-  applyTheme(farm>=0 ? THEMES[farm] : THEMES[0]);
+  // the yard, because that is what is outside his cell
+  const yard = THEMES.findIndex(t=>t.id==='yard');
+  applyTheme(yard>=0 ? THEMES[yard] : THEMES[0]);
   game.mode='menu'; game.obstacles.length=0; game.parts.length=0; game.pops.length=0;
   game.cellX = PX;                       // he is in the cell before anything is pressed
   game.door=null; game.doorGone=false; game.lockGone=false; game.doorBow=0;
@@ -2389,11 +2451,11 @@ function toMenu(){
 }
 function startRun(){
   game.runCount = (game.runCount||0) + 1;
-  // the farm first: he kicks his way out of a cage, so the first run should
-  // look like the place he was being kept
-  const farm = THEMES.findIndex(t=>t.id==='farm');
+  // he has just kicked his way out of a cell, so run one is the yard he is
+  // running out of; after that the themes rotate
+  const yard = THEMES.findIndex(t=>t.id==='yard');
   applyTheme(game.forceTheme ||
-    (game.runCount===1 && farm>=0 ? THEMES[farm] : THEMES[game.runCount % THEMES.length]));
+    (game.runCount===1 && yard>=0 ? THEMES[yard] : THEMES[game.runCount % THEMES.length]));
   game.mode='play'; game.runT=game.presetRunT||0; game.score=0; game.dist=0;
   game.near=0; game.combo=0; game.comboBest=0; game.comboT=0;
   game.speed=340; game.diff=0; game.spawnT=2.6;
@@ -2556,6 +2618,10 @@ function updateIntro(dt){
   }
   // the steel gives just before it goes
   game.doorBow = (t > T_CHARGE-0.13 && t < T_CHARGE) ? (t-(T_CHARGE-0.13))/0.13 : 0;
+  // he compresses into the last stride, then snaps out through the door
+  const q = player.pose;
+  if(game.doorBow > 0){ q.sx = 1 - game.doorBow*0.13; q.sy = 1 + game.doorBow*0.15; }
+  else { q.sx = damp(q.sx, 1, 9, dt); q.sy = damp(q.sy, 1, 9, dt); }
 
   if(was < T_CHARGE && t >= T_CHARGE){                   // THE KICK
     S.doorbreak();
@@ -2566,6 +2632,7 @@ function updateIntro(dt){
     if(navigator.vibrate) try{ navigator.vibrate([40,30,70]); }catch(e){}
     featherBurst(cam.x + game.cellX, GROUND-150, 12, 380);
     game.titleT = -1;                                    // and the title goes with it
+    player.pose.sx = 1.38; player.pose.sy = 0.72;        // stretched through the doorway
   }
   if(was < T_OUT && t >= T_OUT){                         // straight into the run
     elHud.classList.add('on');
@@ -3013,6 +3080,52 @@ function drawLayers(){
     }
   }
 }
+/* Floodlights, and a searchlight that sweeps the yard looking for him. */
+function drawYardProps(){
+  const spacing = 520, first = Math.floor((cam.x-200)/spacing);
+  for(let i=first; i<first+Math.ceil(VW/spacing)+3; i++){
+    const x = i*spacing - cam.x + 160, kind = hash(i*3.7);
+    ctx.save(); ctx.translate(x, GROUND);
+    if(kind < 0.5){
+      // a floodlight mast leaning over the track
+      ctx.strokeStyle = C.prop; ctx.lineWidth = 13; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-268); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0,-268); ctx.lineTo(46,-292); ctx.stroke();
+      ctx.fillStyle = C.prop;
+      ctx.beginPath();
+      ctx.roundRect(30, -320, 54, 34, 7); ctx.fill();
+      const beat = 0.55 + 0.45*Math.sin(game.t*1.6 + i);      // lamps buzzing
+      ctx.globalAlpha = beat;
+      ctx.fillStyle = '#FFF0B8';
+      ctx.beginPath(); ctx.roundRect(36, -314, 42, 22, 5); ctx.fill();
+      const beam = ctx.createLinearGradient(57,-292, 57,-40);  // the light it throws
+      beam.addColorStop(0, 'rgba(255,240,184,.20)');
+      beam.addColorStop(1, 'rgba(255,240,184,0)');
+      ctx.fillStyle = beam; ctx.globalAlpha = beat*0.8;
+      ctx.beginPath(); ctx.moveTo(36,-290); ctx.lineTo(78,-290);
+      ctx.lineTo(168,-30); ctx.lineTo(-54,-30); ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 1;
+    } else {
+      // a searchlight on a post, sweeping
+      ctx.strokeStyle = C.prop; ctx.lineWidth = 11; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-198); ctx.stroke();
+      ctx.save(); ctx.translate(0,-206);
+      ctx.rotate(-0.9 + Math.sin(game.t*0.75 + i*1.7)*0.6);
+      ctx.fillStyle = C.prop;
+      ctx.beginPath(); ctx.roundRect(-16,-17,44,34,8); ctx.fill();
+      const sweep = ctx.createLinearGradient(28,0, 520,0);
+      sweep.addColorStop(0, 'rgba(200,226,255,.26)');
+      sweep.addColorStop(1, 'rgba(200,226,255,0)');
+      ctx.fillStyle = sweep;
+      ctx.beginPath(); ctx.moveTo(26,-15); ctx.lineTo(520,-150);
+      ctx.lineTo(520,150); ctx.lineTo(26,15); ctx.closePath(); ctx.fill();
+      ctx.fillStyle='#DCE4FF';
+      ctx.beginPath(); ctx.ellipse(27,0,6,14,0,0,TAU); ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+}
 function drawFarmProps(){
   const spacing=470, first=Math.floor((cam.x-200)/spacing);
   for(let i=first;i<first+Math.ceil(VW/spacing)+3;i++){
@@ -3052,6 +3165,7 @@ function drawFarmProps(){
 }
 function drawStreetProps(){
   if(THEME.id==='farm') return drawFarmProps();
+  if(THEME.id==='yard') return drawYardProps();
   // lamps + trees + hydrants drawn live so they can be lit/animated
   const spacing = 460;
   const first = Math.floor((cam.x-200)/spacing);
