@@ -375,8 +375,15 @@ function noise(dur, f0, f1, vol, q){
 }
 const S = {
   jump(){ tone(300,0.16,'square',0.13,720); noise(0.12,900,2400,0.06,0.8); },
-  step(){ noise(0.055,260,120,0.055,1.4); },
-  land(){ noise(0.14,180,70,0.16,1.0); tone(120,0.1,'sine',0.14,70); },
+  step(){                                   // sneaker hitting the ground
+    noise(0.045,1900,700,0.045,2.2);        // the scuff of the rubber
+    tone(96,0.07,'sine',0.085,62);          // the weight behind it
+  },
+  land(){                                   // both feet, hard
+    noise(0.17,240,60,0.2,0.9);
+    tone(130,0.14,'sine',0.2,48);
+    noise(0.07,2600,1500,0.05,3.0);         // the squeak on top
+  },
   stumble(){ tone(200,0.1,'triangle',0.1,140); noise(0.16,320,140,0.09,1.2); },
   near(){ noise(0.26,2200,340,0.13,1.6); tone(880,0.1,'sine',0.06,1320); },
   combo(n){ tone(520*Math.pow(1.16,Math.min(n,8)),0.11,'triangle',0.14,780*Math.pow(1.1,Math.min(n,8))); },
@@ -385,8 +392,12 @@ const S = {
   tick(){ tone(1180,0.04,'square',0.035); },
   best(){ [0,1,2,3].forEach((i)=> setTimeout(()=> tone([523,659,784,1047][i],0.22,'triangle',0.17), i*95)); },
   click(){ tone(660,0.06,'square',0.12,880); },
-  land_soft(){ noise(0.09,220,110,0.08,1.2); },
-  flap(){ noise(0.13,520,140,0.10,0.9); tone(210,0.09,'sine',0.05,140); },
+  land_soft(){ noise(0.09,220,110,0.08,1.2); tone(110,0.07,'sine',0.06,70); },
+  flap(){                                   // one wingbeat: a whoosh, then the push
+    noise(0.19,340,1500,0.075,1.5);         // air moving over the feathers
+    noise(0.10,900,180,0.06,1.1);
+    tone(150,0.11,'sine',0.05,96);
+  },
   cluck(){ tone(700,0.07,'square',0.10,430); setTimeout(()=>tone(520,0.06,'square',0.08,300),70); },
   slide(){ tone(900,0.45,'sine',0.15,110); },
   boing(){ tone(520,0.34,'square',0.16,90); tone(260,0.30,'triangle',0.10,70); },
@@ -438,7 +449,7 @@ function musicTick(){
 let TRACK = null, trackWanted = 0;
 function initTrack(){
   if(TRACK) return;
-  TRACK = new Audio('audio/theme.mp3');
+  TRACK = new Audio('audio/theme-jazz.mp3');
   TRACK.loop = true; TRACK.volume = 0; TRACK.preload = 'auto';
   TRACK.addEventListener('canplaythrough', ()=>{ TRACK.ready = true; }, {once:true});
   TRACK.addEventListener('error', ()=>{ TRACK = null; });   // fall back to the synth
@@ -849,7 +860,7 @@ function cosmeticImage(id, slot, src, opt){
    swappable while frames are in use. If any image fails to load the
    procedural puppet draws instead - the character can never vanish.
    ============================================================ */
-const FRAME_DATA = {"run":[{"f":"run0.webp","w":193,"h":188,"lift":0.0},{"f":"run1.webp","w":136,"h":191,"lift":0.0},{"f":"run2.webp","w":178,"h":187,"lift":1.1},{"f":"run3.webp","w":148,"h":198,"lift":26.5},{"f":"run4.webp","w":156,"h":189,"lift":-1.1},{"f":"run5.webp","w":149,"h":190,"lift":-1.1}],"fly":[{"f":"fly0.webp","w":131,"h":221,"lift":0.0},{"f":"fly1.webp","w":148,"h":181,"lift":-0.9},{"f":"fly2.webp","w":162,"h":190,"lift":-0.9},{"f":"fly3.webp","w":141,"h":164,"lift":13.0},{"f":"fly4.webp","w":132,"h":182,"lift":-0.9},{"f":"fly5.webp","w":133,"h":196,"lift":-0.9}],"jump":[{"f":"jump0.webp","w":146,"h":156,"lift":-0.7},{"f":"jump1.webp","w":120,"h":215,"lift":-0.7},{"f":"jump2.webp","w":142,"h":190,"lift":49.0},{"f":"jump3.webp","w":142,"h":168,"lift":56.5}],"land":[{"f":"land0.webp","w":141,"h":190,"lift":22.8},{"f":"land1.webp","w":132,"h":174,"lift":-0.6},{"f":"land2.webp","w":131,"h":151,"lift":-0.6},{"f":"land3.webp","w":135,"h":191,"lift":-0.6}]};
+const FRAME_DATA = {"run":[{"f":"run0.webp","w":202,"h":195,"lift":0.0},{"f":"run1.webp","w":142,"h":186,"lift":2.1},{"f":"run2.webp","w":141,"h":187,"lift":2.1},{"f":"run3.webp","w":183,"h":192,"lift":0.0},{"f":"run4.webp","w":148,"h":192,"lift":2.1},{"f":"run5.webp","w":167,"h":182,"lift":0.0}],"jump":[{"f":"jump0.webp","w":132,"h":169,"lift":6.6},{"f":"jump1.webp","w":144,"h":136,"lift":6.6},{"f":"jump2.webp","w":109,"h":202,"lift":0.0},{"f":"jump3.webp","w":152,"h":184,"lift":17.1},{"f":"jump4.webp","w":135,"h":170,"lift":27.7}],"land":[{"f":"land0.webp","w":134,"h":169,"lift":23.2},{"f":"land1.webp","w":135,"h":154,"lift":0.0},{"f":"land2.webp","w":128,"h":128,"lift":0.0},{"f":"land3.webp","w":137,"h":155,"lift":0.0}],"hit":[{"f":"hit0.webp","w":155,"h":175,"lift":5.5},{"f":"hit1.webp","w":215,"h":245,"lift":11.7},{"f":"hit2.webp","w":177,"h":223,"lift":3.9},{"f":"hit3.webp","w":175,"h":207,"lift":6.5},{"f":"hit4.webp","w":149,"h":68,"lift":0.0},{"f":"hit5.webp","w":132,"h":149,"lift":3.5}],"fly":[{"f":"fly0.webp","w":132,"h":171,"lift":0.0},{"f":"fly2.webp","w":121,"h":162,"lift":0.0},{"f":"fly5.webp","w":124,"h":161,"lift":0.0},{"f":"fly1.webp","w":125,"h":169,"lift":0.9},{"f":"fly3.webp","w":124,"h":170,"lift":2.6},{"f":"fly4.webp","w":122,"h":170,"lift":1.7}]};
 const FR = { ready:false, n:0, need:0, img:{} };
 const SPR = 175/190;                       // world units per frame pixel
 (function loadFrames(){
@@ -864,20 +875,33 @@ const SPR = 175/190;                       // world units per frame pixel
     });
   }
 })();
+const cyc = (set, ph) => {                              // wrap a 0..1 phase onto a cycle
+  const n = FRAME_DATA[set].length;
+  return [set, Math.min(n-1, Math.floor(((ph % 1) + 1) % 1 * n))];
+};
 function pickFrame(p){
   const pl = player;
+  /* getting hit runs its own six-frame sequence: impact, launched, two tumbles,
+     face down, then sitting up dazed while the score card is on screen. */
+  if(game.mode === 'dying'){
+    const n = FRAME_DATA.hit.length - 1;                 // last frame is the sit-up
+    return ['hit', Math.min(n-1, Math.floor(clamp(game.dyingT/1.15,0,1) * n))];
+  }
+  if(game.mode === 'dead') return ['hit', FRAME_DATA.hit.length - 1];
   if(pl.state === 'land'){
     const k = clamp(1 - pl.stateT/0.26, 0, 1);          // 1 at touchdown -> 0 recovered
-    const i = k > 0.66 ? 1 : (k > 0.28 ? 2 : 3);
-    return ['land', i];
+    return ['land', k > 0.66 ? 1 : (k > 0.28 ? 2 : 3)];
   }
   if(pl.onGround){
     if(game.mode !== 'play') return ['land', 3];        // standing, for the menu
-    return ['run', Math.floor((pl.phase % 1 + 1) % 1 * 6) % 6];
+    return cyc('run', pl.phase);
   }
-  if(pl.thrusting)
-    return ['fly', Math.floor((pl.flapT % 1 + 1) % 1 * 6) % 6];
-  if(pl.vy < -120) return ['jump', pl.vy < -600 ? 2 : 3];   // still rising after a tap
+  if(pl.thrusting) return cyc('fly', pl.flapT);
+  if(pl.vy < -120){                                      // climbing: wind-up -> apex
+    const j = FRAME_DATA.jump;
+    const i = pl.vy < -900 ? 1 : pl.vy < -500 ? 2 : pl.vy < -220 ? 3 : 4;
+    return ['jump', Math.min(i, j.length-1)];
+  }
   return ['land', 0];                                    // falling, reaching down
 }
 function drawChickenFrames(x, y, p){
@@ -1214,7 +1238,7 @@ const rag = {
   draw(){
     ctx.save();
     ctx.translate(this.x, this.y + CK.standH);
-    ctx.rotate(this.rot);
+    ctx.rotate(FR.ready ? this.rot*0.25 : this.rot);   // drawn frames already tumble
     ctx.translate(0, -CK.standH);
     const p=this.pose, keep=p.rot; p.rot=0;
     ctx.translate(0, CK.standH);
@@ -1871,7 +1895,7 @@ const pressJump = thrustOn, releaseJump = thrustOff;   // old names, one system
    pressJump/releaseJump are idempotent, so overlapping families are harmless.
    Every raw down is counted before any filtering, so the readout can tell
    "no event arrived" apart from "event arrived and was filtered". */
-const BUILD = 'b2305';   // shown in ?dbg=1 so a cached build is obvious
+const BUILD = 'b2348';   // shown in ?dbg=1 so a cached build is obvious
 const TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints||0) > 0;
 /* Only the mute button may swallow a press. Filtering on any <button> was the
    bug: on device every tap reported lastEv=start with taps=0, because the target
