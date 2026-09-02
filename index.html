@@ -450,6 +450,14 @@ const S = {
     tone(920, 0.075, 'square', 0.06, 920, null, 0.12);
   },
   whoosh(){ noise(0.17, 260, 1400, 0.045, 1.25); },
+  cagerattle(){ noise(0.06, 1800, 900, 0.05, 4.0); tone(300,0.05,'square',0.035,240); },
+  cagebreak(){                              // the door leaves the building
+    tone(120, 0.30, 'sawtooth', 0.24, 40);
+    noise(0.34, 1500, 120, 0.30, 0.7);                       // splintering
+    wob(300, 90, 0.30, {type:'square', vol:0.16, depth:60, rate:15});
+    noise(0.16, 3000, 1400, 0.10, 2.4, 0.02);                // shrapnel
+    tone(700, 0.10, 'square', 0.10, 1200, null, 0.05);
+  },
   thud(){ noise(0.18,170,45,0.2,1.0); tone(96,0.16,'sine',0.15,44); },
   near(){ noise(0.24,2000,320,0.095,1.8); tone(1040,0.08,'sine',0.045,1560); },
   stumble(){ tone(200,0.1,'triangle',0.09,140); noise(0.16,320,140,0.08,1.2); },
@@ -923,7 +931,7 @@ function cosmeticImage(id, slot, src, opt){
    swappable while frames are in use. If any image fails to load the
    procedural puppet draws instead - the character can never vanish.
    ============================================================ */
-const FRAME_DATA = {"run":[{"f":"run0.webp","w":206,"h":199,"ay":199},{"f":"run1.webp","w":138,"h":182,"ay":182},{"f":"run2.webp","w":136,"h":181,"ay":181},{"f":"run3.webp","w":187,"h":196,"ay":196},{"f":"run4.webp","w":140,"h":181,"ay":181},{"f":"run5.webp","w":179,"h":195,"ay":195}],"fly":[{"f":"fly0.webp","w":110,"h":161,"ay":162.3},{"f":"fly1.webp","w":112,"h":158,"ay":163.1},{"f":"fly2.webp","w":163,"h":210,"ay":191.6},{"f":"fly3.webp","w":147,"h":158,"ay":181.3},{"f":"fly4.webp","w":148,"h":186,"ay":187.3},{"f":"fly5.webp","w":130,"h":185,"ay":179.7}],"fall":[{"f":"fall0.webp","w":122,"h":187,"ay":184.0},{"f":"fall1.webp","w":145,"h":199,"ay":186.0},{"f":"fall2.webp","w":174,"h":210,"ay":179.8},{"f":"fall3.webp","w":143,"h":198,"ay":182.3}],"jump":[{"f":"jump0.webp","w":122,"h":148,"ay":171.0},{"f":"jump1.webp","w":140,"h":171,"ay":169.4},{"f":"jump2.webp","w":138,"h":221,"ay":193.2},{"f":"jump3.webp","w":183,"h":186,"ay":179.6},{"f":"jump4.webp","w":155,"h":186,"ay":180.3}],"land":[{"f":"land0.webp","w":145,"h":183,"ay":183},{"f":"land1.webp","w":157,"h":179,"ay":179},{"f":"land2.webp","w":122,"h":121,"ay":121},{"f":"land3.webp","w":165,"h":186,"ay":186}],"hit":[{"f":"hit0.webp","w":145,"h":164,"ay":172.9},{"f":"hit1.webp","w":163,"h":186,"ay":185.1},{"f":"hit2.webp","w":122,"h":154,"ay":173.6},{"f":"hit3.webp","w":106,"h":126,"ay":166.0},{"f":"hit4.webp","w":178,"h":81,"ay":140.5},{"f":"hit5.webp","w":128,"h":146,"ay":173.4}]};
+const FRAME_DATA = {"run":[{"f":"run0.webp","w":206,"h":199,"ay":199},{"f":"run1.webp","w":138,"h":182,"ay":182},{"f":"run2.webp","w":136,"h":181,"ay":181},{"f":"run3.webp","w":187,"h":196,"ay":196},{"f":"run4.webp","w":140,"h":181,"ay":181},{"f":"run5.webp","w":179,"h":195,"ay":195}],"fly":[{"f":"fly0.webp","w":110,"h":161,"ay":162.3},{"f":"fly1.webp","w":112,"h":158,"ay":163.1},{"f":"fly2.webp","w":163,"h":210,"ay":191.6},{"f":"fly3.webp","w":147,"h":158,"ay":181.3},{"f":"fly4.webp","w":148,"h":186,"ay":187.3},{"f":"fly5.webp","w":130,"h":185,"ay":179.7}],"fall":[{"f":"fall0.webp","w":122,"h":187,"ay":184.0},{"f":"fall1.webp","w":145,"h":199,"ay":186.0},{"f":"fall2.webp","w":174,"h":210,"ay":179.8},{"f":"fall3.webp","w":143,"h":198,"ay":182.3}],"jump":[{"f":"jump0.webp","w":122,"h":148,"ay":171.0},{"f":"jump1.webp","w":140,"h":171,"ay":169.4},{"f":"jump2.webp","w":138,"h":221,"ay":193.2},{"f":"jump3.webp","w":183,"h":186,"ay":179.6},{"f":"jump4.webp","w":155,"h":186,"ay":180.3}],"land":[{"f":"land0.webp","w":145,"h":183,"ay":183},{"f":"land1.webp","w":157,"h":179,"ay":179},{"f":"land2.webp","w":122,"h":121,"ay":121},{"f":"land3.webp","w":165,"h":186,"ay":186}],"hit":[{"f":"hit0.webp","w":145,"h":164,"ay":172.9},{"f":"hit1.webp","w":163,"h":186,"ay":185.1},{"f":"hit2.webp","w":122,"h":154,"ay":173.6},{"f":"hit3.webp","w":106,"h":126,"ay":166.0},{"f":"hit4.webp","w":178,"h":81,"ay":140.5},{"f":"hit5.webp","w":128,"h":146,"ay":173.4}],"cage":[{"f":"cage0.webp","w":150,"h":146,"ay":146.0},{"f":"cage1.webp","w":129,"h":136,"ay":136.0},{"f":"cage2.webp","w":106,"h":139,"ay":140.2},{"f":"cage3.webp","w":183,"h":142,"ay":168.9}]};
 const FR = { ready:false, n:0, need:0, img:{} };
 const SPR = 175/190;                       // world units per frame pixel
 (function loadFrames(){
@@ -944,6 +952,11 @@ const cyc = (set, ph) => {                              // wrap a 0..1 phase ont
 };
 function pickFrame(p){
   const pl = player;
+  if(game.mode === 'intro'){
+    const t = game.introT;
+    return ['cage', t < 0.40 ? 0 : t < 0.66 ? 1 : t < 0.96 ? 2 : 3];
+  }
+  if(pl.kickT > 0) return ['cage', 3];      // hold the kick a beat into the run
   /* getting hit runs its own six-frame sequence: impact, launched, two tumbles,
      face down, then sitting up dazed while the score card is on screen. */
   if(game.mode === 'dying'){
@@ -1316,6 +1329,66 @@ const rag = {
     ctx.restore();
   }
 };
+
+/* ============================================================
+   THE CAGE — the intro. He is not trapped in it, he is sitting in
+   it, and he leaves when he feels like it.
+   ============================================================ */
+const CAGE = { w:196, h:178, bars:5 };
+function cageShake(){
+  const t = game.introT||0;
+  if(t < 0.40) return 0;
+  if(t < 0.96) return (t-0.40)/0.56;            // rattles harder as he coils
+  return 0;
+}
+function drawCageBack(sx){
+  const k = cageShake(), j = k*k*5;
+  ctx.save();
+  ctx.translate(sx + rnd(-j,j), GROUND + rnd(-j,j)*0.4);
+  const w = CAGE.w, h = CAGE.h;
+  ctx.fillStyle = 'rgba(21,8,39,.30)';                        // the dark inside
+  ctx.fillRect(-w*0.5, -h, w, h);
+  ctx.strokeStyle = 'rgba(255,242,222,.16)'; ctx.lineWidth = 4;
+  for(let i=1;i<CAGE.bars;i++){                               // bars behind him
+    const x = -w*0.5 + w*i/CAGE.bars;
+    ctx.beginPath(); ctx.moveTo(x,-h+6); ctx.lineTo(x,-6); ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawCageFront(sx){
+  const k = cageShake(), j = k*k*5;
+  ctx.save();
+  ctx.translate(sx + rnd(-j,j), GROUND + rnd(-j,j)*0.4);
+  const w = CAGE.w, h = CAGE.h;
+  ctx.lineCap='round';
+  ctx.strokeStyle = '#3E2A63'; ctx.lineWidth = 9;             // bars in front
+  for(let i=1;i<CAGE.bars;i++){
+    const x = -w*0.5 + w*i/CAGE.bars;
+    ctx.beginPath(); ctx.moveTo(x,-h+8); ctx.lineTo(x,-4); ctx.stroke();
+  }
+  ctx.strokeStyle = '#241043'; ctx.lineWidth = 13;            // the frame
+  ctx.strokeRect(-w*0.5, -h, w, h);
+  ctx.strokeStyle = '#5B3E86'; ctx.lineWidth = 5;
+  ctx.strokeRect(-w*0.5, -h, w, h);
+  ctx.strokeStyle = '#241043'; ctx.lineWidth = 11;            // a base to sit on
+  ctx.beginPath(); ctx.moveTo(-w*0.54, -3); ctx.lineTo(w*0.54, -3); ctx.stroke();
+  ctx.strokeStyle = '#FFD54A'; ctx.lineWidth = 6;             // the latch he ignores
+  ctx.beginPath(); ctx.arc(w*0.5, -h*0.52, 11, 0, TAU); ctx.stroke();
+  ctx.restore();
+}
+function burstCage(sx){
+  const w = CAGE.w, h = CAGE.h, wx = cam.x + sx;
+  for(let i=0;i<22;i++){
+    const fromDoor = i < 12;                       // the door takes the worst of it
+    const x = fromDoor ? wx + w*0.5 + rnd(-14,14) : wx + rnd(-w*0.5, w*0.5);
+    const y = GROUND - rnd(10, h);
+    const sp = fromDoor ? rnd(420, 1000) : rnd(160, 520);
+    const a  = fromDoor ? rnd(-0.75, 0.28) : rnd(-2.6, -0.5);
+    game.parts.push({ x, y, vx: Math.cos(a)*sp + 240, vy: Math.sin(a)*sp - rnd(60,300),
+      life: rnd(0.8, 1.7), t:0, r: rnd(13, 34), col: pick(['#5B3E86','#3E2A63','#FFD54A']),
+      g: 1500, kind:'plank', rot: rnd(0,TAU), vr: rnd(-13,13), drag: 0.995 });
+  }
+}
 
 /* feathers and the egg — the two things that make a hit read as funny */
 function featherBurst(x, y, n, power){
@@ -2051,9 +2124,13 @@ function spawnPattern(){
    motion happens in one place in updatePlay. */
 function thrustOn(){
   game.tapCount = (game.tapCount||0) + 1;        // counted at entry, for ?dbg=1
-  if(game.mode==='menu'){ startRun(); }              // the same press also thrusts
-  else if(game.mode==='dead'){
-    if(game.deadT>0.35) startRun(); else return;
+  if(game.mode==='menu'){ startIntro(); return; }
+  if(game.mode==='intro'){                       // pressing skips to the kick
+    if(game.introT < 0.90) game.introT = 0.90;
+    return;
+  }
+  if(game.mode==='dead'){
+    if(game.deadT>0.35) startIntro(); return;
   }
   if(game.mode!=='play') return;
   const wasOff = !player.thrusting;
@@ -2077,7 +2154,7 @@ const pressJump = thrustOn, releaseJump = thrustOff;   // old names, one system
    pressJump/releaseJump are idempotent, so overlapping families are harmless.
    Every raw down is counted before any filtering, so the readout can tell
    "no event arrived" apart from "event arrived and was filtered". */
-const BUILD = 'b0903-0101';   // shown in ?dbg=1 so a cached build is obvious
+const BUILD = 'b0903-0137';   // shown in ?dbg=1 so a cached build is obvious
 const TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints||0) > 0;
 /* Only the mute button may swallow a press. Filtering on any <button> was the
    bug: on device every tap reported lastEv=start with taps=0, because the target
@@ -2179,7 +2256,11 @@ function toMenu(){
 }
 function startRun(){
   game.runCount = (game.runCount||0) + 1;
-  applyTheme(game.forceTheme || THEMES[game.runCount % THEMES.length]);
+  // the farm first: he kicks his way out of a cage, so the first run should
+  // look like the place he was being kept
+  const farm = THEMES.findIndex(t=>t.id==='farm');
+  applyTheme(game.forceTheme ||
+    (game.runCount===1 && farm>=0 ? THEMES[farm] : THEMES[game.runCount % THEMES.length]));
   game.mode='play'; game.runT=game.presetRunT||0; game.score=0; game.dist=0;
   game.near=0; game.combo=0; game.comboBest=0; game.comboT=0;
   game.speed=340; game.diff=0; game.spawnT=2.6;
@@ -2278,12 +2359,54 @@ function update(dt, rawDt){
   elFlash.style.opacity = (game.flash*0.55).toFixed(3);
 
   if(game.mode==='menu')       updateMenu(dt);
+  else if(game.mode==='intro') updateIntro(dt);
   else if(game.mode==='play')  updatePlay(dt);
   else if(game.mode==='dying') updateDying(dt);
   else if(game.mode==='dead')  updateDead(dt, rawDt);
 
   updateParticles(dt);
   musicTick(); trackTick(rawDt);
+}
+
+/* The intro. Short on purpose -- 0.96s cold, and half that on a retry, because
+   the fastest way to make an intro annoying is to make it unskippable and long.
+   Nothing loads here: the kick hands straight over to a running start, and the
+   cage debris carries on flying through the first second of play. */
+function startIntro(){
+  const short = game.runCount > 0;           // seen it already? straight to the coil
+  startRun();
+  elHud.classList.remove('on');
+  elTut.classList.remove('show');
+  game.mode = 'intro';
+  game.introT = short ? 0.62 : 0;
+  game.titleT = 1;
+  game.rattleT = 0;
+  player.kickT = 0;
+}
+function updateIntro(dt){
+  if(game.holdIntro !== undefined){ game.introT = game.holdIntro; dt = 0; }
+  const was = game.introT;
+  game.introT += dt;
+  const t = game.introT;
+  if(was < 0.40 && t >= 0.40) S.cluck();                   // he notices
+  if(t > 0.40 && t < 0.96){                                 // the cage starts to go
+    game.rattleT -= dt;
+    if(game.rattleT <= 0){ game.rattleT = lerp(0.16, 0.05, (t-0.40)/0.56); S.cagerattle(); }
+  }
+  game.zoom = damp(game.zoom, t > 0.66 && t < 0.96 ? 1.07 : 1, 6, dt);
+  if(was < 0.96 && t >= 0.96){                              // THE KICK
+    S.cagebreak();
+    burstCage(PX);
+    addShake(34); game.flash = 0.8; slowmo(0.42, 0.30);
+    if(navigator.vibrate) try{ navigator.vibrate([30,30,50]); }catch(e){}
+    spark(cam.x+PX+70, GROUND-120, 26, {col:C.gold, s0:260,s1:760, l0:0.35,l1:0.8, r0:4,r1:12});
+    featherBurst(cam.x+PX, GROUND-110, 10, 320);
+    game.titleT = -1;                                       // blast the title away
+    player.kickT = 0.22;
+    elHud.classList.add('on');
+    if(game.tut) elTut.classList.add('show');
+    game.mode = 'play';                                     // world starts moving now
+  }
 }
 
 /* --- menu: he idles with personality beats --- */
@@ -2346,6 +2469,7 @@ function updatePlay(dt){
     if(game.demoFlap!==undefined) p.flapT = game.demoFlap;
   }
   p.nearCool = Math.max(0, p.nearCool-dt);
+  p.kickT = Math.max(0, (p.kickT||0)-dt);
   whooshCool = Math.max(0, whooshCool-dt);
   const ceilH = GROUND - CEIL;                       // usable altitude, in world units
 
@@ -2868,6 +2992,33 @@ function drawObstacles(){
     ctx.restore();
   }
 }
+/* The title lives in the scene rather than on a screen in front of it: it sits
+   over the cage, shakes as he winds up, and the kick blows it out of frame. */
+function drawTitle(){
+  if(game.titleT === undefined || game.titleT === 0) return;
+  let k, blast = 0;
+  if(game.titleT > 0){ k = 1; }
+  else { blast = -game.titleT; game.titleT = Math.min(-0.001, game.titleT + (game.rawDt||0.016)*3.0);
+         if(blast >= 1){ game.titleT = 0; return; }
+         k = 1 - blast; }
+  if(game.mode !== 'intro' && game.titleT > 0) return;
+  const sh = cageShake();
+  const cx = VW*0.5 + (blast?0:rnd(-sh*4, sh*4));
+  const cy = VH*0.24 - blast*VH*0.16;
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, k);
+  ctx.translate(cx, cy);
+  ctx.scale(1 + blast*0.9, 1 + blast*0.9);
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  const size = Math.min(VW*0.13, 96);
+  ctx.font = '400 '+size+'px Bungee, sans-serif';
+  ctx.lineWidth = size*0.16; ctx.strokeStyle = '#241043'; ctx.lineJoin='round';
+  ctx.strokeText("DON'T GET", 0, -size*0.52);
+  ctx.strokeText('HIT',       0,  size*0.52);
+  ctx.fillStyle = '#FFD54A'; ctx.fillText("DON'T GET", 0, -size*0.52);
+  ctx.fillStyle = '#F2684F'; ctx.fillText('HIT',       0,  size*0.52);
+  ctx.restore();
+}
 function drawParticles(){
   for(const q of game.parts){
     const a = 1 - q.t/q.life;
@@ -2882,6 +3033,15 @@ function drawParticles(){
       ctx.strokeStyle='rgba(11,21,38,.45)'; ctx.lineWidth=1.6; ctx.stroke();
       ctx.beginPath(); ctx.moveTo(0,-q.r*0.85); ctx.lineTo(0,q.r*0.85);
       ctx.strokeStyle='rgba(11,21,38,.30)'; ctx.lineWidth=1.4; ctx.stroke();
+      ctx.restore();
+    } else if(q.kind==='plank'){
+      ctx.save(); ctx.translate(q.x-cam.x, q.y); ctx.rotate(q.rot);
+      const L=q.r, W=Math.max(4, q.r*0.26);
+      ctx.beginPath();
+      if(ctx.roundRect) ctx.roundRect(-L*0.5,-W*0.5,L,W,W*0.5);
+      else ctx.rect(-L*0.5,-W*0.5,L,W);
+      ctx.fillStyle=q.col; ctx.fill();
+      ctx.lineWidth=2.5; ctx.strokeStyle='rgba(21,8,39,.55)'; ctx.stroke();
       ctx.restore();
     } else if(q.kind==='egg'){
       ctx.save(); ctx.translate(q.x-cam.x, q.y-q.r); ctx.rotate(q.rot);
@@ -2962,6 +3122,7 @@ function render(){
 
   // character
   const px = (game.mode==='menu') ? PX : player.x - cam.x;
+  if(game.mode==='intro') drawCageBack(px);
   if(game.mode==='dying'){
     drawPlayerShadow(rag.x - cam.x, Math.max(0, GROUND - rag.y - CK.standH));
     ctx.save(); ctx.translate(-cam.x, 0);
@@ -2976,7 +3137,9 @@ function render(){
     drawChicken(px, GROUND - player.y, player.pose);
   }
 
+  if(game.mode==='intro') drawCageFront(px);
   drawParticles();
+  drawTitle();
   drawPops();
   ctx.restore();
 
@@ -3005,6 +3168,7 @@ function frame(now){
   raw = Math.min(raw, 0.05);
   let dt = raw*game.timeScale;
   if(game.freeze>0){ game.freeze -= raw; dt = raw*0.06; }
+  game.rawDt = raw;
   update(dt, raw);
   render();
 }
@@ -3015,10 +3179,12 @@ function boot(){
   toMenu();
   requestAnimationFrame(frame);
   // dev helper: index.html?auto=1 drops you straight into a run
-  if(/[?&]auto/.test(location.search)) setTimeout(startRun, 60);
+  if(/[?&]auto/.test(location.search)) setTimeout(startIntro, 60);
   if(/[?&]demo/.test(location.search)) game.demo = true;
   if(/[?&]dbg/.test(location.search)) game.dbg = true;
   if(/[?&]stage/.test(location.search)) game.stage = true;
+  const it=/[?&]introt=([0-9.]+)/.exec(location.search);
+  if(it){ game.holdIntro = parseFloat(it[1]); }   // freeze the intro to look at a beat
   const rt=/[?&]runt=([0-9.]+)/.exec(location.search);
   if(rt) game.presetRunT = parseFloat(rt[1]);   // jump to a difficulty tier
   if(/[?&]rig/.test(location.search)) game.rig = true;
