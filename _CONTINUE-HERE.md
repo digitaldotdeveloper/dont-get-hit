@@ -19,7 +19,7 @@ cosmetic layers.** There are no per-outfit animations and there never should be.
 
 ### Parts (the important bit)
 
-`art/part-{body,head,wing,tail,shoe}.png` are cut from the Gemini reference art
+`art/part-{body,head,wing,tail,leg,shoe}.png` are cut from the Gemini reference art
 and hung on the rig by `loadPart` / `drawPart`. The rig moves the pieces; it does
 not draw the character. This is why he looks like the reference — he *is* the
 reference art.
@@ -35,6 +35,8 @@ Two traps that already bit:
   Get this backwards and "wings up" draws wings down.
 - Head cosmetics sit on the *painted* skull, not the pivot: `(-2,-8)` for the hat
   slot and `(2,-8)` for the face slot, both measured off `part-head.png`.
+- The leg is ONE straight tube part reused for both bones, stretched to length by
+  `drawBone` — so a new pair of legs is one image, not four.
 
 **Every part is optional.** If an image is missing, the fully procedural chicken
 draws instead (`partReady` guards every call), so the character can never vanish.

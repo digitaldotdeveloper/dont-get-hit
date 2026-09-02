@@ -664,6 +664,19 @@ function capsule(x1,y1,x2,y2,w,col){
   ctx.strokeStyle=CKC.edge; ctx.lineWidth=w+8; ctx.stroke();
   ctx.strokeStyle=col;     ctx.lineWidth=w;   ctx.stroke();
 }
+function drawBone(x1,y1,x2,y2,w,col,far){
+  if(!partReady('leg')) return capsule(x1,y1,x2,y2,w,col);
+  const q=PARTS['leg'];
+  const dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy)||1;
+  const ang=Math.atan2(dx,dy);                    // 0 = straight down
+  const iw=q.w*(w/11), ih=iw*(q.img.naturalHeight/q.img.naturalWidth);
+  ctx.save();
+  ctx.translate(x1,y1); ctx.rotate(-ang);         // same convention fix as the wing
+  ctx.scale(1, len/ih*1.10);                      // stretch the tube to the bone length
+  if(far) ctx.globalAlpha=0.9;
+  ctx.drawImage(q.img, -iw*q.ax, -ih*0.06, iw, ih);
+  ctx.restore();
+}
 function drawWingPart(px, py, ang, tip, open, col, far){
   ctx.save(); ctx.translate(px, py);
   if(partReady('wing')){
@@ -806,6 +819,7 @@ loadPart('head','art/part-head.png', {w:74,  ax:0.42, ay:0.52});
 loadPart('wing','art/part-wing.png', {w:90,  ax:0.78, ay:0.12, rot:-0.65});
 loadPart('tail','art/part-tail.png', {w:70,  ax:0.95, ay:0.45});
 loadPart('shoe','art/part-shoe.png', {w:52,  ax:0.32, ay:0.22});
+loadPart('leg', 'art/part-leg.png',  {w:17,  ax:0.50, ay:0.00});
 
 /* ---- the head, drawn in the same language as the body ---- */
 function hatSnapback(R){
@@ -932,8 +946,8 @@ function drawChicken(x, y, p){
   ctx.scale(p.sx, p.sy);
 
   // far leg
-  capsule(CK.hipX,CK.hipY, CK.hipX+p.kFx,CK.hipY+p.kFy, 9, CKC.legDark);
-  capsule(CK.hipX+p.kFx,CK.hipY+p.kFy, CK.hipX+p.fFx,CK.hipY+p.fFy, 7, CKC.legDark);
+  drawBone(CK.hipX,CK.hipY, CK.hipX+p.kFx,CK.hipY+p.kFy, 9, CKC.legDark, true);
+  drawBone(CK.hipX+p.kFx,CK.hipY+p.kFy, CK.hipX+p.fFx,CK.hipY+p.fFy, 8, CKC.legDark, true);
   drawShoePart(CK.hipX+p.kFx,CK.hipY+p.kFy, CK.hipX+p.fFx,CK.hipY+p.fFy, CKC.shoeDark, true);
 
   // far wing
@@ -1000,8 +1014,8 @@ function drawChicken(x, y, p){
   drawWingPart(CK.wingX, CK.wingY, p.wingN, p.tipN, p.wingOpen, CKC.wing, false);
 
   // near leg
-  capsule(CK.hipX,CK.hipY, CK.hipX+p.kNx,CK.hipY+p.kNy, 11, CKC.leg);
-  capsule(CK.hipX+p.kNx,CK.hipY+p.kNy, CK.hipX+p.fNx,CK.hipY+p.fNy, 9, CKC.leg);
+  drawBone(CK.hipX,CK.hipY, CK.hipX+p.kNx,CK.hipY+p.kNy, 11, CKC.leg, false);
+  drawBone(CK.hipX+p.kNx,CK.hipY+p.kNy, CK.hipX+p.fNx,CK.hipY+p.fNy, 10, CKC.leg, false);
   drawShoePart(CK.hipX+p.kNx,CK.hipY+p.kNy, CK.hipX+p.fNx,CK.hipY+p.fNy, CKC.shoe, false);
 
   if(game.rig){                                   // pivot overlay for aligning parts
