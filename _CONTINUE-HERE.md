@@ -25,9 +25,27 @@ not draw the character. This is why he looks like the reference — he *is* the
 reference art.
 
 Each part has `w` (width in world units) and `ax`/`ay` (the anchor, as a fraction
-of the image, i.e. the point the pivot holds it by). **Do not eyeball these.**
-Measure the PNG (cream centroid, eyeball centroid) and set the numbers from the
-measurement — guessing cost several rounds.
+of the image, i.e. the point the pivot holds it by).
+
+**How to fit a new part — do it this way, not by eye.**
+
+1. Measure the landmark in the PNG with PIL and express it as a fraction of the
+   image. Set `ax`/`ay` to that fraction, so the pivot *is* the landmark.
+2. Derive the rig number from the art, not the other way round. Current values:
+
+   | part | landmark | drives |
+   |---|---|---|
+   | head | skull centre `0.4324, 0.4607`, radius `0.4108·w` | `headR`, and `w = 2·headR/0.4108` |
+   | wing | shoulder `0.624, 0.0852`, blade `1.16·w` | `wingA+wingB`, `w = (A+B)/1.16` |
+   | tail | root `0.9985, 0.5761` | tail pivot |
+   | shoe | ankle centre `0.3413` | ankle pivot |
+   | body | bbox centre | `bodyRX/bodyRY` = half the art |
+
+3. Check it with **`?align=1`**: draws the rig underneath in flat magenta with the
+   painted parts over it at 70%. Any mismatch is then visible instead of guessed.
+
+Eyeballing these cost several rounds and never converged. Measuring took one.
+Because the head pivot is the skull centre, hats need no fudge offset.
 
 Two traps that already bit:
 - `ctx.rotate(t)` maps `dir(a)` to `dir(a-t)`, **not** `a+t`. The wing part must

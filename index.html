@@ -418,13 +418,13 @@ function musicVol(v){ if(A.started) A.musicGain.gain.setTargetAtTime(v, A.ctx.cu
    Local space: origin = body core, +x forward, +y down.
    ============================================================ */
 const CK = {
-  bodyRX:52, bodyRY:40,          // fallback shape only; the part carries the real body
-  bodyTilt:-0.13,
-  headX:40, headY:-96, headR:23,
-  wingX:12, wingY:-46, wingA:84, wingB:70,
-  hipX:-10, hipY:30,
+  bodyRX:58, bodyRY:71,          // = half the body art, so rig and art coincide
+  bodyTilt:0,
+  headX:36, headY:-64, headR:32, // headR = the art's own skull radius (w = 2R/0.4108)
+  wingX:10, wingY:-30, wingA:58, wingB:46,
+  hipX:-6,  hipY:40,
   thigh:46, shin:44, ANKLE:14,
-  standH:118
+  standH:126
 };
 const HATS = ['cap_snapback','hat_bucket'];
 
@@ -638,7 +638,7 @@ function springUpdate(dt, ax, ay){
 }
 
 /* ---- drawing ---- */
-const CKC = {
+let CKC = {
   body:'#F7E6CE', shade:'#DCC0A0', wing:'#FCEEDA', edge:'#0B1526',
   comb:'#E8443A', beak:'#F5A623',
   cap:'#2FA898', capDark:'#1B7A70', capBand:'#FFD54A',
@@ -663,6 +663,11 @@ function capsule(x1,y1,x2,y2,w,col){
   ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
   ctx.strokeStyle=CKC.edge; ctx.lineWidth=w+8; ctx.stroke();
   ctx.strokeStyle=col;     ctx.lineWidth=w;   ctx.stroke();
+}
+function drawJoint(x,y,r,col,far){
+  ctx.save(); if(far) ctx.globalAlpha=0.9;
+  ctx.beginPath(); ctx.arc(x,y,r,0,TAU); cp(col,4.4);
+  ctx.restore();
 }
 function drawBone(x1,y1,x2,y2,w,col,far){
   if(!partReady('leg')) return capsule(x1,y1,x2,y2,w,col);
@@ -791,7 +796,9 @@ function loadPart(id, src, opt){
   const im = new Image(); im.src = src;
   PARTS[id] = Object.assign({ img:im, w:100, ax:0.5, ay:0.5, rot:0, tint:null }, opt||{});
 }
+let PARTS_ON = true;                      // align mode flips this to draw the rig underneath
 function partReady(id){
+  if(!PARTS_ON) return false;
   const q = PARTS[id];
   return !!(q && q.img.complete && q.img.naturalWidth > 0);
 }
@@ -814,11 +821,11 @@ function drawPart(id, scaleX, scaleY){
   ctx.restore();
   return true;
 }
-loadPart('body','art/part-body.png', {w:104, ax:0.50, ay:0.70, rot:0.10});
-loadPart('head','art/part-head.png', {w:74,  ax:0.42, ay:0.52});
-loadPart('wing','art/part-wing.png', {w:90,  ax:0.78, ay:0.12, rot:-0.65});
-loadPart('tail','art/part-tail.png', {w:70,  ax:0.95, ay:0.45});
-loadPart('shoe','art/part-shoe.png', {w:52,  ax:0.32, ay:0.22});
+loadPart('body','art/part-body.png', {w:116, ax:0.500,  ay:0.500});
+loadPart('head','art/part-head.png', {w:78,   ax:0.4324, ay:0.4607});
+loadPart('wing','art/part-wing.png', {w:90,   ax:0.6240, ay:0.0852, rot:-0.445});
+loadPart('tail','art/part-tail.png', {w:92,   ax:0.9985, ay:0.5761});
+loadPart('shoe','art/part-shoe.png', {w:56,   ax:0.3413, ay:0.020});
 loadPart('leg', 'art/part-leg.png',  {w:17,  ax:0.50, ay:0.00});
 
 /* ---- the head, drawn in the same language as the body ---- */
@@ -884,8 +891,8 @@ function drawHead(p){
     drawPart('head');
     // the painted head has its own skull and eye, so the cosmetics shift onto them
     // measured off the part: skull centre sits at (-2,-8) from the pivot, eye at (+9,-12)
-    ctx.save(); ctx.translate(-2,-8); drawSlot('head', R); ctx.restore();
-    ctx.save(); ctx.translate( 2,-8); drawSlot('face', R); ctx.restore();
+    drawSlot('head', R);                       // pivot = the art's skull centre
+    ctx.save(); ctx.translate(-1,-2); drawSlot('face', R); ctx.restore();
     if(p.shockT>0.02){
       ctx.save(); ctx.globalAlpha=clamp(p.shockT*2,0,1);
       ctx.strokeStyle=CKC.edge; ctx.lineWidth=3; ctx.lineCap='round';
@@ -948,6 +955,7 @@ function drawChicken(x, y, p){
   // far leg
   drawBone(CK.hipX,CK.hipY, CK.hipX+p.kFx,CK.hipY+p.kFy, 9, CKC.legDark, true);
   drawBone(CK.hipX+p.kFx,CK.hipY+p.kFy, CK.hipX+p.fFx,CK.hipY+p.fFy, 8, CKC.legDark, true);
+  drawJoint(CK.hipX+p.kFx, CK.hipY+p.kFy, 6, CKC.legDark, true);
   drawShoePart(CK.hipX+p.kFx,CK.hipY+p.kFy, CK.hipX+p.fFx,CK.hipY+p.fFy, CKC.shoeDark, true);
 
   // far wing
@@ -955,7 +963,7 @@ function drawChicken(x, y, p){
 
   // tail — one swept cream shape that grows out of the body
   ctx.save();
-  ctx.translate(-46, -30);
+  ctx.translate(-46, -26);
   ctx.rotate(p.tail*0.6 + spring.tail*0.18);
   ctx.rotate(-0.34);
   if(drawPart('tail')){ ctx.restore(); } else {
@@ -1016,6 +1024,7 @@ function drawChicken(x, y, p){
   // near leg
   drawBone(CK.hipX,CK.hipY, CK.hipX+p.kNx,CK.hipY+p.kNy, 11, CKC.leg, false);
   drawBone(CK.hipX+p.kNx,CK.hipY+p.kNy, CK.hipX+p.fNx,CK.hipY+p.fNy, 10, CKC.leg, false);
+  drawJoint(CK.hipX+p.kNx, CK.hipY+p.kNy, 7, CKC.leg, false);
   drawShoePart(CK.hipX+p.kNx,CK.hipY+p.kNy, CK.hipX+p.fNx,CK.hipY+p.fNy, CKC.shoe, false);
 
   if(game.rig){                                   // pivot overlay for aligning parts
@@ -1031,7 +1040,7 @@ function drawChicken(x, y, p){
     mark(0,0,'#FF456E','core');
     mark(CK.headX+p.headDX, CK.headY+p.headDY, '#6BD1FF', 'head');
     mark(CK.wingX, CK.wingY, '#FFD54A', 'wing');
-    mark(-46, -30, '#3FE0B0', 'tail');
+    mark(-46, -26, '#3FE0B0', 'tail');
     mark(CK.hipX, CK.hipY, '#F2684F', 'hip');
     mark(CK.hipX+p.fNx, CK.hipY+p.fNy, '#FFF2DE', 'ankle');
   }
@@ -1936,7 +1945,7 @@ function updatePlay(dt){
   if(game.spawnT<=0) spawnPattern();
 
   // ---- obstacles ----
-  const pl = p.x-42, pr = p.x+42, pb = p.y+12, pt = p.y+205;
+  const pl = p.x-44, pr = p.x+44, pb = p.y+12, pt = p.y+212;
   for(let i=game.obstacles.length-1;i>=0;i--){
     const o = game.obstacles[i];
     o.x += (o.vx||0)*dt;
@@ -2369,7 +2378,18 @@ function render(){
     ctx.save(); ctx.scale(SCALE,SCALE);
     const z = game.soloZoom||2.4;
     ctx.translate(VW/2, VH*0.60); ctx.scale(z,z);
-    drawChicken(0, 0, player.pose);
+    if(game.align){
+      // the rig underneath in flat magenta, the painted parts over it
+      const keep = Object.assign({}, CKC);
+      Object.assign(CKC, { body:'#FF2D8F', shade:'#C21E६C'.replace('६','6'), wing:'#FF6FB4',
+        edge:'#5A0B33', comb:'#FF2D8F', beak:'#FF2D8F',
+        leg:'#FF2D8F', legDark:'#C21E6C', shoe:'#FFB3D8', shoeDark:'#E087B4', lace:'#5A0B33' });
+      PARTS_ON = false; drawChicken(0, 0, player.pose);
+      Object.assign(CKC, keep);
+      PARTS_ON = true; ctx.globalAlpha = 0.70;
+      drawChicken(0, 0, player.pose);
+      ctx.globalAlpha = 1;
+    } else drawChicken(0, 0, player.pose);
     ctx.restore(); return;
   }
   ctx.setTransform(DPR,0,0,DPR,0,0);
@@ -2451,6 +2471,7 @@ function boot(){
   if(/[?&]dbg/.test(location.search)) game.dbg = true;
   if(/[?&]stage/.test(location.search)) game.stage = true;
   if(/[?&]rig/.test(location.search)) game.rig = true;
+  if(/[?&]align/.test(location.search)) game.align = true;
   if(/[?&]solo/.test(location.search)){ game.solo = true; document.body.classList.add('solo'); }
   const rmv=/[?&]run=([0-9.]+)/.exec(location.search); if(rmv) game.demoRun=parseFloat(rmv[1]);
   const sz=/[?&]sz=([0-9.]+)/.exec(location.search); if(sz) game.soloZoom=parseFloat(sz[1]);
