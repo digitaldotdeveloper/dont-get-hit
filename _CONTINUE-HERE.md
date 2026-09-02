@@ -281,3 +281,63 @@ track exists). The mute button controls both.
 ## Deliberately not built yet
 
 Shops, currencies, missions, customisation UI, multiplayer, ads, IAP, login.
+
+## The bug that broke hold-to-fly for days (fixed, build b2305)
+
+`bp.Q = 1.1` on a BiquadFilterNode. `Q` is an **AudioParam**, so it is
+read-only and the assignment throws in strict mode. Chrome on the desktop
+never showed it because audio only starts after a real user gesture, which
+headless runs never make. On the phone it threw inside `S.flap()`, which
+`thrustOn()` called *before* setting `player.thrusting` -- so every press
+counted a tap and then aborted. That is the whole `taps=14 held=0` report.
+
+Three defences now:
+- `bp.Q.value = ...`
+- `tone()` and `noise()` swallow their own errors; sound can never abort a caller
+- `thrustOn()` sets `player.thrusting` FIRST, before any effect or sound
+
+**`?audiotest=1` plays all 20 sounds and prints failures on screen.** Run it
+headless with `--autoplay-policy=no-user-gesture-required`, or the audio
+context never starts and the test passes vacuously.
+
+## Slicing generated sprite sheets
+
+`sheets/v2/*.png` are the source sheets; `anim/*.webp` + `anim/frames.json`
+are the output. The build script pattern is in the session, and the two
+things that actually matter:
+
+- **Splitting.** Prefer empty-column gaps -- they are exact. Only when a sheet
+  has fewer gaps than figures, flood out from each teal cap through the
+  silhouette (multi-source BFS). A straight vertical cut through overlapping
+  chickens always clips a wing or a shoe; flooding follows the leg instead.
+  Keep the N biggest pieces, or a knocked-off pair of sunglasses becomes a frame.
+- **Scale.** The teal cap is the only thing the same size in every pose, so
+  match cap *area* per frame to kill Gemini's per-figure drift. Then apply one
+  extra factor across all sets so the run cycle keeps the height it already
+  had on screen. Do not use body area -- spread wings inflate it.
+
+### What the generator gets wrong
+- Asking for the comb "in front of the cap" makes it drop the comb on some
+  figures and keep it on others. Inconsistency between frames is worse than
+  the original problem. The `run_fists` prompt (fists + comb described
+  together) is the one that came back consistent -- reuse that wording.
+- "In-between poses" are not grounded: it invents a second independent cycle
+  rather than interpolating the first. Order merged frames by a *measured*
+  phase, never by assuming frame i sits between i and i+1.
+- Sheets drift in proportion between each other. `sheets/v2/fly.png` drew a
+  chunkier chicken with a smaller cap and had to be dropped; `fly_mid.png`
+  matches the run cycle. Always compare a new sheet against the run cycle
+  before merging.
+- Ask for one row, small figures, and "a vertical line between any two
+  neighbours must cross nothing but flat green" -- that phrasing works.
+
+## Animation states
+
+`FRAME_DATA` holds run 6, fly 6, jump 5, land 4, hit 6. `pickFrame()` is the
+single place that chooses; `cyc()` wraps a 0..1 phase onto whatever length a
+set happens to be, so adding frames needs no other change.
+
+`hit` is driven by `game.dyingT` over the ragdoll tumble, and its last frame
+is held for `game.mode === 'dead'` behind the score card. The ragdoll's own
+rotation is damped to 25% while frames are ready, because the art already
+tumbles and the two rotations fight each other.
