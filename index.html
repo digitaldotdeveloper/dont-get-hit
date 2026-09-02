@@ -212,6 +212,7 @@
     </div>
   </div>
 
+  <pre id="selftest" style="position:fixed;left:0;top:0;z-index:99;color:#0f0;font:11px monospace;background:#000;margin:0;display:none"></pre>
   <div id="tut">
     <svg viewBox="0 0 24 24"><path d="M12 3v9"/><path d="m8.5 6.5 3.5-3.5 3.5 3.5"/><circle cx="12" cy="17" r="4"/></svg>
     HOLD TO FLY
@@ -745,8 +746,10 @@ function drawWingPart(px, py, ang, tip, open, col, far){
 }
 function drawShoePart(kx,ky,fx,fy,col,far){
   if(!partReady('shoe')) return drawSneaker(kx,ky,fx,fy,col);
-  const a=Math.atan2(fx-kx,fy-ky)*0.5;
-  ctx.save(); ctx.translate(fx,fy); ctx.rotate(-a+Math.PI/2);
+  // the shoe ART already points toe-forward, so it needs no quarter turn; the
+  // +PI/2 was left over from the procedural shoe, which drew inside a rotated frame
+  const tilt = -Math.atan2(fx-kx, fy-ky) * 0.18;
+  ctx.save(); ctx.translate(fx,fy); ctx.rotate(tilt);
   ctx.save(); if(far) ctx.globalAlpha=0.9;
   drawPart('shoe'); ctx.restore();
   ctx.restore();
@@ -1771,8 +1774,10 @@ function spawnPattern(){
    INPUT
    ============================================================ */
 function pressJump(){
-  if(game.mode==='menu'){ startRun(); return; }
-  if(game.mode==='dead'){ if(game.deadT>0.35) startRun(); return; }
+  if(game.mode==='menu'){ startRun(); }              // fall through: the same press flies
+  else if(game.mode==='dead'){
+    if(game.deadT>0.35) startRun(); else return;
+  }
   if(game.mode!=='play') return;
   if(!player.jumpHeld){
     player.flapT = 0.13;                       // start the downstroke immediately
@@ -1786,24 +1791,32 @@ function pressJump(){
     S.flap();
   }
   player.jumpHeld = true;
+  game.tapCount = (game.tapCount||0)+1;
   if(game.tut){ game.tut=false; elTut.classList.remove('show'); }
 }
 function releaseJump(){ player.jumpHeld = false; }
-/* Track pointers by id. A phone fires pointercancel on the smallest finger
-   movement, and releasing on that made "hold to fly" stop silently. */
+/* Input comes from three families because relying on Pointer Events alone left
+   devices where the hold never registered. pressJump/releaseJump are idempotent,
+   so overlapping events from two families are harmless. */
 const held = new Set();
-window.addEventListener('pointerdown', e => {
-  audioInit();
-  if(e.target.closest('button')) return;
-  held.add(e.pointerId);
-  pressJump();
-}, {passive:true});
+function onBtn(e){ const t=e.target; return t && t.closest && t.closest('button'); }
+function downFrom(e){ audioInit(); if(onBtn(e)) return; pressJump(); }
+
+window.addEventListener('pointerdown', e => { if(onBtn(e)) return; held.add(e.pointerId); downFrom(e); }, {passive:true});
 function liftPointer(e){
   held.delete(e.pointerId);
   if(held.size === 0) releaseJump();
 }
 window.addEventListener('pointerup', liftPointer, {passive:true});
 window.addEventListener('pointercancel', liftPointer, {passive:true});
+
+window.addEventListener('touchstart', downFrom, {passive:true});
+function touchLift(e){ if(!e.touches || e.touches.length === 0){ held.clear(); releaseJump(); } }
+window.addEventListener('touchend', touchLift, {passive:true});
+window.addEventListener('touchcancel', touchLift, {passive:true});
+
+window.addEventListener('mousedown', downFrom);
+window.addEventListener('mouseup', ()=>{ held.clear(); releaseJump(); });
 window.addEventListener('blur', ()=>{ held.clear(); releaseJump(); });
 window.addEventListener('keydown', e => {
   if(e.code==='Space'||e.code==='ArrowUp'||e.code==='KeyW'){
@@ -2139,8 +2152,14 @@ function updatePlay(dt){
   }
   // HUD
   elScore.textContent = pad6(game.score);
-  if(game.dbg) document.title = 'y='+Math.round(p.y)+' vy='+Math.round(p.vy)+
-    ' held='+(p.jumpHeld?1:0)+' t='+game.runT.toFixed(1);
+  if(game.dbg){
+    const el=document.getElementById('selftest');
+    if(el){ el.style.display='block';
+      el.textContent = 'held='+(p.jumpHeld?1:0)+'  latch='+(p.flapLatch||0).toFixed(2)+
+        '  y='+Math.round(p.y)+'  vy='+Math.round(p.vy)+'  ground='+(p.onGround?1:0)+
+        '  mode='+game.mode+'  taps='+(game.tapCount||0);
+    }
+  }
 }
 
 function nearMiss(o){
@@ -2654,6 +2673,24 @@ function boot(){
   if(/[?&]stage/.test(location.search)) game.stage = true;
   if(/[?&]rig/.test(location.search)) game.rig = true;
   if(/[?&]align/.test(location.search)) game.align = true;
+  if(/[?&]selftest/.test(location.search)){
+    // Drive the REAL pressJump + updatePlay with a fixed step. Headless virtual
+    // time only advances rAF a frame or two, so a live test cannot measure this.
+    setTimeout(()=>{
+      startRun();
+      const log=[]; const dt=1/60;
+      for(let i=0;i<170;i++){
+        if(i>30 && i<75){ if(!player.jumpHeld) pressJump(); }
+        else if(player.jumpHeld) releaseJump();
+        updatePlay(dt);
+        if(i%5===0) log.push(
+          (i*dt).toFixed(2)+' y='+Math.round(player.y)+' vy='+Math.round(player.vy)+
+          ' held='+(player.jumpHeld?1:0)+' latch='+(player.flapLatch||0).toFixed(2)+
+          ' g='+(player.onGround?1:0));
+      }
+      document.getElementById('selftest').textContent = log.join(String.fromCharCode(10));
+    }, 40);
+  }
   const th=/[?&]theme=([a-z]+)/.exec(location.search);
   if(th) game.forceTheme = THEMES.find(t=>t.id===th[1]) || THEMES[0];
   if(/[?&]solo/.test(location.search)){ game.solo = true; document.body.classList.add('solo'); }
