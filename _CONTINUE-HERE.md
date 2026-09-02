@@ -139,7 +139,12 @@ rules that keep them consistent.
 
 ## Feel numbers that matter
 
-- `GRAV 2600`, `LIFT 4300` — holding applies **constant** upward acceleration,
+- `DRAG 2.6` is what makes flight feel smooth: velocity eases toward a terminal
+  speed (about +/-1000 over ~0.4s) instead of ramping linearly into a hard clamp.
+  `VY_UP/VY_DOWN` are now safety rails only.
+- `FLAP_KICK` fires **only off the ground**, as a jump. Applying an impulse in
+  mid-air is a jolt, and jolts are what stopped the flying feeling smooth.
+- `GRAV 2500`, `LIFT 5200` — holding applies **constant** upward acceleration,
   Jetpack Joyride style, and the wingbeat is purely visual. Lift used to arrive in
   pulses on each downstroke, which read on a phone as the hold not registering, so
   players tapped instead of held. Do not reintroduce pulsed lift.
@@ -147,6 +152,13 @@ rules that keep them consistent.
   `flapLatch` keeps the downstroke running for 0.16s even if the finger lifts
   first. Without those, a quick tap could end before the stroke produced lift and
   the control felt dead in mid-air.
+- **`touchstart` and `touchmove` MUST be non-passive and call `preventDefault()`.**
+  Registered passive, they cannot preventDefault, so the browser's long-press
+  handling ends the touch and fires `touchend` on its own - a hold then arrives as
+  a tap and holding is impossible. This cost seven attempts to find, because the
+  symptom looks like a physics or event-family problem. `input-test.html` proves
+  it in one screenshot: a hold showed `touchstart=3 touchend=3`. Buttons are
+  exempted from preventDefault so their clicks still work.
 - **Touch devices use touch events ONLY** (`TOUCH` branch). Pointer events are a
   trap here: a phone fires `pointercancel` mid-hold from a micro finger movement,
   and *any* handler that releases on it silently ends the hold with no further

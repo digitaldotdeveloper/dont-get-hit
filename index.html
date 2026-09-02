@@ -1688,17 +1688,20 @@ try{ game.firstRun = !localStorage.getItem('dgh.played'); }catch(e){}
 /* Hold to flap. Gravity always pulls; a held wing beats it. Nothing here is a
    jetpack — the lift comes in pulses on the downstroke, so altitude is something
    you keep working at rather than something you switch on. */
-const GRAV = 2600, FLAP_HZ = 4.6;
+const GRAV = 2500, FLAP_HZ = 4.6;
+/* Air drag is what makes flight feel smooth: velocity eases toward a terminal
+   value instead of ramping linearly into a hard clamp. Terminal speeds land at
+   about +/-1000, reached over ~0.4s. */
+const DRAG = 2.6;
 /* Jetpack Joyride mechanics: holding applies CONSTANT lift, not pulses.
    Pulsed lift made a hold feel like it was not registering, so players tapped
    instead of holding. The wingbeat is now purely visual. */
-const LIFT = 4300;                         // constant while held, vs gravity 2600
-const VY_UP = -1010, VY_DOWN = 1050;
-/* Re-grabbing after a dive used to take ~1s and 250 units of sink, which read
-   as the bird being heavy. The first stroke now bites into the fall instead. */
-const CATCH = 0.45;
+const LIFT = 5200;                         // constant while held, vs gravity 2500
+const VY_UP = -1500, VY_DOWN = 1500;       // safety rails only; drag sets the real terminal
 /* Every press also lands an instant impulse, so a quick tap lifts even if the
    finger is gone before the downstroke completes. */
+/* An impulse only makes sense as a jump off the ground. Mid-air it is a jolt,
+   and jolts are exactly what stopped the flying feeling smooth. */
 const FLAP_KICK = 820;
 
 /* ---------- DOM ---------- */
@@ -1841,12 +1844,12 @@ function pressJump(){
   if(!player.jumpHeld){
     player.flapT = 0.13;                       // start the downstroke immediately
     player.flapLatch = 0.16;                   // ...and guarantee it finishes, even on a fast tap
-    if(player.vy > 120){                       // a hard catch out of a dive
-      player.vy *= CATCH; player.powerT = 1;
-      addShake(2);
-      featherBurst(player.x-24, GROUND-player.y-30, 4, 210);
+    if(player.onGround){
+      player.vy -= FLAP_KICK;                  // a tap off the ground is a jump
+    } else {
+      player.powerT = 1;                       // mid-air: thrust only, no jolt
+      featherBurst(player.x-24, GROUND-player.y-30, 3, 180);
     }
-    player.vy -= FLAP_KICK;                    // every press lifts, immediately
     S.flap();
   }
   player.jumpHeld = true;
@@ -1860,7 +1863,7 @@ function releaseJump(){ player.jumpHeld = false; }
    pressJump/releaseJump are idempotent, so overlapping families are harmless.
    Every raw down is counted before any filtering, so the readout can tell
    "no event arrived" apart from "event arrived and was filtered". */
-const BUILD = 'b2219';   // shown in ?dbg=1 so a cached build is obvious
+const BUILD = 'b2223';   // shown in ?dbg=1 so a cached build is obvious
 const TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints||0) > 0;
 /* Only the mute button may swallow a press. Filtering on any <button> was the
    bug: on device every tap reported lastEv=start with taps=0, because the target
@@ -2126,7 +2129,7 @@ function updatePlay(dt){
   p.vy += GRAV*dt;
   if(flapping){
     // constant lift while held; the wingbeat only drives the animation
-    p.liftRamp = Math.min(1, (p.liftRamp||0) + dt*14);
+    p.liftRamp = Math.min(1, (p.liftRamp||0) + dt*9);
     p.vy -= LIFT * p.liftRamp * dt;
     p.flapT += dt*FLAP_HZ;
     const beat = Math.floor(p.flapT);
@@ -2138,9 +2141,11 @@ function updatePlay(dt){
         s0:70,s1:190, l0:0.18,l1:0.45, r0:3,r1:7, g:120});
     }
   } else {
-    p.liftRamp = 0;
+    p.liftRamp = Math.max(0, (p.liftRamp||0) - dt*7);  // ease off, do not cut
+    if(p.liftRamp > 0) p.vy -= LIFT * p.liftRamp * dt;
     p.flapT += dt*1.4;                               // wings glide, barely moving
   }
+  p.vy -= p.vy * DRAG * dt;                          // smooths both climb and fall
   p.vy = clamp(p.vy, VY_UP, VY_DOWN);
   p.y -= p.vy*dt;
 
