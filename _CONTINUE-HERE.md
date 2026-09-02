@@ -64,6 +64,8 @@ rules that keep them consistent.
 | Feathers | `function featherBurst` |
 | Flight physics | `const GRAV`, `// ---- flight ----` |
 | Portrait framing | `function resize()` |
+| Gates | `function spawnGate`, `OB.tower`, `OB.hanger` |
+| Gate members fill their hitbox | `crateStack`, `CAP_H` |
 | Obstacles (16) | `const OB = {` |
 | Difficulty tiers | `function tierNow`, `function spawnPattern` |
 
@@ -89,7 +91,7 @@ rules that keep them consistent.
 
 `?auto=1` start a run · `?demo=1` auto-flap · `?flap=0.5` freeze the wings at one
 point in the cycle · `?hold=0` glide · `?zoom=1.7` zoom on the bird ·
-`?dbg=1` altitude readout in the tab title ·
+`?dbg=1` altitude readout in the tab title · `?stage=1` drop three gates in front ·
 `?wear=head:hat_bucket,face:shades_art,neck:scarf_art` set a loadout.
 
 ## Animation
@@ -111,8 +113,8 @@ a single frame — blending made earlier screenshots lie about what the keys wer
   One line of draw order in `drawChicken` if it starts to matter.
 - **No jetpack cosmetics.** The bird flies with his own wings; a jetpack would
   undercut the one idea that keeps this from being a Jetpack Joyride clone.
-- Obstacles are still the ones designed for the jump game. They work, but a
-  flyer wants gates and vertical gaps — that is the next real design pass.
+- Gate gap size is the difficulty dial: `lerp(500, 290, game.diff)` in
+  `spawnGate`. Everything else about the curve follows from it.
 - `chickens.html` keys green in-browser, so it only works over http(s), never
   `file://` (tainted canvas).
 
