@@ -273,10 +273,10 @@ const THEMES = [
     skyA:'#241043', skyB:'#5E2569', skyC:'#C4485E', skyD:'#F2794A', skyE:'#FFC46B',
     sun:'#FFE9A8', far:'#7B4287', mid:'#4E265F', near:'#301648', prop:'#1F0E33',
     road:'#2A1445', roadLine:'#3E2160', curb:'#3A1C57', rim:'#FFB447' },
-  { id:'yard', name:'PRISON YARD',
-    skyA:'#070C1C', skyB:'#122043', skyC:'#2C3A6B', skyD:'#4A4C7E', skyE:'#8A7CA8',
-    sun:'#DCE4FF', far:'#232B4C', mid:'#1A2140', near:'#121834', prop:'#0B0F22',
-    road:'#3A3A46', roadLine:'#4B4B58', curb:'#2A2A34', rim:'#9FD4FF' },
+  { id:'block', name:'CELL BLOCK', indoor:true,
+    skyA:'#060F13', skyB:'#0B1A20', skyC:'#12262E', skyD:'#173039', skyE:'#1C3A44',
+    sun:'#F5D98A', far:'#20404A', mid:'#1A343D', near:'#142A32', prop:'#0C1A20',
+    road:'#4A4A44', roadLine:'#5C5C54', curb:'#262622', rim:'#F2C230' },
   { id:'farm', name:'DAWN FARM',
     skyA:'#13284C', skyB:'#3A5E85', skyC:'#E0805E', skyD:'#F6B25E', skyE:'#FFE7AE',
     sun:'#FFF4CC', far:'#6E8C77', mid:'#46654F', near:'#2C4535', prop:'#1B2C22',
@@ -1002,7 +1002,7 @@ function cosmeticImage(id, slot, src, opt){
    swappable while frames are in use. If any image fails to load the
    procedural puppet draws instead - the character can never vanish.
    ============================================================ */
-const FRAME_DATA = {"run":[{"f":"run0.webp","w":206,"h":199,"ay":199},{"f":"run1.webp","w":138,"h":182,"ay":182},{"f":"run2.webp","w":136,"h":181,"ay":181},{"f":"run3.webp","w":187,"h":196,"ay":196},{"f":"run4.webp","w":140,"h":181,"ay":181},{"f":"run5.webp","w":179,"h":195,"ay":195}],"fly":[{"f":"fly0.webp","w":110,"h":161,"ay":162.3},{"f":"fly1.webp","w":112,"h":158,"ay":163.1},{"f":"fly2.webp","w":163,"h":210,"ay":191.6},{"f":"fly3.webp","w":147,"h":158,"ay":181.3},{"f":"fly4.webp","w":148,"h":186,"ay":187.3},{"f":"fly5.webp","w":130,"h":185,"ay":179.7}],"fall":[{"f":"fall0.webp","w":122,"h":187,"ay":184.0},{"f":"fall1.webp","w":145,"h":199,"ay":186.0},{"f":"fall2.webp","w":174,"h":210,"ay":179.8},{"f":"fall3.webp","w":143,"h":198,"ay":182.3}],"jump":[{"f":"jump0.webp","w":122,"h":148,"ay":171.0},{"f":"jump1.webp","w":140,"h":171,"ay":169.4},{"f":"jump2.webp","w":138,"h":221,"ay":193.2},{"f":"jump3.webp","w":183,"h":186,"ay":179.6},{"f":"jump4.webp","w":155,"h":186,"ay":180.3}],"land":[{"f":"land0.webp","w":145,"h":183,"ay":183},{"f":"land1.webp","w":157,"h":179,"ay":179},{"f":"land2.webp","w":122,"h":121,"ay":121},{"f":"land3.webp","w":165,"h":186,"ay":186}],"hit":[{"f":"hit0.webp","w":145,"h":164,"ay":172.9},{"f":"hit1.webp","w":163,"h":186,"ay":185.1},{"f":"hit2.webp","w":122,"h":154,"ay":173.6},{"f":"hit3.webp","w":106,"h":126,"ay":166.0},{"f":"hit4.webp","w":178,"h":81,"ay":140.5},{"f":"hit5.webp","w":128,"h":146,"ay":173.4}],"cage":[{"f":"cage0.webp","w":150,"h":146,"ay":146.0},{"f":"cage1.webp","w":129,"h":136,"ay":136.0},{"f":"cage2.webp","w":106,"h":139,"ay":140.2},{"f":"cage3.webp","w":183,"h":142,"ay":168.9}],"cell":[{"f":"cell0.webp","w":185,"h":105,"ay":105},{"f":"cell1.webp","w":112,"h":188,"ay":188},{"f":"cell2.webp","w":154,"h":211,"ay":211},{"f":"cell3.webp","w":183,"h":191,"ay":186.7}]};
+const FRAME_DATA = {"run":[{"f":"run0.webp","w":206,"h":199,"ay":199},{"f":"run1.webp","w":138,"h":182,"ay":182},{"f":"run2.webp","w":136,"h":181,"ay":181},{"f":"run3.webp","w":187,"h":196,"ay":196},{"f":"run4.webp","w":140,"h":181,"ay":181},{"f":"run5.webp","w":179,"h":195,"ay":195}],"fly":[{"f":"fly0.webp","w":110,"h":161,"ay":162.3},{"f":"fly1.webp","w":112,"h":158,"ay":163.1},{"f":"fly2.webp","w":163,"h":210,"ay":191.6},{"f":"fly3.webp","w":147,"h":158,"ay":181.3},{"f":"fly4.webp","w":148,"h":186,"ay":187.3},{"f":"fly5.webp","w":130,"h":185,"ay":179.7}],"fall":[{"f":"fall0.webp","w":122,"h":187,"ay":184.0},{"f":"fall1.webp","w":145,"h":199,"ay":186.0},{"f":"fall2.webp","w":174,"h":210,"ay":179.8},{"f":"fall3.webp","w":143,"h":198,"ay":182.3}],"jump":[{"f":"jump0.webp","w":122,"h":148,"ay":171.0},{"f":"jump1.webp","w":140,"h":171,"ay":169.4},{"f":"jump2.webp","w":138,"h":221,"ay":193.2},{"f":"jump3.webp","w":183,"h":186,"ay":179.6},{"f":"jump4.webp","w":155,"h":186,"ay":180.3}],"land":[{"f":"land0.webp","w":145,"h":183,"ay":183},{"f":"land1.webp","w":157,"h":179,"ay":179},{"f":"land2.webp","w":122,"h":121,"ay":121},{"f":"land3.webp","w":165,"h":186,"ay":186}],"hit":[{"f":"hit0.webp","w":145,"h":164,"ay":172.9},{"f":"hit1.webp","w":163,"h":186,"ay":185.1},{"f":"hit2.webp","w":122,"h":154,"ay":173.6},{"f":"hit3.webp","w":106,"h":126,"ay":166.0},{"f":"hit4.webp","w":178,"h":81,"ay":140.5},{"f":"hit5.webp","w":128,"h":146,"ay":173.4}],"cage":[{"f":"cage0.webp","w":150,"h":146,"ay":146.0},{"f":"cage1.webp","w":129,"h":136,"ay":136.0},{"f":"cage2.webp","w":106,"h":139,"ay":140.2},{"f":"cage3.webp","w":183,"h":142,"ay":168.9}],"cell":[{"f":"cell0.webp","w":131,"h":202,"ay":202},{"f":"cell1.webp","w":133,"h":201,"ay":201},{"f":"cell2.webp","w":130,"h":198,"ay":198},{"f":"cell3.webp","w":145,"h":177,"ay":175.6},{"f":"cell4.webp","w":197,"h":193,"ay":193}],"cricket":[{"f":"cricket0.webp","w":44,"h":132,"ay":132},{"f":"cricket1.webp","w":48,"h":116,"ay":116},{"f":"cricket2.webp","w":58,"h":119,"ay":119},{"f":"cricket3.webp","w":62,"h":126,"ay":126}]};
 const FR = { ready:false, n:0, need:0, img:{} };
 const SPR = 175/190;                       // world units per frame pixel
 (function loadFrames(){
@@ -1026,10 +1026,9 @@ function pickFrame(p){
   if(game.mode === 'intro' || game.mode === 'menu'){
     const cp = cellPose();
     const set = FRAME_DATA[cp.set] ? cp.set : 'run';
-    if(cp.i < 0) return cyc(set, game.introT*7);         // running at the door
     return [set, Math.min(cp.i, FRAME_DATA[set].length-1)];
   }
-  if(pl.kickT > 0 && FRAME_DATA.cell) return ['cell', 3]; // hold the kick into the run
+  if(pl.kickT > 0 && FRAME_DATA.cell) return ['cell', 4]; // still running out of it
   /* getting hit runs its own six-frame sequence: impact, launched, two tumbles,
      face down, then sitting up dazed while the score card is on screen. */
   if(game.mode === 'dying'){
@@ -1416,7 +1415,7 @@ const rag = {
    Playable at 1.52s. Nothing loads at the handover.
    ============================================================ */
 const CELL = { w:0, h:0, bar:5, doorW:0 };
-const T_UP = 0.36, T_STAND = 0.72, T_CHARGE = 1.46, T_OUT = 1.86;
+const T_UP = 0.46, T_STAND = 0.84, T_CHARGE = 1.34, T_OUT = 1.78;
 
 function cellGeom(){
   CELL.w = Math.min(VW*0.96, 486);
@@ -1437,19 +1436,19 @@ function drawCellBack(sx){
   ctx.save();
   ctx.translate(sx + rnd(-j,j), GROUND + rnd(-j,j)*0.5);
   const lit = ctx.createLinearGradient(0, -h, 0, 0);         // a bulb somewhere above
-  lit.addColorStop(0,   'rgba(74,48,110,.92)');
-  lit.addColorStop(0.55,'rgba(38,20,64,.92)');
-  lit.addColorStop(1,   'rgba(20,9,36,.94)');
+  lit.addColorStop(0,   'rgba(30,58,68,.94)');
+  lit.addColorStop(0.55,'rgba(16,34,42,.95)');
+  lit.addColorStop(1,   'rgba(8,20,26,.96)');
   ctx.fillStyle = lit;
   ctx.fillRect(-w*0.5, -h, w, h);
   const pool = ctx.createRadialGradient(-w*0.06, -h*0.62, 8, -w*0.06, -h*0.62, w*0.62);
-  pool.addColorStop(0, 'rgba(255,213,74,.20)');
-  pool.addColorStop(1, 'rgba(255,213,74,0)');
+  pool.addColorStop(0, 'rgba(245,217,138,.22)');
+  pool.addColorStop(1, 'rgba(245,217,138,0)');
   ctx.fillStyle = pool; ctx.fillRect(-w*0.5, -h, w, h);
   // a barred window, high up, because nothing says prison faster
   const wx = w*0.30, wy = -h*0.76, ww = w*0.20, wh = h*0.20;
-  ctx.fillStyle = 'rgba(120,150,210,.30)'; ctx.fillRect(wx-ww*0.5, wy, ww, wh);
-  ctx.strokeStyle = '#241043'; ctx.lineWidth = 9;
+  ctx.fillStyle = 'rgba(70,220,214,.30)'; ctx.fillRect(wx-ww*0.5, wy, ww, wh);
+  ctx.strokeStyle = '#08131A'; ctx.lineWidth = 9;
   ctx.strokeRect(wx-ww*0.5, wy, ww, wh);
   ctx.lineWidth = 5;
   for(let i=1;i<3;i++){
@@ -1464,7 +1463,7 @@ function drawCellBack(sx){
   }
   // the bunk: a ridiculous welded steel frame with a thin mattress
   const bx = -w*0.5 + w*0.31, by = -h*0.24, bw = w*0.44, bh = 15;
-  ctx.strokeStyle = '#9E7ED4'; ctx.lineWidth = 9; ctx.lineCap='round';
+  ctx.strokeStyle = '#5A7885'; ctx.lineWidth = 9; ctx.lineCap='round';
   ctx.beginPath();                                            // legs
   ctx.moveTo(bx-bw*0.5+8, by); ctx.lineTo(bx-bw*0.5+8, -6);
   ctx.moveTo(bx+bw*0.5-8, by); ctx.lineTo(bx+bw*0.5-8, -6); ctx.stroke();
@@ -1476,8 +1475,8 @@ function drawCellBack(sx){
     const x = bx-bw*0.5 + (bw*0.34)*i/4;
     ctx.beginPath(); ctx.moveTo(x, by-27); ctx.lineTo(x, by-4); ctx.stroke();
   }
-  ctx.fillStyle = '#5B3E86'; ctx.fillRect(bx-bw*0.5, by-bh, bw, bh);     // frame
-  ctx.fillStyle = '#D9C7F2'; ctx.fillRect(bx-bw*0.5+4, by-bh-8, bw-8, 10); // mattress
+  ctx.fillStyle = '#3D5560'; ctx.fillRect(bx-bw*0.5, by-bh, bw, bh);     // frame
+  ctx.fillStyle = '#C8D8DC'; ctx.fillRect(bx-bw*0.5+4, by-bh-8, bw-8, 10); // mattress
   ctx.restore();
 }
 /* the bars, the frame and the door, all in front of him */
@@ -1489,24 +1488,24 @@ function drawCellFront(sx){
   ctx.lineCap = 'round';
   const doorL = w*0.5 - g.doorW;
   // bars across the front, skipping the doorway
-  ctx.strokeStyle = '#241043'; ctx.lineWidth = 17;
+  ctx.strokeStyle = '#08131A'; ctx.lineWidth = 17;
   for(let x = -w*0.5 + 38; x < doorL - 10; x += 66){
     ctx.beginPath(); ctx.moveTo(x, -h+14); ctx.lineTo(x, -8); ctx.stroke();
   }
-  ctx.strokeStyle = '#6E4E9E'; ctx.lineWidth = 9;
+  ctx.strokeStyle = '#48626E'; ctx.lineWidth = 9;
   for(let x = -w*0.5 + 38; x < doorL - 10; x += 66){
     ctx.beginPath(); ctx.moveTo(x, -h+14); ctx.lineTo(x, -8); ctx.stroke();
   }
-  ctx.strokeStyle = '#241043'; ctx.lineWidth = 26;            // the heavy frame
+  ctx.strokeStyle = '#08131A'; ctx.lineWidth = 26;            // the heavy frame
   ctx.strokeRect(-w*0.5, -h, w, h);
-  ctx.strokeStyle = '#6E4E9E'; ctx.lineWidth = 11;
+  ctx.strokeStyle = '#48626E'; ctx.lineWidth = 11;
   ctx.strokeRect(-w*0.5, -h, w, h);
   for(let i=0;i<7;i++){                                       // rivets
     const x = -w*0.5 + w*i/6;
     ctx.beginPath(); ctx.arc(x, -h+9, 4.5, 0, TAU);
     ctx.fillStyle='#FFD54A'; ctx.globalAlpha=.55; ctx.fill(); ctx.globalAlpha=1;
   }
-  ctx.strokeStyle = '#241043'; ctx.lineWidth = 13;            // the door jamb
+  ctx.strokeStyle = '#08131A'; ctx.lineWidth = 13;            // the door jamb
   ctx.beginPath(); ctx.moveTo(doorL, -h); ctx.lineTo(doorL, 0); ctx.stroke();
   ctx.restore();
   if(!game.doorGone) drawDoor(sx);
@@ -1521,16 +1520,16 @@ function drawDoor(sx){
   const bow = d ? 0 : (game.doorBow||0);                      // metal giving way
   ctx.transform(1 + bow*0.30, 0, bow*0.55, 1 - bow*0.12, 0, 0);
   ctx.lineCap='round';
-  ctx.strokeStyle = '#241043'; ctx.lineWidth = 15;
+  ctx.strokeStyle = '#08131A'; ctx.lineWidth = 15;
   ctx.strokeRect(0, -h, dw, h);
-  ctx.strokeStyle = '#8E6BC4'; ctx.lineWidth = 7;
+  ctx.strokeStyle = '#5A7885'; ctx.lineWidth = 7;
   ctx.strokeRect(0, -h, dw, h);
-  ctx.strokeStyle = '#6E4E9E'; ctx.lineWidth = 10;
+  ctx.strokeStyle = '#48626E'; ctx.lineWidth = 10;
   for(let i=1;i<3;i++){
     const x = dw*i/3;
     ctx.beginPath(); ctx.moveTo(x, -h+12); ctx.lineTo(x, -12); ctx.stroke();
   }
-  ctx.strokeStyle='#6E4E9E'; ctx.lineWidth=9;                 // hinges
+  ctx.strokeStyle='#48626E'; ctx.lineWidth=9;                 // hinges
   ctx.beginPath(); ctx.moveTo(dw-4,-h*0.80); ctx.lineTo(dw+9,-h*0.80);
   ctx.moveTo(dw-4,-h*0.22); ctx.lineTo(dw+9,-h*0.22); ctx.stroke();
   ctx.restore();
@@ -1567,7 +1566,7 @@ function breakCell(sx){
       vx: (near ? rnd(500,1250) : rnd(120,520)) ,
       vy: -rnd(120, 780),
       life: rnd(0.7,1.6), t:0, r: rnd(12,36),
-      col: pick(['#8E6BC4','#5B3E86','#FFD54A','#3E2A63']),
+      col: pick(['#5A7885','#3D5560','#FFD54A','#22343C']),
       g: 1600, kind:'plank', rot: rnd(0,TAU), vr: rnd(-15,15), drag:0.996 });
   }
   spark(wx + w*0.5 - g.doorW, GROUND - h*0.5, 30,
@@ -1935,7 +1934,7 @@ function buildLayers(){
   layers.length = 0;
   const TW = 2400;
   if(THEME.id==='farm') return buildFarmLayers(TW);
-  if(THEME.id==='yard') return buildYardLayers(TW);
+  if(THEME.id==='block') return buildBlockLayers(TW);
   // far skyline
   layers.push({ f:0.10, y:0, tile: makeLayer(TW, 640, (g)=>{
     g.fillStyle = C.far;
@@ -1997,60 +1996,16 @@ function buildLayers(){
   })});
 }
 
-/* The yard he has just broken out of: a perimeter wall, cell blocks with a
-   few lights still on, and razor wire. Same three-layer parallax as the
-   others so it costs nothing extra to draw. */
-function buildYardLayers(TW){
-  // far: the cell blocks, long and institutional
-  layers.push({ f:0.10, y:0, tile: makeLayer(TW, 640, (g)=>{
+/* Indoors there is nothing behind the wall, so the only tiled layer is the far
+   dark of the service corridor beyond the doorways. The wall itself is drawn
+   live in drawBlockProps so its fixtures can move. */
+function buildBlockLayers(TW){
+  layers.push({ f:0.14, y:0, tile: makeLayer(TW, 620, (g)=>{
     g.fillStyle = C.far;
-    let x = 0, i = 0;
-    while(x < TW){
-      const w = 260 + hash(i)*180, h = 210 + hash(i*3.1)*130;
-      g.beginPath(); g.rect(x, -h, w, h); g.fill();
-      g.fillStyle = 'rgba(190,214,255,.13)';                 // barred windows, in rows
-      for(let wy = -h + 34; wy < -40; wy += 46){
-        for(let wx = x + 22; wx < x + w - 26; wx += 42){
-          if(hash(wx*0.7 + wy) > 0.62) continue;
-          g.fillRect(wx, wy, 20, 26);
-        }
-      }
-      g.fillStyle = C.far;
-      x += w + 40 + hash(i*1.9)*40; i++;
-    }
-  })});
-  // mid: guard towers over the perimeter wall
-  layers.push({ f:0.28, y:0, tile: makeLayer(TW, 620, (g)=>{
-    g.fillStyle = C.mid;
-    g.fillRect(0, -132, TW, 132);                            // the wall
-    for(let i=0;i<4;i++){
-      const x = 180 + i*640 + hash(i*4.3)*120;
-      g.fillStyle = C.mid;
-      g.fillRect(x, -300, 26, 300); g.fillRect(x+86, -300, 26, 300);   // legs
-      g.fillRect(x-18, -390, 148, 92);                                 // cabin
-      g.beginPath();                                                   // roof
-      g.moveTo(x-34,-390); g.lineTo(x+56,-436); g.lineTo(x+146,-390); g.closePath(); g.fill();
-      g.fillStyle = 'rgba(255,236,180,.30)';                           // lit window
-      g.fillRect(x+2, -370, 100, 44);
-    }
-  })});
-  // near: the inner fence, with wire along the top
-  layers.push({ f:0.54, y:0, tile: makeLayer(TW, 620, (g)=>{
-    g.strokeStyle = C.near; g.lineWidth = 9;
-    for(let x=0; x<TW; x+=132){                              // posts
-      g.beginPath(); g.moveTo(x, 0); g.lineTo(x, -176); g.stroke();
-    }
-    g.lineWidth = 6;
-    g.beginPath(); g.moveTo(0,-176); g.lineTo(TW,-176); g.stroke();
-    g.beginPath(); g.moveTo(0,-96);  g.lineTo(TW,-96);  g.stroke();
-    g.strokeStyle = 'rgba(159,212,255,.20)'; g.lineWidth = 3;
-    for(let x=0; x<TW; x+=54){                               // coils of wire
-      g.beginPath(); g.arc(x+27, -192, 21, 0, TAU); g.stroke();
-    }
-    g.strokeStyle = 'rgba(159,212,255,.10)'; g.lineWidth = 2; // chain link
-    for(let x=0; x<TW; x+=26){
-      g.beginPath(); g.moveTo(x, -14); g.lineTo(x+26, -168); g.stroke();
-      g.beginPath(); g.moveTo(x+26, -14); g.lineTo(x, -168); g.stroke();
+    g.fillRect(0, -520, TW, 520);
+    g.fillStyle = 'rgba(0,0,0,.30)';                 // recessed bays further in
+    for(let x=140; x<TW; x+=760){
+      g.fillRect(x, -430, 250, 430);
     }
   })});
 }
@@ -2399,7 +2354,7 @@ const pressJump = thrustOn, releaseJump = thrustOff;   // old names, one system
    pressJump/releaseJump are idempotent, so overlapping families are harmless.
    Every raw down is counted before any filtering, so the readout can tell
    "no event arrived" apart from "event arrived and was filtered". */
-const BUILD = 'b0903-1311';   // shown in ?dbg=1 so a cached build is obvious
+const BUILD = 'b0903-1431';   // shown in ?dbg=1 so a cached build is obvious
 const TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints||0) > 0;
 /* Only the mute button may swallow a press. Filtering on any <button> was the
    bug: on device every tap reported lastEv=start with taps=0, because the target
@@ -2490,8 +2445,8 @@ document.addEventListener('visibilitychange', ()=>{
    FLOW
    ============================================================ */
 function toMenu(){
-  // the yard, because that is what is outside his cell
-  const yard = THEMES.findIndex(t=>t.id==='yard');
+  // the cell block: he is inside the building, not out in a yard
+  const yard = THEMES.findIndex(t=>t.id==='block');
   applyTheme(yard>=0 ? THEMES[yard] : THEMES[0]);
   game.mode='menu'; game.obstacles.length=0; game.parts.length=0; game.pops.length=0;
   game.cellX = PX;                       // he is in the cell before anything is pressed
@@ -2507,7 +2462,7 @@ function startRun(){
   game.runCount = (game.runCount||0) + 1;
   // every run starts in the yard he has just kicked his way out of, and
   // travels from there
-  const yard = THEMES.findIndex(t=>t.id==='yard');
+  const yard = THEMES.findIndex(t=>t.id==='block');
   applyTheme(game.forceTheme || THEMES[yard>=0 ? yard : 0]);
   game.swapK = 1; layersFrom = [];
   game.mode='play'; game.runT=game.presetRunT||0; game.score=0; game.dist=0;
@@ -2625,25 +2580,19 @@ function update(dt, rawDt){
    hands straight over to a normal run -- no cinematic, no pause, and he is
    already moving when control returns. Deadpan the whole way through: the joke
    is that breaking out of prison is not worth reacting to. */
-function cellPose(){                       // where he is, and what he is doing
+function cellPose(){
   const g = cellGeom();
-  const bunkY = g.h*0.24 + 22;
-  const bunkX = -g.w*0.5 + g.w*0.31;
-  const doorX =  g.w*0.5 - g.doorW - 26;
-  if(game.mode === 'menu') return { set:'cell', i:0, x:bunkX, y:bunkY };
+  const standX = g.w*0.5 - g.doorW - 96;        // stood just inside the door
   const t = game.introT;
-  if(t < T_UP)     return { set:'cell', i:0, x:bunkX, y:bunkY };
-  if(t < T_STAND){                                       // swings upright
-    const k = (t-T_UP)/(T_STAND-T_UP);
-    return { set:'cell', i:1, x:bunkX + 14*k, y:bunkY*(1-k*k) };
-  }
-  if(t < T_CHARGE){                                      // charges the door
+  if(game.mode === 'menu' || t < T_UP) return { set:'cell', i:0, x:standX, y:0 };
+  if(t < T_STAND)  return { set:'cell', i:1, x:standX, y:0 };
+  if(t < T_CHARGE){                              // winds up, rocking back into it
     const k = (t-T_STAND)/(T_CHARGE-T_STAND);
-    if(k < 0.22) return { set:'cell', i:2, x:bunkX+14, y:0 };
-    const r = (k-0.22)/0.78;
-    return { set:'run', i:-1, x:lerp(bunkX+14, doorX, r*r*(3-2*r)), y:0 };
+    return { set:'cell', i:2, x:standX - 26*Math.sin(k*Math.PI*0.9), y:0 };
   }
-  return { set:'cell', i:3, x:doorX + 40*(t-T_CHARGE)/(T_OUT-T_CHARGE), y:34 };
+  const k = (t-T_CHARGE)/(T_OUT-T_CHARGE);
+  if(k < 0.5) return { set:'cell', i:3, x:standX + 150*k, y:30 };   // through the door
+  return { set:'cell', i:4, x:standX + 150*k, y:0 };                // and away
 }
 function startIntro(){
   startRun();
@@ -2751,7 +2700,7 @@ function updatePlay(dt){
      you are getting somewhere, so it must not be subtle. */
   if(!game.forceTheme){
     const leg = Math.floor(game.runT / 26) % THEMES.length;
-    const order = ['yard','farm','city'];
+    const order = ['block','farm','city'];
     const want = THEMES.find(t => t.id === order[leg]) || THEMES[leg];
     swapTheme(want);
   }
@@ -3099,6 +3048,7 @@ function drawSky(T){
   g.addColorStop(0.56, T.skyC); g.addColorStop(0.80, T.skyD); g.addColorStop(1, T.skyE);
   ctx.fillStyle=g; ctx.fillRect(0,top,VW,GROUND+40-top);
 
+  if(T.indoor) return;                      // no sky in here
   // sun, sinking behind the skyline
   const sx = VW*0.76, sy = GROUND - 500;
   const gr = ctx.createRadialGradient(sx,sy,10,sx,sy,420);
@@ -3145,49 +3095,189 @@ function drawLayers(list){
     }
   }
 }
-/* Floodlights, and a searchlight that sweeps the yard looking for him. */
-function drawYardProps(){
-  const spacing = 520, first = Math.floor((cam.x-200)/spacing);
-  for(let i=first; i<first+Math.ceil(VW/spacing)+3; i++){
-    const x = i*spacing - cam.x + 160, kind = hash(i*3.7);
-    ctx.save(); ctx.translate(x, GROUND);
-    if(kind < 0.5){
-      // a floodlight mast leaning over the track
-      ctx.strokeStyle = C.prop; ctx.lineWidth = 13; ctx.lineCap='round';
-      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-268); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(0,-268); ctx.lineTo(46,-292); ctx.stroke();
-      ctx.fillStyle = C.prop;
-      ctx.beginPath();
-      ctx.roundRect(30, -320, 54, 34, 7); ctx.fill();
-      const beat = 0.55 + 0.45*Math.sin(game.t*1.6 + i);      // lamps buzzing
-      ctx.globalAlpha = beat;
-      ctx.fillStyle = '#FFF0B8';
-      ctx.beginPath(); ctx.roundRect(36, -314, 42, 22, 5); ctx.fill();
-      const beam = ctx.createLinearGradient(57,-292, 57,-40);  // the light it throws
-      beam.addColorStop(0, 'rgba(255,240,184,.20)');
-      beam.addColorStop(1, 'rgba(255,240,184,0)');
-      ctx.fillStyle = beam; ctx.globalAlpha = beat*0.8;
-      ctx.beginPath(); ctx.moveTo(36,-290); ctx.lineTo(78,-290);
-      ctx.lineTo(168,-30); ctx.lineTo(-54,-30); ctx.closePath(); ctx.fill();
-      ctx.globalAlpha = 1;
-    } else {
-      // a searchlight on a post, sweeping
-      ctx.strokeStyle = C.prop; ctx.lineWidth = 11; ctx.lineCap='round';
-      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-198); ctx.stroke();
-      ctx.save(); ctx.translate(0,-206);
-      ctx.rotate(-0.9 + Math.sin(game.t*0.75 + i*1.7)*0.6);
-      ctx.fillStyle = C.prop;
-      ctx.beginPath(); ctx.roundRect(-16,-17,44,34,8); ctx.fill();
-      const sweep = ctx.createLinearGradient(28,0, 520,0);
-      sweep.addColorStop(0, 'rgba(200,226,255,.26)');
-      sweep.addColorStop(1, 'rgba(200,226,255,0)');
-      ctx.fillStyle = sweep;
-      ctx.beginPath(); ctx.moveTo(26,-15); ctx.lineTo(520,-150);
-      ctx.lineTo(520,150); ctx.lineTo(26,15); ctx.closePath(); ctx.fill();
-      ctx.fillStyle='#DCE4FF';
-      ctx.beginPath(); ctx.ellipse(27,0,6,14,0,0,TAU); ctx.fill();
-      ctx.restore();
+/* the concrete walkway, its hazard stripe, and the dark service level below */
+function drawBlockGround(){
+  const y = GROUND;
+  ctx.fillStyle = '#0A1216'; ctx.fillRect(0, y, VW, VH-y+340);   // the dark below
+  ctx.fillStyle = '#4A4A44'; ctx.fillRect(0, y-6, VW, 34);        // the slab
+  ctx.fillStyle = '#3A3A35'; ctx.fillRect(0, y+28, VW, 12);
+  const slab = 190, off = ((cam.x % slab) + slab) % slab;         // seams
+  ctx.strokeStyle = 'rgba(20,26,28,.5)'; ctx.lineWidth = 3;
+  for(let i=-1;i<VW/slab+2;i++){
+    const x = i*slab - off;
+    ctx.beginPath(); ctx.moveTo(x, y-6); ctx.lineTo(x, y+28); ctx.stroke();
+  }
+  // hazard stripe along the leading edge
+  const sw = 34, so = ((cam.x % (sw*2)) + sw*2) % (sw*2);
+  ctx.fillStyle = '#161616'; ctx.fillRect(0, y+40, VW, 22);
+  ctx.fillStyle = '#F2C230';
+  for(let x=-so; x<VW+sw*2; x+=sw*2){
+    ctx.beginPath();
+    ctx.moveTo(x, y+62); ctx.lineTo(x+sw*0.62, y+40);
+    ctx.lineTo(x+sw*1.24, y+40); ctx.lineTo(x+sw*0.62, y+62);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.fillStyle = 'rgba(255,255,255,.07)'; ctx.fillRect(0, y-6, VW, 4);
+  // service level: a ladder and a couple of covers, well below the action
+  const lsp = 900, lf = Math.floor((cam.x-200)/lsp);
+  for(let i=lf; i<lf+Math.ceil(VW/lsp)+2; i++){
+    const x = i*lsp - cam.x + 200;
+    ctx.strokeStyle = '#1B272C'; ctx.lineWidth = 6;
+    ctx.beginPath(); ctx.moveTo(x, y+78); ctx.lineTo(x, y+300);
+    ctx.moveTo(x+34, y+78); ctx.lineTo(x+34, y+300); ctx.stroke();
+    ctx.lineWidth = 5;
+    for(let r=y+100; r<y+300; r+=32){
+      ctx.beginPath(); ctx.moveTo(x, r); ctx.lineTo(x+34, r); ctx.stroke();
     }
+    const mx = x + 470;
+    ctx.fillStyle = '#141D21';
+    ctx.beginPath(); ctx.ellipse(mx, y+150, 44, 13, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#1B272C'; ctx.lineWidth = 4; ctx.stroke();
+  }
+}
+
+/* the wall he is running along, and everything bolted to it */
+const WALLF = 0.46;                       // the wall's own parallax
+function drawBlockProps(){
+  const off = cam.x * WALLF, span = 980;
+  const top = 0;                          // interior: wall fills the frame
+
+  // ---- breeze block wall -------------------------------------------------
+  const wall = ctx.createLinearGradient(0, top, 0, GROUND);
+  wall.addColorStop(0,    '#081319');     // the dark up under the ceiling
+  wall.addColorStop(0.16, '#12262E');
+  wall.addColorStop(0.62, '#20424C');
+  wall.addColorStop(1,    '#274A54');
+  ctx.fillStyle = wall; ctx.fillRect(0, top, VW, GROUND-top);
+  const bw = 96, bh = 40, bo = ((off % (bw*2)) + bw*2) % (bw*2);
+  ctx.strokeStyle = 'rgba(8,20,26,.55)'; ctx.lineWidth = 3;
+  ctx.beginPath();
+  for(let row=0, y=GROUND; y>top; row++, y-=bh){
+    ctx.moveTo(0, y); ctx.lineTo(VW, y);
+    const stagger = (row & 1) ? bw*0.5 : 0;
+    for(let x=-bo+stagger; x<VW+bw; x+=bw){ ctx.moveTo(x, y); ctx.lineTo(x, y-bh); }
+  }
+  ctx.stroke();
+
+  // ---- pipework along the top -------------------------------------------
+  const py = Math.max(56, GROUND*0.13);
+  const pipe = (yy, th) => {
+    ctx.lineCap='butt'; ctx.strokeStyle='#0D1A20'; ctx.lineWidth=th+7;
+    ctx.beginPath(); ctx.moveTo(0,yy); ctx.lineTo(VW,yy); ctx.stroke();
+    ctx.strokeStyle='#3D5560'; ctx.lineWidth=th;
+    ctx.beginPath(); ctx.moveTo(0,yy); ctx.lineTo(VW,yy); ctx.stroke();
+    ctx.strokeStyle='rgba(255,255,255,.10)'; ctx.lineWidth=Math.max(2,th*0.24);
+    ctx.beginPath(); ctx.moveTo(0,yy-th*0.26); ctx.lineTo(VW,yy-th*0.26); ctx.stroke();
+  };
+  pipe(py, 20); pipe(py + 74, 12);
+  ctx.fillStyle='#2A3D46';                                  // joint collars
+  for(let x=-((off%240)+240)%240; x<VW+240; x+=240){
+    ctx.fillRect(x-7, py-15, 14, 30);
+    ctx.fillRect(x+110-7, py+74-10, 14, 20);
+  }
+
+  const first = Math.floor((cam.x*WALLF - VW)/span);
+  for(let i=first; i<first+Math.ceil(VW/span)+3; i++){
+    const sx = i*span - off;
+    if(sx < -420 || sx > VW+420) continue;
+    const seed = hash(i*3.9);
+
+    // ---- caged lamp, and the cone it throws --------------------------
+    const lx = sx + 300, ly = py + 30;
+    const flick = 0.86 + 0.14*Math.sin(game.t*23 + i) * (hash(i*7.3)>0.75 ? 1 : 0.15);
+    ctx.strokeStyle='#0D1A20'; ctx.lineWidth=7;
+    ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx, ly+56); ctx.stroke();
+    const cone = ctx.createLinearGradient(lx, ly+80, lx, GROUND);
+    cone.addColorStop(0, 'rgba(245,217,138,'+(0.30*flick).toFixed(3)+')');
+    cone.addColorStop(1, 'rgba(245,217,138,0)');
+    ctx.fillStyle = cone;
+    ctx.beginPath(); ctx.moveTo(lx-40, ly+80); ctx.lineTo(lx+40, ly+80);
+    ctx.lineTo(lx+250, GROUND); ctx.lineTo(lx-250, GROUND); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#16262C';                                  // shade
+    ctx.beginPath(); ctx.moveTo(lx-46, ly+80); ctx.lineTo(lx-20, ly+52);
+    ctx.lineTo(lx+20, ly+52); ctx.lineTo(lx+46, ly+80); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.arc(lx, ly+80, 15, 0, Math.PI);
+    ctx.fillStyle='rgba(255,238,182,'+(0.95*flick).toFixed(3)+')'; ctx.fill();
+
+    // ---- extractor fan ------------------------------------------------
+    const fx = sx + 20, fy = py + 132;
+    ctx.fillStyle='#16262C'; ctx.strokeStyle='#0D1A20'; ctx.lineWidth=5;
+    ctx.beginPath(); ctx.roundRect(fx-42, fy-42, 84, 84, 6); ctx.fill(); ctx.stroke();
+    ctx.save(); ctx.translate(fx, fy); ctx.rotate(game.t*2.1 + i);
+    ctx.fillStyle='#3D5560';
+    for(let b=0;b<4;b++){
+      ctx.rotate(Math.PI/2);
+      ctx.beginPath(); ctx.ellipse(15, 0, 15, 7, 0, 0, TAU); ctx.fill();
+    }
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(fx, fy, 8, 0, TAU); ctx.fillStyle='#0D1A20'; ctx.fill();
+
+    if(seed < 0.5){
+      // ---- security camera --------------------------------------------
+      const cx2 = sx + 560, cy2 = py + 96;
+      ctx.strokeStyle='#0D1A20'; ctx.lineWidth=6;
+      ctx.beginPath(); ctx.moveTo(cx2, cy2-16); ctx.lineTo(cx2, cy2+4); ctx.stroke();
+      ctx.save(); ctx.translate(cx2, cy2+10);
+      ctx.rotate(Math.sin(game.t*0.6 + i)*0.28);
+      ctx.fillStyle='#2A3D46';
+      ctx.beginPath(); ctx.roundRect(-34, -13, 68, 26, 5); ctx.fill();
+      ctx.beginPath(); ctx.arc(34, 0, 9, 0, TAU); ctx.fillStyle='#0D1A20'; ctx.fill();
+      ctx.beginPath(); ctx.arc(34, 0, 5, 0, TAU);
+      ctx.fillStyle = (game.t*2 % 2 < 1.4) ? '#FF3B30' : '#5A1512'; ctx.fill();
+      ctx.restore();
+    } else {
+      // ---- barred window, lit from the far side -----------------------
+      const wx2 = sx + 560, wy2 = py + 100, ww = 118, wh = 84;
+      ctx.fillStyle='#0D1A20';
+      ctx.beginPath(); ctx.roundRect(wx2-ww/2-7, wy2-wh/2-7, ww+14, wh+14, 5); ctx.fill();
+      const gl = ctx.createLinearGradient(0, wy2-wh/2, 0, wy2+wh/2);
+      gl.addColorStop(0, '#5BF0E4'); gl.addColorStop(1, '#1E8F92');
+      ctx.fillStyle = gl; ctx.fillRect(wx2-ww/2, wy2-wh/2, ww, wh);
+      ctx.strokeStyle='#0D1A20'; ctx.lineWidth=8;
+      for(let b=1;b<4;b++){
+        const bx2 = wx2-ww/2 + ww*b/4;
+        ctx.beginPath(); ctx.moveTo(bx2, wy2-wh/2); ctx.lineTo(bx2, wy2+wh/2); ctx.stroke();
+      }
+    }
+
+    // ---- red alarm ------------------------------------------------------
+    const ax = sx + 800, ay = py + 180;
+    const pulse = 0.45 + 0.55*Math.abs(Math.sin(game.t*2.4 + i*1.3));
+    ctx.fillStyle = 'rgba(232,67,60,'+(0.20*pulse).toFixed(3)+')';
+    ctx.beginPath(); ctx.arc(ax, ay, 46, 0, TAU); ctx.fill();
+    ctx.fillStyle='#16262C';
+    ctx.beginPath(); ctx.roundRect(ax-13, ay-24, 26, 12, 3); ctx.fill();
+    ctx.beginPath(); ctx.arc(ax, ay, 13, 0, TAU);
+    ctx.fillStyle = 'rgb('+Math.round(120+135*pulse)+',40,36)'; ctx.fill();
+    ctx.strokeStyle='#0D1A20'; ctx.lineWidth=4; ctx.stroke();
+
+    // ---- scratched tally ------------------------------------------------
+    ctx.strokeStyle='rgba(220,238,240,.22)'; ctx.lineWidth=3; ctx.lineCap='round';
+    const tx = sx + 720, ty = GROUND - 260;
+    for(let m=0;m<4;m++){
+      ctx.beginPath(); ctx.moveTo(tx+m*11, ty); ctx.lineTo(tx+m*11+4, ty+26); ctx.stroke();
+    }
+    ctx.beginPath(); ctx.moveTo(tx-6, ty+24); ctx.lineTo(tx+40, ty+2); ctx.stroke();
+  }
+
+  // ---- things standing on the floor, at the player's own speed ----------
+  const fsp = 760, ff = Math.floor((cam.x-300)/fsp);
+  for(let i=ff; i<ff+Math.ceil(VW/fsp)+3; i++){
+    const sx = i*fsp - cam.x + 420;
+    if(sx < -260 || sx > VW+260) continue;
+    if(hash(i*5.1) > 0.62) continue;
+    ctx.save(); ctx.translate(sx, GROUND);
+    const crate = (x, y, w2, h2) => {
+      ctx.fillStyle='#6B4A2A';
+      ctx.beginPath(); ctx.roundRect(x, y-h2, w2, h2, 4); ctx.fill();
+      ctx.strokeStyle='#3C2915'; ctx.lineWidth=4; ctx.stroke();
+      ctx.strokeStyle='#8A6234'; ctx.lineWidth=5;
+      ctx.beginPath(); ctx.moveTo(x+5, y-h2+7); ctx.lineTo(x+w2-5, y-7); ctx.stroke();
+    };
+    crate(-64, 0, 72, 66); crate(6, 0, 62, 54);
+    ctx.fillStyle='#12191C';                                  // bin bag
+    ctx.beginPath(); ctx.ellipse(-96, -22, 26, 24, 0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-104,-40); ctx.lineTo(-96,-56); ctx.lineTo(-88,-40); ctx.closePath(); ctx.fill();
     ctx.restore();
   }
 }
@@ -3250,10 +3340,29 @@ function drawLilChicken(cheer, bob){
   ctx.restore();
   ctx.restore();
 }
-/* Spectators along the route. In the yard they are still behind bars. */
+/* Who else is in here. Inside the prison they are cricket guards in suits,
+   entirely unbothered until he goes past, at which point they panic; outside
+   they are other chickens cheering him on. Drawn from frames when the art is
+   loaded, and from the flat silhouette otherwise, so a missing file costs a
+   detail rather than the level. */
+function drawNPC(set, i, sx, gy, scale, flip){
+  const list = FRAME_DATA[set];
+  if(!list || !FR.ready) return false;
+  const fr = list[Math.min(i, list.length-1)];
+  const im = FR.img[fr.f];
+  if(!im || !im.complete || !im.naturalWidth) return false;
+  const w = fr.w*SPR*scale, h = fr.h*SPR*scale, ay = fr.ay*SPR*scale;
+  ctx.save();
+  ctx.translate(sx, gy);
+  if(flip) ctx.scale(-1, 1);
+  ctx.globalAlpha = 0.92;
+  ctx.drawImage(im, -w*0.46, -ay, w, h);
+  ctx.restore();
+  return true;
+}
 function drawSpectators(T){
   const spacing = 545, first = Math.floor((cam.x-300)/spacing);
-  const caged = T.id === 'yard';
+  const inside = !!T.indoor;
   for(let i=first; i<first+Math.ceil(VW/spacing)+3; i++){
     if(hash(i*9.3) > 0.80) continue;                    // not at every stop
     const gx = i*spacing + 300;
@@ -3261,25 +3370,33 @@ function drawSpectators(T){
     if(sx < -220 || sx > VW+220) continue;
     const n = 1 + (hash(i*4.1)*2.99 | 0);
     const near = Math.abs(gx - player.x) < 520 && game.mode === 'play';
+    const holding = inside && hash(i*8.7) < 0.42;   // a cell, not a guard post
     for(let k=0;k<n;k++){
-      const ox = (k-(n-1)/2) * 62 + hash(i*7.7+k)*10;
+      const ox = (k-(n-1)/2) * (inside ? 78 : 62) + hash(i*7.7+k)*10;
       const ph = hash(i*2.3+k*1.7)*TAU;
-      const bob = near ? -Math.abs(Math.sin(game.t*9 + ph))*13   // jumping
-                       :  Math.sin(game.t*1.8 + ph)*2.2;         // just breathing
+      const bob = near ? -Math.abs(Math.sin(game.t*9 + ph))*13
+                       :  Math.sin(game.t*1.8 + ph)*2.2;
+      if(inside && !holding){
+        // a guard on his rounds, until a chicken goes past at speed
+        const pose = near ? 2 : (hash(i*6.1+k) > 0.5 ? 1 : 0);
+        if(drawNPC('cricket', pose, sx+ox, GROUND-8 + (near?bob:0), 1, true)) continue;
+      } else if(!inside){
+        if(drawNPC('cricket', near ? 3 : 0, sx+ox, GROUND-8+bob, 0.9, false)) continue;
+      }
       ctx.save();
       ctx.translate(sx + ox, GROUND - 10);
       ctx.scale(0.82, 0.82);
       drawLilChicken(near, bob);
       ctx.restore();
     }
-    if(caged){                                          // the ones he left behind
+    if(inside && holding){          // a cell with someone still in it
       ctx.save();
-      ctx.translate(sx, GROUND - 10);
-      const cw = 42 + n*62, ch = 78;
-      ctx.strokeStyle = lerpHex(C.prop, '#FFF2DE', 0.30); ctx.lineWidth = 6;
+      ctx.translate(sx, GROUND - 8);
+      const cw = 52 + n*74, ch = 104;
+      ctx.strokeStyle = 'rgba(150,190,200,.40)'; ctx.lineWidth = 6;
       ctx.strokeRect(-cw*0.5, -ch, cw, ch);
       ctx.lineWidth = 4;
-      for(let bx=-cw*0.5+16; bx<cw*0.5-6; bx+=20){
+      for(let bx=-cw*0.5+18; bx<cw*0.5-6; bx+=22){
         ctx.beginPath(); ctx.moveTo(bx,-ch+4); ctx.lineTo(bx,-4); ctx.stroke();
       }
       ctx.restore();
@@ -3289,9 +3406,11 @@ function drawSpectators(T){
 let _propTheme = null;
 function drawStreetProps(T){
   _propTheme = T || THEME;
+  // The cell block paints a full-height wall, so anyone standing in the room
+  // has to be drawn after it or the wall covers them.
+  if(_propTheme.id==='block'){ drawBlockProps(); drawSpectators(_propTheme); return; }
   drawSpectators(_propTheme);
   if(_propTheme.id==='farm') return drawFarmProps();
-  if(_propTheme.id==='yard') return drawYardProps();
   // lamps + trees + hydrants drawn live so they can be lit/animated
   const spacing = 460;
   const first = Math.floor((cam.x-200)/spacing);
@@ -3342,6 +3461,7 @@ function drawStreetProps(T){
 }
 function drawGround(){
   const y = GROUND;
+  if(THEME.indoor) return drawBlockGround();
   ctx.fillStyle=C.road; ctx.fillRect(0,y,VW,VH-y+340);
   // sunlit curb rim
   ctx.fillStyle=C.rim; ctx.fillRect(0,y-4,VW,5);
