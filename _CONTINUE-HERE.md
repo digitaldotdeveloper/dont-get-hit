@@ -662,18 +662,31 @@ semitone per egg in a streak. `game.eggBank` persists in `localStorage` under
 
 ## NPCs
 
-**The farmer** (`drawFarmer`, `FRAME_DATA.farmer`) owns the place and Nugget has
-just left it: six frames of escalating rage -- noticing, fists up, pointing, hat
-off, doubled over -- played only while a chicken is going past, and standing
-about the rest of the time. He gets his OWN pass at his own spacing rather than
-joining the livestock, because one farmer reads as a man and three in a row
-reads as a bug, while the animals want to come in groups.
+**Every background NPC has TWO six-frame loops**, an idle and a reaction, the
+way the livestock do -- a background character that holds one pose reads as a
+sticker, not a character.
 
-**The lookouts** (`drawSpyPigeons`, `SPY`, `FRAME_DATA.spy`) are three pigeons in
-sunglasses on the watchtower's balcony rail. The tower is painted into panel C,
-so they are drawn per panel at fractions measured off that image and ride with it
-wherever it repeats -- which is why they live in `drawFarmPainted` and not in the
-props pass. They barely animate on purpose: a lookout that fidgets is not cool.
+**The farmer** (`drawFarmer`) owns the place and Nugget has just left it.
+`farmeridle` is him wiping his brow and settling; `farmer` is six frames of
+escalating rage -- noticing, fists up, pointing, hat off, doubled over -- run
+only while a chicken is going past. The rage loop starts at frame **2**, because
+frames 0 and 1 are the calm and the double-take and looping through them resets
+him to placid mid-tantrum. He gets his OWN pass at his own spacing rather than
+joining the livestock: one farmer reads as a man, three in a row reads as a bug,
+and the animals want to come in groups.
+
+**The lookouts** (`drawSpyPigeons`, `SPY`) are three pigeons in sunglasses on the
+watchtower's balcony rail. `spy` is a slow shuffle; `spyalert` is head up, wing
+to the earpiece, talking into it. The near test is **screen** distance, not world
+distance, because the tower rides the parallax and its world x is not where it
+looks. The tower is painted into panel C, so they are drawn per panel at
+fractions measured off that image and ride with it wherever it repeats -- which
+is why they live in `drawFarmPainted` and not in the props pass.
+
+**One scale per sheet, taken from its first frame.** Normalising every frame to
+the same height stretched the doubled-over rage frame back up to full standing
+height, so the farmer got TALLER the angrier he got. A crouch has to be shorter
+than a stand, and only a per-sheet scale keeps that.
 
 
 Cricket guards in suits, `cricket0..5`, a six-frame panic loop with the antennae
