@@ -1114,16 +1114,27 @@ function cosmeticImage(id, slot, src, opt){
    swappable while frames are in use. If any image fails to load the
    procedural puppet draws instead - the character can never vanish.
    ============================================================ */
-const FRAME_DATA = {"run":[{"f":"run0.webp","w":206,"h":199,"ay":199},{"f":"run1.webp","w":138,"h":182,"ay":182},{"f":"run2.webp","w":136,"h":181,"ay":181},{"f":"run3.webp","w":187,"h":196,"ay":196},{"f":"run4.webp","w":140,"h":181,"ay":181},{"f":"run5.webp","w":179,"h":195,"ay":195}],"fly":[{"f":"fly0.webp","w":110,"h":161,"ay":162.3},{"f":"fly1.webp","w":112,"h":158,"ay":163.1},{"f":"fly2.webp","w":163,"h":210,"ay":191.6},{"f":"fly3.webp","w":147,"h":158,"ay":181.3},{"f":"fly4.webp","w":148,"h":186,"ay":187.3},{"f":"fly5.webp","w":130,"h":185,"ay":179.7}],"fall":[{"f":"fall0.webp","w":122,"h":187,"ay":184.0},{"f":"fall1.webp","w":145,"h":199,"ay":186.0},{"f":"fall2.webp","w":174,"h":210,"ay":179.8},{"f":"fall3.webp","w":143,"h":198,"ay":182.3}],"jump":[{"f":"jump0.webp","w":122,"h":148,"ay":171.0},{"f":"jump1.webp","w":140,"h":171,"ay":169.4},{"f":"jump2.webp","w":138,"h":221,"ay":193.2},{"f":"jump3.webp","w":183,"h":186,"ay":179.6},{"f":"jump4.webp","w":155,"h":186,"ay":180.3}],"land":[{"f":"land0.webp","w":145,"h":183,"ay":183},{"f":"land1.webp","w":157,"h":179,"ay":179},{"f":"land2.webp","w":122,"h":121,"ay":121},{"f":"land3.webp","w":165,"h":186,"ay":186}],"hit":[{"f":"hit0.webp","w":145,"h":164,"ay":172.9},{"f":"hit1.webp","w":163,"h":186,"ay":185.1},{"f":"hit2.webp","w":122,"h":154,"ay":173.6},{"f":"hit3.webp","w":106,"h":126,"ay":166.0},{"f":"hit4.webp","w":178,"h":81,"ay":140.5},{"f":"hit5.webp","w":128,"h":146,"ay":173.4}],"kick":[{"f":"kick0.webp","w":164,"h":239,"ay":239.0},{"f":"kick1.webp","w":162,"h":228,"ay":228.0},{"f":"kick2.webp","w":172,"h":172,"ay":179.4},{"f":"kick3.webp","w":132,"h":192,"ay":178.6},{"f":"kick4.webp","w":182,"h":194,"ay":194.0}],"boom":[{"f":"boom0.webp","w":121,"h":125},{"f":"boom1.webp","w":194,"h":215},{"f":"boom2.webp","w":260,"h":273},{"f":"boom3.webp","w":209,"h":215},{"f":"boom4.webp","w":170,"h":175}],"cricket":[{"f":"cricket0.webp","w":45,"h":136,"ay":136.0},{"f":"cricket1.webp","w":44,"h":143,"ay":143.0},{"f":"cricket2.webp","w":67,"h":127,"ay":127.0},{"f":"cricket3.webp","w":58,"h":129,"ay":129.0},{"f":"cricket4.webp","w":62,"h":121,"ay":121.0},{"f":"cricket5.webp","w":55,"h":107,"ay":107.0}],"egg":[{"f":"egg0.webp","w":47,"h":58,"ay":29.0},{"f":"egg1.webp","w":45,"h":58,"ay":29.0},{"f":"egg2.webp","w":43,"h":58,"ay":29.0},{"f":"egg3.webp","w":39,"h":58,"ay":29.0},{"f":"egg4.webp","w":22,"h":58,"ay":29.0},{"f":"egg5.webp","w":15,"h":55,"ay":27.5},{"f":"egg6.webp","w":39,"h":55,"ay":27.5},{"f":"egg7.webp","w":41,"h":55,"ay":27.5},{"f":"egg8.webp","w":42,"h":55,"ay":27.5},{"f":"egg9.webp","w":43,"h":55,"ay":27.5}]};
+const FRAME_DATA = {"cow":[{"f":"cow0.webp","w":89,"h":154,"ay":153.5},{"f":"cow1.webp","w":85,"h":146,"ay":152.0},{"f":"cow2.webp","w":84,"h":164,"ay":165.1},{"f":"cow3.webp","w":91,"h":163,"ay":164.0},{"f":"cow4.webp","w":92,"h":146,"ay":147.2},{"f":"cow5.webp","w":60,"h":146,"ay":147.2}],"cowrun":[{"f":"cowrun0.webp","w":118,"h":164,"ay":164.0},{"f":"cowrun1.webp","w":120,"h":164,"ay":165.8},{"f":"cowrun2.webp","w":128,"h":154,"ay":159.1},{"f":"cowrun3.webp","w":154,"h":152,"ay":156.6},{"f":"cowrun4.webp","w":157,"h":147,"ay":152.9},{"f":"cowrun5.webp","w":170,"h":158,"ay":164.0}],"pig":[{"f":"pig0.webp","w":98,"h":156,"ay":156.0},{"f":"pig1.webp","w":113,"h":155,"ay":156.0},{"f":"pig2.webp","w":90,"h":154,"ay":156.0},{"f":"pig3.webp","w":110,"h":156,"ay":156.0},{"f":"pig4.webp","w":89,"h":155,"ay":156.0},{"f":"pig5.webp","w":92,"h":155,"ay":156.0}],"pigrun":[{"f":"pigrun0.webp","w":105,"h":156,"ay":156.0},{"f":"pigrun1.webp","w":110,"h":150,"ay":152.3},{"f":"pigrun2.webp","w":91,"h":132,"ay":135.0},{"f":"pigrun3.webp","w":125,"h":133,"ay":133.1},{"f":"pigrun4.webp","w":96,"h":125,"ay":125.8},{"f":"pigrun5.webp","w":107,"h":137,"ay":136.8}],"goat":[{"f":"goat0.webp","w":92,"h":159,"ay":161.4},{"f":"goat1.webp","w":91,"h":159,"ay":161.4},{"f":"goat2.webp","w":81,"h":158,"ay":159.5},{"f":"goat3.webp","w":82,"h":160,"ay":160.0},{"f":"goat4.webp","w":89,"h":160,"ay":159.5},{"f":"goat5.webp","w":92,"h":158,"ay":161.0}],"goatrun":[{"f":"goatrun0.webp","w":94,"h":159,"ay":160.0},{"f":"goatrun1.webp","w":84,"h":160,"ay":160.0},{"f":"goatrun2.webp","w":118,"h":148,"ay":147.7},{"f":"goatrun3.webp","w":125,"h":145,"ay":149.3},{"f":"goatrun4.webp","w":132,"h":143,"ay":147.7},{"f":"goatrun5.webp","w":141,"h":144,"ay":147.7}],"run":[{"f":"run0.webp","w":206,"h":199,"ay":199},{"f":"run1.webp","w":138,"h":182,"ay":182},{"f":"run2.webp","w":136,"h":181,"ay":181},{"f":"run3.webp","w":187,"h":196,"ay":196},{"f":"run4.webp","w":140,"h":181,"ay":181},{"f":"run5.webp","w":179,"h":195,"ay":195}],"fly":[{"f":"fly0.webp","w":110,"h":161,"ay":162.3},{"f":"fly1.webp","w":112,"h":158,"ay":163.1},{"f":"fly2.webp","w":163,"h":210,"ay":191.6},{"f":"fly3.webp","w":147,"h":158,"ay":181.3},{"f":"fly4.webp","w":148,"h":186,"ay":187.3},{"f":"fly5.webp","w":130,"h":185,"ay":179.7}],"fall":[{"f":"fall0.webp","w":122,"h":187,"ay":184.0},{"f":"fall1.webp","w":145,"h":199,"ay":186.0},{"f":"fall2.webp","w":174,"h":210,"ay":179.8},{"f":"fall3.webp","w":143,"h":198,"ay":182.3}],"jump":[{"f":"jump0.webp","w":122,"h":148,"ay":171.0},{"f":"jump1.webp","w":140,"h":171,"ay":169.4},{"f":"jump2.webp","w":138,"h":221,"ay":193.2},{"f":"jump3.webp","w":183,"h":186,"ay":179.6},{"f":"jump4.webp","w":155,"h":186,"ay":180.3}],"land":[{"f":"land0.webp","w":145,"h":183,"ay":183},{"f":"land1.webp","w":157,"h":179,"ay":179},{"f":"land2.webp","w":122,"h":121,"ay":121},{"f":"land3.webp","w":165,"h":186,"ay":186}],"hit":[{"f":"hit0.webp","w":145,"h":164,"ay":172.9},{"f":"hit1.webp","w":163,"h":186,"ay":185.1},{"f":"hit2.webp","w":122,"h":154,"ay":173.6},{"f":"hit3.webp","w":106,"h":126,"ay":166.0},{"f":"hit4.webp","w":178,"h":81,"ay":140.5},{"f":"hit5.webp","w":128,"h":146,"ay":173.4}],"kick":[{"f":"kick0.webp","w":164,"h":239,"ay":239.0},{"f":"kick1.webp","w":162,"h":228,"ay":228.0},{"f":"kick2.webp","w":172,"h":172,"ay":179.4},{"f":"kick3.webp","w":132,"h":192,"ay":178.6},{"f":"kick4.webp","w":182,"h":194,"ay":194.0}],"boom":[{"f":"boom0.webp","w":121,"h":125},{"f":"boom1.webp","w":194,"h":215},{"f":"boom2.webp","w":260,"h":273},{"f":"boom3.webp","w":209,"h":215},{"f":"boom4.webp","w":170,"h":175}],"cricket":[{"f":"cricket0.webp","w":45,"h":136,"ay":136.0},{"f":"cricket1.webp","w":44,"h":143,"ay":143.0},{"f":"cricket2.webp","w":67,"h":127,"ay":127.0},{"f":"cricket3.webp","w":58,"h":129,"ay":129.0},{"f":"cricket4.webp","w":62,"h":121,"ay":121.0},{"f":"cricket5.webp","w":55,"h":107,"ay":107.0}],"egg":[{"f":"egg0.webp","w":47,"h":58,"ay":29.0},{"f":"egg1.webp","w":45,"h":58,"ay":29.0},{"f":"egg2.webp","w":43,"h":58,"ay":29.0},{"f":"egg3.webp","w":39,"h":58,"ay":29.0},{"f":"egg4.webp","w":22,"h":58,"ay":29.0},{"f":"egg5.webp","w":15,"h":55,"ay":27.5},{"f":"egg6.webp","w":39,"h":55,"ay":27.5},{"f":"egg7.webp","w":41,"h":55,"ay":27.5},{"f":"egg8.webp","w":42,"h":55,"ay":27.5},{"f":"egg9.webp","w":43,"h":55,"ay":27.5}],"hensad":[{"f":"hensad0.webp","w":92,"h":98,"ay":98.0},{"f":"hensad1.webp","w":95,"h":98,"ay":98.0},{"f":"hensad2.webp","w":98,"h":98,"ay":98.0},{"f":"hensad3.webp","w":93,"h":98,"ay":98.0},{"f":"hensad4.webp","w":83,"h":98,"ay":98.0}],"henjoy":[{"f":"henjoy0.webp","w":94,"h":98,"ay":98.0},{"f":"henjoy1.webp","w":80,"h":98,"ay":98.0},{"f":"henjoy2.webp","w":80,"h":98,"ay":98.0},{"f":"henjoy3.webp","w":80,"h":98,"ay":98.0}]};
 const FR = { ready:false, n:0, need:0, img:{} };
 const SPR = 175/190;                       // world units per frame pixel
+/* The roadside animals are scenery. They are loaded like everything else but
+   they are deliberately left out of the readiness count -- 36 frames of cow,
+   pig and goat gating FR.ready would keep the chicken a puppet for the first
+   seconds of a cold load, to decorate a verge he has not reached yet. drawNPC
+   checks each image itself, so one that has not arrived costs a frame of
+   scenery and nothing else. */
+const NPC_SETS = ['cow','cowrun','pig','pigrun','goat','goatrun'];
 (function loadFrames(){
-  for(const set in FRAME_DATA) FR.need += FRAME_DATA[set].length;
   for(const set in FRAME_DATA){
+    if(NPC_SETS.indexOf(set) < 0) FR.need += FRAME_DATA[set].length;
+  }
+  for(const set in FRAME_DATA){
+    const scenery = NPC_SETS.indexOf(set) >= 0;
     FRAME_DATA[set].forEach(fr=>{
       const im = new Image();
-      im.onload = ()=>{ FR.n++; if(FR.n >= FR.need) FR.ready = true; };
-      im.onerror = ()=>{ FR.need--; };     // missing frame: stay on the puppet
+      im.onload = ()=>{ if(scenery) return;
+                        FR.n++; if(FR.n >= FR.need) FR.ready = true; };
+      im.onerror = ()=>{ if(!scenery) FR.need--; };   // missing: stay on the puppet
       im.src = 'anim/' + fr.f;
       FR.img[fr.f] = im;
     });
@@ -1534,9 +1545,11 @@ const rag = {
    ============================================================ */
 const CAGE = {
   ready:false, img:null, door:null,
-  floorFrac:0.8776,                    // where the outdoor ground line sits
-  dx0:0.3623, dx1:0.7129,              // the doorway, as fractions of the image
-  dy0:0.2902, dy1:0.8182,              // its floor is the straw he stands on
+  floorFrac:0.9058,                    // where the outdoor ground line sits
+  dx0:0.3613, dx1:0.7129,              // the doorway, as fractions of the image
+  dy0:0.4377, dy1:0.8726,              // its floor is the straw he stands on
+  roof:[0.5637, 0.0443],               // the roof apex, where the neighbours are
+  doorH:325,                           // the doorway's height in WORLD units
   w:0, h:0, x:0, y:0                   // filled in by cageGeom, in world units
 };
 (function loadCage(){
@@ -1589,8 +1602,12 @@ const camIntroX = () => -(PX + CAGE_CAM);
    not the play band: the play band magnifies a 572px source about fourfold and
    puts the barn roof off the top of the frame. */
 function cageGeom(){
-  const H = clamp(GROUND*0.72, 440, 660);
-  const W = H * (CAGE.img ? CAGE.img.width/CAGE.img.height : 1024/572);
+  /* Anchored on the DOORWAY, not on GROUND. The barn art gained its roof and
+     got 26% taller, and sizing off the canvas would have shrunk the doorway
+     with it and taken Nugget down with the doorway. The doorway is the one
+     measurement that has to hold still, because he stands in it. */
+  const H = CAGE.doorH / (CAGE.dy1 - CAGE.dy0);
+  const W = H * (CAGE.img ? CAGE.img.width/CAGE.img.height : 1024/722);
   CAGE.h = H; CAGE.w = W;
   CAGE.y = GROUND - CAGE.floorFrac*H;          // top of the painted scene
   CAGE.x = -((CAGE.dx0+CAGE.dx1)*0.5)*W;       // offset from game.cageX
@@ -1627,6 +1644,51 @@ function drawCageBack(sx){
      simply ending, or fading out, is what made it look half deleted. */
   if(x0 > 0) ctx.drawImage(im, 0, 0, 2, sh, 0, y0, x0 + 1, dh);
   ctx.drawImage(im, 0, 0, im.width, sh, x0, y0, g.w, dh);
+  drawRoofHens(sx);
+}
+/* THE NEIGHBOURS. Three hens in a crate on the barn roof. They are desperate
+   the whole time Nugget is still in the cage, and they lose their minds the
+   moment he is not -- which is the only reaction in the game to the thing the
+   player just did, so it is worth the forty lines.
+
+   They are drawn BEFORE the crate, so the wire mesh reads as being in front of
+   them; the mesh is keyed transparent, so that is all it takes. */
+const ROOF = { crate:new Image(), ready:false };
+ROOF.crate.onload = ()=>{ ROOF.ready = true; };
+ROOF.crate.src = 'art/roof_crate.webp';
+function henSet(){
+  // free from the frame the kick lands, and they never calm down again
+  const out = (game.mode !== 'menu' && game.mode !== 'intro') ||
+              (game.introT !== undefined && game.introT >= T_KICK);
+  return out ? 'henjoy' : 'hensad';
+}
+function drawRoofHens(sx){
+  const g = cageGeom();
+  const cw = g.w*0.195, ch = cw*(532/516);
+  const cx = sx + g.x + CAGE.roof[0]*g.w;
+  const apex = g.y + CAGE.roof[1]*g.h;
+  /* Sunk a third into the ridge so it is sitting on the roof rather than
+     hovering over it, and clamped so it never climbs off the top of the frame
+     -- on a short landscape phone there is only about 70px of sky above the
+     apex, and an unclamped crate loses its own roof to the bezel. */
+  const cy = Math.max(48, apex + ch*0.30 - ch);
+  const set = henSet(), list = FRAME_DATA[set];
+  const joy = set === 'henjoy';
+  if(list && list.length){
+    const hw = cw*0.21;                              // three across the inside
+    for(let i=0;i<3;i++){
+      const ph = i*2.1;
+      const fr = list[Math.floor(game.t*(joy?9:3.4) + ph) % list.length];
+      const im = FR.img[fr.f];
+      if(!im || !im.complete || !im.naturalWidth) continue;
+      const w = hw, h = w*(fr.h/fr.w);
+      const hop = joy ? Math.max(0, Math.sin(game.t*8 + ph))*ch*0.10
+                      : Math.sin(game.t*2.4 + ph)*ch*0.012;
+      ctx.drawImage(im, cx - cw*0.285 + i*cw*0.285 - w*0.5,
+                    cy + ch*0.775 - h - hop, w, h);
+    }
+  }
+  if(ROOF.ready) ctx.drawImage(ROOF.crate, cx - cw*0.5, cy, cw, ch);
 }
 /* the barred door, in front of him, until he removes it */
 function drawCageFront(sx){
@@ -1734,32 +1796,12 @@ function layEgg(x, y, vx){
     col:'#FFFDF6', g:1500, kind:'egg', rot:0, vr:rnd(-7,7), drag:0.999 });
 }
 
-/* Does a line segment touch a box? Liang-Barsky, clipping the segment against
-   the four slabs. Used for the zappers, which are the one hazard that is not
-   a rectangle. Everything is in world space: x along the track, y as height
-   above the ground, same as the player. */
-function segRect(x0,y0,x1,y1, l,b,r,t){
-  let t0=0, t1=1;
-  const dx=x1-x0, dy=y1-y0;
-  const P=[-dx,dx,-dy,dy], Q=[x0-l, r-x0, y0-b, t-y0];
-  for(let i=0;i<4;i++){
-    if(P[i]===0){ if(Q[i]<0) return false; continue; }
-    const u=Q[i]/P[i];
-    if(P[i]<0){ if(u>t1) return false; if(u>t0) t0=u; }
-    else       { if(u<t0) return false; if(u<t1) t1=u; }
-  }
-  return true;
-}
 function segDist(px,py, x0,y0,x1,y1){
   const dx=x1-x0, dy=y1-y0, L=dx*dx+dy*dy;
   let u = L ? ((px-x0)*dx + (py-y0)*dy)/L : 0;
   u = u<0?0:u>1?1:u;
   const qx=x0+dx*u, qy=y0+dy*u;
   return Math.hypot(px-qx, py-qy);
-}
-function beamEnds(o){
-  const c=Math.cos(o.ang)*o.len*0.5, sn=Math.sin(o.ang)*o.len*0.5;
-  return [o.x-c, o.cy-sn, o.x+c, o.cy+sn];
 }
 
 /* ============================================================
@@ -1819,78 +1861,22 @@ hanger:{ kind:'ground', w:104, h:200, tier:0, draw(o,t){
     ctx.restore();
   }},
 /* ---- ground: jump over these ---- */
-zapper:{ kind:'beam', w:200, h:200, tier:1, draw(){} },
-cone:{ kind:'ground', w:70, h:82, tier:0, draw(o,t){
-    shadowEllipse(42);
-    ctx.beginPath(); ctx.moveTo(-34,0); ctx.lineTo(-13,-78); ctx.quadraticCurveTo(0,-86,13,-78); ctx.lineTo(34,0); ctx.closePath();
-    paint('#FF8A3D',5);
-    ctx.save(); ctx.clip();
-    ctx.beginPath(); ctx.rect(-40,-56,80,16); ctx.fillStyle=C.cream; ctx.fill();
-    ctx.beginPath(); ctx.rect(-40,-30,80,10); ctx.fillStyle='rgba(255,242,222,.45)'; ctx.fill();
-    ctx.restore();
-    ctx.beginPath(); ctx.roundRect(-40,-10,80,12,5); paint('#E2662A',4.6);
-  }},
-box:{ kind:'ground', w:86, h:96, tier:0, draw(o,t){
-    shadowEllipse(48);
-    ctx.beginPath(); ctx.roundRect(-42,-52,84,52,5); paint('#C79A5E',5);
-    ctx.beginPath(); ctx.roundRect(-33,-96,66,46,5); paint('#D9AC6E',5);
-    ctx.strokeStyle='#8E6534'; ctx.lineWidth=4;
-    ctx.beginPath(); ctx.moveTo(-33,-73); ctx.lineTo(33,-73); ctx.moveTo(-42,-26); ctx.lineTo(42,-26); ctx.stroke();
-    ctx.fillStyle='#8E6534'; ctx.font='700 13px Archivo, sans-serif'; ctx.textAlign='center';
-    ctx.fillText('FRAGILE',0,-36);
-  }},
-banana:{ kind:'ground', w:74, h:30, tier:0, draw(o,t){
-    shadowEllipse(36,0.28);
-    ctx.save(); ctx.rotate(-0.05);
-    for(let i=-1;i<=1;i++){
-      ctx.save(); ctx.rotate(i*0.85 + Math.sin(t*2+i)*0.03);
-      ctx.beginPath(); ctx.moveTo(0,-4);
-      ctx.quadraticCurveTo(20,-16, 40,-4); ctx.quadraticCurveTo(20,2, 0,4); ctx.closePath();
-      paint(i===0?'#FFE066':'#FFD84A',4.4); ctx.restore();
-    }
-    ctx.beginPath(); ctx.ellipse(0,-4,11,9,0,0,TAU); paint('#F5C531',4.4);
-    ctx.restore();
-  }},
-ball:{ kind:'ground', w:76, h:76, tier:1, roll:-190, bounce:true, draw(o,t){
-    ctx.save(); ctx.translate(0,-38-(o.bz||0)); ctx.rotate(o.rot||0);
-    ctx.beginPath(); ctx.arc(0,0,36,0,TAU); paint('#F2803A',5);
-    ctx.strokeStyle=C.ink; ctx.lineWidth=3.6;
-    ctx.beginPath(); ctx.moveTo(-36,0); ctx.lineTo(36,0); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0,-36); ctx.lineTo(0,36); ctx.stroke();
-    ctx.beginPath(); ctx.ellipse(0,0,17,36,0,0,TAU); ctx.stroke();
-    ctx.beginPath(); ctx.arc(-12,-13,9,0,TAU); ctx.fillStyle='rgba(255,242,222,.4)'; ctx.fill();
-    ctx.restore();
-    ctx.save(); ctx.globalAlpha=0.4; shadowEllipse(30*(1-(o.bz||0)/160)); ctx.restore();
-  }},
-pigeon:{ kind:'air', w:96, base:210, h:230, tier:1, roll:-90, draw(o,t){
+/* Crows. The same flock the city pigeons were, in farm colours. */
+crows:{ kind:'air', w:96, base:210, h:230, tier:1, roll:-90, draw(o,t){
    for(let n=0;n<3;n++){
     const flap = Math.sin(t*15 + n*1.9);
     const b = Math.sin(t*4 + n)*7 - 16 - n*76;
     ctx.save(); ctx.translate(n%2?10:-8, b);
     ctx.beginPath(); ctx.moveTo(-40,-4); ctx.quadraticCurveTo(-20,-30-flap*22, 6,-8); ctx.quadraticCurveTo(-14,-2,-40,-4); ctx.closePath();
-    paint('#6E82A8',4.6);
-    ctx.beginPath(); ctx.ellipse(0,0,42,26,0.05,0,TAU); paint('#8FA3C4',5);
-    ctx.beginPath(); ctx.moveTo(-40,-2); ctx.lineTo(-72,-12); ctx.lineTo(-70,6); ctx.closePath(); paint('#6E82A8',4.4);
+    paint('#2E3340',4.6);
+    ctx.beginPath(); ctx.ellipse(0,0,42,26,0.05,0,TAU); paint('#414A5C',5);
+    ctx.beginPath(); ctx.moveTo(-40,-2); ctx.lineTo(-72,-12); ctx.lineTo(-70,6); ctx.closePath(); paint('#2E3340',4.4);
     ctx.beginPath(); ctx.ellipse(34,-18,20,19,0,0,TAU); paint('#A8BBD8',5);
     ctx.beginPath(); ctx.moveTo(52,-18); ctx.lineTo(74,-13); ctx.lineTo(52,-8); ctx.closePath(); paint('#FF8A3D',3.6);
     ctx.beginPath(); ctx.arc(40,-24,6,0,TAU); paint('#FFFFFF',3);
     ctx.beginPath(); ctx.arc(41.5,-24,3.2,0,TAU); ctx.fillStyle=C.ink; ctx.fill();
     ctx.beginPath(); ctx.moveTo(-32,4); ctx.quadraticCurveTo(-10,26+flap*20, 14,6); ctx.quadraticCurveTo(-8,12,-32,4); ctx.closePath();
     paint('#A8BBD8',4.6);
-    ctx.restore();
-   }
-  }},
-paper:{ kind:'air', w:88, base:210, h:230, tier:1, draw(o,t){
-   for(let n=0;n<3;n++){
-    ctx.save(); ctx.translate(n%2?14:-12, -16-n*76+Math.sin(t*3.2+n)*10);
-    ctx.rotate(Math.sin(t*5.5+n*2.1)*0.5);
-    ctx.beginPath(); ctx.moveTo(-42,-30); ctx.quadraticCurveTo(0,-42,44,-26);
-    ctx.quadraticCurveTo(38,10,42,28); ctx.quadraticCurveTo(0,14,-44,30);
-    ctx.quadraticCurveTo(-38,0,-42,-30); ctx.closePath(); paint(C.cream,4.6);
-    ctx.strokeStyle='#B8A88E'; ctx.lineWidth=3;
-    for(let i=0;i<4;i++){ ctx.beginPath(); ctx.moveTo(-30,-16+i*13); ctx.lineTo(30,-20+i*13); ctx.stroke(); }
-    ctx.fillStyle=C.ink; ctx.font='900 13px Archivo, sans-serif'; ctx.textAlign='center';
-    ctx.fillText('NEWS',0,-20);
     ctx.restore();
    }
   }},
@@ -2152,7 +2138,7 @@ function tierNow(){
   if(t<9)  return 0;      // learn the one control
   if(t<22) return 1;      // the whole cast, spaced out
   if(t<40) return 2;      // the big props and the falling ones
-  if(t<64) return 3;      // angled zappers, two hazards at a time
+  if(t<64) return 3;      // two hazards at a time
   return 4;
 }
 /* Difficulty is speed, spacing and how many hazards share a screen -- never
@@ -2187,59 +2173,8 @@ function spawnOne(key, aheadTime){
   if(spec.kind==='air') game.lastAirX = o.x; else game.lastGroundX = o.x;
   return o;
 }
-/* The zapper. Jetpack Joyride's signature hazard and the reason its obstacles
-   never needed to be stacked into gates: a bar of electricity anywhere in the
-   column, with clear air all round it, that you fly over or under. */
-function drawZapper(o, sx){
-  const [x0,y0,x1,y1] = beamEnds(o);
-  const ax = sx - (o.x-x0), ay = GROUND - y0;
-  const bx = sx + (x1-o.x), by = GROUND - y1;
-  const pulse = 0.72 + 0.28*Math.sin(game.t*22 + o.seed);
-  ctx.save();
-  ctx.lineCap='round';
-  ctx.globalAlpha = 0.30*pulse;                       // the glow around it
-  ctx.strokeStyle = '#FF456E'; ctx.lineWidth = 22;
-  ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke();
-  ctx.globalAlpha = 1;
-  ctx.strokeStyle = '#FF456E'; ctx.lineWidth = 11;
-  ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke();
-  ctx.strokeStyle = '#FFF2DE'; ctx.lineWidth = 4*pulse;   // white hot core
-  ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke();
-  for(const [nx,ny] of [[ax,ay],[bx,by]]){              // the emitter caps
-    ctx.beginPath(); ctx.arc(nx,ny,15,0,TAU);
-    ctx.fillStyle='#241043'; ctx.fill();
-    ctx.lineWidth=4; ctx.strokeStyle='#FFD54A'; ctx.stroke();
-    ctx.beginPath(); ctx.arc(nx,ny,5.5,0,TAU); ctx.fillStyle='#FFD54A'; ctx.fill();
-  }
-  ctx.restore();
-}
-function spawnZapper(tier){
-  const band = GROUND - CEIL;
-  const closure = game.speed;
-  const x = player.x + closure*Math.max(1.6, (VW - PX + 220)/closure + 0.25);
-  for(let tryN=0; tryN<24; tryN++){
-    // vertical bars early, then angled ones, then slowly turning ones
-    const vertical = tier < 3 ? Math.random()<0.62 : Math.random()<0.4;
-    const ang = vertical ? Math.PI/2
-              : (Math.random()<0.5 ? 0 : rnd(-0.9, 0.9));
-    const len = vertical ? rnd(150, Math.min(300, band*0.42))
-                         : rnd(190, Math.min(420, band*0.55));
-    const spin = (tier>=4 && Math.random()<0.35) ? rnd(-0.5,0.5) : 0;
-    const cy  = rnd(90, band-90);
-    const half = Math.abs(Math.sin(ang))*len*0.5;
-    const lo = cy-half, hi = cy+half;
-    // it has to leave a corridor he can actually get through
-    if(Math.max(lo, band-hi) < 210) continue;
-    game.obstacles.push({ key:'zapper', spec:OB.zapper, kind:'beam',
-      x, cy, ang, len, spin, seed:rnd(0,TAU), w:len, h:len,
-      vx:0, rot:0, y:0, vy:0, landed:true, warn:0,
-      passed:false, minGap:1e9, counted:false });
-    return true;
-  }
-  return false;
-}
 
-const GATE_TOPS  = ['haybale','crates','milkcan','drum_s','kennel','box'];
+const GATE_TOPS  = ['haybale','crates','milkcan','drum_s','kennel','woodkeg'];
 const GATE_HANGS = ['trough','feedbin','barrow','tyre','milkcan'];
 const gateTops  = () => GATE_TOPS;
 const gateHangs = () => GATE_HANGS;
@@ -2265,15 +2200,10 @@ function spawnGate(moving){
 }
 /* Eggs are laid out in runs you can follow with one held press: a flat line, a
    climb, or an arc. Each candidate is dropped if it lands inside a hazard --
-   better a short run than a run that baits you into a zapper. */
+   better a short run than a run that baits you into one. */
 const EGG_R = 26;
 function eggFree(x, y){
   for(const o of game.obstacles){
-    if(o.kind === 'beam'){
-      const [x0,y0,x1,y1] = beamEnds(o);
-      if(segDist(x, y, x0,y0,x1,y1) < 74) return false;
-      continue;
-    }
     const ow = o.w*0.42 + 54;
     if(Math.abs(o.x - x) > ow) continue;
     let obot, otop;
@@ -2385,6 +2315,11 @@ function spawnStandalone(hang){
     w:spec.w, h, cap: pick(hang?gateHangs():gateTops()), base:0, vx:0, rot:0,
     bz:0, y:0, vy:0, landed:true, warn:0, passed:false, minGap:1e9, counted:false });
 }
+/* The zapper used to take 22-26% of every tier above 0, and it was the one
+   hazard that could sit anywhere in the column. With it gone that share goes to
+   the standalone columns and the air, which are the only other things that make
+   you choose a height -- otherwise every tier collapses into "fly over the
+   ground props" and the ceiling stops mattering. */
 function spawnPattern(){
   const tier = tierNow();
   const pool = poolFor(tier);
@@ -2397,34 +2332,30 @@ function spawnPattern(){
     spawnOne(pick(gnd), 0);
     gap = rnd(2.20, 2.70);
   } else if(tier===1){                            // the whole cast, well spaced
-    if(r<0.34) spawnOne(pick(gnd),0);
-    else if(r<0.60) spawnOne(pick(air),0);
-    else if(r<0.82) spawnZapper(tier);
+    if(r<0.46) spawnOne(pick(gnd),0);
+    else if(r<0.74) spawnOne(pick(air),0);
     else spawnStandalone(Math.random()<0.5);
     gap = rnd(1.75, 2.20);
   } else if(tier===2){                            // things start falling
-    if(r<0.26) spawnOne(pick(gnd),0);
-    else if(r<0.48) spawnOne(pick(air),0);
-    else if(r<0.70) spawnZapper(tier);
-    else if(r<0.86) spawnStandalone(Math.random()<0.55);
+    if(r<0.36) spawnOne(pick(gnd),0);
+    else if(r<0.60) spawnOne(pick(air),0);
+    else if(r<0.84) spawnStandalone(Math.random()<0.55);
     else if(fall.length) spawnOne(pick(fall),0);
-    else spawnZapper(tier);
+    else spawnStandalone(true);
     gap = rnd(1.50, 1.90);
   } else if(tier===3){                            // two things at once
-    if(r<0.20) spawnOne(pick(gnd),0);
-    else if(r<0.38) spawnOne(pick(air),0);
-    else if(r<0.62) spawnZapper(tier);
-    else if(r<0.76) spawnStandalone(Math.random()<0.55);
-    else if(r<0.88 && fall.length) spawnOne(pick(fall),0);
-    else { spawnZapper(tier); spawnOne(pick(air), 0.9); }
+    if(r<0.26) spawnOne(pick(gnd),0);
+    else if(r<0.48) spawnOne(pick(air),0);
+    else if(r<0.72) spawnStandalone(Math.random()<0.55);
+    else if(r<0.86 && fall.length) spawnOne(pick(fall),0);
+    else { spawnStandalone(Math.random()<0.55); spawnOne(pick(air), 0.9); }
     gap = rnd(1.30, 1.65);
   } else {
-    if(r<0.14) spawnOne(pick(gnd),0);
-    else if(r<0.30) spawnOne(pick(air),0);
-    else if(r<0.56) spawnZapper(tier);
-    else if(r<0.70) spawnStandalone(Math.random()<0.55);
-    else if(r<0.82 && fall.length) spawnOne(pick(fall),0);
-    else { spawnZapper(tier); spawnOne(pick(gnd.concat(air)), 0.85); }
+    if(r<0.20) spawnOne(pick(gnd),0);
+    else if(r<0.40) spawnOne(pick(air),0);
+    else if(r<0.66) spawnStandalone(Math.random()<0.55);
+    else if(r<0.80 && fall.length) spawnOne(pick(fall),0);
+    else { spawnStandalone(Math.random()<0.55); spawnOne(pick(gnd.concat(air)), 0.85); }
     gap = rnd(1.10, 1.42);
   }
   game.spawnT = gap;
@@ -2739,6 +2670,7 @@ function startIntro(){
   game.doorBow = 0;
   game.boomT = undefined;
   game.introHeld = false;
+  game.cheerT = undefined; game.cheerN = 0;
   cam.x = camIntroX();
   player.kickT = 0;
 }
@@ -2764,6 +2696,14 @@ function updateIntro(dt){
     game.rattleT -= dt;
     if(game.rattleT <= 0){ game.rattleT = 0.10; S.cagerattle(); }
   }
+  if(game.cheerT !== undefined && game.cheerT > 0){     // three clucks, staggered
+    game.cheerT -= dt;
+    if(game.cheerT <= 0){
+      S.cluck();
+      game.cheerN = (game.cheerN||0) + 1;
+      if(game.cheerN < 3) game.cheerT = 0.17;
+    }
+  }
   // The camera rides out with him: pulled back on the cage until the kick,
   // then eased onto the play mark, so the last frame of the escape and the
   // first frame of the run are the same pixel.
@@ -2785,6 +2725,7 @@ function updateIntro(dt){
     slowmo(0.34, 0.34);
     if(navigator.vibrate) try{ navigator.vibrate([40,30,70]); }catch(e){}
     featherBurst(cam.x + game.cageX, GROUND-cageGeom().h*0.34, 14, 420);
+    game.cheerT = 0.12;                                  // the roof joins in
     game.titleT = -1;                                    // and the title goes with it
     player.pose.sx = 1.38; player.pose.sy = 0.72;        // stretched through the doorway
   }
@@ -2945,19 +2886,6 @@ function updatePlay(dt){
       const g=o.gate;
       const c = g.c + (g.amp ? Math.sin(game.t*g.spd+g.phase)*g.amp : 0);
       o.h = Math.max(0, o.hang ? g.band - (c + g.gap/2) : c - g.gap/2);
-    }
-    if(o.kind==='beam'){
-      if(o.spin) o.ang += o.spin*dt;
-      const [bx0,by0,bx1,by1] = beamEnds(o);
-      if(!o.hitBy && segRect(bx0,by0,bx1,by1, pl, pb-9, pr, pt+9)) die(o);
-      const d = segDist(p.x, p.y+78, bx0,by0,bx1,by1) - 58;
-      if(o.x > p.x-30) o.minGap = Math.min(o.minGap, Math.max(0, d));
-      if(!o.counted && o.x < p.x-30){
-        o.counted = true;
-        if(o.minGap < 52 && game.mode==='play') nearMiss(o);
-      }
-      if(o.x < cam.x - 480) game.obstacles.splice(i,1);
-      continue;
     }
     if(o.spec.roll) o.rot = (o.rot||0) + (o.vx - game.speed)*dt/ (o.w*0.5) * -1;
     if(o.spec.bounce){
@@ -3185,6 +3113,11 @@ function updateParticles(dt){
 /* ============================================================
    RENDER
    ============================================================ */
+/* The painted clouds, cut out of the panel art. Every one is optional: a
+   missing image falls back to the old drawn blob rather than a hole. */
+const SKY_CLOUDS = [{f:'cloud0.webp',w:210,h:94},{f:'cloud1.webp',w:178,h:89},{f:'cloud2.webp',w:184,h:78},{f:'cloud3.webp',w:141,h:65},{f:'cloud4.webp',w:125,h:66}];
+const CLOUD_IMG = {};
+SKY_CLOUDS.forEach(d => { const im = new Image(); im.src = 'art/' + d.f; CLOUD_IMG[d.f] = im; });
 function drawSky(){
   const T = THEME;
   const top = Math.max(0, GROUND - 1150);
@@ -3211,13 +3144,23 @@ function drawSky(){
     g.strokeStyle='rgba(255,233,168,.5)'; g.lineWidth=3; g.stroke(); g.globalAlpha=1;
   }), 0, 0, VW, skyH);
 
-  // clouds
+  // Clouds. These are cut out of the panel art rather than drawn, because the
+  // soft translucent blobs that used to be here sat next to cel-shaded painted
+  // clouds looking like smudges on the lens.
   const t=game.t;
   for(let i=0;i<7;i++){
     const cx = ((hash(i*3.1)*VW*2.4) - (t*(6+hash(i)*10) + cam.x*0.04)) % (VW*1.9);
     const x = cx<0? cx+VW*1.9 : cx;
     const y = GROUND - 380 - hash(i*7.7)*VH*0.22;
-    const s = 0.6+hash(i*2.2)*0.9;
+    const s = 0.9+hash(i*2.2)*0.75;
+    const d = SKY_CLOUDS[i % SKY_CLOUDS.length];
+    const im = d && CLOUD_IMG[d.f];
+    if(im && im.complete && im.naturalWidth){
+      ctx.globalAlpha = 0.82+hash(i*5)*0.18;
+      ctx.drawImage(im, x-d.w*s*0.5, y-d.h*s*0.5, d.w*s*1.7, d.h*s*1.7);
+      ctx.globalAlpha = 1;
+      continue;
+    }
     ctx.globalAlpha = 0.20+hash(i*5)*0.16;
     ctx.fillStyle=C.cream;
     ctx.beginPath();
@@ -3299,12 +3242,25 @@ function loadPanels(SET){
   });
   return SET;
 }
+/* `marks` is TWO landmarks per panel, measured off each image by
+   tools/cut_farm.py: the painted ground line, and the top of the fence's top
+   rail, both as fractions of that image's height. Two landmarks give two
+   equations, and a panel has two unknowns -- its scale and where its top sits
+   -- so both can be solved instead of guessed. That is what makes the grass
+   line AND the fence line run continuously across a seam.
+
+   One shared floorFrac was the bug: the three panels were painted with ground
+   lines at 0.785, 0.802 and 0.820, so anchoring all of them on 0.806 stepped
+   the grass by up to 13px at every join and left the fence rails meeting at
+   different heights, which is what read as fences that do not attach. */
 const FARM = loadPanels({ srcs:['sheets/v2/farm_a.webp','sheets/v2/farm_b.webp','sheets/v2/farm_c.webp'],
-               imgs:[], ready:0, blend:120, floorFrac:0.806, haze:'rgba(146,196,246,.20)',
+               imgs:[], ready:0, blend:46, haze:'rgba(146,196,246,.15)',
+               marks:[[0.7850,0.6084],[0.8024,0.6102],[0.8199,0.6119]],
                // buildLayers has already run by the time the art lands, so the
                // fallback layers are still in `layers`. Throw them away.
-               onReady(){ if(SCALE && THEME.id==='farm') buildLayers(); } });
+               onReady(){ if(SCALE) buildLayers(); } });
 const FARMF = 0.40;                       // the farm's own parallax
+const FARM_RAIL = 0.148;                  // fence rail height above GROUND, as a fraction of it
 
 /* The title poster. The menu is this same file as a CSS background, and the
    canvas picks it up on the frame the menu hides -- `cover` here is the same
@@ -3325,23 +3281,42 @@ function titleRect(){
   return { w: iw*s, h: ih*s, x: (VW - iw*s)/2, y: (VH - ih*s)/2 };
 }
 
-/* The painted farm. Sized so the fence rail lands at about two thirds of the
-   bird's height -- sizing it against the play band instead magnifies a 572px
-   source about fourfold and puts the silo tops off the frame, which is the same
-   trap the prison wall hit. The top of the art is already faded out at load, so
-   the sky above it is the sky the game draws. */
+/* The painted farm. Each panel is solved from its own two landmarks, so they
+   are not all the same size -- the widest is about 17% bigger than the
+   narrowest -- and that is fine: they are different scenery, and a continuous
+   fence line is worth far more than identical scales. Sizing them against the
+   play band instead of GROUND magnifies a 572px source about fourfold and puts
+   the silo tops off the frame, which is the trap the prison wall hit. */
+function farmGeom(){
+  if(FARM.geom && FARM.geom.ground === GROUND && FARM.geom.n === FARM.ready) return FARM.geom;
+  const F = GROUND * FARM_RAIL;
+  const P = [];
+  let x = 0; const xs = [];
+  for(let i=0;i<FARM.imgs.length;i++){
+    const im = FARM.imgs[i]; if(!im) continue;
+    const m = (FARM.marks && FARM.marks[i]) || [0.806, 0.610];
+    const H = F / (m[0] - m[1]);           // ground line and rail both land where they must
+    const W = H * (im.width/im.height);
+    P.push({ im, H, W, gf:m[0], top: GROUND - m[0]*H });
+    xs.push(x); x += W - FARM.blend;
+  }
+  FARM.geom = { ground:GROUND, n:FARM.ready, P, xs, cycle:x || 1 };
+  return FARM.geom;
+}
 function drawFarmPainted(){
+  const g = farmGeom(); if(!g.P.length) return;
   const off = cam.x * FARMF;
-  const first = FARM.imgs.find(Boolean);
-  const H = (GROUND * 0.62) / FARM.floorFrac;
-  const W = H * (first.width / first.height);
-  const step = W - FARM.blend;
-  const top = GROUND - FARM.floorFrac * H;
-  let idx = Math.floor(off / step);
-  let x = idx*step - off;
-  for(; x < VW + step; x += step, idx++){
-    const im = FARM.imgs[((idx % FARM.imgs.length) + FARM.imgs.length) % FARM.imgs.length];
-    if(im) ctx.drawImage(im, x, top, W, H);
+  const rep0 = Math.floor(off / g.cycle) - 1;
+  for(let rep = rep0; rep <= rep0 + 3; rep++){
+    for(let i=0;i<g.P.length;i++){
+      const q = g.P[i], x = rep*g.cycle + g.xs[i] - off;
+      if(x > VW || x + q.W < 0) continue;
+      // crop at the painted ground line and let drawGround's road carry on
+      // underneath: the panels are different heights now, so their own dirt
+      // bands would end at different depths and step along the bottom
+      ctx.drawImage(q.im, 0, 0, q.im.width, q.im.height*q.gf,
+                    x, q.top, q.W, q.gf*q.H);
+    }
   }
 }
 /* The code-drawn fallback, for the moment before the panels load. */
@@ -3425,7 +3400,17 @@ function drawNPC(set, i, sx, gy, scale, flip){
   ctx.restore();
   return true;
 }
-/* Cricket guards in suits, watching him go past. */
+/* The neighbours: a cow, a pig and a goat walking the farm road, each with a
+   set for strolling and a set for blind panic.
+
+   They walk facing back down the road, which is the way they appear to travel
+   once the world scrolls past them -- face them forwards and they moonwalk.
+   The panic set faces the other way, because it is a run away from the thing
+   that just went past, and that flip is the whole read of the beat: they turn.
+
+   Species comes off the position hash, so the same animal stands in the same
+   place every run, and a group can be mixed. */
+const NPC_KIND = ['cow', 'pig', 'goat'];
 function drawSpectators(){
   const spacing = 545, first = Math.floor((cam.x-300)/spacing);
   for(let i=first; i<first+Math.ceil(VW/spacing)+3; i++){
@@ -3434,21 +3419,23 @@ function drawSpectators(){
     const sx = gx - cam.x;
     if(sx < -220 || sx > VW+220) continue;
     const n = 1 + (hash(i*4.1)*2.99 | 0);
-    const near = Math.abs(gx - player.x) < 520 && game.mode === 'play';
-    const holding = false;                          // no cages along the route
+    /* Panic starts before he arrives and carries on well after: they are still
+       going when he is  most of a screen down the road, which is what sells it
+       as a reaction to him rather than a state of the scenery. */
+    const dx = player.x - gx;
+    const near = game.mode === 'play' && dx > -620 && dx < 1000;
     for(let k=0;k<n;k++){
-      const ox = (k-(n-1)/2) * 62 + hash(i*7.7+k)*10;
+      const ox = (k-(n-1)/2) * 74 + hash(i*7.7+k)*12;
       const ph = hash(i*2.3+k*1.7)*TAU;
       const bob = near ? -Math.abs(Math.sin(game.t*9 + ph))*13
                        :  Math.sin(game.t*1.8 + ph)*2.2;
-      // frame 0 is him stood there; 1..5 is the panic loop, played only while
-      // a chicken is going past at speed
-      const n6 = (FRAME_DATA.cricket || []).length;
-      const pose = (near && n6 > 1)
-        ? 1 + (Math.floor(game.t*11 + i*2.7 + k) % (n6-1))
-        : 0;
+      const kind = NPC_KIND[(hash(i*5.7+k*2.9)*2.999)|0];
+      const set = near ? kind+'run' : kind;
+      const list = FRAME_DATA[set] || [];
+      const rate = near ? 13 : 6.5;                   // a scramble, or a stroll
+      const pose = list.length ? Math.floor(game.t*rate + ph*2) % list.length : 0;
       const lift = near ? bob*0.35 : Math.sin(game.t*1.6 + ph)*1.6;
-      if(drawNPC('cricket', pose, sx+ox, GROUND-8+lift, 0.9, false)) continue;
+      if(drawNPC(set, pose, sx+ox, GROUND-8+lift, 1, !near)) continue;
       ctx.save();
       ctx.translate(sx + ox, GROUND - 10);
       ctx.scale(0.82, 0.82);
@@ -3458,8 +3445,11 @@ function drawSpectators(){
   }
 }
 function drawProps(){
-  drawSpectators();
+  // The panels paint the whole middle distance, so anyone standing in the field
+  // has to be drawn AFTER them or the fence simply covers them -- which is what
+  // happened to the crickets the moment the art landed.
   drawFarmProps();
+  drawSpectators();
 }
 function drawGround(){
   const y = GROUND;
@@ -3494,7 +3484,6 @@ function drawObstacles(){
   for(const o of game.obstacles){
     const sx = o.x - cam.x;
     if(sx < -300 || sx > VW+340) continue;
-    if(o.kind==='beam'){ drawZapper(o, sx); continue; }
     // falling telegraph
     if(o.kind==='fall' && !o.landed){
       const k = clamp(1 - o.y/700, 0, 1);
@@ -3779,14 +3768,17 @@ function boot(){
      thrustOn() halfway and take the flight controls with it, so sound is now
      exercised in the same way gameplay exercises it. */
   /* Spawn every tier a few hundred times and look at what comes out: nothing
-     may stack into a gate, every zapper must leave a corridor, and none of it
+     may stack into a gate, and none of it
      may throw. */
   if(/[?&]obtest/.test(location.search)){
     setTimeout(()=>{
       const out=[]; let bad=0;
       const band = GROUND - CEIL;
       for(let tier=0; tier<=4; tier++){
-        game.runT = [0,30,55,80,120][tier];
+        // These must map through tierNow(): <9=0 <22=1 <40=2 <64=3 else 4.
+        // They used to be [0,30,55,80,120], which lands on tiers 0,2,3,4,4 --
+        // so tier 1 was never tested at all and tier 4 was tested twice.
+        game.runT = [0,15,30,50,80][tier];
         const kinds={}; let worst=1e9, pairs=0;
         for(let n=0;n<240;n++){
           game.obstacles.length = 0;
@@ -3797,10 +3789,7 @@ function boot(){
           for(const o of os) for(const q of os)
             if(o!==q && o.hang!==q.hang && Math.abs(o.x-q.x)<160) pairs++;
           for(const o of os){
-            if(o.kind==='beam'){
-              const half=Math.abs(Math.sin(o.ang))*o.len*0.5;
-              worst=Math.min(worst, Math.max(o.cy-half, band-(o.cy+half)));
-            } else if(o.hang){ worst=Math.min(worst, band-o.h); }
+            if(o.hang){ worst=Math.min(worst, band-o.h); }
             else if(o.kind!=='air' && o.kind!=='fall'){ worst=Math.min(worst, band-o.h); }
             if(!isFinite(worst)){ out.push('tier'+tier+' BAD '+o.key+' kind='+o.kind+
               ' h='+o.h+' cy='+o.cy+' len='+o.len); bad++; worst=1e9; }

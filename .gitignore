@@ -5,3 +5,6 @@ _*.py
 __pycache__/
 anim_src/
 _*.gif
+
+Screenshot_*.png
+tools/apex_preview.png

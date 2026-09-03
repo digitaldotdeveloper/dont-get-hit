@@ -436,11 +436,51 @@ there, `startIntro()` runs two seconds, and the kick hands over to a normal run.
 **The scene is painted, not drawn.** `sheets/v2/cage_scene.webp` is the barn
 with an empty doorway; `art/cage_door.webp` is the barred door on its own, so it
 can buckle (`doorBow`) and then leave (`game.door` + `updateDoor`). Every
-position in `CAGE` is a fraction **measured off the art** — the doorway rect and
-the straw floor — which is what puts his feet on the straw rather than near it.
-`cageGeom()` lands the painted ground line exactly on `GROUND`, and the painted
-dirt below that line is cropped off so `drawGround` carries on underneath and
-the two can never disagree about where the floor is.
+position in `CAGE` is a fraction **measured off the art** — the doorway rect, the
+straw floor, the roof apex — which is what puts his feet on the straw rather
+than near it. The painted dirt below the ground line is cropped off so
+`drawGround` carries on underneath and the two can never disagree about where
+the floor is.
+
+**`cageGeom` is anchored on the DOORWAY, not on GROUND** (`CAGE.doorH`, in world
+units). Nugget stands in the doorway, so the doorway is the one measurement that
+must hold still; anchoring on the canvas means every change to the art's framing
+silently resizes him.
+
+### The barn's roof is reconstructed, not generated
+
+Three rounds of asking for the whole barn came back with the same crop, every
+one of them slicing the gable off — which is what "the top of the building is
+faded" was. `tools/build_apex.py` builds it instead, and it is geometry rather
+than guesswork: a gable is two straight lines, both edges are visible in the
+art, and their slopes are measured off the trim colour and extended until they
+meet. The wedge between them is filled by smearing the wall's top row upward,
+which is exactly right because the planks are vertical.
+
+The one liberty: the true apex measures **412px above a 572px image**, and
+building that is useless — the doorway has to stay a fixed size so Nugget does,
+and a barn that much taller than its doorway will not fit a phone in landscape
+with him still readable. So `RIDGE` brings the peak down to a plausible gambrel
+pitch. Nobody measures a cartoon barn; everybody notices a building with its top
+sliced off.
+
+**`drawCageBack` also extends the barn to the left screen edge** by stretching
+the art's leftmost two columns — a vertical run of plank colour — out to it. The
+scene used to be alpha-ramped on both sides, and ramping the left turned the
+planks half transparent with a field showing through them: a ghost, not a blend.
+Only the right edge is ramped, where the farm behind the barn hands over to the
+map's own panels.
+
+### The neighbours
+
+Three hens in a crate on the barn roof (`drawRoofHens`, `art/roof_crate.webp`,
+`FRAME_DATA.hensad` / `.henjoy`). They are desperate the whole time Nugget is
+caged and lose their minds from the frame the kick lands — the only reaction in
+the game to the thing the player just did. Two details carry it: they are drawn
+**before** the crate, so its keyed-transparent wire mesh reads as being in front
+of them, and the crate's y is **clamped** so it can never climb off the top of
+the frame — on a short landscape phone there is only about 70px of sky above the
+apex.
 
 `cagePose()` is the single place that decides where he is and which frame he is
 on; `pickFrame` defers to it for both 'menu' and 'intro'. The blast is
@@ -490,17 +530,34 @@ Needs `--remote-allow-origins=*` or the websocket handshake is refused.
 ## Obstacles
 
 `poolFor(tier)` filters by tier and nothing else -- there is one map, so there
-is one cast. Everything unmistakably a city street (the sofa, the shop sign, the
-coffee machine, the vacuum, the pizza, the cake, the chair, the cart, the duck,
-the beach ball) went with the city, and the code-drawn barrel went with it too
-because the painted `woodkeg` replaces it. What is left of the old set is the
-stuff that reads anywhere: `cone`, `box`, `banana`, `ball`, `pigeon`, `paper`,
-plus `tower`, `hanger` and `zapper`.
+is one cast, and it is all farm. Everything that read as a city street is gone:
+the sofa, the shop sign, the coffee machine, the vacuum, the pizza, the cake, the
+chair, the cart, the duck, the beach ball, the traffic cone, the banana skin, the
+cardboard box, the beach ball, the blowing newspaper, and the code-drawn barrel
+the painted `woodkeg` replaces. **The zapper went too** -- it is a laser, and it
+belongs to a different game.
+
+What is left of the old set is `tower`, `hanger` and the bird flock, which is now
+`crows` in farm colours rather than city pigeons.
+
+**Removing the zapper cost real difficulty and the spawn table had to absorb it.**
+It was 22-26% of every tier above 0 and the only hazard that could sit anywhere
+in the column; without it every tier collapses into "fly over the ground props"
+and the ceiling stops mattering. Its share went to the standalone columns and the
+air, which are the only other things that make you choose a height. The measured
+corridor at tiers 1-4 went from 258-320 to about 485, so the game IS easier than
+it was -- if that needs winding back, move the spawn gaps and the column share,
+not the tier thresholds.
 
 **Dropping the city took both falling hazards with it** -- the sofa and the sign
 were the only `kind:'fall'` entries, so tiers 2 and 3 quietly lost a whole
 category. `fallbale` and `fallcrate` replace them, reusing the hay bale and
 crate sprites.
+
+**`?obtest=1` was testing the wrong tiers.** Its `game.runT` values were
+`[0,30,55,80,120]`, which map through `tierNow()` to tiers 0,2,3,4,4 -- so tier 1
+was never exercised at all and tier 4 was tested twice. They are `[0,15,30,50,80]`
+now. Any change to `tierNow`'s thresholds has to be mirrored there.
 
 The farm's sixteen hazards are **painted props** cut off a Gemini Studio sheet
 and keyed off flat green (`art/farm/*.webp`), built by `farmProp(name, w, h)`.
@@ -535,6 +592,23 @@ second farm behind the first, with its hills showing through the fade.
 dissolving into each other by `loadPanels` -- a left-edge alpha ramp, so a hard
 seam through a fence line never shows.
 
+**`marks` is TWO landmarks per panel**, measured off each image: the painted
+ground line, and the top of the fence's top rail. Two landmarks give two
+equations and a panel has two unknowns -- its scale and where its top sits -- so
+`farmGeom` solves both instead of guessing. That is what makes the grass line
+AND the fence line run continuously across a seam, and the panels end up at
+slightly different scales (the widest is ~17% bigger than the narrowest), which
+is a price worth paying.
+
+One shared `floorFrac` was the bug behind "the fences do not attach": the three
+panels were painted with ground lines at 0.785, 0.802 and 0.820, so anchoring
+all of them on 0.806 stepped the grass by up to 13px at every join and left the
+rails meeting at different heights.
+
+**Draw the panels BEFORE the spectators.** They paint the whole middle distance,
+so anyone standing in the field drawn before them is simply covered -- which is
+what happened to the crickets the moment the art landed.
+
 Three things that cost a round each and are the reason it reads:
 
 - **The sky is keyed OUT of the panels** (a flood from the top row over
@@ -543,6 +617,11 @@ Three things that cost a round each and are the reason it reads:
   screen, and fading the top instead eats the silo and the barn roof -- the only
   content up there worth keeping. The painted clouds are white, fail the blue
   test, and survive as cutouts.
+- **The sky's clouds are cut out of the panel art too** (`SKY_CLOUDS`,
+  `art/cloud*.webp`): white islands enclosed by the keyed-out sky. The soft
+  translucent blobs the code used to draw sat next to cel-shaded painted clouds
+  looking like smudges on the lens. Every one is optional and falls back to the
+  old blob.
 - **`haze` washes the distance out** (`source-atop`, so it tints the art and
   never the keyed-out sky). The hazards are painted in the same style at the
   same saturation as the map, so without it a hay bale in front of a hay field
@@ -658,6 +737,7 @@ dropped frame every 26s, for tens of MB of canvas held on a phone.
     python tools/clip.py URL out.gif [s]    # real-time GIF over screencast
     python tools/shot.py URL out.png        # one screenshot, real device metrics
     python tools/title_art.py               # rebuild the title poster from ref/
+    python tools/build_apex.py              # rebuild the barn's roof from sheets/v2/barn_raw.png
 
 `clip.py` uses `Page.startScreencast`, which timestamps frames, so the GIF keeps
 the game's real timing. Screenshot-per-frame does not -- each capture stalls the
