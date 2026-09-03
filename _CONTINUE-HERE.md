@@ -239,9 +239,21 @@ How they were made, because it is repeatable:
 - Slice by **column projection**, not connected components: the figures touch, so
   flood fill merges them. Cells much wider than the median are sub-split at their
   emptiest interior columns.
-- Each sheet comes back at its own scale, so each is normalised by its median
-  figure height, and every frame stores `lift` - pixels above the sheet's shared
-  ground line - so poses stay registered to the floor.
+- Each sheet comes back at its own scale. Frames are sized by **how many times
+  the silhouette can be shrunk before it vanishes** - the radius of his fattest
+  part - which ignores wing spread, leg position and which way up he is. One
+  scale per sheet from its median, plus a per-frame trim clamped to 15%, so real
+  squash survives but figures drawn too big get reined in. Do NOT size by the
+  teal cap: Gemini draws it at different proportions on different sheets, so
+  matching cap area actively makes the bodies disagree.
+- Every frame stores `ay`, the point inside the frame the drawing origin sits
+  on: the feet for poses on the ground, the centre of mass for poses in the air,
+  so his body holds still while his legs dangle differently. This replaced
+  `lift`, which recorded how high above a sheet's ground line Gemini happened to
+  draw a figure - meaningless for a character positioned by physics, and it made
+  him jump 23px between falling and landing.
+- A lanky character (the crickets) must be sized by **height**, not thickness -
+  thickness sized them taller than the hero.
 
 `SPR` converts frame pixels to world units. `pickFrame` maps state to frame.
 **Every frame is optional**: if an image fails to load, `FR.ready` stays false and
@@ -253,16 +265,35 @@ puppet path is still worth keeping.
 
 ## Environments
 
-Two themes in `THEMES` (`city`, `farm`), rotated per run by `startRun`. Both are
-drawn in code so the parallax layers tile perfectly and nothing extra downloads.
-`?theme=farm` forces one.
+Three themes in `THEMES`: `block` (the prison interior, where every run starts),
+`farm`, `city`. **The run travels**: a leg every 26s, block -> farm -> city and
+round again, crossfaded rather than cut. Both layer sets stay alive through the
+transition and dissolve over each other while the sky and road blend by colour,
+since those are gradients rather than baked tiles. `?theme=farm` forces one and
+disables the journey.
+
+`farm` and `city` are drawn in code. **`block` is painted art** - see below.
 
 ## Music
 
-`audio/theme.mp3` is generated through Gemini Studio (`mode:"music"`). It plays
-on a loop through `initTrack`/`trackVol`, and the old synthesised groove stays as
-an automatic fallback if the file fails to load (`musicTick` returns early when a
-track exists). The mute button controls both.
+`MOVEMENTS` in `initTrack` is the playlist: two long-form tracks played back to
+back, about 5 minutes 25 before anything repeats. Any entry that fails to load is
+skipped, and the old synthesised groove is still the fallback if none load
+(`musicTick` returns early when a track exists). The mute button controls both.
+`?track=NAME` plays one `audio/music_NAME.mp3` on loop instead.
+
+**Music length is set by the MODEL, not the prompt.** Everything generated on
+Flash comes back at 30.8s however long a piece is asked for - three minutes, a
+piano solo, Lyria 3 Pro named outright, all 30.8s. Gemini Studio now selects Pro
+for music (`config.json` -> `musicModel`), which gives 2-3 minutes. Measured,
+same prompt: Flash 30.8s, Pro 147.3s. Do not spend another round on prompt
+wording. Details in the studio's own `_CONTINUE-HERE.md`.
+
+Asking Pro for "a THREE MINUTE piece" returns *no audio at all* and burns the
+full 10 minute timeout. Describe the music and add "as long as you can".
+
+`tracks.html` is the comparison page: waveforms, loop toggle, and an A/B that
+keeps position when switching so the same bar can be compared.
 
 ## Known rough edges
 
@@ -273,14 +304,17 @@ track exists). The mute button controls both.
   One line of draw order in `drawChicken` if it starts to matter.
 - **No jetpack cosmetics.** The bird flies with his own wings; a jetpack would
   undercut the one idea that keeps this from being a Jetpack Joyride clone.
-- Gate gap size is the difficulty dial: `lerp(500, 290, game.diff)` in
-  `spawnGate`. Everything else about the curve follows from it.
+- Difficulty is speed, spacing and hazard mix - see **Obstacles**. There are no
+  gates any more.
 - `chickens.html` keys green in-browser, so it only works over http(s), never
   `file://` (tainted canvas).
 
 ## Deliberately not built yet
 
-Shops, currencies, missions, customisation UI, multiplayer, ads, IAP, login.
+Shops, missions, customisation UI, multiplayer, ads, IAP, login.
+
+Golden eggs ARE in (see below) and the bank persists, but nothing spends them
+yet - that is the obvious next thing.
 
 ## The bug that broke hold-to-fly for days (fixed, build b2305)
 
@@ -405,3 +439,80 @@ width and exceptions. `?runt=N` starts a run at a difficulty.
 Three: `yard` (run one -- the prison he just left), `farm`, `city`. All three
 are code-drawn parallax in `buildLayers` plus a props pass. A new one needs a
 palette entry, a `buildXLayers`, and a branch in `drawProps`.
+
+## The painted prison (`block`)
+
+`sheets/v2/wall_a|b|c.png` are generated art, not code. They were made by
+attaching `ref/intro-1-waiting.png` to the prompt **as the style reference** and
+asking for the empty room - no characters, no cage, no bars - with the bottom
+fifth left as plain dark floor for the game to draw its walkway over.
+
+`WALL` loads them and redraws each into an offscreen canvas with an alpha ramp
+down its **left** edge, so panels can be laid overlapping and dissolve into each
+other. They do not tile edge to edge on their own and a hard seam through
+brickwork is glaring. Panels cycle so the run does not visibly repeat.
+
+Two traps, both of which produced something that looked like a different bug:
+
+- **`destination-in` clears the ENTIRE canvas outside the source shape**, not
+  just the rectangle you draw into. Masking a strip at a time wipes the rest of
+  the panel. The first attempt produced panels that were almost fully
+  transparent, which on screen looked like flat colour - i.e. exactly like the
+  art having failed to load. Mask in **one pass over the whole canvas**.
+- **World units are about 3x screen pixels here** (`VW` ~1300 across a 420px
+  phone). Sizing the art against `GROUND` magnified it roughly fourfold and put
+  every lamp and pipe off the top of the frame. It is sized against the play
+  band (`GROUND - CEIL`) instead, and its top fades into the dark ceiling, which
+  is how the reference frames it anyway.
+
+What stays in code: the walkway and hazard stripe (they must line up exactly
+with the collision ground) and the crates (they sit at the player's parallax).
+
+## Golden eggs
+
+`game.eggs`, `spawnEggs`, `updateEggs`, `drawEggs`. Laid out the way Jetpack
+Joyride lays out coins - a flat line, an arc, or a climb - so a run of them can
+be followed with one held press. **`eggFree` rejects any egg that lands inside a
+hazard**, including zapper beams, so chasing them is a real choice and never
+bait. Ten-frame spin sheet. Taken eggs fly to the counter; the pickup pings up a
+semitone per egg in a streak. `game.eggBank` persists in `localStorage` under
+`dgh_eggs`.
+
+## NPCs
+
+Cricket guards in suits, `cricket0..5`, a six-frame panic loop with the antennae
+whipping. `drawSpectators` plays the loop only while a chicken is going past at
+speed and holds frame 0 otherwise. Outside the prison the same routine draws
+them smaller and unflipped; `drawLilChicken` is the flat fallback if the frames
+have not loaded.
+
+**They are drawn AFTER the wall.** The block paints full height, so anything
+drawn before it is simply covered - which is what happened the first time.
+
+## Before shipping any edit
+
+    sh check.sh        # or: node --check on the extracted <script>
+
+A duplicate `const` is a **syntax** error, which means the whole script never
+runs, the error handler never installs, and every headless probe reports a clean
+page. **A blank pass looks exactly like a pass.** This shipped once. `tools/`
+has the CDP screenshot helper; `--headless --screenshot` lays out at 500px
+regardless of `--window-size` and crops, which reads as a layout bug that is not
+there.
+
+## What difficulty is, and is not
+
+Difficulty is **speed, spacing, and how many hazards share a screen**. It is not
+withholding the art. The giant pizza was tier 3 and the cake tier 4, which at the
+old thresholds meant surviving 72 and 100 seconds to see them - almost nobody
+does, so every run was cones and cardboard boxes and the obstacles felt lame.
+Variety now arrives at 9s and the whole cast is in play by 22s. If it needs to be
+harder, move `game.diff`, the spawn gaps, and the zapper share - not the tiers.
+
+## Next
+
+- Nothing spends the eggs yet.
+- Map progression is deliberately simple (a leg every 26s); the plan was always
+  to enhance it once the first map was right.
+- The three wall panels are ~345 KB each, so first load pulls about 1 MB of
+  background. Re-encoding to WebP would take it under 300 KB total.
