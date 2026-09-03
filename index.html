@@ -282,7 +282,34 @@ const THEMES = [
     sun:'#FFF4CC', far:'#6E8C77', mid:'#46654F', near:'#2C4535', prop:'#1B2C22',
     road:'#7C5C36', roadLine:'#9A7442', curb:'#5C4526', rim:'#FFDC96' }
 ];
-let THEME = THEMES[0];
+let THEME = THEMES[0], THEME_FROM = THEMES[0], layersFrom = [];
+/* Blend two #rrggbb values. The sky and the road are drawn from colours rather
+   than from pre-rendered tiles, so they can morph instead of dissolving. */
+function lerpHex(a, b, k){
+  const A = parseInt(a.slice(1),16), B = parseInt(b.slice(1),16);
+  const r = Math.round(((A>>16)&255) + (((B>>16)&255)-((A>>16)&255))*k);
+  const g = Math.round(((A>>8)&255)  + (((B>>8)&255) -((A>>8)&255)) *k);
+  const bl= Math.round((A&255)       + ((B&255)      -(A&255))      *k);
+  return '#' + ((1<<24)|(r<<16)|(g<<8)|bl).toString(16).slice(1);
+}
+const SWAP_TIME = 1.1;
+function swapTheme(t){
+  if(!t || t === THEME) return;
+  layersFrom = layers.slice();          // hold the old tiles while they fade
+  THEME_FROM = THEME;
+  applyTheme(t);                        // rebuilds `layers` for the new one
+  game.swapK = 0;
+}
+function swapTick(dt){
+  if(game.swapK === undefined) game.swapK = 1;
+  if(game.swapK >= 1){ if(layersFrom.length) layersFrom = []; return; }
+  game.swapK = Math.min(1, game.swapK + dt/SWAP_TIME);
+  const k = game.swapK, F = THEME_FROM, T = THEME;
+  C.road     = lerpHex(F.road,     T.road,     k);   // the ground morphs
+  C.roadLine = lerpHex(F.roadLine, T.roadLine, k);
+  C.curb     = lerpHex(F.curb,     T.curb,     k);
+  C.rim      = lerpHex(F.rim,      T.rim,      k);
+}
 function applyTheme(t){
   THEME = t;
   C.skyA=t.skyA; C.skyB=t.skyB; C.skyC=t.skyC; C.skyD=t.skyD; C.skyE=t.skyE;
@@ -535,7 +562,7 @@ let TRACK = null, trackWanted = 0;
 function initTrack(){
   if(TRACK) return;
   const alt = /[?&]track=(\w+)/.exec(location.search);
-  TRACK = new Audio('audio/music_' + (alt ? alt[1] : 'digital') + '.mp3');
+  TRACK = new Audio('audio/music_' + (alt ? alt[1] : 'spy') + '.mp3');
   TRACK.loop = true; TRACK.volume = 0; TRACK.preload = 'auto';
   TRACK.addEventListener('canplaythrough', ()=>{ TRACK.ready = true; }, {once:true});
   TRACK.addEventListener('error', ()=>{ TRACK = null; });   // fall back to the synth
@@ -1621,7 +1648,7 @@ hanger:{ kind:'ground', w:104, h:200, tier:0, draw(o,t){
     ctx.restore();
   }},
 /* ---- ground: jump over these ---- */
-zapper:{ kind:'beam', w:200, h:200, tier:2, draw(){} },
+zapper:{ kind:'beam', w:200, h:200, tier:1, draw(){} },
 cone:{ kind:'ground', w:70, h:82, tier:0, draw(o,t){
     shadowEllipse(42);
     ctx.beginPath(); ctx.moveTo(-34,0); ctx.lineTo(-13,-78); ctx.quadraticCurveTo(0,-86,13,-78); ctx.lineTo(34,0); ctx.closePath();
@@ -1703,7 +1730,7 @@ chair:{ kind:'ground', w:104, h:124, tier:1, roll:-150, draw(o,t){
     ctx.beginPath(); ctx.roundRect(-34,-118,22,40,7); paint('#5E7095',0);
     ctx.restore();
   }},
-coffee:{ kind:'ground', w:104, h:136, tier:2, draw(o,t){
+coffee:{ kind:'ground', w:104, h:136, tier:1, draw(o,t){
     shadowEllipse(50);
     for(let i=0;i<3;i++){
       const k=(t*0.55+i*0.33)%1;
@@ -1722,7 +1749,7 @@ coffee:{ kind:'ground', w:104, h:136, tier:2, draw(o,t){
     ctx.beginPath(); ctx.roundRect(-52,-134,104,22,8); paint('#8E4A2E',5);
     ctx.beginPath(); ctx.roundRect(-10,-142,20,10,4); paint('#6E381F',4);
   }},
-vacuum:{ kind:'ground', w:92, h:124, tier:2, draw(o,t){
+vacuum:{ kind:'ground', w:92, h:124, tier:1, draw(o,t){
     shadowEllipse(46);
     ctx.beginPath(); ctx.roundRect(-42,-26,84,26,7); paint('#6BD1FF',5);
     ctx.beginPath(); ctx.roundRect(-30,-104,58,80,12); paint('#4AB4E8',5);
@@ -1732,7 +1759,7 @@ vacuum:{ kind:'ground', w:92, h:124, tier:2, draw(o,t){
     ctx.strokeStyle='#2E7FA8'; ctx.lineWidth=11; ctx.lineCap='round'; ctx.stroke();
     ctx.beginPath(); ctx.roundRect(-16,-124,34,22,8); paint('#2E7FA8',4.6);
   }},
-ball:{ kind:'ground', w:76, h:76, tier:2, roll:-190, bounce:true, draw(o,t){
+ball:{ kind:'ground', w:76, h:76, tier:1, roll:-190, bounce:true, draw(o,t){
     ctx.save(); ctx.translate(0,-38-(o.bz||0)); ctx.rotate(o.rot||0);
     ctx.beginPath(); ctx.arc(0,0,36,0,TAU); paint('#F2803A',5);
     ctx.strokeStyle=C.ink; ctx.lineWidth=3.6;
@@ -1743,7 +1770,7 @@ ball:{ kind:'ground', w:76, h:76, tier:2, roll:-190, bounce:true, draw(o,t){
     ctx.restore();
     ctx.save(); ctx.globalAlpha=0.4; shadowEllipse(30*(1-(o.bz||0)/160)); ctx.restore();
   }},
-duck:{ kind:'ground', w:132, h:146, tier:3, draw(o,t){
+duck:{ kind:'ground', w:132, h:146, tier:1, draw(o,t){
     shadowEllipse(64);
     const b = Math.sin(t*3)*3;
     ctx.save(); ctx.translate(0,b);
@@ -1757,7 +1784,7 @@ duck:{ kind:'ground', w:132, h:146, tier:3, draw(o,t){
     ctx.beginPath(); ctx.arc(41.6,-115.6,1.9,0,TAU); ctx.fillStyle='#fff'; ctx.fill();
     ctx.restore();
   }},
-pizza:{ kind:'ground', w:150, h:150, tier:3, roll:-170, draw(o,t){
+pizza:{ kind:'ground', w:150, h:150, tier:2, roll:-170, draw(o,t){
     ctx.save(); ctx.translate(0,-74); ctx.rotate(o.rot||0);
     ctx.beginPath(); ctx.arc(0,0,72,0,TAU); paint('#E8A33E',5);
     ctx.beginPath(); ctx.arc(0,0,60,0,TAU); paint('#FFC24A',0);
@@ -1770,7 +1797,7 @@ pizza:{ kind:'ground', w:150, h:150, tier:3, roll:-170, draw(o,t){
     ctx.restore();
     shadowEllipse(60);
   }},
-cake:{ kind:'ground', w:140, h:158, tier:4, draw(o,t){
+cake:{ kind:'ground', w:140, h:158, tier:2, draw(o,t){
     shadowEllipse(68);
     ctx.beginPath(); ctx.roundRect(-66,-52,132,52,10); paint('#FF9FC4',5);
     ctx.beginPath(); ctx.roundRect(-50,-104,100,54,10); paint('#FFC2D8',5);
@@ -1821,7 +1848,7 @@ paper:{ kind:'air', w:88, base:210, h:230, tier:1, draw(o,t){
     ctx.restore();
    }
   }},
-beachball:{ kind:'air', w:96, base:210, h:230, tier:2, draw(o,t){
+beachball:{ kind:'air', w:96, base:210, h:230, tier:1, draw(o,t){
    for(let n=0;n<3;n++){
     ctx.save(); ctx.translate(n%2?12:-10, -20-n*74+Math.sin(t*2.6+n*1.3)*14); ctx.rotate(t*1.4+n);
     ctx.beginPath(); ctx.arc(0,0,45,0,TAU); paint(C.cream,5);
@@ -2134,10 +2161,10 @@ function slowmo(scale, dur){ if(REDUCED) return; game.tsTarget=scale; game.smT=d
    ============================================================ */
 function tierNow(){
   const t = game.runT;
-  if(t<22) return 0;
-  if(t<45) return 1;
-  if(t<72) return 2;
-  if(t<100) return 3;
+  if(t<9)  return 0;      // learn the one control
+  if(t<22) return 1;      // the whole cast, spaced out
+  if(t<40) return 2;      // the big props and the falling ones
+  if(t<64) return 3;      // angled zappers, two hazards at a time
   return 4;
 }
 function poolFor(tier){
@@ -2263,45 +2290,43 @@ function spawnPattern(){
   const tier = tierNow();
   const pool = poolFor(tier);
   const air  = pool.filter(k=>OB[k].kind==='air');
-  // tower and hanger are only ever placed by spawnStandalone, which sets the
-  // height and, for the hanger, hangs it. Reached through the generic pool a
-  // hanger would sit on the floor drawn upside down.
   const gnd  = pool.filter(k=>OB[k].kind==='ground' && k!=='tower' && k!=='hanger');
   const fall = pool.filter(k=>OB[k].kind==='fall');
   const r = Math.random();
   let gap;
   if(tier===0){                                   // just objects on the floor
     spawnOne(pick(gnd), 0);
-    gap = rnd(2.40, 3.00);
-  } else if(tier===1){                            // things in the air appear
-    if(r<0.58) spawnOne(pick(gnd),0);
-    else if(r<0.86) spawnOne(pick(air),0);
-    else spawnStandalone(false);
-    gap = rnd(1.95, 2.45);
-  } else if(tier===2){                            // and the first zappers
-    if(r<0.30) spawnOne(pick(gnd),0);
-    else if(r<0.54) spawnOne(pick(air),0);
-    else if(r<0.72) spawnZapper(tier);
-    else if(r<0.88) spawnStandalone(Math.random()<0.5);
-    else if(fall.length) spawnOne(pick(fall),0);
-    else spawnOne(pick(gnd),0);
-    gap = rnd(1.60, 2.00);
-  } else if(tier===3){
-    if(r<0.22) spawnOne(pick(gnd),0);
-    else if(r<0.44) spawnOne(pick(air),0);
+    gap = rnd(2.20, 2.70);
+  } else if(tier===1){                            // the whole cast, well spaced
+    if(r<0.34) spawnOne(pick(gnd),0);
+    else if(r<0.60) spawnOne(pick(air),0);
+    else if(r<0.82) spawnZapper(tier);
+    else spawnStandalone(Math.random()<0.5);
+    gap = rnd(1.75, 2.20);
+  } else if(tier===2){                            // things start falling
+    if(r<0.26) spawnOne(pick(gnd),0);
+    else if(r<0.48) spawnOne(pick(air),0);
     else if(r<0.70) spawnZapper(tier);
     else if(r<0.86) spawnStandalone(Math.random()<0.55);
     else if(fall.length) spawnOne(pick(fall),0);
     else spawnZapper(tier);
-    gap = rnd(1.35, 1.70);
+    gap = rnd(1.50, 1.90);
+  } else if(tier===3){                            // two things at once
+    if(r<0.20) spawnOne(pick(gnd),0);
+    else if(r<0.38) spawnOne(pick(air),0);
+    else if(r<0.62) spawnZapper(tier);
+    else if(r<0.76) spawnStandalone(Math.random()<0.55);
+    else if(r<0.88 && fall.length) spawnOne(pick(fall),0);
+    else { spawnZapper(tier); spawnOne(pick(air), 0.9); }
+    gap = rnd(1.30, 1.65);
   } else {
-    if(r<0.16) spawnOne(pick(gnd),0);
-    else if(r<0.36) spawnOne(pick(air),0);
-    else if(r<0.68) spawnZapper(tier);
-    else if(r<0.84) spawnStandalone(Math.random()<0.55);
-    else if(fall.length) spawnOne(pick(fall),0);
-    else spawnZapper(tier);
-    gap = rnd(1.15, 1.45);
+    if(r<0.14) spawnOne(pick(gnd),0);
+    else if(r<0.30) spawnOne(pick(air),0);
+    else if(r<0.56) spawnZapper(tier);
+    else if(r<0.70) spawnStandalone(Math.random()<0.55);
+    else if(r<0.82 && fall.length) spawnOne(pick(fall),0);
+    else { spawnZapper(tier); spawnOne(pick(gnd.concat(air)), 0.85); }
+    gap = rnd(1.10, 1.42);
   }
   game.spawnT = gap;
 }
@@ -2345,7 +2370,7 @@ const pressJump = thrustOn, releaseJump = thrustOff;   // old names, one system
    pressJump/releaseJump are idempotent, so overlapping families are harmless.
    Every raw down is counted before any filtering, so the readout can tell
    "no event arrived" apart from "event arrived and was filtered". */
-const BUILD = 'b0903-0230';   // shown in ?dbg=1 so a cached build is obvious
+const BUILD = 'b0903-1143';   // shown in ?dbg=1 so a cached build is obvious
 const TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints||0) > 0;
 /* Only the mute button may swallow a press. Filtering on any <button> was the
    bug: on device every tap reported lastEv=start with taps=0, because the target
@@ -2451,11 +2476,11 @@ function toMenu(){
 }
 function startRun(){
   game.runCount = (game.runCount||0) + 1;
-  // he has just kicked his way out of a cell, so run one is the yard he is
-  // running out of; after that the themes rotate
+  // every run starts in the yard he has just kicked his way out of, and
+  // travels from there
   const yard = THEMES.findIndex(t=>t.id==='yard');
-  applyTheme(game.forceTheme ||
-    (game.runCount===1 && yard>=0 ? THEMES[yard] : THEMES[game.runCount % THEMES.length]));
+  applyTheme(game.forceTheme || THEMES[yard>=0 ? yard : 0]);
+  game.swapK = 1; layersFrom = [];
   game.mode='play'; game.runT=game.presetRunT||0; game.score=0; game.dist=0;
   game.near=0; game.combo=0; game.comboBest=0; game.comboT=0;
   game.speed=340; game.diff=0; game.spawnT=2.6;
@@ -2562,6 +2587,7 @@ function update(dt, rawDt){
   else if(game.mode==='dead')  updateDead(dt, rawDt);
   if(game.door) updateDoor(dt);        // outside the chain: it flies on into play
 
+  swapTick(dt);
   updateParticles(dt);
   musicTick(); trackTick(rawDt);
 }
@@ -2691,9 +2717,18 @@ function updateBlink(p, dt){
 function updatePlay(dt){
   const p = player;
   game.runT += dt;
-  game.diff = clamp(game.runT/115, 0, 1);
-  game.speed = 340 + 380*game.diff;
-  const speedT = clamp((game.speed-340)/380, 0, 1);
+  /* The journey. A leg every 26s: out of the yard, across the country, into
+     the city, and round again. It is the only signal in the game that says
+     you are getting somewhere, so it must not be subtle. */
+  if(!game.forceTheme){
+    const leg = Math.floor(game.runT / 26) % THEMES.length;
+    const order = ['yard','farm','city'];
+    const want = THEMES.find(t => t.id === order[leg]) || THEMES[leg];
+    swapTheme(want);
+  }
+  game.diff = clamp(game.runT/95, 0, 1);
+  game.speed = 340 + 400*game.diff;
+  const speedT = clamp((game.speed-340)/400, 0, 1);
 
   p.x += game.speed*dt;
   game.dist += game.speed*dt;
@@ -3026,12 +3061,13 @@ function updateParticles(dt){
 /* ============================================================
    RENDER
    ============================================================ */
-function drawSky(){
+function drawSky(T){
+  T = T || THEME;
   const top = Math.max(0, GROUND - 1150);
-  ctx.fillStyle=C.skyA; ctx.fillRect(0,0,VW,top+2);
+  ctx.fillStyle=T.skyA; ctx.fillRect(0,0,VW,top+2);
   const g = ctx.createLinearGradient(0,top,0,GROUND+40);
-  g.addColorStop(0, C.skyA); g.addColorStop(0.30, C.skyB);
-  g.addColorStop(0.56, C.skyC); g.addColorStop(0.80, C.skyD); g.addColorStop(1, C.skyE);
+  g.addColorStop(0, T.skyA); g.addColorStop(0.30, T.skyB);
+  g.addColorStop(0.56, T.skyC); g.addColorStop(0.80, T.skyD); g.addColorStop(1, T.skyE);
   ctx.fillStyle=g; ctx.fillRect(0,top,VW,GROUND+40-top);
 
   // sun, sinking behind the skyline
@@ -3040,7 +3076,7 @@ function drawSky(){
   gr.addColorStop(0,'rgba(255,233,168,.8)'); gr.addColorStop(0.32,'rgba(255,180,71,.30)');
   gr.addColorStop(1,'rgba(255,180,71,0)');
   ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(sx,sy,420,0,TAU); ctx.fill();
-  ctx.beginPath(); ctx.arc(sx,sy,96,0,TAU); ctx.fillStyle=C.sun; ctx.fill();
+  ctx.beginPath(); ctx.arc(sx,sy,96,0,TAU); ctx.fillStyle=T.sun; ctx.fill();
   ctx.globalAlpha=0.5; ctx.beginPath(); ctx.arc(sx,sy,120,0,TAU);
   ctx.strokeStyle='rgba(255,233,168,.5)'; ctx.lineWidth=3; ctx.stroke(); ctx.globalAlpha=1;
 
@@ -3069,8 +3105,8 @@ function drawSky(){
     ctx.beginPath(); ctx.moveTo(bx-9,by+f); ctx.lineTo(bx,by-3); ctx.lineTo(bx+9,by+f); ctx.stroke();
   }
 }
-function drawLayers(){
-  for(const L of layers){
+function drawLayers(list){
+  for(const L of (list||layers)){
     const w = L.tile.w;
     const off = ((cam.x*L.f) % w + w) % w;
     const y = GROUND;
@@ -3163,9 +3199,70 @@ function drawFarmProps(){
     ctx.restore();
   }
 }
-function drawStreetProps(){
-  if(THEME.id==='farm') return drawFarmProps();
-  if(THEME.id==='yard') return drawYardProps();
+/* one small chicken, in silhouette */
+function drawLilChicken(cheer, bob){
+  ctx.save();
+  ctx.translate(0, bob);
+  // C.prop alone is within a shade of the background, so they vanished.
+  // Lifted toward the cream, but nowhere near the player's own colour.
+  ctx.fillStyle = lerpHex(C.prop, '#FFF2DE', 0.34);
+  ctx.beginPath(); ctx.ellipse(0, -26, 26, 21, 0, 0, TAU); ctx.fill();     // body
+  ctx.beginPath(); ctx.ellipse(17, -44, 14, 13, 0, 0, TAU); ctx.fill();    // head
+  ctx.beginPath();                                                          // comb
+  ctx.arc(14,-55,4.5,0,TAU); ctx.arc(20,-57,4.5,0,TAU); ctx.arc(26,-55,4,0,TAU); ctx.fill();
+  ctx.beginPath();                                                          // beak
+  ctx.moveTo(30,-45); ctx.lineTo(42,-41); ctx.lineTo(30,-38); ctx.closePath(); ctx.fill();
+  ctx.lineWidth = 4; ctx.strokeStyle = ctx.fillStyle; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(-5,-7); ctx.lineTo(-5,0);                     // legs
+  ctx.moveTo(7,-7);  ctx.lineTo(7,0); ctx.stroke();
+  ctx.save();                                                               // a wing, waving
+  ctx.translate(-6,-30); ctx.rotate(cheer ? -1.15 - bob*0.06 : -0.15);
+  ctx.beginPath(); ctx.ellipse(-11,0,15,7,0,0,TAU); ctx.fill();
+  ctx.restore();
+  ctx.restore();
+}
+/* Spectators along the route. In the yard they are still behind bars. */
+function drawSpectators(T){
+  const spacing = 545, first = Math.floor((cam.x-300)/spacing);
+  const caged = T.id === 'yard';
+  for(let i=first; i<first+Math.ceil(VW/spacing)+3; i++){
+    if(hash(i*9.3) > 0.80) continue;                    // not at every stop
+    const gx = i*spacing + 300;
+    const sx = gx - cam.x;
+    if(sx < -220 || sx > VW+220) continue;
+    const n = 1 + (hash(i*4.1)*2.99 | 0);
+    const near = Math.abs(gx - player.x) < 520 && game.mode === 'play';
+    for(let k=0;k<n;k++){
+      const ox = (k-(n-1)/2) * 62 + hash(i*7.7+k)*10;
+      const ph = hash(i*2.3+k*1.7)*TAU;
+      const bob = near ? -Math.abs(Math.sin(game.t*9 + ph))*13   // jumping
+                       :  Math.sin(game.t*1.8 + ph)*2.2;         // just breathing
+      ctx.save();
+      ctx.translate(sx + ox, GROUND - 10);
+      ctx.scale(0.82, 0.82);
+      drawLilChicken(near, bob);
+      ctx.restore();
+    }
+    if(caged){                                          // the ones he left behind
+      ctx.save();
+      ctx.translate(sx, GROUND - 10);
+      const cw = 42 + n*62, ch = 78;
+      ctx.strokeStyle = lerpHex(C.prop, '#FFF2DE', 0.30); ctx.lineWidth = 6;
+      ctx.strokeRect(-cw*0.5, -ch, cw, ch);
+      ctx.lineWidth = 4;
+      for(let bx=-cw*0.5+16; bx<cw*0.5-6; bx+=20){
+        ctx.beginPath(); ctx.moveTo(bx,-ch+4); ctx.lineTo(bx,-4); ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+}
+let _propTheme = null;
+function drawStreetProps(T){
+  _propTheme = T || THEME;
+  drawSpectators(_propTheme);
+  if(_propTheme.id==='farm') return drawFarmProps();
+  if(_propTheme.id==='yard') return drawYardProps();
   // lamps + trees + hydrants drawn live so they can be lit/animated
   const spacing = 460;
   const first = Math.floor((cam.x-200)/spacing);
@@ -3408,9 +3505,14 @@ function render(){
   ctx.translate(zx, zy); ctx.scale(Z, Z); ctx.translate(-zx, -zy);
   ctx.translate(cam.shakeX, cam.shakeY + game.camY);
 
-  drawSky();
-  drawLayers();
-  drawStreetProps();
+  if(game.swapK !== undefined && game.swapK < 1){
+    drawSky(THEME_FROM); drawLayers(layersFrom); drawStreetProps(THEME_FROM);
+    ctx.globalAlpha = game.swapK;
+    drawSky(THEME);      drawLayers(layers);     drawStreetProps(THEME);
+    ctx.globalAlpha = 1;
+  } else {
+    drawSky(THEME); drawLayers(layers); drawStreetProps(THEME);
+  }
   drawGround();
   drawObstacles();
 
@@ -3539,6 +3641,8 @@ function boot(){
               worst=Math.min(worst, Math.max(o.cy-half, band-(o.cy+half)));
             } else if(o.hang){ worst=Math.min(worst, band-o.h); }
             else if(o.kind!=='air' && o.kind!=='fall'){ worst=Math.min(worst, band-o.h); }
+            if(!isFinite(worst)){ out.push('tier'+tier+' BAD '+o.key+' kind='+o.kind+
+              ' h='+o.h+' cy='+o.cy+' len='+o.len); bad++; worst=1e9; }
           }
         }
         if(pairs){ bad++; out.push('tier'+tier+' STACKED PAIRS: '+pairs); }
