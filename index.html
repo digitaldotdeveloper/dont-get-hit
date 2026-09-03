@@ -3412,18 +3412,20 @@ function drawNPC(set, i, sx, gy, scale, flip){
    place every run, and a group can be mixed. */
 const NPC_KIND = ['cow', 'pig', 'goat'];
 function drawSpectators(){
-  const spacing = 545, first = Math.floor((cam.x-300)/spacing);
+  const spacing = 430, first = Math.floor((cam.x-300)/spacing);
   for(let i=first; i<first+Math.ceil(VW/spacing)+3; i++){
-    if(hash(i*9.3) > 0.80) continue;                    // not at every stop
+    if(hash(i*9.3) > 0.78) continue;                    // not at every stop
     const gx = i*spacing + 300;
     const sx = gx - cam.x;
     if(sx < -220 || sx > VW+220) continue;
     const n = 1 + (hash(i*4.1)*2.99 | 0);
-    /* Panic starts before he arrives and carries on well after: they are still
-       going when he is  most of a screen down the road, which is what sells it
-       as a reaction to him rather than a state of the scenery. */
+    /* Panic starts shortly before he arrives and carries on well after: they
+       are still going when he is most of a screen down the road, which sells it
+       as a reaction to him rather than a state of the scenery. Kept tight on
+       the approach side on purpose -- the whole point of the walk cycles is
+       that you get to see them being unimpressed first. */
     const dx = player.x - gx;
-    const near = game.mode === 'play' && dx > -620 && dx < 1000;
+    const near = game.mode === 'play' && dx > -430 && dx < 900;
     for(let k=0;k<n;k++){
       const ox = (k-(n-1)/2) * 74 + hash(i*7.7+k)*12;
       const ph = hash(i*2.3+k*1.7)*TAU;

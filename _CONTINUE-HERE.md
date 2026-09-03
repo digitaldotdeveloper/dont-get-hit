@@ -737,6 +737,7 @@ dropped frame every 26s, for tens of MB of canvas held on a phone.
     python tools/clip.py URL out.gif [s]    # real-time GIF over screencast
     python tools/shot.py URL out.png        # one screenshot, real device metrics
     python tools/title_art.py               # rebuild the title poster from ref/
+    python tools/npc_frames.py              # recut the cow, pig and goat frames
     python tools/build_apex.py              # rebuild the barn's roof from sheets/v2/barn_raw.png
 
 `clip.py` uses `Page.startScreencast`, which timestamps frames, so the GIF keeps
@@ -799,6 +800,41 @@ Two bugs fixed on the way in, both worth knowing about:
   clamped it with `Math.min(-0.001, ...)`, so it stuck on the first frame; the
   kick set `-1` and the title simply vanished between two frames. It now walks
   the other way, `-0.001` to `-1`.
+
+## The neighbours
+
+A cow, a pig and a goat walk the farm road: `NPC_KIND`, `drawSpectators`,
+`drawNPC`, twelve frames each in `anim/` (`cow0..5` strolling, `cowrun0..5`
+panicking, and the same for pig and goat). They replace the cricket guards,
+who belonged to a prison that no longer exists.
+
+- **They walk facing back down the road.** Once the world scrolls past a static
+  NPC it drifts left, so an animal facing forwards moonwalks. The panic set
+  faces the other way, because it is a run away from the thing that just went
+  past, and that turn is the whole beat.
+- **Species comes off the position hash**, so the same animal stands in the
+  same place on every run and a group can be mixed.
+- **The panic window is deliberately lopsided**: `dx > -430 && dx < 900`. Tight
+  on the approach so you get to see them being unimpressed first -- widening
+  that side was the difference between "three walk cycles nobody ever sees"
+  and the version in the game -- and long on the far side, so they are still
+  going when he is most of a screen down the road.
+- **They are scenery, and are left out of `FR.ready`.** 36 frames of cow, pig
+  and goat gating the readiness count would keep the chicken a puppet through
+  the first seconds of a cold load to decorate a verge he has not reached.
+  `drawNPC` checks each image itself, so one that has not arrived costs a frame
+  of scenery and nothing else.
+
+The frames are cut from green-screen sheets by `tools/npc_frames.py`; the two
+traps there (the characters wear the background, and the poses are not evenly
+spaced) are written up in that file's docstring.
+
+**Debugging them is a trap in itself.** They are sparse -- a group every 430
+units, a fifth of the stops empty -- so a single screenshot easily catches a
+frame with none on screen, which looks exactly like a wiring bug and cost a
+long chase through save/restore depth, clip regions and canvas identity before
+a six-frame strip showed them walking about quite happily. Grab a clip with
+`tools/clip.py`, not a screenshot.
 
 ## Next
 
