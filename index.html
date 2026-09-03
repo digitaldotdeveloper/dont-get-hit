@@ -574,6 +574,7 @@ function musicTick(){
   }
 }
 let TRACK = null, trackWanted = 0, TRACKS = [], trackIdx = 0;
+let MENU_TRACK = null, menuWanted = 0;
 /* Two long-form tracks, ~2.5 minutes each, so the soundtrack runs about five
    minutes before anything repeats. These come from the Pro model: everything
    generated on Flash comes back at 30.8s no matter what the prompt asks for. */
@@ -592,6 +593,22 @@ function initTrack(){
     TRACKS.push(a);
   });
   TRACK = TRACKS[0];
+  // the title screen, the escape and the score card all sit on this one
+  MENU_TRACK = new Audio('audio/music_menu.mp3');
+  MENU_TRACK.loop = true; MENU_TRACK.volume = 0; MENU_TRACK.preload = 'auto';
+  MENU_TRACK.addEventListener('error', () => { MENU_TRACK = null; });
+}
+/* The one place that decides what is playing. Everything else asks for a
+   scene rather than setting volumes, so the two pieces can never overlap. */
+function musicScene(which){
+  audioInit();
+  initTrack();
+  if(which === 'play'){        menuWanted = 0;    trackVol(0.55); musicVol(0.50); }
+  else if(which === 'duck'){   menuWanted = 0;    trackVol(0.18); musicVol(0.12); }
+  else {                       menuWanted = 0.40; trackVol(0);    musicVol(0);    }
+  if(menuWanted > 0 && MENU_TRACK && MENU_TRACK.paused){
+    const pr = MENU_TRACK.play(); if(pr && pr.catch) pr.catch(()=>{});
+  }
 }
 function nextTrack(){
   if(!TRACKS.length) return;
@@ -620,6 +637,11 @@ function trackVol(v){
   return true;
 }
 function trackTick(dt){
+  if(MENU_TRACK){
+    const mt = A.on ? menuWanted : 0;
+    MENU_TRACK.volume = clamp(MENU_TRACK.volume + (mt - MENU_TRACK.volume) * Math.min(1, dt*2.2), 0, 1);
+    if(MENU_TRACK.volume < 0.001 && !MENU_TRACK.paused && mt === 0) MENU_TRACK.pause();
+  }
   if(!TRACK) return;
   const target = A.on ? trackWanted : 0;
   TRACK.volume = clamp(TRACK.volume + (target - TRACK.volume) * Math.min(1, dt*2.2), 0, 1);
@@ -2480,7 +2502,7 @@ const pressJump = thrustOn, releaseJump = thrustOff;   // old names, one system
    pressJump/releaseJump are idempotent, so overlapping families are harmless.
    Every raw down is counted before any filtering, so the readout can tell
    "no event arrived" apart from "event arrived and was filtered". */
-const BUILD = 'b0903-1454';   // shown in ?dbg=1 so a cached build is obvious
+const BUILD = 'b0903-1608';   // shown in ?dbg=1 so a cached build is obvious
 const TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints||0) > 0;
 /* Only the mute button may swallow a press. Filtering on any <button> was the
    bug: on device every tap reported lastEv=start with taps=0, because the target
@@ -2560,7 +2582,7 @@ elMute.addEventListener('click', ()=>{
   audioInit(); A.on = !A.on;
   elMute.classList.toggle('muted', !A.on);
   if(A.started) A.master.gain.setTargetAtTime(A.on?0.9:0, A.ctx.currentTime, 0.05);
-  if(TRACK && !A.on) TRACK.pause();
+  if(!A.on){ if(TRACK) TRACK.pause(); if(MENU_TRACK) MENU_TRACK.pause(); }
 });
 document.addEventListener('visibilitychange', ()=>{
   if(document.hidden && A.ctx) A.ctx.suspend();
@@ -2582,7 +2604,7 @@ function toMenu(){
   rag.alive=false;
   elMenu.classList.add('show'); elOver.classList.remove('show');
   elHud.classList.remove('on'); elTut.classList.remove('show');
-  musicVol(0.0);
+  if(A.started) musicScene('menu');       // silent until the first gesture
 }
 function startRun(){
   game.runCount = (game.runCount||0) + 1;
@@ -2627,7 +2649,7 @@ function startRun(){
   }
   game.tut = game.firstRun;
   elTut.classList.toggle('show', game.tut);
-  musicVol(0.5); trackVol(0.55);
+  musicScene('menu');            // the escape still plays over the menu theme
 }
 function die(o){
   if(game.mode!=='play') return;
@@ -2646,7 +2668,7 @@ function die(o){
   const lifted = 300 + Math.random()*180;
   rag.build(player.pose, player.x, gy - player.y, -430 - Math.random()*220, -lifted, rnd(-10,10));
   if(o){ o.hitBy = true; o.spin = rnd(-6,6); o.vy = -420; }
-  musicVol(0.12); trackVol(0.18);
+  musicScene('duck');
 }
 function finish(){
   game.mode='dead'; game.deadT=0;
@@ -2666,7 +2688,7 @@ function finish(){
   elOver.classList.add('show');
   elHud.classList.remove('on');
   if(game.newBest){ S.best(); confettiBurst(); }
-  musicVol(0.0); trackVol(0);
+  musicScene('menu');            // the score card gets the menu theme back
 }
 function confettiBurst(){
   const cols=[C.gold,C.mint,C.coral,C.cream,'#6BD1FF'];
@@ -2768,6 +2790,7 @@ function updateIntro(dt){
   if(was < T_OUT && t >= T_OUT){                         // straight into the run
     elHud.classList.add('on');
     elEggCount.textContent = game.eggBank;
+    musicScene('play');            // through the door, and the chase starts
     if(game.tut) elTut.classList.add('show');
     player.y = 0; player.vy = 0; player.onGround = true;
     player.kickT = 0.14;
@@ -3867,6 +3890,31 @@ function boot(){
       el.style.display='block'; el.style.color = bad ? '#FF456E' : '#0f0';
       el.textContent = out.join(String.fromCharCode(10));
     }, 60);
+  }
+  /* Which piece of music each state asks for. The failure this catches is the
+     two overlapping, or the chase theme carrying on into the menu after a
+     death -- neither of which shows up as an error. */
+  if(/[?&]musictest/.test(location.search)){
+    setTimeout(()=>{
+      const out=[]; let bad=0;
+      audioInit(); initTrack();
+      out.push('menu file  : ' + (MENU_TRACK ? MENU_TRACK.src.split('/').pop() : 'MISSING'));
+      out.push('play files : ' + TRACKS.map(t=>t.src.split('/').pop()).join(' '));
+      if(!MENU_TRACK){ out.push('no menu track'); bad++; }
+      const want = [['menu',0.40,0],['play',0,0.55],['duck',0,0.18],['menu',0.40,0]];
+      for(const [scene,m,t] of want){
+        musicScene(scene);
+        const ok = Math.abs(menuWanted-m)<0.001 && Math.abs(trackWanted-t)<0.001;
+        if(!ok) bad++;
+        out.push((ok?'ok   ':'FAIL ') + scene + ' -> menu '+menuWanted.toFixed(2)+
+                 ' chase '+trackWanted.toFixed(2));
+        if(menuWanted>0 && trackWanted>0){ out.push('  BOTH PLAYING AT ONCE'); bad++; }
+      }
+      out.unshift(bad ? ('MUSIC: '+bad+' PROBLEMS') : 'MUSIC: scenes ok, never both at once');
+      const el=document.getElementById('selftest');
+      el.style.display='block'; el.style.color = bad ? '#FF456E' : '#0f0';
+      el.textContent = out.join(String.fromCharCode(10));
+    }, 80);
   }
   if(/[?&]audiotest/.test(location.search)){
     setTimeout(()=>{

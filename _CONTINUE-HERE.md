@@ -276,11 +276,18 @@ disables the journey.
 
 ## Music
 
+**`musicScene('menu'|'play'|'duck')` is the only thing that sets music volume.**
+The menu theme (`audio/music_menu.mp3`) covers the title screen, the escape and
+the score card; the chase playlist belongs to the run and starts on the kick.
+Before this, `toMenu` never touched the track, so dying and retrying carried the
+chase theme straight on from wherever it was, and `startRun` began it during the
+intro. `?musictest=1` checks each scene and that the two never play at once.
+
 `MOVEMENTS` in `initTrack` is the playlist: two long-form tracks played back to
 back, about 5 minutes 25 before anything repeats. Any entry that fails to load is
 skipped, and the old synthesised groove is still the fallback if none load
 (`musicTick` returns early when a track exists). The mute button controls both.
-`?track=NAME` plays one `audio/music_NAME.mp3` on loop instead.
+`?track=NAME` plays one `audio/music_NAME.mp3` on loop instead of the chase playlist.
 
 **Music length is set by the MODEL, not the prompt.** Everything generated on
 Flash comes back at 30.8s however long a piece is asked for - three minutes, a
@@ -436,9 +443,10 @@ width and exceptions. `?runt=N` starts a run at a difficulty.
 
 ## Themes
 
-Three: `yard` (run one -- the prison he just left), `farm`, `city`. All three
-are code-drawn parallax in `buildLayers` plus a props pass. A new one needs a
-palette entry, a `buildXLayers`, and a branch in `drawProps`.
+Three: `block` (run one -- inside the prison), `farm`, `city`. `farm` and `city`
+are code-drawn parallax in `buildLayers` plus a props pass; `block` is painted
+art, see below. A new code-drawn one needs a palette entry, a `buildXLayers`,
+and a branch in `drawStreetProps`.
 
 ## The painted prison (`block`)
 

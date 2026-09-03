@@ -75,7 +75,7 @@
 <div class="wrap">
   <header>
     <h1>TRACK TEST</h1>
-    <div class="sub">THE GAME PLAYS 1 THEN 2 &nbsp;·&nbsp; 5 MINUTES 25 BEFORE IT REPEATS</div>
+    <div class="sub">1 IS THE MENU &nbsp;·&nbsp; 2 THEN 3 ARE THE RUN &nbsp;·&nbsp; 5 MIN 25 BEFORE IT REPEATS</div>
   </header>
 
   <div id="list"></div>
@@ -96,13 +96,15 @@
   <button class="btn on" id="loop">LOOP: ON</button>
   <button class="btn on" id="ab">A/B: KEEP POSITION</button>
   <button class="btn" id="stop">STOP</button>
-  <div class="hint">KEYS &nbsp; 1&ndash;7 SWITCH &nbsp;·&nbsp; SPACE PLAY/PAUSE</div>
+  <div class="hint">KEYS &nbsp; 1&ndash;8 SWITCH &nbsp;·&nbsp; SPACE PLAY/PAUSE</div>
 </div></div>
 
 <script>
 (() => {
 'use strict';
 const TRACKS = [
+  { file:'audio/music_menu.mp3', name:'MENU THEME', part:true,
+    desc:'2:57. Plays on the title screen, through the escape, and on the score card. Walking bass, brushed drums, spacious piano and a lazy muted trumpet - waiting, not running.' },
   { file:'audio/music_spy_long.mp3', name:'SPY HEIST — LONG', def:true,
     desc:'2:27. The theme you picked, regenerated on the Pro model with a piano solo through the middle. Surf guitar, brass stabs, walking bass, driving swing kit.' },
   { file:'audio/music_spy_long_b.mp3', name:'SPY HEIST — LONG II', part:true,
@@ -134,7 +136,7 @@ TRACKS.forEach((t, i) => {
       '<button class="play" aria-label="Play ' + t.name + '">' + ICON_PLAY + '</button>' +
       '<div class="meta"><div class="name">' + (i+1) + '. ' + t.name + '</div>' +
       '<div class="desc">' + t.desc + '</div>' +
-      (t.def ? '<span class="tag def">IN THE GAME · PLAYS FIRST</span>' : t.part ? '<span class="tag def">IN THE GAME · PLAYS NEXT</span>' : '<span class="tag">ALTERNATIVE</span>') +
+      (t.def ? '<span class="tag def">THE RUN · PLAYS FIRST</span>' : t.part ? '<span class="tag def">IN THE GAME</span>' : '<span class="tag">ALTERNATIVE</span>') +
       '</div></div>' +
     '<div class="wave"><canvas></canvas><div class="head"></div></div>' +
     '<div class="times"><span class="cur">0:00</span><span class="dur">--:--</span></div>';
