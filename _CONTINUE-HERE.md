@@ -5,10 +5,10 @@ Hat picker: https://digitaldotdeveloper.github.io/dont-get-hit/chickens.html
 Repo: https://github.com/digitaldotdeveloper/dont-get-hit
 Local: C:\Users\it\Desktop\jj
 
-Portrait one-button arcade flyer. **Hold to flap, release to fall.** The bird
-flies with its own wings — deliberately not a jetpack, so the game reads as its
-own thing rather than a Jetpack Joyride clone. Target is Android with ads later;
-GitHub Pages is only the test harness.
+**Landscape-only** one-button arcade flyer. **Hold to flap, release to fall.**
+The bird flies with its own wings — deliberately not a jetpack, so the game reads
+as its own thing rather than a Jetpack Joyride clone. Target is Android with ads
+later; GitHub Pages is only the test harness.
 
 Everything is in **index.html** plus four PNGs in `art/`. No build step.
 
@@ -131,10 +131,14 @@ rules that keep them consistent.
 | Death tumble + egg | `const rag = {`, `function layEgg` |
 | Feathers | `function featherBurst` |
 | Flight physics | `const GRAV`, `// ---- flight ----` |
-| Portrait framing | `function resize()` |
+| Landscape framing + rotate gate | `function resize()`, `#rotate` |
 | Gates | `function spawnGate`, `OB.tower`, `OB.hanger` |
+| The cage intro | `const CAGE`, `cageGeom`, `cagePose`, `updateIntro` |
+| The blast | `drawBoom`, `FRAME_DATA.boom` |
+| Painted panels (farm + prison) | `function loadPanels`, `const FARM`, `const WALL` |
+| Farm hazards | `function farmProp`, `Object.assign(OB, {` |
 | Gate members fill their hitbox | `crateStack`, `CAP_H` |
-| Obstacles (16) | `const OB = {` |
+| Obstacles (city 20, farm 14) | `const OB = {`, `farmProp` |
 | Difficulty tiers | `function tierNow`, `function spawnPattern` |
 
 ## Flight model — one system, do not add a second
@@ -201,16 +205,16 @@ rapid tapping -> 22 (tapping must not be a strategy).
   If you change `VY_DOWN` or `FLAP_ACC`, re-check that recovery.
 - Speed ramps `430 → 730` over 85s. Much slower than the old jump version: you
   are steering continuously, not reacting once.
-- Portrait: `SCALE = min(CH/1450, CW/790)`. Narrower view than landscape on
-  purpose — a bigger bird matters more than lead time when the challenge is
-  altitude. If you widen it, the bird shrinks.
+- Framing: `SCALE = min(CH/980, CW/1450)`, landscape, and only that. See
+  **Landscape only** below.
 - `CEIL` is the altitude cap; air hazards spawn at random heights inside it.
 
 ## Debug flags
 
 `?auto=1` start a run · `?demo=1` auto-flap · `?flap=0.5` freeze the wings at one
 point in the cycle · `?hold=0` glide · `?zoom=1.7` zoom on the bird ·
-`?dbg=1` altitude readout · `?stage=1` drop three gates in front · `?solo=1` character only,
+`?dbg=1` altitude readout · `?slow=6` run the escape in slow motion ·
+`?stage=1` drop three gates in front · `?solo=1` character only,
 no world or HUD · `?run=0.3` freeze a stride frame · `?pose=land:1` freeze any state ·
 `?sz=2` zoom the solo view · `?rig=1` draw the pivot crosshairs (use this before tuning parts) ·
 `?wear=head:hat_bucket,face:shades_art,neck:scarf_art` set a loadout.
@@ -246,6 +250,12 @@ How they were made, because it is repeatable:
   squash survives but figures drawn too big get reined in. Do NOT size by the
   teal cap: Gemini draws it at different proportions on different sheets, so
   matching cap area actively makes the bodies disagree.
+- Frames are sized by **fat radius** — how many times the silhouette can be
+  shrunk before it vanishes — which ignores wing spread, leg position and which
+  way up he is. One scale per sheet from its median, plus a per-frame trim
+  clamped to 15%. The run cycle measures 30; match a new sheet to that. Do NOT
+  size by the teal cap: Gemini draws it at different proportions on different
+  sheets, so matching cap area actively makes the bodies disagree.
 - Every frame stores `ay`, the point inside the frame the drawing origin sits
   on: the feet for poses on the ground, the centre of mass for poses in the air,
   so his body holds still while his legs dangle differently. This replaced
@@ -265,14 +275,16 @@ puppet path is still worth keeping.
 
 ## Environments
 
-Three themes in `THEMES`: `block` (the prison interior, where every run starts),
-`farm`, `city`. **The run travels**: a leg every 26s, block -> farm -> city and
-round again, crossfaded rather than cut. Both layer sets stay alive through the
+Three themes in `THEMES`: `farm` (Cluck County, where every run starts),
+`city`, `block`. **The run travels**: a leg every 26s, farm -> city -> block and
+round again, crossfaded rather than cut. **Leg 0 must be the theme `startRun`
+applies** — with `block` first, the very first frame of the run swapped the
+bright farm for the prison interior, one second after breaking out of it. Both layer sets stay alive through the
 transition and dissolve over each other while the sky and road blend by colour,
 since those are gradients rather than baked tiles. `?theme=farm` forces one and
 disables the journey.
 
-`farm` and `city` are drawn in code. **`block` is painted art** - see below.
+`city` is drawn in code. **`farm` and `block` are painted art** - see below.
 
 ## Music
 
@@ -304,7 +316,7 @@ keeps position when switching so the same bar can be compared.
 
 ## Known rough edges
 
-- Expression is one eye plus a brow, driven by `p.shockT`. It reads at portrait
+- Expression is one eye plus a brow, driven by `p.shockT`. It reads at phone
   size but there is room for more.
 - Wearing every slot at once gets visually busy. Tuning, not architecture.
 - At the bottom of the flap (`?flap=0.375`) the near leg draws over the wing tip.
@@ -374,7 +386,7 @@ things that actually matter:
 
 ## Animation states
 
-`FRAME_DATA` holds run 6, fly 6, jump 5, land 4, hit 6. `pickFrame()` is the
+`FRAME_DATA` holds run 6, fly 6, fall 4, jump 5, land 4, hit 6, kick 5, boom 5. `pickFrame()` is the
 single place that chooses; `cyc()` wraps a 0..1 phase onto whatever length a
 set happens to be, so adding frames needs no other change.
 
@@ -383,36 +395,82 @@ is held for `game.mode === 'dead'` behind the score card. The ragdoll's own
 rotation is damped to 25% while frames are ready, because the art already
 tumbles and the two rotations fight each other.
 
-## The intro (prison escape)
+## Landscape only
 
-The menu IS the cell. `toMenu()` puts him lying on the bunk; `startIntro()`
-runs the sequence; the kick hands over to a normal run.
+There is **one framing**. `PORTRAIT` survives as a single question — *should we
+ask for a turn?* — and nothing else: `resize()` computes the landscape scale
+unconditionally and toggles `body.portrait`, which shows the `#rotate` gate.
+The run is **frozen** behind that gate (`frame()` renders but does not update),
+so turning the phone mid-run never costs a life.
 
-Timeline in `updateIntro`, constants at the top of the cell block:
+`lockLandscape()` runs on the first gesture, from `audioInit`. It is
+best-effort and every failure is swallowed: a phone only honours an orientation
+lock from inside fullscreen and only off a user gesture, and desktop is left
+alone entirely (`TOUCH` guard). The `#rotate` gate is what actually guarantees
+landscape; the lock is a convenience.
 
-    T_UP 0.36   swings upright on the bunk
-    T_STAND 0.72  stands, clocks the door
-    T_CHARGE 1.46 THE KICK -- everything fires on this frame
-    T_OUT 1.86  mode becomes 'play'
+The menu is laid out **on the right half** (`padding-left:46vw`,
+`align-items:flex-end`) so the left stays clear — that is where he is waiting in
+the cage, and seeing him there is the whole hook. Type sizes are `vmin`, not
+`vw`: on a 844x390 phone `vw` sizing put the logo through the right edge.
 
-`cellPose()` is the single place that decides where he is and which frame he
-is on; `pickFrame` defers to it for both 'menu' and 'intro'. The cell is drawn
-in code (`drawCellBack` / `drawCellFront` / `drawDoor` / `drawLock`), anchored
-at `game.cellX` in **world** space, so once play starts it recedes behind him
-on its own. That receding is what sells the escape -- do not draw it relative
-to the camera.
+**Clear the canvas to `C.skyA`, not `C.ink2`, outdoors.** The camera rises with
+the bird and a zoom punch shrinks the world a fraction, and both expose canvas
+outside the drawn band. Against the ink that reads as a black letterbox around a
+bright farm.
 
-Two traps this hit, both worth remembering:
+## The intro (the cage)
+
+Cluck County Farm Correctional Facility. The menu IS the cage: he is standing in
+it, behind the bars, from the moment the title appears. `toMenu()` parks him
+there, `startIntro()` runs two seconds, and the kick hands over to a normal run.
+
+    T_WIND  0.42  coils, rocking back — the frame and the title start to rattle
+    T_KICK  1.15  THE KICK. Door, lock, splinters, blast, all on this frame.
+    T_BURST 1.52  through the doorway, still airborne
+    T_OUT   2.00  control returns mid-stride
+
+**The scene is painted, not drawn.** `sheets/v2/cage_scene.webp` is the barn
+with an empty doorway; `art/cage_door.webp` is the barred door on its own, so it
+can buckle (`doorBow`) and then leave (`game.door` + `updateDoor`). Every
+position in `CAGE` is a fraction **measured off the art** — the doorway rect and
+the straw floor — which is what puts his feet on the straw rather than near it.
+`cageGeom()` lands the painted ground line exactly on `GROUND`, and the painted
+dirt below that line is cropped off so `drawGround` carries on underneath and
+the two can never disagree about where the floor is.
+
+`cagePose()` is the single place that decides where he is and which frame he is
+on; `pickFrame` defers to it for both 'menu' and 'intro'. The blast is
+`FRAME_DATA.boom`, five painted frames over the doorway, drawn after everything
+else in the scene including the door that is already leaving.
+
+### Two numbers that stop it teleporting
+
+- **`CAGE_RUNOUT` (300)** is how far he travels between the kick and control,
+  and the cage is parked exactly that far *behind* the play position
+  (`game.cageX = -CAGE_RUNOUT`, camera at `-PX`). The escape's last frame and
+  the run's first frame then land on the same pixel. Park the cage anywhere else
+  — it used to sit at `2*PX` — and he jumps half a screen in one frame.
+- **`CAGE_CAM` (430)** pulls the camera back while he is still inside, and
+  `updateIntro` eases it onto the play mark over the kick. Without it the cage
+  has to sit `CAGE_RUNOUT` behind `PX`, and `PX` is only 27% of the width, which
+  shoves the barn half off the left edge and hides the one thing the menu is for.
+
+`?introt=N` freezes the intro at a moment. It now takes **one step of the whole
+remaining time** so the one-shots fire on the way; assigning `introT` directly
+made `was` and `t` equal and the flag could show the poses and nothing that
+actually happens. `?slow=6` runs the whole thing in slow motion instead, which
+is the better way to look at the hand-over.
+
+Two traps this hit before, both still worth remembering:
 
 - **`if` in the middle of an `else if` chain.** `if(game.door) updateDoor(dt)`
   went between `else if(intro)` and `else if(play)`, so `updatePlay` bound to
   the door check and the game stopped dead for the third of a second the door
   was airborne. Anything added to that dispatch goes after the whole chain.
-- **Dead references after replacing a block.** `drawTitle` still called
-  `cageShake()` from the sequence this replaced and threw every frame. Grep for
-  callers before deleting a block, and check the on-screen error panel.
-
-`?introt=N` freezes the intro at a moment so a beat can be looked at.
+- **Dead references after replacing a block.** `drawTitle` still called a
+  function from the sequence it replaced and threw every frame. Grep for callers
+  before deleting a block, and check the on-screen error panel.
 
 ## Screenshots
 
@@ -427,6 +485,18 @@ scrollWidth alongside the file so overflow is measured rather than eyeballed.
 Needs `--remote-allow-origins=*` or the websocket handshake is refused.
 
 ## Obstacles
+
+`poolFor(tier)` filters by **theme as well as tier**: `set:'farm'` props on the
+farm, `set:'city'` on the street, untagged ones (cones, crates, a barrel, a ball,
+the towers, the zappers) everywhere so a run can never run out of hazards on
+either map. Gate caps split the same way (`gateTops()` / `gateHangs()`).
+
+The farm's fourteen hazards are **painted props** cut off a Gemini Studio sheet
+and keyed off flat green (`art/farm/*.webp`), built by `farmProp(name, w, h)`.
+The sprite fills its hitbox exactly — `w` and `h` are what `spawnOne` collides
+with, so anything drawn outside them is a hit you cannot see coming — and every
+one falls back to a flat block if its image is missing, the same bargain the
+character frames make. Art can never make a hazard invisible.
 
 `spawnPattern` places ONE hazard at a time anywhere in the column. There are no
 gates any more -- a floor piece and a ceiling piece at the same x is Flappy
@@ -443,10 +513,38 @@ width and exceptions. `?runt=N` starts a run at a difficulty.
 
 ## Themes
 
-Three: `block` (run one -- inside the prison), `farm`, `city`. `farm` and `city`
-are code-drawn parallax in `buildLayers` plus a props pass; `block` is painted
-art, see below. A new code-drawn one needs a palette entry, a `buildXLayers`,
-and a branch in `drawStreetProps`.
+Three: `farm` (run one -- Cluck County), `city`, `block`. `city` is code-drawn
+parallax in `buildLayers` plus a props pass; `farm` and `block` are painted art,
+see below. A new code-drawn one needs a palette entry, a `buildXLayers`, and a
+branch in `drawStreetProps`.
+
+### The painted farm
+
+`sheets/v2/farm_a|b|c.webp` are generated panels, laid overlapping and
+dissolving into each other by `loadPanels` — the same left-edge alpha ramp the
+prison wall uses, now shared. `buildFarmLayers` returns early once they load, so
+the code parallax is only the fallback; drawn as well it stacks a second farm
+behind the first and its hills show through.
+
+Three things that cost a round each and are the reason it reads:
+
+- **The sky is keyed OUT of the panels** (a flood from the top row over
+  sky-blue, which stops dead at the black ink outlines). Drawn as opaque
+  rectangles they show their own, lighter blue as a hard band across the whole
+  screen, and fading the top instead eats the silo and the barn roof — the only
+  content up there worth keeping. The painted clouds are white, fail the blue
+  test, and survive as cutouts.
+- **`haze` washes the distance out** (`source-atop`, so it tints the art and
+  never the keyed-out sky). The hazards are painted in the same style at the
+  same saturation as the map, so without it a hay bale in front of a hay field
+  is camouflage. This is aerial perspective doing a gameplay job.
+- **Size against `GROUND`, not the play band.** The play band magnifies a 572px
+  source about fourfold and puts the silo tops off the frame — the same trap the
+  prison wall hit.
+
+The farm's `drawGround` branch is a dirt track with a grass fringe and wheel
+ruts, coloured off the panels. A curb and a hazard stripe are a street; this is
+a farm road he was just kicked out onto.
 
 ## The painted prison (`block`)
 

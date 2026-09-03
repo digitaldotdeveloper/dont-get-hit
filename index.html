@@ -86,32 +86,63 @@
           text-align:center}
   .screen.show{display:flex}
 
-  /* Menu */
-  #menu{justify-content:flex-start;padding-top:calc(env(safe-area-inset-top,0px) + 7vh)}
+  /* Menu. The game is landscape only, so the menu lives on the RIGHT half and
+     leaves the left clear -- that is where he is waiting in the cage. */
+  #menu{justify-content:center;align-items:flex-end;
+        padding:calc(env(safe-area-inset-top,0px) + 12px) max(4vw,18px) calc(env(safe-area-inset-bottom,0px) + 12px) 46vw;
+        text-align:right}
   .logo{font-family:'Bungee',cursive;line-height:.86;transform:rotate(-2.5deg);
         filter:drop-shadow(0 8px 0 rgba(36,16,67,.9))}
-  .logo .l1{display:block;font-size:clamp(38px,12vw,86px);
+  .logo .l1{display:block;font-size:clamp(24px,6.8vmin,58px);
             background:linear-gradient(178deg,var(--cream) 12%,var(--gold) 58%,var(--amber) 100%);
             -webkit-background-clip:text;background-clip:text;color:transparent}
-  .logo .l2{display:block;font-size:clamp(52px,17vw,124px);margin-top:.02em;
+  .logo .l2{display:block;font-size:clamp(34px,10vmin,90px);margin-top:.02em;
             background:linear-gradient(178deg,var(--gold) 6%,var(--coral) 62%,var(--danger) 100%);
             -webkit-background-clip:text;background-clip:text;color:transparent}
+  /* The menu now sits over the painted farm rather than a flat gradient, so
+     every line needs its own contrast -- a scrim would hide the map. */
   .tag{margin:14px 0 0;font-size:11px;font-weight:900;letter-spacing:.16em;
-       color:rgba(255,242,222,.72)}
-  .spacer{flex:1}
-  .menuFoot{display:flex;flex-direction:column;align-items:center;gap:14px;
-            margin-top:auto;padding-bottom:2vh}
-  .hint{margin:0;font-size:11px;font-weight:700;letter-spacing:.24em;color:rgba(255,242,222,.45)}
-  .rules{display:flex;gap:10px;margin:0 0 4px;flex-wrap:wrap;justify-content:center}
+       color:var(--cream);text-shadow:0 2px 0 rgba(21,8,39,.85),0 0 12px rgba(21,8,39,.8)}
+  .spacer{flex:0 0 4px}
+  .menuFoot{display:flex;flex-direction:column;align-items:flex-end;gap:10px;
+            margin-top:14px;padding-bottom:0}
+  .hint{margin:0;font-size:11px;font-weight:700;letter-spacing:.24em;color:rgba(255,242,222,.82);
+        text-shadow:0 2px 0 rgba(21,8,39,.85),0 0 10px rgba(21,8,39,.75)}
+  .rules{display:flex;gap:10px;margin:0 0 2px;flex-wrap:wrap;justify-content:flex-end}
   .rule{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:800;
-        letter-spacing:.04em;color:rgba(255,242,222,.62);
-        background:rgba(36,16,67,.5);border:1.5px solid rgba(255,242,222,.14);
-        border-radius:999px;padding:5px 10px;backdrop-filter:blur(4px)}
+        letter-spacing:.04em;color:rgba(255,242,222,.88);
+        background:rgba(21,8,39,.72);border:1.5px solid rgba(255,242,222,.18);
+        border-radius:999px;padding:5px 10px;backdrop-filter:blur(4px);
+        box-shadow:0 3px 10px rgba(21,8,39,.5)}
   .rule b{color:var(--gold);font-weight:900}
   .rule.no b{color:var(--danger)}
 
+  /* ---------- Landscape gate ----------
+     The whole game is framed for landscape: a flying game wants lead time in
+     front of the bird, and the cage intro is a wide painted scene. Rather than
+     re-lay everything out for a tall window, portrait asks for a turn and the
+     run is frozen behind it, so rotating mid-run never costs a life. */
+  #rotate{position:fixed;inset:0;z-index:60;display:none;
+          flex-direction:column;align-items:center;justify-content:center;gap:18px;
+          background:linear-gradient(170deg,#13284C,#3D1F55 60%,#150827);
+          text-align:center;padding:24px}
+  body.portrait #rotate{display:flex}
+  #rotate .phone{width:72px;height:118px;border-radius:14px;
+                 border:5px solid var(--cream);position:relative;
+                 animation:turnit 2.2s ease-in-out infinite}
+  #rotate .phone::after{content:"";position:absolute;left:50%;bottom:7px;
+                 transform:translateX(-50%);width:26px;height:4px;border-radius:3px;
+                 background:var(--cream);opacity:.7}
+  @keyframes turnit{0%,22%{transform:rotate(0)}
+                    52%,78%{transform:rotate(-90deg)}
+                    100%{transform:rotate(-90deg)}}
+  #rotate h2{font-family:'Bungee',cursive;font-size:clamp(20px,6vw,30px);margin:0;
+             color:var(--gold);text-shadow:0 3px 0 rgba(36,16,67,.9)}
+  #rotate p{margin:0;font-size:12px;font-weight:800;letter-spacing:.2em;
+            color:rgba(255,242,222,.6)}
+
   /* Big physical button */
-  .big{font-family:'Bungee',cursive;font-size:clamp(24px,6.5vw,34px);letter-spacing:.05em;
+  .big{font-family:'Bungee',cursive;font-size:clamp(20px,5.2vmin,32px);letter-spacing:.05em;
        color:#2A1206;border:0;cursor:pointer;pointer-events:auto;
        padding:18px 54px 20px;border-radius:22px;
        background:linear-gradient(180deg,#FFE27A 0%,var(--gold) 46%,#F5A93A 100%);
@@ -222,6 +253,12 @@
     </div>
   </div>
 
+  <div id="rotate">
+    <div class="phone"></div>
+    <h2>TURN YOUR PHONE</h2>
+    <p>DON'T GET HIT PLAYS IN LANDSCAPE</p>
+  </div>
+
   <pre id="selftest" style="position:fixed;left:0;top:0;z-index:99;color:#0f0;font:11px monospace;background:#000;margin:0;display:none"></pre>
   <div id="tut">
     <svg viewBox="0 0 24 24"><path d="M12 3v9"/><path d="m8.5 6.5 3.5-3.5 3.5 3.5"/><circle cx="12" cy="17" r="4"/></svg>
@@ -287,10 +324,12 @@ const THEMES = [
     skyA:'#060F13', skyB:'#0B1A20', skyC:'#12262E', skyD:'#173039', skyE:'#1C3A44',
     sun:'#F5D98A', far:'#20404A', mid:'#1A343D', near:'#142A32', prop:'#0C1A20',
     road:'#4A4A44', roadLine:'#5C5C54', curb:'#262622', rim:'#F2C230' },
-  { id:'farm', name:'DAWN FARM',
-    skyA:'#13284C', skyB:'#3A5E85', skyC:'#E0805E', skyD:'#F6B25E', skyE:'#FFE7AE',
-    sun:'#FFF4CC', far:'#6E8C77', mid:'#46654F', near:'#2C4535', prop:'#1B2C22',
-    road:'#7C5C36', roadLine:'#9A7442', curb:'#5C4526', rim:'#FFDC96' }
+  /* Sampled off the painted panels so the sky the game draws and the sky in the
+     art are the same blue -- the panels fade into it rather than sitting on it. */
+  { id:'farm', name:'CLUCK COUNTY', sunR:0.42, sunGlow:0.34, vig:0.42,
+    skyA:'#0B7CF5', skyB:'#1C87F2', skyC:'#3C9BEC', skyD:'#79C2F6', skyE:'#BEE6FF',
+    sun:'#FFF3A8', far:'#7FB463', mid:'#5C9A48', near:'#3E7A34', prop:'#2F5A28',
+    road:'#BB7D33', roadLine:'#9A6528', curb:'#8E5C24', rim:'#8CC24E' }
 ];
 let THEME = THEMES[0], THEME_FROM = THEMES[0], layersFrom = [];
 /* Blend two #rrggbb values. The sky and the road are drawn from colours rather
@@ -367,21 +406,40 @@ function resize(){
   DPR = Math.min(window.devicePixelRatio||1, dprCap);
   cv.width  = Math.round(CW*DPR);
   cv.height = Math.round(CH*DPR);
-  // Keep at least 1300 world-units wide and 880 tall visible -> constant difficulty
-  // Portrait is the target. Flying is a vertical game, so we trade some
-  // horizontal view for a bigger bird rather than the other way round.
-  PORTRAIT = CH > CW*1.15;
-  SCALE = PORTRAIT ? Math.min(CH/1450, CW/790) : Math.min(CH/980, CW/1450);
+  // Keep at least 1450 world-units wide and 980 tall visible -> constant difficulty.
+  // LANDSCAPE ONLY. There is one framing, and a portrait window is asked to
+  // turn rather than laid out again: the escape is a wide painted scene and the
+  // run wants lead time in front of the bird, neither of which survives a tall
+  // window. PORTRAIT is now only "should we ask for a turn", never a layout.
+  PORTRAIT = CH > CW*1.02;
+  document.body.classList.toggle('portrait', PORTRAIT);
+  SCALE = Math.min(CH/980, CW/1450);
   VW = CW/SCALE; VH = CH/SCALE;
   const roadH = clamp(VH*0.16, 150, 260);
   GROUND = VH - roadH;
   CEIL = Math.max(40, GROUND - clamp(VH*0.80, 620, 1120));
-  PX = VW*(PORTRAIT ? 0.30 : 0.27);
+  PX = VW*0.27;
   SURF.clear();
   buildLayers();
 }
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', ()=> setTimeout(resize,120));
+/* A phone will only honour an orientation lock from inside fullscreen, and only
+   off a user gesture, so this is best-effort and every failure is ignored: the
+   #rotate gate is what actually guarantees landscape. Desktop is left alone. */
+let orientTried = false;
+function lockLandscape(){
+  if(orientTried || !TOUCH) return; orientTried = true;
+  try{
+    const el = document.documentElement;
+    const go = () => { try{ screen.orientation.lock('landscape').catch(()=>{}); }catch(e){} };
+    if(screen.orientation && screen.orientation.lock){
+      if(document.fullscreenElement) go();
+      else if(el.requestFullscreen) el.requestFullscreen().then(go).catch(go);
+      else go();
+    }
+  }catch(e){}
+}
 
 /* ============================================================
    AUDIO — everything synthesised, no files
@@ -391,6 +449,7 @@ const A = {
   on:true, started:false, nextNote:0, step:0
 };
 function audioInit(){
+  lockLandscape();          // first gesture: ask the phone to stay landscape
   initTrack();
   if(A.started) return;
   const AC = window.AudioContext||window.webkitAudioContext; if(!AC) return;
@@ -1058,7 +1117,7 @@ function cosmeticImage(id, slot, src, opt){
    swappable while frames are in use. If any image fails to load the
    procedural puppet draws instead - the character can never vanish.
    ============================================================ */
-const FRAME_DATA = {"run":[{"f":"run0.webp","w":206,"h":199,"ay":199},{"f":"run1.webp","w":138,"h":182,"ay":182},{"f":"run2.webp","w":136,"h":181,"ay":181},{"f":"run3.webp","w":187,"h":196,"ay":196},{"f":"run4.webp","w":140,"h":181,"ay":181},{"f":"run5.webp","w":179,"h":195,"ay":195}],"fly":[{"f":"fly0.webp","w":110,"h":161,"ay":162.3},{"f":"fly1.webp","w":112,"h":158,"ay":163.1},{"f":"fly2.webp","w":163,"h":210,"ay":191.6},{"f":"fly3.webp","w":147,"h":158,"ay":181.3},{"f":"fly4.webp","w":148,"h":186,"ay":187.3},{"f":"fly5.webp","w":130,"h":185,"ay":179.7}],"fall":[{"f":"fall0.webp","w":122,"h":187,"ay":184.0},{"f":"fall1.webp","w":145,"h":199,"ay":186.0},{"f":"fall2.webp","w":174,"h":210,"ay":179.8},{"f":"fall3.webp","w":143,"h":198,"ay":182.3}],"jump":[{"f":"jump0.webp","w":122,"h":148,"ay":171.0},{"f":"jump1.webp","w":140,"h":171,"ay":169.4},{"f":"jump2.webp","w":138,"h":221,"ay":193.2},{"f":"jump3.webp","w":183,"h":186,"ay":179.6},{"f":"jump4.webp","w":155,"h":186,"ay":180.3}],"land":[{"f":"land0.webp","w":145,"h":183,"ay":183},{"f":"land1.webp","w":157,"h":179,"ay":179},{"f":"land2.webp","w":122,"h":121,"ay":121},{"f":"land3.webp","w":165,"h":186,"ay":186}],"hit":[{"f":"hit0.webp","w":145,"h":164,"ay":172.9},{"f":"hit1.webp","w":163,"h":186,"ay":185.1},{"f":"hit2.webp","w":122,"h":154,"ay":173.6},{"f":"hit3.webp","w":106,"h":126,"ay":166.0},{"f":"hit4.webp","w":178,"h":81,"ay":140.5},{"f":"hit5.webp","w":128,"h":146,"ay":173.4}],"cage":[{"f":"cage0.webp","w":150,"h":146,"ay":146.0},{"f":"cage1.webp","w":129,"h":136,"ay":136.0},{"f":"cage2.webp","w":106,"h":139,"ay":140.2},{"f":"cage3.webp","w":183,"h":142,"ay":168.9}],"cell":[{"f":"cell0.webp","w":131,"h":202,"ay":202},{"f":"cell1.webp","w":133,"h":201,"ay":201},{"f":"cell2.webp","w":130,"h":198,"ay":198},{"f":"cell3.webp","w":145,"h":177,"ay":175.6},{"f":"cell4.webp","w":197,"h":193,"ay":193}],"cricket":[{"f":"cricket0.webp","w":45,"h":136,"ay":136.0},{"f":"cricket1.webp","w":44,"h":143,"ay":143.0},{"f":"cricket2.webp","w":67,"h":127,"ay":127.0},{"f":"cricket3.webp","w":58,"h":129,"ay":129.0},{"f":"cricket4.webp","w":62,"h":121,"ay":121.0},{"f":"cricket5.webp","w":55,"h":107,"ay":107.0}],"egg":[{"f":"egg0.webp","w":47,"h":58,"ay":29.0},{"f":"egg1.webp","w":45,"h":58,"ay":29.0},{"f":"egg2.webp","w":43,"h":58,"ay":29.0},{"f":"egg3.webp","w":39,"h":58,"ay":29.0},{"f":"egg4.webp","w":22,"h":58,"ay":29.0},{"f":"egg5.webp","w":15,"h":55,"ay":27.5},{"f":"egg6.webp","w":39,"h":55,"ay":27.5},{"f":"egg7.webp","w":41,"h":55,"ay":27.5},{"f":"egg8.webp","w":42,"h":55,"ay":27.5},{"f":"egg9.webp","w":43,"h":55,"ay":27.5}]};
+const FRAME_DATA = {"run":[{"f":"run0.webp","w":206,"h":199,"ay":199},{"f":"run1.webp","w":138,"h":182,"ay":182},{"f":"run2.webp","w":136,"h":181,"ay":181},{"f":"run3.webp","w":187,"h":196,"ay":196},{"f":"run4.webp","w":140,"h":181,"ay":181},{"f":"run5.webp","w":179,"h":195,"ay":195}],"fly":[{"f":"fly0.webp","w":110,"h":161,"ay":162.3},{"f":"fly1.webp","w":112,"h":158,"ay":163.1},{"f":"fly2.webp","w":163,"h":210,"ay":191.6},{"f":"fly3.webp","w":147,"h":158,"ay":181.3},{"f":"fly4.webp","w":148,"h":186,"ay":187.3},{"f":"fly5.webp","w":130,"h":185,"ay":179.7}],"fall":[{"f":"fall0.webp","w":122,"h":187,"ay":184.0},{"f":"fall1.webp","w":145,"h":199,"ay":186.0},{"f":"fall2.webp","w":174,"h":210,"ay":179.8},{"f":"fall3.webp","w":143,"h":198,"ay":182.3}],"jump":[{"f":"jump0.webp","w":122,"h":148,"ay":171.0},{"f":"jump1.webp","w":140,"h":171,"ay":169.4},{"f":"jump2.webp","w":138,"h":221,"ay":193.2},{"f":"jump3.webp","w":183,"h":186,"ay":179.6},{"f":"jump4.webp","w":155,"h":186,"ay":180.3}],"land":[{"f":"land0.webp","w":145,"h":183,"ay":183},{"f":"land1.webp","w":157,"h":179,"ay":179},{"f":"land2.webp","w":122,"h":121,"ay":121},{"f":"land3.webp","w":165,"h":186,"ay":186}],"hit":[{"f":"hit0.webp","w":145,"h":164,"ay":172.9},{"f":"hit1.webp","w":163,"h":186,"ay":185.1},{"f":"hit2.webp","w":122,"h":154,"ay":173.6},{"f":"hit3.webp","w":106,"h":126,"ay":166.0},{"f":"hit4.webp","w":178,"h":81,"ay":140.5},{"f":"hit5.webp","w":128,"h":146,"ay":173.4}],"kick":[{"f":"kick0.webp","w":164,"h":239,"ay":239.0},{"f":"kick1.webp","w":162,"h":228,"ay":228.0},{"f":"kick2.webp","w":172,"h":172,"ay":179.4},{"f":"kick3.webp","w":132,"h":192,"ay":178.6},{"f":"kick4.webp","w":182,"h":194,"ay":194.0}],"boom":[{"f":"boom0.webp","w":121,"h":125},{"f":"boom1.webp","w":194,"h":215},{"f":"boom2.webp","w":260,"h":273},{"f":"boom3.webp","w":209,"h":215},{"f":"boom4.webp","w":170,"h":175}],"cricket":[{"f":"cricket0.webp","w":45,"h":136,"ay":136.0},{"f":"cricket1.webp","w":44,"h":143,"ay":143.0},{"f":"cricket2.webp","w":67,"h":127,"ay":127.0},{"f":"cricket3.webp","w":58,"h":129,"ay":129.0},{"f":"cricket4.webp","w":62,"h":121,"ay":121.0},{"f":"cricket5.webp","w":55,"h":107,"ay":107.0}],"egg":[{"f":"egg0.webp","w":47,"h":58,"ay":29.0},{"f":"egg1.webp","w":45,"h":58,"ay":29.0},{"f":"egg2.webp","w":43,"h":58,"ay":29.0},{"f":"egg3.webp","w":39,"h":58,"ay":29.0},{"f":"egg4.webp","w":22,"h":58,"ay":29.0},{"f":"egg5.webp","w":15,"h":55,"ay":27.5},{"f":"egg6.webp","w":39,"h":55,"ay":27.5},{"f":"egg7.webp","w":41,"h":55,"ay":27.5},{"f":"egg8.webp","w":42,"h":55,"ay":27.5},{"f":"egg9.webp","w":43,"h":55,"ay":27.5}]};
 const FR = { ready:false, n:0, need:0, img:{} };
 const SPR = 175/190;                       // world units per frame pixel
 (function loadFrames(){
@@ -1080,11 +1139,11 @@ const cyc = (set, ph) => {                              // wrap a 0..1 phase ont
 function pickFrame(p){
   const pl = player;
   if(game.mode === 'intro' || game.mode === 'menu'){
-    const cp = cellPose();
+    const cp = cagePose();
     const set = FRAME_DATA[cp.set] ? cp.set : 'run';
     return [set, Math.min(cp.i, FRAME_DATA[set].length-1)];
   }
-  if(pl.kickT > 0 && FRAME_DATA.cell) return ['cell', 4]; // still running out of it
+  if(pl.kickT > 0 && FRAME_DATA.kick) return ['kick', 4]; // still running out of it
   /* getting hit runs its own six-frame sequence: impact, launched, two tumbles,
      face down, then sitting up dazed while the score card is on screen. */
   if(game.mode === 'dying'){
@@ -1459,143 +1518,144 @@ const rag = {
 };
 
 /* ============================================================
-   THE CELL — the intro. A heavy cartoon prison, a bunk, a padlock,
-   and a chicken who is not remotely worried about any of it.
+   THE CAGE — the intro. Cluck County Farm Correctional Facility: a barred
+   door in the side of a red barn, and a chicken who is not remotely worried
+   about any of it.
 
-   Timeline, all of it after the player presses:
-     0.00  he swings upright on the bunk
-     0.34  stands, leans at the door
-     0.64  charges across the cell
-     1.18  THE KICK. Everything happens on this frame.
-     1.18+ the door tumbles away and he is already running
-   Playable at 1.52s. Nothing loads at the handover.
+   The scene is PAINTED (`sheets/v2/cage_scene.webp`), not drawn out of
+   rectangles, and the door is its own sprite so it can buckle and then leave.
+   Every number below is a fraction MEASURED off the art rather than guessed —
+   which is what puts his feet on the straw instead of near it.
+
+   Timeline, all of it after the player presses. Two seconds, then he is
+   running, and nothing loads at the handover:
+     0.00  standing in the cage, unimpressed
+     0.42  coils, rocking back into it — the frame and the title start to rattle
+     1.15  THE KICK. Door, lock, splinters, boom, everything on this frame.
+     1.52  through the doorway, still airborne
+     2.00  control returns mid-stride
    ============================================================ */
-const CELL = { w:0, h:0, bar:5, doorW:0 };
-const T_UP = 0.46, T_STAND = 0.84, T_CHARGE = 1.34, T_OUT = 1.78;
+const CAGE = {
+  ready:false, img:null, door:null,
+  floorFrac:0.8776,                    // where the outdoor ground line sits
+  dx0:0.3623, dx1:0.7129,              // the doorway, as fractions of the image
+  dy0:0.2902, dy1:0.8182,              // its floor is the straw he stands on
+  w:0, h:0, x:0, y:0                   // filled in by cageGeom, in world units
+};
+(function loadCage(){
+  const im = new Image();
+  im.onload  = ()=>{
+    const c = document.createElement('canvas');
+    c.width = im.naturalWidth; c.height = im.naturalHeight;
+    const g = c.getContext('2d');
+    g.drawImage(im, 0, 0);
+    // One pass over the whole canvas -- destination-in clears everything the
+    // source does not cover, so masking a strip at a time wipes the rest.
+    g.globalCompositeOperation = 'destination-in';
+    const f = 0.14, grad = g.createLinearGradient(0, 0, c.width, 0);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(f, 'rgba(0,0,0,1)');
+    grad.addColorStop(1-f*0.7, 'rgba(0,0,0,1)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = grad; g.fillRect(0, 0, c.width, c.height);
+    CAGE.img = c; CAGE.ready = true;
+  };
+  im.onerror = ()=>{ CAGE.ready = false; };
+  im.src = 'sheets/v2/cage_scene.webp';
+  const dr = new Image();
+  dr.onload = ()=>{ CAGE.door = dr; };
+  dr.src = 'art/cage_door.webp';
+})();
 
-function cellGeom(){
-  CELL.w = Math.min(VW*0.96, 486);
-  CELL.h = Math.min(GROUND - CEIL - 30, 336);
-  CELL.doorW = CELL.w*0.30;
-  return CELL;
+const T_WIND = 0.42, T_KICK = 1.15, T_BURST = 1.52, T_OUT = 2.00;
+/* How far he travels between the kick and control coming back, in world units.
+   The cage is parked exactly this far BEHIND the play position (`game.cageX =
+   -CAGE_RUNOUT`, with the camera at -PX), so the pose's last frame and the
+   run's first frame land on the same pixel. Park the cage anywhere else and he
+   teleports at the handover -- which is what the doorway being drawn at 2*PX
+   used to do, half a screen in one frame. */
+const CAGE_RUNOUT = 300;
+/* The camera is pulled back this far while he is still in the cage, and pans
+   forward onto the play mark as he comes out. Without it the cage has to be
+   parked CAGE_RUNOUT behind PX to avoid a teleport, and PX is only 27% of the
+   width -- which shoves the barn half off the left edge and hides the one
+   thing the menu is meant to show. */
+const CAGE_CAM = 430;
+const camIntroX = () => -(PX + CAGE_CAM);
+
+/* The scene in world units, anchored so the painted ground line lands exactly
+   on GROUND and the doorway centre lands on game.cageX. Sized against GROUND,
+   not the play band: the play band magnifies a 572px source about fourfold and
+   puts the barn roof off the top of the frame. */
+function cageGeom(){
+  const H = clamp(GROUND*0.72, 440, 660);
+  const W = H * (CAGE.img ? CAGE.img.width/CAGE.img.height : 1024/572);
+  CAGE.h = H; CAGE.w = W;
+  CAGE.y = GROUND - CAGE.floorFrac*H;          // top of the painted scene
+  CAGE.x = -((CAGE.dx0+CAGE.dx1)*0.5)*W;       // offset from game.cageX
+  return CAGE;
 }
-function cellShake(){
+/* the straw floor of the cage, a little above the dirt outside */
+function cageFloor(){ return (CAGE.floorFrac - CAGE.dy1) * CAGE.h; }
+function cageShake(){
   if(game.mode !== 'intro') return 0;
   const t = game.introT;
-  if(t < T_STAND || t > T_CHARGE) return 0;
-  return (t - T_STAND)/(T_CHARGE - T_STAND);       // rattles as he charges it
+  if(t < T_WIND || t > T_KICK) return 0;
+  return (t - T_WIND)/(T_KICK - T_WIND);       // rattles as he winds up
 }
-/* the back wall, the bunk, everything he is standing in front of */
-function drawCellBack(sx){
-  const g = cellGeom(), w = g.w, h = g.h;
-  const j = cellShake()*cellShake()*4;
-  ctx.save();
-  ctx.translate(sx + rnd(-j,j), GROUND + rnd(-j,j)*0.5);
-  const lit = ctx.createLinearGradient(0, -h, 0, 0);         // a bulb somewhere above
-  lit.addColorStop(0,   'rgba(30,58,68,.94)');
-  lit.addColorStop(0.55,'rgba(16,34,42,.95)');
-  lit.addColorStop(1,   'rgba(8,20,26,.96)');
-  ctx.fillStyle = lit;
-  ctx.fillRect(-w*0.5, -h, w, h);
-  const pool = ctx.createRadialGradient(-w*0.06, -h*0.62, 8, -w*0.06, -h*0.62, w*0.62);
-  pool.addColorStop(0, 'rgba(245,217,138,.22)');
-  pool.addColorStop(1, 'rgba(245,217,138,0)');
-  ctx.fillStyle = pool; ctx.fillRect(-w*0.5, -h, w, h);
-  // a barred window, high up, because nothing says prison faster
-  const wx = w*0.30, wy = -h*0.76, ww = w*0.20, wh = h*0.20;
-  ctx.fillStyle = 'rgba(70,220,214,.30)'; ctx.fillRect(wx-ww*0.5, wy, ww, wh);
-  ctx.strokeStyle = '#08131A'; ctx.lineWidth = 9;
-  ctx.strokeRect(wx-ww*0.5, wy, ww, wh);
-  ctx.lineWidth = 5;
-  for(let i=1;i<3;i++){
-    const bxx = wx-ww*0.5 + ww*i/3;
-    ctx.beginPath(); ctx.moveTo(bxx, wy+3); ctx.lineTo(bxx, wy+wh-3); ctx.stroke();
+/* the barn, the doorway and the farm beyond it — everything he stands in front of */
+function drawCageBack(sx){
+  const g = cageGeom();
+  const j = cageShake()*cageShake()*4;
+  if(!CAGE.ready){                              // art missing: a plain dark mouth
+    ctx.fillStyle = '#8E3B2C';
+    ctx.fillRect(sx + g.x, g.y, g.w, GROUND - g.y);
+    ctx.fillStyle = '#1A1410';
+    ctx.fillRect(sx + g.x + g.dx0*g.w, g.y + g.dy0*g.h,
+                 (g.dx1-g.dx0)*g.w, (g.dy1-g.dy0)*g.h);
+    return;
   }
-  ctx.fillStyle = 'rgba(8,3,16,.45)';                        // a slab it is bolted to
-  ctx.fillRect(-w*0.5-16, -14, w+32, 14);
-  ctx.strokeStyle = 'rgba(255,242,222,.06)'; ctx.lineWidth = 3;
-  for(let y=-h+34; y<-14; y+=34){                            // block courses
-    ctx.beginPath(); ctx.moveTo(-w*0.5+6, y); ctx.lineTo(w*0.5-6, y); ctx.stroke();
-  }
-  // the bunk: a ridiculous welded steel frame with a thin mattress
-  const bx = -w*0.5 + w*0.31, by = -h*0.24, bw = w*0.44, bh = 15;
-  ctx.strokeStyle = '#5A7885'; ctx.lineWidth = 9; ctx.lineCap='round';
-  ctx.beginPath();                                            // legs
-  ctx.moveTo(bx-bw*0.5+8, by); ctx.lineTo(bx-bw*0.5+8, -6);
-  ctx.moveTo(bx+bw*0.5-8, by); ctx.lineTo(bx+bw*0.5-8, -6); ctx.stroke();
-  ctx.beginPath();                                            // head and foot rails
-  ctx.moveTo(bx-bw*0.5, by-30); ctx.lineTo(bx-bw*0.5, by);
-  ctx.moveTo(bx+bw*0.5, by-22); ctx.lineTo(bx+bw*0.5, by); ctx.stroke();
-  ctx.lineWidth = 5;
-  for(let i=1;i<4;i++){                                       // bars in the headboard
-    const x = bx-bw*0.5 + (bw*0.34)*i/4;
-    ctx.beginPath(); ctx.moveTo(x, by-27); ctx.lineTo(x, by-4); ctx.stroke();
-  }
-  ctx.fillStyle = '#3D5560'; ctx.fillRect(bx-bw*0.5, by-bh, bw, bh);     // frame
-  ctx.fillStyle = '#C8D8DC'; ctx.fillRect(bx-bw*0.5+4, by-bh-8, bw-8, 10); // mattress
-  ctx.restore();
+  const im = CAGE.img;
+  // crop off the painted dirt below the ground line and let drawGround's road
+  // carry on underneath, so the two can never disagree about where the floor is
+  const sh = im.height * CAGE.floorFrac;
+  ctx.drawImage(im, 0, 0, im.width, sh,
+                sx + g.x + rnd(-j,j), g.y + rnd(-j,j)*0.5, g.w, CAGE.floorFrac*g.h);
 }
-/* the bars, the frame and the door, all in front of him */
-function drawCellFront(sx){
-  const g = cellGeom(), w = g.w, h = g.h;
-  const j = cellShake()*cellShake()*4;
-  ctx.save();
-  ctx.translate(sx + rnd(-j,j), GROUND + rnd(-j,j)*0.5);
-  ctx.lineCap = 'round';
-  const doorL = w*0.5 - g.doorW;
-  // bars across the front, skipping the doorway
-  ctx.strokeStyle = '#08131A'; ctx.lineWidth = 17;
-  for(let x = -w*0.5 + 38; x < doorL - 10; x += 66){
-    ctx.beginPath(); ctx.moveTo(x, -h+14); ctx.lineTo(x, -8); ctx.stroke();
-  }
-  ctx.strokeStyle = '#48626E'; ctx.lineWidth = 9;
-  for(let x = -w*0.5 + 38; x < doorL - 10; x += 66){
-    ctx.beginPath(); ctx.moveTo(x, -h+14); ctx.lineTo(x, -8); ctx.stroke();
-  }
-  ctx.strokeStyle = '#08131A'; ctx.lineWidth = 26;            // the heavy frame
-  ctx.strokeRect(-w*0.5, -h, w, h);
-  ctx.strokeStyle = '#48626E'; ctx.lineWidth = 11;
-  ctx.strokeRect(-w*0.5, -h, w, h);
-  for(let i=0;i<7;i++){                                       // rivets
-    const x = -w*0.5 + w*i/6;
-    ctx.beginPath(); ctx.arc(x, -h+9, 4.5, 0, TAU);
-    ctx.fillStyle='#FFD54A'; ctx.globalAlpha=.55; ctx.fill(); ctx.globalAlpha=1;
-  }
-  ctx.strokeStyle = '#08131A'; ctx.lineWidth = 13;            // the door jamb
-  ctx.beginPath(); ctx.moveTo(doorL, -h); ctx.lineTo(doorL, 0); ctx.stroke();
-  ctx.restore();
-  if(!game.doorGone) drawDoor(sx);
+/* the barred door, in front of him, until he removes it */
+function drawCageFront(sx){
+  if(game.doorGone) return;
+  drawCageDoor(sx);
 }
-/* The door is its own object so it can buckle, then leave. */
-function drawDoor(sx){
-  const g = cellGeom(), w = g.w, h = g.h, dw = g.doorW;
-  const d = game.door;
+/* The door is its own object so it can buckle, then leave. It is drawn to fill
+   the doorway measured out of the painted scene, so it sits in the hole rather
+   than near it. */
+function drawCageDoor(sx){
+  const g = cageGeom(), d = game.door;
+  const x = sx + g.x + g.dx0*g.w, y = g.y + g.dy0*g.h;
+  const w = (g.dx1-g.dx0)*g.w, h = (g.dy1-g.dy0)*g.h;
   ctx.save();
-  ctx.translate(sx + w*0.5 - dw + (d ? d.x : 0), GROUND + (d ? d.y : 0));
+  ctx.translate(x + w*0.5 + (d ? d.x : 0), y + h*0.5 + (d ? d.y : 0));
   if(d) ctx.rotate(d.rot);
-  const bow = d ? 0 : (game.doorBow||0);                      // metal giving way
-  ctx.transform(1 + bow*0.30, 0, bow*0.55, 1 - bow*0.12, 0, 0);
-  ctx.lineCap='round';
-  ctx.strokeStyle = '#08131A'; ctx.lineWidth = 15;
-  ctx.strokeRect(0, -h, dw, h);
-  ctx.strokeStyle = '#5A7885'; ctx.lineWidth = 7;
-  ctx.strokeRect(0, -h, dw, h);
-  ctx.strokeStyle = '#48626E'; ctx.lineWidth = 10;
-  for(let i=1;i<3;i++){
-    const x = dw*i/3;
-    ctx.beginPath(); ctx.moveTo(x, -h+12); ctx.lineTo(x, -12); ctx.stroke();
+  const bow = d ? 0 : (game.doorBow||0);        // iron giving way
+  ctx.transform(1 + bow*0.26, 0, bow*0.42, 1 - bow*0.10, 0, 0);
+  if(CAGE.door && CAGE.door.complete && CAGE.door.naturalWidth){
+    ctx.drawImage(CAGE.door, -w*0.5, -h*0.5, w, h);
+  } else {
+    ctx.strokeStyle='#08131A'; ctx.lineWidth=15; ctx.strokeRect(-w*0.5,-h*0.5,w,h);
+    ctx.strokeStyle='#48626E'; ctx.lineWidth=10; ctx.lineCap='round';
+    for(let i=1;i<7;i++){
+      const bx = -w*0.5 + w*i/7;
+      ctx.beginPath(); ctx.moveTo(bx,-h*0.5+10); ctx.lineTo(bx,h*0.5-10); ctx.stroke();
+    }
   }
-  ctx.strokeStyle='#48626E'; ctx.lineWidth=9;                 // hinges
-  ctx.beginPath(); ctx.moveTo(dw-4,-h*0.80); ctx.lineTo(dw+9,-h*0.80);
-  ctx.moveTo(dw-4,-h*0.22); ctx.lineTo(dw+9,-h*0.22); ctx.stroke();
   ctx.restore();
-  if(!game.lockGone) drawLock(sx, 0, 0, 0);
 }
-function drawLock(sx, ox, oy, rot){
-  const g = cellGeom(), w = g.w, h = g.h, dw = g.doorW;
+/* the padlock, drawn on its own so the one that spins away can be a particle */
+function drawCageLock(sx, ox, oy, rot){
   ctx.save();
-  ctx.translate(sx + w*0.5 - dw + ox, GROUND - h*0.52 + oy);
-  ctx.rotate(rot);
+  ctx.translate(sx + (ox||0), (oy||0));
+  ctx.rotate(rot||0);
   ctx.strokeStyle='#241043'; ctx.lineWidth=8;                 // shackle
   ctx.beginPath(); ctx.arc(0,-13,11,Math.PI,0); ctx.stroke();
   ctx.strokeStyle='#C9C9D6'; ctx.lineWidth=4.5;
@@ -1608,27 +1668,48 @@ function drawLock(sx, ox, oy, rot){
   ctx.restore();
 }
 /* the kick lands: the lock goes first, then the door, then the shrapnel */
-function breakCell(sx){
-  const g = cellGeom(), w = g.w, h = g.h, wx = cam.x + sx;
+function breakCage(sx){
+  const g = cageGeom();
+  const dw = (g.dx1-g.dx0)*g.w, dh = (g.dy1-g.dy0)*g.h;
+  const wx = cam.x + sx + g.x + g.dx0*g.w + dw*0.5;   // world x of the doorway centre
+  const wy = g.y + g.dy0*g.h + dh*0.5;
   game.lockGone = true;
   game.door = { x:0, y:0, rot:0, vx:1150, vy:-560, vr:7.5 };
-  game.parts.push({ x: wx + w*0.5 - g.doorW, y: GROUND - h*0.52, vx: 1500, vy: -820,
+  game.parts.push({ x: wx, y: wy, vx: 1500, vy: -820,
     life: 2.0, t:0, r: 26, col:'#FFD54A', g: 1700, kind:'lock', rot:0, vr: 15, drag: 0.999 });
   for(let i=0;i<26;i++){
     const near = i < 16;
     game.parts.push({
-      x: wx + w*0.5 - g.doorW + rnd(-20, 26),
-      y: GROUND - rnd(20, h),
-      vx: (near ? rnd(500,1250) : rnd(120,520)) ,
+      x: wx + rnd(-dw*0.30, dw*0.20),
+      y: wy + rnd(-dh*0.45, dh*0.45),
+      vx: (near ? rnd(500,1250) : rnd(120,520)),
       vy: -rnd(120, 780),
       life: rnd(0.7,1.6), t:0, r: rnd(12,36),
-      col: pick(['#5A7885','#3D5560','#FFD54A','#22343C']),
+      col: pick(['#6B5540','#8E6534','#C79A5E','#3D3A36']),   // splintered wood + iron
       g: 1600, kind:'plank', rot: rnd(0,TAU), vr: rnd(-15,15), drag:0.996 });
   }
-  spark(wx + w*0.5 - g.doorW, GROUND - h*0.5, 30,
-    {col:C.gold, s0:280,s1:900, l0:0.3,l1:0.8, r0:4,r1:13});
-  spark(wx + w*0.5 - g.doorW, GROUND - h*0.5, 16,
-    {col:'#FFF2DE', s0:200,s1:640, l0:0.25,l1:0.6, r0:3,r1:9});
+  spark(wx, wy, 30, {col:C.gold, s0:280,s1:900, l0:0.3,l1:0.8, r0:4,r1:13});
+  spark(wx, wy, 16, {col:'#FFF2DE', s0:200,s1:640, l0:0.25,l1:0.6, r0:3,r1:9});
+}
+
+/* THE BOOM. Five painted frames over the doorway on the frame the kick lands,
+   drawn in front of everything, including the door that is already leaving. */
+const BOOM_T = 0.52;
+function drawBoom(sx){
+  if(!game.boomT || game.boomT >= BOOM_T) return;
+  const list = FRAME_DATA.boom; if(!list || !list.length) return;
+  const k = game.boomT / BOOM_T;
+  const fr = list[Math.min(list.length-1, Math.floor(k*list.length))];
+  const im = FR.img[fr.f]; if(!im || !im.complete || !im.naturalWidth) return;
+  const g = cageGeom();
+  const dw = (g.dx1-g.dx0)*g.w, dh = (g.dy1-g.dy0)*g.h;
+  const cx = sx + g.x + g.dx0*g.w + dw*0.5, cy = g.y + g.dy0*g.h + dh*0.5;
+  const sc = (dw*1.5) / fr.w * (0.72 + k*0.55);      // grows as it goes
+  ctx.save();
+  ctx.globalAlpha = k > 0.72 ? (1 - (k-0.72)/0.28) : 1;
+  ctx.translate(cx, cy);
+  ctx.drawImage(im, -fr.w*sc*0.5, -fr.h*sc*0.5, fr.w*sc, fr.h*sc);
+  ctx.restore();
 }
 
 /* feathers and the egg — the two things that make a hit read as funny */
@@ -1972,6 +2053,68 @@ sign:{ kind:'fall', w:110, h:132, tier:2, draw(o,t){
     ctx.restore();
   }}
 };
+/* ---------- the farm's own hazards ----------
+   Painted props cut off a Gemini Studio sheet and keyed off flat green, sized
+   so the SPRITE FILLS ITS HITBOX -- `w` and `h` are what spawnOne collides
+   with, so anything drawn outside them would be a hit you cannot see coming.
+   Every one falls back to a flat block if its image has not loaded, the same
+   bargain the character frames make: art can never make a hazard invisible. */
+const PROPS = {};
+function loadProp(n){
+  const im = new Image();
+  im.onload = ()=>{ PROPS[n] = im; };
+  im.onerror = ()=>{};
+  im.src = 'art/farm/' + n + '.webp';
+}
+function farmProp(name, w, h, opt){
+  opt = opt || {};
+  loadProp(name);
+  const spec = { kind:opt.kind||'ground', w, h, tier:opt.tier||0, set:'farm',
+    draw(o, t){
+      const oh = Math.max(24, o.h || h), ow = w * (oh/h);
+      if(spec.kind === 'ground') shadowEllipse(ow*0.50, 0.40);
+      const im = PROPS[name];
+      ctx.save();
+      if(opt.roll) ctx.rotate(o.rot||0);          // rolling props spin on the spot
+      else if(opt.sway) ctx.rotate(Math.sin(t*1.6 + o.x*0.011)*opt.sway);
+      if(im && im.complete && im.naturalWidth){
+        const y = opt.roll ? -oh*0.5 : (spec.kind==='ground' ? -oh : -oh*0.5);
+        ctx.drawImage(im, -ow*0.5, y, ow, oh);
+      } else {
+        ctx.beginPath();
+        const y = opt.roll ? -oh*0.5 : (spec.kind==='ground' ? -oh : -oh*0.5);
+        if(ctx.roundRect) ctx.roundRect(-ow*0.5, y, ow, oh, 8); else ctx.rect(-ow*0.5, y, ow, oh);
+        paint(opt.col || '#C79A5E', 5);
+      }
+      ctx.restore();
+    } };
+  if(opt.roll) spec.roll = opt.roll;
+  if(opt.bounce) spec.bounce = true;
+  if(opt.base) spec.base = opt.base;
+  return spec;
+}
+Object.assign(OB, {
+  haybale:  farmProp('haybale',     162, 128, { tier:0 }),
+  woodkeg:  farmProp('barrel',      106, 143, { tier:0 }),
+  trough:   farmProp('trough',      190,  85, { tier:0 }),
+  milkcan:  farmProp('milkcan',      68, 134, { tier:0 }),
+  kennel:   farmProp('kennel',      130, 124, { tier:0 }),
+  drum_s:   farmProp('drum_s',       60, 120, { tier:0 }),
+  crates:   farmProp('crates',       94, 206, { tier:1 }),
+  barrow:   farmProp('wheelbarrow', 190, 112, { tier:1 }),
+  feedbin:  farmProp('feedbin',     196, 133, { tier:1 }),
+  pitchfork:farmProp('pitchfork',   102, 159, { tier:1 }),
+  fueldrum: farmProp('drum',         88, 146, { tier:1, roll:-130 }),
+  tyre:     farmProp('tyre',        116, 142, { tier:1, roll:-190, bounce:true }),
+  hopper:   farmProp('hopper',      154, 141, { tier:2 }),
+  scarecrow:farmProp('scarecrow',   152, 240, { tier:2, sway:0.05 }),
+});
+/* Everything that is unmistakably a city street stays in the city. The plain
+   junk -- cones, crates, a barrel, a ball -- reads anywhere and is left untagged
+   so a run never runs out of hazards on either map. */
+['coffee','vacuum','pizza','cake','sofa','sign','beachball','chair','cart','duck']
+  .forEach(k => { if(OB[k]) OB[k].set = 'city'; });
+
 const OB_KEYS = Object.keys(OB);
 
 /* ============================================================
@@ -2088,6 +2231,10 @@ function buildBlockLayers(TW){
   })});
 }
 function buildFarmLayers(TW){
+  // The painted panels are the farm's middle distance. These coloured layers
+  // are the fallback for when the art has not loaded -- drawn as well, they
+  // stack a second farm behind the first and its hills show through the fade.
+  if(FARM.ready) return;
   // far: rolling hills
   layers.push({ f:0.10, y:0, tile: makeLayer(TW, 620, (g)=>{
     g.fillStyle=C.far; g.beginPath(); g.moveTo(0,0);
@@ -2241,8 +2388,11 @@ function tierNow(){
   if(t<64) return 3;      // angled zappers, two hazards at a time
   return 4;
 }
+/* Difficulty is speed, spacing and how many hazards share a screen -- never
+   withholding the art. The theme only decides WHICH cast, not how much of it. */
 function poolFor(tier){
-  return OB_KEYS.filter(k => OB[k].tier <= tier);
+  const set = THEME.id === 'farm' ? 'farm' : 'city';
+  return OB_KEYS.filter(k => OB[k].tier <= tier && (!OB[k].set || OB[k].set === set));
 }
 function spawnOne(key, aheadTime){
   const spec = OB[key];
@@ -2323,8 +2473,12 @@ function spawnZapper(tier){
   return false;
 }
 
-const GATE_TOPS  = ['cone','duck','cake','ball','box','coffee'];
-const GATE_HANGS = ['sofa','sign','vacuum','cart','coffee'];
+const GATE_TOPS_CITY  = ['cone','duck','cake','ball','box','coffee'];
+const GATE_HANGS_CITY = ['sofa','sign','vacuum','cart','coffee'];
+const GATE_TOPS_FARM  = ['haybale','crates','milkcan','drum_s','kennel','box'];
+const GATE_HANGS_FARM = ['trough','feedbin','barrow','tyre','milkcan'];
+const gateTops  = () => THEME.id === 'farm' ? GATE_TOPS_FARM  : GATE_TOPS_CITY;
+const gateHangs = () => THEME.id === 'farm' ? GATE_HANGS_FARM : GATE_HANGS_CITY;
 function spawnGate(moving){
   const band = GROUND - CEIL;
   const gap  = clamp(lerp(430, 250, game.diff) * rnd(0.92,1.08), 230, 470);
@@ -2341,8 +2495,8 @@ function spawnGate(moving){
       w:spec.w, h, base:0, cap, vx:0, rot:0, bz:0, y:0, vy:0, landed:true,
       warn:0, passed:false, minGap:1e9, counted:false, gate:g });
   };
-  mk(OB.tower,  false, c - gap/2,            pick(GATE_TOPS));
-  mk(OB.hanger, true,  band - (c + gap/2),   pick(GATE_HANGS));
+  mk(OB.tower,  false, c - gap/2,            pick(gateTops()));
+  mk(OB.hanger, true,  band - (c + gap/2),   pick(gateHangs()));
   return g;
 }
 /* Eggs are laid out in runs you can follow with one held press: a flat line, a
@@ -2464,7 +2618,7 @@ function spawnStandalone(hang){
   const closure = game.speed;
   const x = player.x + closure*Math.max(1.6, (VW - PX + 200)/closure + 0.25);
   game.obstacles.push({ key: hang?'hanger':'tower', spec, x, kind:'ground', hang,
-    w:spec.w, h, cap: pick(hang?GATE_HANGS:GATE_TOPS), base:0, vx:0, rot:0,
+    w:spec.w, h, cap: pick(hang?gateHangs():gateTops()), base:0, vx:0, rot:0,
     bz:0, y:0, vy:0, landed:true, warn:0, passed:false, minGap:1e9, counted:false });
 }
 function spawnPattern(){
@@ -2523,7 +2677,7 @@ function thrustOn(){
   game.tapCount = (game.tapCount||0) + 1;        // counted at entry, for ?dbg=1
   if(game.mode==='menu'){ startIntro(); return; }
   if(game.mode==='intro'){                       // pressing skips ahead to the kick
-    if(game.introT < T_CHARGE-0.05) game.introT = T_CHARGE-0.05;
+    if(game.introT < T_KICK-0.05) game.introT = T_KICK-0.05;
     return;
   }
   if(game.mode==='dead'){
@@ -2642,11 +2796,11 @@ document.addEventListener('visibilitychange', ()=>{
    FLOW
    ============================================================ */
 function toMenu(){
-  // the cell block: he is inside the building, not out in a yard
-  const yard = THEMES.findIndex(t=>t.id==='block');
+  // the farm: he is in the cage in the side of the barn, not out in the yard
+  const yard = THEMES.findIndex(t=>t.id==='farm');
   applyTheme(yard>=0 ? THEMES[yard] : THEMES[0]);
   game.mode='menu'; game.obstacles.length=0; game.parts.length=0; game.pops.length=0;
-  game.cellX = PX;                       // he is in the cell before anything is pressed
+  game.cageX = -CAGE_RUNOUT;             // parked so the escape ends on the play mark
   game.door=null; game.doorGone=false; game.lockGone=false; game.doorBow=0;
   player.state='idle'; player.stateT=0; player.beat=''; player.beatT=1.2;
   player.y=0; player.vy=0; player.onGround=true;
@@ -2657,9 +2811,9 @@ function toMenu(){
 }
 function startRun(){
   game.runCount = (game.runCount||0) + 1;
-  // every run starts in the yard he has just kicked his way out of, and
+  // every run starts on the farm he has just kicked his way out of, and
   // travels from there
-  const yard = THEMES.findIndex(t=>t.id==='block');
+  const yard = THEMES.findIndex(t=>t.id==='farm');
   applyTheme(game.forceTheme || THEMES[yard>=0 ? yard : 0]);
   game.swapK = 1; layersFrom = [];
   game.mode='play'; game.runT=game.presetRunT||0; game.score=0; game.dist=0;
@@ -2670,7 +2824,7 @@ function startRun(){
   game.freeze=0; game.timeScale=1; game.tsTarget=1; game.shake=0; game.zoom=1; game.zoomT=1;
   game.camY=0; game.camYT=0; game.deadT=0; game.newBest=false;
   game.door=null; game.doorGone=false; game.lockGone=false; game.doorBow=0;
-  game.cellX = PX;                       // the cell stays put and the world leaves it
+  game.cageX = -CAGE_RUNOUT;             // the barn stays put and the world leaves it
   player.x=0; player.y=0; player.vy=0; player.onGround=true; player.phase=0;
   player.flapT=0; player.flapBeat=-1; player.flapLag=0;
   player.thrusting=false;                                   // never start a run mid-thrust
@@ -2702,6 +2856,7 @@ function startRun(){
 }
 function die(o){
   if(game.mode!=='play') return;
+  elTut.classList.remove('show');   // the prompt has no business over the score card
   game.mode='dying'; game.dyingT=0;
   game.freeze = 0.11; addShake(30); game.flash=0.75;
   slowmo(0.32, 0.55);
@@ -2778,19 +2933,30 @@ function update(dt, rawDt){
    hands straight over to a normal run -- no cinematic, no pause, and he is
    already moving when control returns. Deadpan the whole way through: the joke
    is that breaking out of prison is not worth reacting to. */
-function cellPose(){
-  const g = cellGeom();
-  const standX = g.w*0.5 - g.doorW - 96;        // stood just inside the door
+function cagePose(){
+  const g = cageGeom();
+  const floor = cageFloor();                    // the straw is above the dirt outside
+  const standX = g.x + ((g.dx0+g.dx1)*0.5)*g.w; // dead centre of the doorway
   const t = game.introT;
-  if(game.mode === 'menu' || t < T_UP) return { set:'cell', i:0, x:standX, y:0 };
-  if(t < T_STAND)  return { set:'cell', i:1, x:standX, y:0 };
-  if(t < T_CHARGE){                              // winds up, rocking back into it
-    const k = (t-T_STAND)/(T_CHARGE-T_STAND);
-    return { set:'cell', i:2, x:standX - 26*Math.sin(k*Math.PI*0.9), y:0 };
+  // Waiting. He is visible through the bars from the moment the menu appears —
+  // that is the whole hook, so the menu is laid out to leave this half clear.
+  if(game.mode === 'menu' || t < T_WIND) return { set:'kick', i:0, x:standX, y:floor };
+  if(t < T_KICK){                               // coils, rocking back into it
+    const k = (t-T_WIND)/(T_KICK-T_WIND);
+    return { set:'kick', i:1, x:standX - 30*Math.sin(k*Math.PI*0.9), y:floor };
   }
-  const k = (t-T_CHARGE)/(T_OUT-T_CHARGE);
-  if(k < 0.5) return { set:'cell', i:3, x:standX + 150*k, y:30 };   // through the door
-  return { set:'cell', i:4, x:standX + 150*k, y:0 };                // and away
+  if(t < T_BURST){                              // THE KICK, straight through it
+    const k = (t-T_KICK)/(T_BURST-T_KICK);
+    return { set:'kick', i:2, x:standX + CAGE_RUNOUT*0.55*k, y:floor + k*30 };
+  }
+  const k = (t-T_BURST)/(T_OUT-T_BURST);        // out, still airborne, then down
+  return { set:'kick', i:3, x:standX + CAGE_RUNOUT*(0.55 + 0.45*k),
+           y: (floor + 30) * (1 - k*k) };         // and back onto the road
+}
+/* Where the pose leaves him, in world units. Read by the handover so the run
+   picks him up from exactly there. */
+function cageExitX(){
+  return game.cageX + CAGE_RUNOUT;
 }
 function startIntro(){
   startRun();
@@ -2802,37 +2968,54 @@ function startIntro(){
   game.rattleT = 0;
   game.stepT = 0;
   game.doorBow = 0;
+  game.boomT = undefined;
+  game.introHeld = false;
+  cam.x = camIntroX();
   player.kickT = 0;
 }
 function updateIntro(dt){
-  if(game.holdIntro !== undefined){ game.introT = game.holdIntro; dt = 0; }
+  /* ?introt=N holds the intro at a moment. It used to assign introT directly,
+     which meant `was` and `t` were equal and every one-shot -- the kick, the
+     door, the blast -- was skipped: the flag could show the poses and nothing
+     that actually happens. It now takes ONE step of the whole remaining time,
+     firing each edge on the way, and holds after that. */
+  if(game.holdIntro !== undefined){
+    if(game.introHeld) dt = 0;
+    else { dt = Math.max(0, game.holdIntro - game.introT); game.introHeld = true; }
+  }
+  if(game.introSlow) dt /= game.introSlow;
   const was = game.introT;
   game.introT += dt;
   const t = game.introT;
+  if(game.boomT !== undefined && game.boomT < BOOM_T)
+    game.boomT += (game.rawDt||dt) / (game.introSlow||1);
 
-  if(was < T_UP && t >= T_UP) S.bedcreak();              // he sits up
-  if(was < T_STAND && t >= T_STAND) S.cluck();          // and clocks the door
-  if(t > T_STAND && t < T_CHARGE){                      // boots across the floor
-    game.stepT -= dt;
-    if(game.stepT <= 0){ game.stepT = 0.115; S.step(); }
+  if(was < T_WIND && t >= T_WIND) S.cluck();            // he clocks the door
+  if(t > T_WIND && t < T_KICK){                         // winds up against the bars
     game.rattleT -= dt;
     if(game.rattleT <= 0){ game.rattleT = 0.10; S.cagerattle(); }
   }
-  // the steel gives just before it goes
-  game.doorBow = (t > T_CHARGE-0.13 && t < T_CHARGE) ? (t-(T_CHARGE-0.13))/0.13 : 0;
+  // The camera rides out with him: pulled back on the cage until the kick,
+  // then eased onto the play mark, so the last frame of the escape and the
+  // first frame of the run are the same pixel.
+  const pk = clamp((t - T_KICK)/(T_OUT - T_KICK), 0, 1);
+  cam.x = -(PX + CAGE_CAM*(1 - pk*pk*(3-2*pk)));
+  // the iron gives just before it goes
+  game.doorBow = (t > T_KICK-0.15 && t < T_KICK) ? (t-(T_KICK-0.15))/0.15 : 0;
   // he compresses into the last stride, then snaps out through the door
   const q = player.pose;
   if(game.doorBow > 0){ q.sx = 1 - game.doorBow*0.13; q.sy = 1 + game.doorBow*0.15; }
   else { q.sx = damp(q.sx, 1, 9, dt); q.sy = damp(q.sy, 1, 9, dt); }
 
-  if(was < T_CHARGE && t >= T_CHARGE){                   // THE KICK
+  if(was < T_KICK && t >= T_KICK){                       // THE KICK
     S.doorbreak();
-    breakCell(game.cellX - cam.x);
+    breakCage(game.cageX - cam.x);
+    game.boomT = 0;                                     // and the blast over the doorway
     game.doorBow = 0;
     addShake(46); game.flash = 0.95; game.freeze = 0.13;
     slowmo(0.34, 0.34);
     if(navigator.vibrate) try{ navigator.vibrate([40,30,70]); }catch(e){}
-    featherBurst(cam.x + game.cellX, GROUND-150, 12, 380);
+    featherBurst(cam.x + game.cageX, GROUND-cageGeom().h*0.34, 14, 420);
     game.titleT = -1;                                    // and the title goes with it
     player.pose.sx = 1.38; player.pose.sy = 0.72;        // stretched through the doorway
   }
@@ -2841,6 +3024,7 @@ function updateIntro(dt){
     elEggCount.textContent = game.eggBank;
     musicScene('play');            // through the door, and the chase starts
     if(game.tut) elTut.classList.add('show');
+    player.x = cageExitX();          // exactly where the last pose left him
     player.y = 0; player.vy = 0; player.onGround = true;
     player.kickT = 0.14;
     player.thrusting = inputDown;                        // still holding? then fly
@@ -2878,8 +3062,8 @@ function updateMenu(dt){
   else poseIdle(p.stateT, target);
   blendPose(p.pose, target, dt, 14);
   springUpdate(dt, 0, 0);
-  cam.x = damp(cam.x, -PX, 6, dt);
-  game.camY = damp(game.camY, PORTRAIT ? -215 : -40, 6, dt);
+  cam.x = damp(cam.x, camIntroX(), 6, dt);   // framed on the cage, not the road
+  game.camY = damp(game.camY, -40, 6, dt);
   game.zoom = damp(game.zoom, 1, 6, dt);
 }
 
@@ -2900,7 +3084,10 @@ function updatePlay(dt){
      you are getting somewhere, so it must not be subtle. */
   if(!game.forceTheme){
     const leg = Math.floor(game.runT / 26) % THEMES.length;
-    const order = ['block','farm','city'];
+    // Leg 0 is the farm he has just kicked his way out of. With 'block' first
+    // the very first frame of the run swapped the bright farm for the prison
+    // interior, one second after breaking out of it.
+    const order = ['farm','city','block'];
     const want = THEMES.find(t => t.id === order[leg]) || THEMES[leg];
     swapTheme(want);
   }
@@ -3254,13 +3441,17 @@ function drawSky(T){
     g.fillStyle=gd; g.fillRect(0,top,VW,GROUND+40-top);
     if(T.indoor) return;                    // no sky in here
     // sun, sinking behind the skyline
-    const sx = VW*0.76, sy = GROUND - 500;
+    // A low sinking sun suits the city. On the farm the same disc reads as a
+    // moon hanging in a bright blue midday sky, so the theme scales it down.
+    const R = 96*(T.sunR||1), sx = VW*0.76, sy = GROUND - 500;
     const gr = g.createRadialGradient(sx,sy,10,sx,sy,420);
-    gr.addColorStop(0,'rgba(255,233,168,.8)'); gr.addColorStop(0.32,'rgba(255,180,71,.30)');
+    const gl = T.sunGlow===undefined ? 1 : T.sunGlow;
+    gr.addColorStop(0,'rgba(255,233,168,'+(0.8*gl)+')');
+    gr.addColorStop(0.32,'rgba(255,180,71,'+(0.30*gl)+')');
     gr.addColorStop(1,'rgba(255,180,71,0)');
     g.fillStyle=gr; g.beginPath(); g.arc(sx,sy,420,0,TAU); g.fill();
-    g.beginPath(); g.arc(sx,sy,96,0,TAU); g.fillStyle=T.sun; g.fill();
-    g.globalAlpha=0.5; g.beginPath(); g.arc(sx,sy,120,0,TAU);
+    g.beginPath(); g.arc(sx,sy,R,0,TAU); g.fillStyle=T.sun; g.fill();
+    g.globalAlpha=0.5; g.beginPath(); g.arc(sx,sy,R*1.25,0,TAU);
     g.strokeStyle='rgba(255,233,168,.5)'; g.lineWidth=3; g.stroke(); g.globalAlpha=1;
   }), 0, 0, VW, skyH);
 
@@ -3305,29 +3496,67 @@ function drawLayers(list){
 /* The painted wall panels. Each is redrawn into an offscreen canvas with its
    left edge ramped to transparent, so overlapping neighbours dissolve into one
    another instead of butting up in a visible line. */
-const WALL = { srcs:['sheets/v2/wall_a.png','sheets/v2/wall_b.png','sheets/v2/wall_c.png'],
-               imgs:[], ready:0, blend:110, floorFrac:0.72 };
-WALL.srcs.forEach((src, i) => {
-  const im = new Image();
-  im.onload = () => {
-    const c = document.createElement('canvas');
-    c.width = im.naturalWidth; c.height = im.naturalHeight;
-    const g = c.getContext('2d');
-    g.drawImage(im, 0, 0);
-    // One pass, over the whole canvas: destination-in clears everything the
-    // source does not cover, so masking a strip at a time wipes the rest of
-    // the panel and leaves an almost entirely transparent image.
-    g.globalCompositeOperation = 'destination-in';
-    const grad = g.createLinearGradient(0, 0, c.width, 0);
-    grad.addColorStop(0, 'rgba(0,0,0,0)');
-    grad.addColorStop(Math.min(0.5, WALL.blend/c.width), 'rgba(0,0,0,1)');
-    grad.addColorStop(1, 'rgba(0,0,0,1)');
-    g.fillStyle = grad; g.fillRect(0, 0, c.width, c.height);
-    WALL.imgs[i] = c; WALL.ready++;
-  };
-  im.onerror = () => { WALL.imgs[i] = null; };
-  im.src = src;
-});
+/* A set of painted background panels. Each is redrawn into an offscreen canvas
+   with an alpha ramp down its LEFT edge, so panels can be laid overlapping and
+   dissolve into each other -- they do not tile edge to edge on their own and a
+   hard seam through brickwork or a fence line is glaring. `top` optionally
+   fades the top of the art out as well, which is how the outdoor panels hand
+   over to the sky the game draws behind them.
+
+   The mask is ONE pass over the whole canvas: `destination-in` clears
+   everything the source does not cover, so masking a strip at a time wipes the
+   rest of the panel and leaves an almost fully transparent image -- which on
+   screen reads as flat colour, i.e. exactly like the art having failed to load. */
+function loadPanels(SET){
+  SET.imgs = []; SET.ready = 0;
+  SET.srcs.forEach((src, i) => {
+    const im = new Image();
+    im.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = im.naturalWidth; c.height = im.naturalHeight;
+      const g = c.getContext('2d');
+      g.drawImage(im, 0, 0);
+      g.globalCompositeOperation = 'destination-in';
+      const grad = g.createLinearGradient(0, 0, c.width, 0);
+      grad.addColorStop(0, 'rgba(0,0,0,0)');
+      grad.addColorStop(Math.min(0.5, SET.blend/c.width), 'rgba(0,0,0,1)');
+      grad.addColorStop(1, 'rgba(0,0,0,1)');
+      g.fillStyle = grad; g.fillRect(0, 0, c.width, c.height);
+      if(SET.haze){
+        // Aerial perspective. The hazards are painted in the same style and at
+        // the same saturation as the map, so on the farm a hay bale in front of
+        // a hay field is camouflage. Washing the DISTANCE out is what separates
+        // them -- source-atop tints only the art, never the keyed-out sky.
+        g.globalCompositeOperation = 'source-atop';
+        g.fillStyle = SET.haze; g.fillRect(0, 0, c.width, c.height);
+        g.globalCompositeOperation = 'destination-in';
+      }
+      if(SET.topFade){
+        const vg = g.createLinearGradient(0, 0, 0, c.height*SET.topFade);
+        vg.addColorStop(0, 'rgba(0,0,0,0)');
+        vg.addColorStop(1, 'rgba(0,0,0,1)');
+        g.fillStyle = vg; g.fillRect(0, 0, c.width, c.height*SET.topFade);
+      }
+      SET.imgs[i] = c; SET.ready++;
+      if(SET.onReady) SET.onReady();
+    };
+    im.onerror = () => { SET.imgs[i] = null; };
+    im.src = src;
+  });
+  return SET;
+}
+const WALL = loadPanels({ srcs:['sheets/v2/wall_a.png','sheets/v2/wall_b.png','sheets/v2/wall_c.png'],
+               imgs:[], ready:0, blend:110, floorFrac:0.72 });
+/* The farm the reference art is set in: painted panels rather than the coloured
+   rectangles the code parallax draws. `floorFrac` is where the painted ground
+   line sits in each image, measured off the art, so it can be landed exactly on
+   GROUND instead of guessed. */
+const FARM = loadPanels({ srcs:['sheets/v2/farm_a.webp','sheets/v2/farm_b.webp','sheets/v2/farm_c.webp'],
+               imgs:[], ready:0, blend:120, floorFrac:0.806, haze:'rgba(146,196,246,.20)',
+               // buildLayers has already run by the time the art lands, so the
+               // fallback layers are still in `layers`. Throw them away.
+               onReady(){ if(SCALE && THEME.id==='farm') buildLayers(); } });
+const FARMF = 0.40;                       // the farm's own parallax
 
 /* the concrete walkway, its hazard stripe, and the dark service level below */
 function drawBlockGround(){
@@ -3433,7 +3662,27 @@ function drawBlockProps(){
     ctx.restore();
   }
 }
+/* The painted farm. Sized so the fence rail lands at about two thirds of the
+   bird's height -- sizing it against the play band instead magnifies a 572px
+   source about fourfold and puts the silo tops off the frame, which is the same
+   trap the prison wall hit. The top of the art is already faded out at load, so
+   the sky above it is the sky the game draws. */
+function drawFarmPainted(){
+  const off = cam.x * FARMF;
+  const first = FARM.imgs.find(Boolean);
+  const H = (GROUND * 0.62) / FARM.floorFrac;
+  const W = H * (first.width / first.height);
+  const step = W - FARM.blend;
+  const top = GROUND - FARM.floorFrac * H;
+  let idx = Math.floor(off / step);
+  let x = idx*step - off;
+  for(; x < VW + step; x += step, idx++){
+    const im = FARM.imgs[((idx % FARM.imgs.length) + FARM.imgs.length) % FARM.imgs.length];
+    if(im) ctx.drawImage(im, x, top, W, H);
+  }
+}
 function drawFarmProps(){
+  if(FARM.ready) return drawFarmPainted();
   const spacing=470, first=Math.floor((cam.x-200)/spacing);
   for(let i=first;i<first+Math.ceil(VW/spacing)+3;i++){
     const x=i*spacing-cam.x+140, kind=hash(i*3.7);
@@ -3603,30 +3852,37 @@ function drawStreetProps(T){
 function drawGround(){
   const y = GROUND;
   if(THEME.indoor) return drawBlockGround();
+  if(THEME.id==='farm'){
+    /* The dirt track. Its colour is sampled off the painted panels so the seam
+       between the art and the code disappears -- a curb and a hazard stripe are
+       a street, and this is a farm road he was just kicked out onto. */
+    ctx.fillStyle=C.road; ctx.fillRect(0,y,VW,VH-y+340);
+    ctx.fillStyle='rgba(255,244,204,.16)'; ctx.fillRect(0,y,VW,9);   // the sunlit lip
+    // a fringe of grass along the top edge, so the dirt starts rather than stops
+    const gs=46, go=((cam.x%gs)+gs)%gs;
+    ctx.strokeStyle=C.rim; ctx.lineWidth=3.4; ctx.lineCap='round';
+    for(let i=-1;i<VW/gs+2;i++){
+      const gx=i*gs-go, hgt=7+hash(i*2.3)*11;
+      ctx.beginPath(); ctx.moveTo(gx,y+3); ctx.lineTo(gx-4,y+3-hgt);
+      ctx.moveTo(gx+7,y+3); ctx.lineTo(gx+10,y+3-hgt*0.8); ctx.stroke();
+    }
+    // wheel ruts, and a scatter of stones so the track is not a flat slab
+    ctx.strokeStyle='rgba(122,80,32,.42)'; ctx.lineWidth=6;
+    ctx.beginPath(); ctx.moveTo(0,y+62); ctx.lineTo(VW,y+62); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,y+126); ctx.lineTo(VW,y+126); ctx.stroke();
+    const sp2=210, f2=Math.floor((cam.x-200)/sp2);
+    for(let i=f2;i<f2+Math.ceil(VW/sp2)+2;i++){
+      const sx2=i*sp2-cam.x+140, r=5+hash(i*5.1)*7, yy=y+26+hash(i*1.9)*120;
+      ctx.fillStyle='rgba(150,104,44,.55)';
+      ctx.beginPath(); ctx.ellipse(sx2,yy,r*1.5,r,0,0,TAU); ctx.fill();
+    }
+    return;
+  }
   ctx.fillStyle=C.road; ctx.fillRect(0,y,VW,VH-y+340);
   // sunlit curb rim
   ctx.fillStyle=C.rim; ctx.fillRect(0,y-4,VW,5);
   ctx.fillStyle='rgba(255,180,71,.25)'; ctx.fillRect(0,y+1,VW,10);
   ctx.fillStyle=C.curb; ctx.fillRect(0,y+11,VW,16);
-  if(THEME.id==='farm'){
-    ctx.strokeStyle=C.roadLine; ctx.lineWidth=4;
-    ctx.beginPath(); ctx.moveTo(0,y+58); ctx.lineTo(VW,y+58); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0,y+104); ctx.lineTo(VW,y+104); ctx.stroke();
-    const gs=52, go=((cam.x%gs)+gs)%gs;
-    ctx.strokeStyle='rgba(120,170,90,.55)'; ctx.lineWidth=3; ctx.lineCap='round';
-    for(let i=-1;i<VW/gs+2;i++){
-      const gx=i*gs-go, hgt=8+hash(i*2.3)*10;
-      ctx.beginPath(); ctx.moveTo(gx,y+2); ctx.lineTo(gx-4,y+2-hgt);
-      ctx.moveTo(gx+6,y+2); ctx.lineTo(gx+9,y+2-hgt*0.8); ctx.stroke();
-    }
-    const sp2=640, f2=Math.floor((cam.x-200)/sp2);
-    for(let i=f2;i<f2+Math.ceil(VW/sp2)+2;i++){
-      const sx2=i*sp2-cam.x+260;
-      ctx.fillStyle='rgba(92,69,38,.55)';
-      ctx.beginPath(); ctx.ellipse(sx2,y+78,58,15,0,0,TAU); ctx.fill();
-    }
-    return;
-  }
   // paving seams
   const slab=170, off=((cam.x%slab)+slab)%slab;
   ctx.strokeStyle=C.roadLine; ctx.lineWidth=3;
@@ -3679,7 +3935,7 @@ function drawTitle(){
          if(blast >= 1){ game.titleT = 0; return; }
          k = 1 - blast; }
   if(game.mode !== 'intro' && game.titleT > 0) return;
-  const sh = cellShake();
+  const sh = cageShake();
   const cx = VW*0.5 + (blast?0:rnd(-sh*4, sh*4));
   const cy = VH*0.24 - blast*VH*0.16;
   ctx.save();
@@ -3713,7 +3969,7 @@ function drawParticles(){
       ctx.restore();
     } else if(q.kind==='lock'){
       ctx.save(); ctx.translate(q.x-cam.x, q.y); ctx.rotate(q.rot); ctx.scale(0.85,0.85);
-      drawLock(0, 0, 0, 0);
+      drawCageLock(0, 0, 0, 0);
       ctx.restore();
     } else if(q.kind==='plank'){
       ctx.save(); ctx.translate(q.x-cam.x, q.y); ctx.rotate(q.rot);
@@ -3783,7 +4039,11 @@ function render(){
     ctx.restore(); return;
   }
   ctx.setTransform(DPR,0,0,DPR,0,0);
-  ctx.fillStyle=C.ink2; ctx.fillRect(0,0,CW,CH);
+  /* Clear to the top of the sky, not to the ink. The camera rises with the bird
+     and a zoom punch shrinks the world by a fraction, and both expose canvas
+     outside the drawn band -- against the ink that reads as a black letterbox
+     round a bright farm. Indoors the ink is still right. */
+  ctx.fillStyle = THEME.indoor ? C.ink2 : C.skyA; ctx.fillRect(0,0,CW,CH);
   ctx.save();
   ctx.scale(SCALE,SCALE);
 
@@ -3810,13 +4070,13 @@ function render(){
   // character
   let px = (game.mode==='menu') ? PX : player.x - cam.x;
   let py = player.y;
-  const inCell = (game.mode==='menu' || game.mode==='intro');
-  const cellSX = game.cellX - cam.x;
-  if(inCell){
-    const cp = cellPose();
-    px = cellSX + cp.x; py = cp.y;
+  const inCage = (game.mode==='menu' || game.mode==='intro');
+  const cageSX = game.cageX - cam.x;
+  if(inCage){
+    const cp = cagePose();
+    px = cageSX + cp.x; py = cp.y;
   }
-  if(inCell || cellSX > -VW*1.3) drawCellBack(cellSX);
+  if(inCage || cageSX > -VW*1.3) drawCageBack(cageSX);
   if(game.mode==='dying'){
     drawPlayerShadow(rag.x - cam.x, Math.max(0, GROUND - rag.y - CK.standH));
     ctx.save(); ctx.translate(-cam.x, 0);
@@ -3831,8 +4091,9 @@ function render(){
     drawChicken(px, GROUND - py, player.pose);
   }
 
-  if(inCell || cellSX > -VW*1.3) drawCellFront(cellSX);
+  if(inCage || cageSX > -VW*1.3) drawCageFront(cageSX);
   drawParticles();
+  if(inCage || cageSX > -VW*1.3) drawBoom(cageSX);
   drawTitle();
   drawPops();
   ctx.restore();
@@ -3846,9 +4107,12 @@ function render(){
   }
 
   // vignette + warm bloom
-  ctx.drawImage(surface('vignette', VW, VH, false, (g) => {
+  // The prison wants the corners crushed. A bright farm under a blue sky does
+  // not -- at 0.5 it looked like the sun had gone in.
+  const vigK = THEME.vig === undefined ? 0.5 : THEME.vig;
+  ctx.drawImage(surface('vignette|'+vigK, VW, VH, false, (g) => {
     const vg = g.createRadialGradient(VW*0.5,VH*0.5,VH*0.30, VW*0.5,VH*0.5,VH*0.85);
-    vg.addColorStop(0,'rgba(21,8,39,0)'); vg.addColorStop(1,'rgba(21,8,39,.5)');
+    vg.addColorStop(0,'rgba(21,8,39,0)'); vg.addColorStop(1,'rgba(21,8,39,'+vigK+')');
     g.fillStyle=vg; g.fillRect(0,0,VW,VH);
   }), 0, 0, VW, VH);
   ctx.restore();
@@ -3866,6 +4130,7 @@ function frame(now){
   let dt = raw*game.timeScale;
   if(game.freeze>0){ game.freeze -= raw; dt = raw*0.06; }
   game.rawDt = raw;
+  if(PORTRAIT){ render(); return; }      // held, not lost, behind the turn prompt
   update(dt, raw);
   render();
 }
@@ -3882,6 +4147,8 @@ function boot(){
   if(/[?&]stage/.test(location.search)) game.stage = true;
   const it=/[?&]introt=([0-9.]+)/.exec(location.search);
   if(it){ game.holdIntro = parseFloat(it[1]); }   // freeze the intro to look at a beat
+  const sl=/[?&]slow=([0-9.]+)/.exec(location.search);
+  if(sl) game.introSlow = Math.max(1, parseFloat(sl[1]));  // run the escape in slow motion
   const rt=/[?&]runt=([0-9.]+)/.exec(location.search);
   if(rt) game.presetRunT = parseFloat(rt[1]);   // jump to a difficulty tier
   if(/[?&]rig/.test(location.search)) game.rig = true;
