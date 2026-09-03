@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#241043">
 <meta name="description" content="One tap. Don't get hit. A fast arcade runner.">
 <title>Don't Get Hit</title>
+<link rel="preload" as="image" href="art/title.webp">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Archivo:wght@500;700;900&display=swap">
@@ -86,11 +87,25 @@
           text-align:center}
   .screen.show{display:flex}
 
-  /* Menu. The game is landscape only, so the menu lives on the RIGHT half and
-     leaves the left clear -- that is where he is waiting in the cage. */
+  /* Menu. TWO designs exist, and `POSTER_TITLE` in the script picks one.
+     Default (false): the menu is the LIVE SCENE. It sits on the right half and
+     leaves the left clear, because that is where he is standing in the cage,
+     and watching him wait there is the hook. */
   #menu{justify-content:center;align-items:flex-end;
         padding:calc(env(safe-area-inset-top,0px) + 12px) max(4vw,18px) calc(env(safe-area-inset-bottom,0px) + 12px) 46vw;
         text-align:right}
+  /* POSTER_TITLE = true: the painted key art fills the screen instead, with the
+     buttons sat in its foreground, and the first press blows it off. */
+  body.poster #menu{justify-content:flex-start;align-items:center;text-align:center;
+        padding:calc(env(safe-area-inset-top,0px) + 7vh) 24px calc(env(safe-area-inset-bottom,0px) + 24px);
+        background:var(--ink-2) url(art/title.webp) center/cover no-repeat}
+  /* the poster carries the logo and the line under it, so these stand down */
+  body.poster #menu .logo, body.poster #menu .tag{display:none}
+  body.poster #menu::after{content:'';position:absolute;left:0;right:0;bottom:0;height:46%;
+        pointer-events:none;
+        background:linear-gradient(180deg,rgba(21,8,39,0) 0%,rgba(21,8,39,.55) 40%,
+                                          rgba(21,8,39,.90) 78%,rgba(21,8,39,.97) 100%)}
+  body.poster #menu .menuFoot{position:relative;z-index:1;align-items:center}
   .logo{font-family:'Bungee',cursive;line-height:.86;transform:rotate(-2.5deg);
         filter:drop-shadow(0 8px 0 rgba(36,16,67,.9))}
   .logo .l1{display:block;font-size:clamp(24px,6.8vmin,58px);
@@ -2778,8 +2793,16 @@ window.addEventListener('keyup', e => {
   if(e.code==='Space'||e.code==='ArrowUp'||e.code==='KeyW') releaseJump();
 });
 document.addEventListener('contextmenu', e=> e.preventDefault());
-$('#play').addEventListener('click', ()=>{ audioInit(); S.click(); startRun(); });
-$('#retry').addEventListener('click', ()=>{ S.click(); startRun(); });
+/* The buttons go through the escape, exactly like a tap anywhere does. They
+   used to call startRun() and drop you straight into a run with the cell still
+   around you -- so the one thing a player is most likely to press was the one
+   thing that skipped the opening. A real press also fires pointerdown first,
+   which has already started the intro by the time the click lands, hence the
+   mode check rather than a second startIntro(). */
+$('#play').addEventListener('click', ()=>{
+  audioInit(); S.click(); if(game.mode==='menu') startIntro(); });
+$('#retry').addEventListener('click', ()=>{
+  S.click(); if(game.mode!=='intro') startIntro(); });
 $('#tomenu').addEventListener('click', ()=>{ S.click(); toMenu(); });
 elMute.addEventListener('click', ()=>{
   audioInit(); A.on = !A.on;
@@ -2964,7 +2987,11 @@ function startIntro(){
   elTut.classList.remove('show');
   game.mode = 'intro';
   game.introT = 0;
-  game.titleT = 1;
+  /* The poster goes on the press, over about a third of a second, so the cell
+     is uncovered well before he swings off the bunk at T_UP. It used to hang
+     around until the kick, which is fine for a word of text sitting over the
+     scene and hopeless for a full-screen picture covering it. */
+  game.titleT = (POSTER_TITLE && TITLE.ready) ? -0.001 : 1;
   game.rattleT = 0;
   game.stepT = 0;
   game.doorBow = 0;
@@ -3599,6 +3626,25 @@ function drawBlockGround(){
   }
 }
 
+/* The title poster. The menu is this same file as a CSS background, and the
+   canvas picks it up on the frame the menu hides -- `cover` here is the same
+   arithmetic as `background-size:cover` there, so the handover is invisible and
+   the poster can then be blown off the screen by the first press. */
+/* Two title screens were built for the same key art, and this picks one.
+   false -- the menu is the live scene and he is visible in the cage before you
+   press, which is the reason the menu is laid out on the right half at all.
+   true  -- the painted poster fills the screen and the first press blows it off,
+   which frames the art better but hides him until it clears. */
+const POSTER_TITLE = false;
+const TITLE = { img: new Image(), ready: false };
+TITLE.img.onload = () => { TITLE.ready = true; };
+TITLE.img.src = 'art/title.webp';
+function titleRect(){
+  const iw = TITLE.img.naturalWidth || 1080, ih = TITLE.img.naturalHeight || 1920;
+  const s = Math.max(VW/iw, VH/ih);
+  return { w: iw*s, h: ih*s, x: (VW - iw*s)/2, y: (VH - ih*s)/2 };
+}
+
 /* the wall he is running along, and everything bolted to it */
 const WALLF = 0.46;                       // the wall's own parallax
 function drawBlockProps(){
@@ -3929,12 +3975,29 @@ function drawObstacles(){
    over the cage, shakes as he winds up, and the kick blows it out of frame. */
 function drawTitle(){
   if(game.titleT === undefined || game.titleT === 0) return;
+  /* titleT > 0 holds it; negative runs the blast, -0.001 to -1 in a third of a
+     second. It used to add to titleT and clamp with Math.min(-0.001, ...),
+     which walks the wrong way and then sticks, so the blast never actually
+     animated -- the kick set -1 and the title vanished between two frames. */
   let k, blast = 0;
   if(game.titleT > 0){ k = 1; }
-  else { blast = -game.titleT; game.titleT = Math.min(-0.001, game.titleT + (game.rawDt||0.016)*3.0);
+  else { blast = Math.min(1, -game.titleT);
+         game.titleT -= (game.rawDt||0.016)*3.0;
          if(blast >= 1){ game.titleT = 0; return; }
          k = 1 - blast; }
   if(game.mode !== 'intro' && game.titleT > 0) return;
+  if(POSTER_TITLE && TITLE.ready){
+    // the poster, going: it lifts and grows out of frame as he starts moving
+    const r = titleRect();
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, k);
+    ctx.translate(VW*0.5, VH*0.5);
+    ctx.scale(1 + blast*0.30, 1 + blast*0.30);
+    ctx.translate(-VW*0.5, -VH*0.5 - blast*VH*0.10);
+    ctx.drawImage(TITLE.img, r.x, r.y, r.w, r.h);
+    ctx.restore();
+    return;
+  }
   const sh = cageShake();
   const cx = VW*0.5 + (blast?0:rnd(-sh*4, sh*4));
   const cy = VH*0.24 - blast*VH*0.16;
@@ -4137,6 +4200,7 @@ function frame(now){
 
 /* boot */
 function boot(){
+  document.body.classList.toggle('poster', POSTER_TITLE);
   resize();
   toMenu();
   requestAnimationFrame(frame);
