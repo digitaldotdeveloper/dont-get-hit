@@ -135,10 +135,10 @@ rules that keep them consistent.
 | Gates | `function spawnGate`, `OB.tower`, `OB.hanger` |
 | The cage intro | `const CAGE`, `cageGeom`, `cagePose`, `updateIntro` |
 | The blast | `drawBoom`, `FRAME_DATA.boom` |
-| Painted panels (farm + prison) | `function loadPanels`, `const FARM`, `const WALL` |
+| Painted panels | `function loadPanels`, `const FARM` |
 | Farm hazards | `function farmProp`, `Object.assign(OB, {` |
 | Gate members fill their hitbox | `crateStack`, `CAP_H` |
-| Obstacles (city 20, farm 14) | `const OB = {`, `farmProp` |
+| Obstacles (9 code-drawn, 16 painted) | `const OB = {`, `farmProp` |
 | Difficulty tiers | `function tierNow`, `function spawnPattern` |
 
 ## Flight model — one system, do not add a second
@@ -275,16 +275,19 @@ puppet path is still worth keeping.
 
 ## Environments
 
-Three themes in `THEMES`: `farm` (Cluck County, where every run starts),
-`city`, `block`. **The run travels**: a leg every 26s, farm -> city -> block and
-round again, crossfaded rather than cut. **Leg 0 must be the theme `startRun`
-applies** — with `block` first, the very first frame of the run swapped the
-bright farm for the prison interior, one second after breaking out of it. Both layer sets stay alive through the
-transition and dissolve over each other while the sky and road blend by colour,
-since those are gradients rather than baked tiles. `?theme=farm` forces one and
-disables the journey.
+**One map, and it does not change.** Cluck County: he is kicked out of the barn
+onto the farm road and stays on it. The run used to travel -- a leg every 26s,
+farm -> city -> block, crossfaded rather than cut -- and the two other palettes,
+their layer builders, their props, the painted prison wall and the whole
+crossfade machinery are gone with it. `THEME` is a plain object now, not an
+entry in a `THEMES` array, and `applyTheme()` takes no argument.
 
-`city` is drawn in code. **`farm` and `block` are painted art** - see below.
+If a second map ever comes back it comes back as its own `THEME` plus a builder
+and a deliberate way in -- **not** as a timer that swaps the world out from
+under the player mid-run.
+
+The farm is **painted panels**, not coloured rectangles. See **The painted
+farm** under **Themes**.
 
 ## Music
 
@@ -486,12 +489,20 @@ Needs `--remote-allow-origins=*` or the websocket handshake is refused.
 
 ## Obstacles
 
-`poolFor(tier)` filters by **theme as well as tier**: `set:'farm'` props on the
-farm, `set:'city'` on the street, untagged ones (cones, crates, a barrel, a ball,
-the towers, the zappers) everywhere so a run can never run out of hazards on
-either map. Gate caps split the same way (`gateTops()` / `gateHangs()`).
+`poolFor(tier)` filters by tier and nothing else -- there is one map, so there
+is one cast. Everything unmistakably a city street (the sofa, the shop sign, the
+coffee machine, the vacuum, the pizza, the cake, the chair, the cart, the duck,
+the beach ball) went with the city, and the code-drawn barrel went with it too
+because the painted `woodkeg` replaces it. What is left of the old set is the
+stuff that reads anywhere: `cone`, `box`, `banana`, `ball`, `pigeon`, `paper`,
+plus `tower`, `hanger` and `zapper`.
 
-The farm's fourteen hazards are **painted props** cut off a Gemini Studio sheet
+**Dropping the city took both falling hazards with it** -- the sofa and the sign
+were the only `kind:'fall'` entries, so tiers 2 and 3 quietly lost a whole
+category. `fallbale` and `fallcrate` replace them, reusing the hay bale and
+crate sprites.
+
+The farm's sixteen hazards are **painted props** cut off a Gemini Studio sheet
 and keyed off flat green (`art/farm/*.webp`), built by `farmProp(name, w, h)`.
 The sprite fills its hitbox exactly — `w` and `h` are what `spawnOne` collides
 with, so anything drawn outside them is a hit you cannot see coming — and every
@@ -511,27 +522,25 @@ is rejected unless it leaves a 210px corridor.
 `?obtest=1` spawns 240 patterns at each tier and checks for stacking, corridor
 width and exceptions. `?runt=N` starts a run at a difficulty.
 
-## Themes
+## Themes -- there is one
 
-Three: `farm` (run one -- Cluck County), `city`, `block`. `city` is code-drawn
-parallax in `buildLayers` plus a props pass; `farm` and `block` are painted art,
-see below. A new code-drawn one needs a palette entry, a `buildXLayers`, and a
-branch in `drawStreetProps`.
+`buildLayers` builds the farm and nothing else. `buildFarmLayers` is only the
+**fallback**: it returns early the moment `FARM.ready`, because the painted
+panels are the middle distance and drawing the coloured layers as well stacks a
+second farm behind the first, with its hills showing through the fade.
 
 ### The painted farm
 
 `sheets/v2/farm_a|b|c.webp` are generated panels, laid overlapping and
-dissolving into each other by `loadPanels` — the same left-edge alpha ramp the
-prison wall uses, now shared. `buildFarmLayers` returns early once they load, so
-the code parallax is only the fallback; drawn as well it stacks a second farm
-behind the first and its hills show through.
+dissolving into each other by `loadPanels` -- a left-edge alpha ramp, so a hard
+seam through a fence line never shows.
 
 Three things that cost a round each and are the reason it reads:
 
 - **The sky is keyed OUT of the panels** (a flood from the top row over
   sky-blue, which stops dead at the black ink outlines). Drawn as opaque
   rectangles they show their own, lighter blue as a hard band across the whole
-  screen, and fading the top instead eats the silo and the barn roof — the only
+  screen, and fading the top instead eats the silo and the barn roof -- the only
   content up there worth keeping. The painted clouds are white, fail the blue
   test, and survive as cutouts.
 - **`haze` washes the distance out** (`source-atop`, so it tints the art and
@@ -539,40 +548,17 @@ Three things that cost a round each and are the reason it reads:
   same saturation as the map, so without it a hay bale in front of a hay field
   is camouflage. This is aerial perspective doing a gameplay job.
 - **Size against `GROUND`, not the play band.** The play band magnifies a 572px
-  source about fourfold and puts the silo tops off the frame — the same trap the
-  prison wall hit.
+  source about fourfold and puts the silo tops off the frame.
 
-The farm's `drawGround` branch is a dirt track with a grass fringe and wheel
-ruts, coloured off the panels. A curb and a hazard stripe are a street; this is
-a farm road he was just kicked out onto.
+`drawGround` is a dirt track with a grass fringe and wheel ruts, coloured off
+the panels. A curb and a hazard stripe are a street; this is a farm road.
 
-## The painted prison (`block`)
-
-`sheets/v2/wall_a|b|c.png` are generated art, not code. They were made by
-attaching `ref/intro-1-waiting.png` to the prompt **as the style reference** and
-asking for the empty room - no characters, no cage, no bars - with the bottom
-fifth left as plain dark floor for the game to draw its walkway over.
-
-`WALL` loads them and redraws each into an offscreen canvas with an alpha ramp
-down its **left** edge, so panels can be laid overlapping and dissolve into each
-other. They do not tile edge to edge on their own and a hard seam through
-brickwork is glaring. Panels cycle so the run does not visibly repeat.
-
-Two traps, both of which produced something that looked like a different bug:
-
-- **`destination-in` clears the ENTIRE canvas outside the source shape**, not
-  just the rectangle you draw into. Masking a strip at a time wipes the rest of
-  the panel. The first attempt produced panels that were almost fully
-  transparent, which on screen looked like flat colour - i.e. exactly like the
-  art having failed to load. Mask in **one pass over the whole canvas**.
-- **World units are about 3x screen pixels here** (`VW` ~1300 across a 420px
-  phone). Sizing the art against `GROUND` magnified it roughly fourfold and put
-  every lamp and pipe off the top of the frame. It is sized against the play
-  band (`GROUND - CEIL`) instead, and its top fades into the dark ceiling, which
-  is how the reference frames it anyway.
-
-What stays in code: the walkway and hazard stripe (they must line up exactly
-with the collision ground) and the crates (they sit at the player's parallax).
+**`drawCageBack` extends the barn to the left screen edge** by stretching the
+art's leftmost two columns -- a vertical run of plank colour -- out to it. The
+cage scene used to be alpha-ramped on both sides, and ramping the left turned
+the planks half transparent with a field showing through them: a ghost, not a
+blend. Only the right edge is ramped now, where the painted farm behind the barn
+has to hand over to the map's own panels.
 
 ## Golden eggs
 
@@ -588,12 +574,8 @@ semitone per egg in a streak. `game.eggBank` persists in `localStorage` under
 
 Cricket guards in suits, `cricket0..5`, a six-frame panic loop with the antennae
 whipping. `drawSpectators` plays the loop only while a chicken is going past at
-speed and holds frame 0 otherwise. Outside the prison the same routine draws
-them smaller and unflipped; `drawLilChicken` is the flat fallback if the frames
-have not loaded.
-
-**They are drawn AFTER the wall.** The block paints full height, so anything
-drawn before it is simply covered - which is what happened the first time.
+speed and holds frame 0 otherwise. `drawLilChicken` is the flat fallback if the
+frames have not loaded.
 
 ## Before shipping any edit
 
@@ -741,7 +723,7 @@ Two bugs fixed on the way in, both worth knowing about:
 ## Next
 
 - Nothing spends the eggs yet.
-- Map progression is deliberately simple (a leg every 26s); the plan was always
-  to enhance it once the first map was right.
+- There is one map on purpose. A second one is a `THEME` plus a builder plus a
+  deliberate way in, never a timer that swaps the world out mid-run.
 - The three wall panels are ~345 KB each, so first load pulls about 1 MB of
   background. Re-encoding to WebP would take it under 300 KB total.

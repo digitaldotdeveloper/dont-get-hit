@@ -330,25 +330,25 @@ let C = {
 /* ---------- environments ----------
    Two hand-built themes. Everything is drawn in code so the layers tile
    perfectly and nothing extra has to be downloaded. */
-const THEMES = [
-  { id:'city', name:'SUNSET CITY',
-    skyA:'#241043', skyB:'#5E2569', skyC:'#C4485E', skyD:'#F2794A', skyE:'#FFC46B',
-    sun:'#FFE9A8', far:'#7B4287', mid:'#4E265F', near:'#301648', prop:'#1F0E33',
-    road:'#2A1445', roadLine:'#3E2160', curb:'#3A1C57', rim:'#FFB447' },
-  { id:'block', name:'CELL BLOCK', indoor:true,
-    skyA:'#060F13', skyB:'#0B1A20', skyC:'#12262E', skyD:'#173039', skyE:'#1C3A44',
-    sun:'#F5D98A', far:'#20404A', mid:'#1A343D', near:'#142A32', prop:'#0C1A20',
-    road:'#4A4A44', roadLine:'#5C5C54', curb:'#262622', rim:'#F2C230' },
-  /* Sampled off the painted panels so the sky the game draws and the sky in the
-     art are the same blue -- the panels fade into it rather than sitting on it. */
-  { id:'farm', name:'CLUCK COUNTY', sunR:0.42, sunGlow:0.34, vig:0.42,
-    skyA:'#0B7CF5', skyB:'#1C87F2', skyC:'#3C9BEC', skyD:'#79C2F6', skyE:'#BEE6FF',
-    sun:'#FFF3A8', far:'#7FB463', mid:'#5C9A48', near:'#3E7A34', prop:'#2F5A28',
-    road:'#BB7D33', roadLine:'#9A6528', curb:'#8E5C24', rim:'#8CC24E' }
-];
-let THEME = THEMES[0], THEME_FROM = THEMES[0], layersFrom = [];
-/* Blend two #rrggbb values. The sky and the road are drawn from colours rather
-   than from pre-rendered tiles, so they can morph instead of dissolving. */
+/* ONE MAP. The run used to travel -- a leg every 26s, farm -> city -> block,
+   crossfaded rather than cut -- and the two other palettes, their layer
+   builders, their props, the prison's painted wall and the whole crossfade
+   machinery went with it. There is one place now, Cluck County, and the run
+   stays in it. If a second map ever comes back, it comes back as its own
+   THEME object plus a builder, not as a timer that swaps the world out from
+   under the player.
+
+   The sky colours are sampled off the painted panels so the sky the game draws
+   and the sky in the art are the same blue -- the panels fade into it rather
+   than sitting on it. */
+const THEME = {
+  id:'farm', name:'CLUCK COUNTY', sunR:0.42, sunGlow:0.34, vig:0.42,
+  skyA:'#0B7CF5', skyB:'#1C87F2', skyC:'#3C9BEC', skyD:'#79C2F6', skyE:'#BEE6FF',
+  sun:'#FFF3A8', far:'#7FB463', mid:'#5C9A48', near:'#3E7A34', prop:'#2F5A28',
+  road:'#BB7D33', roadLine:'#9A6528', curb:'#8E5C24', rim:'#8CC24E'
+};
+/* Blend two #rrggbb values. Nothing morphs between themes any more; this is
+   still what lifts the distant chickens off the background they stand on. */
 function lerpHex(a, b, k){
   const A = parseInt(a.slice(1),16), B = parseInt(b.slice(1),16);
   const r = Math.round(((A>>16)&255) + (((B>>16)&255)-((A>>16)&255))*k);
@@ -356,26 +356,8 @@ function lerpHex(a, b, k){
   const bl= Math.round((A&255)       + ((B&255)      -(A&255))      *k);
   return '#' + ((1<<24)|(r<<16)|(g<<8)|bl).toString(16).slice(1);
 }
-const SWAP_TIME = 1.1;
-function swapTheme(t){
-  if(!t || t === THEME) return;
-  layersFrom = layers.slice();          // hold the old tiles while they fade
-  THEME_FROM = THEME;
-  applyTheme(t);                        // rebuilds `layers` for the new one
-  game.swapK = 0;
-}
-function swapTick(dt){
-  if(game.swapK === undefined) game.swapK = 1;
-  if(game.swapK >= 1){ if(layersFrom.length) layersFrom = []; return; }
-  game.swapK = Math.min(1, game.swapK + dt/SWAP_TIME);
-  const k = game.swapK, F = THEME_FROM, T = THEME;
-  C.road     = lerpHex(F.road,     T.road,     k);   // the ground morphs
-  C.roadLine = lerpHex(F.roadLine, T.roadLine, k);
-  C.curb     = lerpHex(F.curb,     T.curb,     k);
-  C.rim      = lerpHex(F.rim,      T.rim,      k);
-}
-function applyTheme(t){
-  THEME = t;
+function applyTheme(){
+  const t = THEME;
   C.skyA=t.skyA; C.skyB=t.skyB; C.skyC=t.skyC; C.skyD=t.skyD; C.skyE=t.skyE;
   C.sun=t.sun; C.far=t.far; C.mid=t.mid; C.near=t.near; C.prop=t.prop;
   C.road=t.road; C.roadLine=t.roadLine; C.curb=t.curb; C.rim=t.rim;
@@ -1564,13 +1546,17 @@ const CAGE = {
     c.width = im.naturalWidth; c.height = im.naturalHeight;
     const g = c.getContext('2d');
     g.drawImage(im, 0, 0);
-    // One pass over the whole canvas -- destination-in clears everything the
-    // source does not cover, so masking a strip at a time wipes the rest.
+    /* Fade the RIGHT edge only, where the painted farm behind the barn has to
+       hand over to the map's own panels. The LEFT edge is the barn wall, and
+       fading that turned the planks half transparent with a field showing
+       through them -- a ghost, not a blend. drawCageBack extends the wall to
+       the screen edge instead.
+       One pass over the whole canvas: destination-in clears everything the
+       source does not cover, so masking a strip at a time wipes the rest. */
     g.globalCompositeOperation = 'destination-in';
-    const f = 0.14, grad = g.createLinearGradient(0, 0, c.width, 0);
-    grad.addColorStop(0, 'rgba(0,0,0,0)');
-    grad.addColorStop(f, 'rgba(0,0,0,1)');
-    grad.addColorStop(1-f*0.7, 'rgba(0,0,0,1)');
+    const f = 0.10, grad = g.createLinearGradient(0, 0, c.width, 0);
+    grad.addColorStop(0, 'rgba(0,0,0,1)');
+    grad.addColorStop(1-f, 'rgba(0,0,0,1)');
     grad.addColorStop(1, 'rgba(0,0,0,0)');
     g.fillStyle = grad; g.fillRect(0, 0, c.width, c.height);
     CAGE.img = c; CAGE.ready = true;
@@ -1634,8 +1620,13 @@ function drawCageBack(sx){
   // crop off the painted dirt below the ground line and let drawGround's road
   // carry on underneath, so the two can never disagree about where the floor is
   const sh = im.height * CAGE.floorFrac;
-  ctx.drawImage(im, 0, 0, im.width, sh,
-                sx + g.x + rnd(-j,j), g.y + rnd(-j,j)*0.5, g.w, CAGE.floorFrac*g.h);
+  const x0 = sx + g.x + rnd(-j,j), y0 = g.y + rnd(-j,j)*0.5, dh = CAGE.floorFrac*g.h;
+  /* The barn continues past the left of the screen. Its leftmost couple of
+     source columns are a vertical run of plank colour, so stretching them out
+     to the edge reads as more wall -- which is what a wall does. The picture
+     simply ending, or fading out, is what made it look half deleted. */
+  if(x0 > 0) ctx.drawImage(im, 0, 0, 2, sh, 0, y0, x0 + 1, dh);
+  ctx.drawImage(im, 0, 0, im.width, sh, x0, y0, g.w, dh);
 }
 /* the barred door, in front of him, until he removes it */
 function drawCageFront(sx){
@@ -1860,85 +1851,6 @@ banana:{ kind:'ground', w:74, h:30, tier:0, draw(o,t){
     ctx.beginPath(); ctx.ellipse(0,-4,11,9,0,0,TAU); paint('#F5C531',4.4);
     ctx.restore();
   }},
-cart:{ kind:'ground', w:118, h:112, tier:1, roll:-70, draw(o,t){
-    shadowEllipse(56);
-    const wob=Math.sin(t*17)*0.02;
-    ctx.save(); ctx.rotate(wob);
-    ctx.beginPath(); ctx.moveTo(-46,-96); ctx.lineTo(50,-84); ctx.lineTo(40,-30); ctx.lineTo(-36,-30); ctx.closePath();
-    paint('#C9D6E8',5);
-    ctx.strokeStyle='#8FA3C4'; ctx.lineWidth=3;
-    for(let i=-3;i<=3;i++){ ctx.beginPath(); ctx.moveTo(i*13-3,-92+Math.abs(i)*1.5); ctx.lineTo(i*12-1,-30); ctx.stroke(); }
-    ctx.beginPath(); ctx.moveTo(-42,-70); ctx.lineTo(46,-62); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-46,-96); ctx.lineTo(-64,-104); ctx.lineWidth=7; ctx.strokeStyle='#5E6E8C'; ctx.stroke();
-    ctx.beginPath(); ctx.roundRect(-40,-30,84,9,4); paint('#8FA3C4',4);
-    ctx.restore();
-    for(const wx of [-28, 34]){
-      ctx.save(); ctx.translate(wx,-10); ctx.rotate(-t*11);
-      ctx.beginPath(); ctx.arc(0,0,11,0,TAU); paint('#3E4C66',4);
-      ctx.beginPath(); ctx.moveTo(-7,0); ctx.lineTo(7,0); ctx.strokeStyle='#8FA3C4'; ctx.lineWidth=3; ctx.stroke();
-      ctx.restore();
-    }
-  }},
-barrel:{ kind:'ground', w:96, h:100, tier:1, roll:-130, draw(o,t){
-    shadowEllipse(48);
-    ctx.save(); ctx.translate(0,-48); ctx.rotate(o.rot||0);
-    ctx.beginPath(); ctx.ellipse(0,0,46,48,0,0,TAU); paint('#C77B3E',5);
-    ctx.save(); ctx.clip();
-    ctx.fillStyle='#A45F2B';
-    for(let i=-2;i<=2;i++){ ctx.beginPath(); ctx.roundRect(-48, i*20-4, 96, 7, 3); ctx.fill(); }
-    ctx.fillStyle='rgba(255,180,71,.35)';
-    ctx.beginPath(); ctx.ellipse(-16,-16,20,26,-0.5,0,TAU); ctx.fill();
-    ctx.restore();
-    ctx.beginPath(); ctx.ellipse(0,0,20,22,0,0,TAU); paint('#8E5122',4.4);
-    ctx.restore();
-  }},
-chair:{ kind:'ground', w:104, h:124, tier:1, roll:-150, draw(o,t){
-    shadowEllipse(52);
-    const wob = Math.sin(t*14)*0.05;
-    ctx.save(); ctx.rotate(wob);
-    ctx.strokeStyle='#3E4C66'; ctx.lineWidth=8; ctx.lineCap='round';
-    for(const a of [-1,-0.4,0.4,1]){ ctx.beginPath(); ctx.moveTo(0,-34); ctx.lineTo(a*38,-12); ctx.stroke(); }
-    for(const a of [-1,-0.4,0.4,1]){
-      ctx.save(); ctx.translate(a*38,-8); ctx.rotate(-t*13);
-      ctx.beginPath(); ctx.arc(0,0,8,0,TAU); paint('#22304A',3.4);
-      ctx.beginPath(); ctx.moveTo(-5,0); ctx.lineTo(5,0); ctx.strokeStyle='#7B8CAB'; ctx.lineWidth=2.4; ctx.stroke();
-      ctx.restore();
-    }
-    ctx.beginPath(); ctx.roundRect(-6,-62,12,30,4); paint('#5E6E8C',4);
-    ctx.beginPath(); ctx.roundRect(-38,-78,76,20,8); paint('#4A5A7A',5);
-    ctx.beginPath(); ctx.roundRect(-40,-124,34,52,10); paint('#4A5A7A',5);
-    ctx.beginPath(); ctx.roundRect(-34,-118,22,40,7); paint('#5E7095',0);
-    ctx.restore();
-  }},
-coffee:{ kind:'ground', w:104, h:136, tier:1, draw(o,t){
-    shadowEllipse(50);
-    for(let i=0;i<3;i++){
-      const k=(t*0.55+i*0.33)%1;
-      ctx.globalAlpha=(1-k)*0.5;
-      ctx.beginPath();
-      ctx.moveTo(-14+i*14, -136-k*44);
-      ctx.quadraticCurveTo(-4+i*14, -152-k*44, -14+i*14, -168-k*44);
-      ctx.strokeStyle=C.cream; ctx.lineWidth=6; ctx.lineCap='round'; ctx.stroke();
-      ctx.globalAlpha=1;
-    }
-    ctx.beginPath(); ctx.moveTo(-38,0); ctx.lineTo(-46,-114); ctx.lineTo(46,-114); ctx.lineTo(38,0); ctx.closePath();
-    paint(C.cream,5);
-    ctx.beginPath(); ctx.rect(-44,-84,88,40); paint('#E2453A',4.6);
-    ctx.fillStyle=C.cream; ctx.font='900 16px Archivo, sans-serif'; ctx.textAlign='center';
-    ctx.fillText('XXL',0,-56);
-    ctx.beginPath(); ctx.roundRect(-52,-134,104,22,8); paint('#8E4A2E',5);
-    ctx.beginPath(); ctx.roundRect(-10,-142,20,10,4); paint('#6E381F',4);
-  }},
-vacuum:{ kind:'ground', w:92, h:124, tier:1, draw(o,t){
-    shadowEllipse(46);
-    ctx.beginPath(); ctx.roundRect(-42,-26,84,26,7); paint('#6BD1FF',5);
-    ctx.beginPath(); ctx.roundRect(-30,-104,58,80,12); paint('#4AB4E8',5);
-    ctx.beginPath(); ctx.ellipse(-2,-72,17,19,0,0,TAU); paint('#D8F2FF',4.6);
-    ctx.beginPath(); ctx.ellipse(-2,-72,9,11,0,0,TAU); paint('#8FA3C4',3.6);
-    ctx.beginPath(); ctx.moveTo(24,-100); ctx.quadraticCurveTo(58,-92+Math.sin(t*6)*5, 46,-40);
-    ctx.strokeStyle='#2E7FA8'; ctx.lineWidth=11; ctx.lineCap='round'; ctx.stroke();
-    ctx.beginPath(); ctx.roundRect(-16,-124,34,22,8); paint('#2E7FA8',4.6);
-  }},
 ball:{ kind:'ground', w:76, h:76, tier:1, roll:-190, bounce:true, draw(o,t){
     ctx.save(); ctx.translate(0,-38-(o.bz||0)); ctx.rotate(o.rot||0);
     ctx.beginPath(); ctx.arc(0,0,36,0,TAU); paint('#F2803A',5);
@@ -1950,52 +1862,6 @@ ball:{ kind:'ground', w:76, h:76, tier:1, roll:-190, bounce:true, draw(o,t){
     ctx.restore();
     ctx.save(); ctx.globalAlpha=0.4; shadowEllipse(30*(1-(o.bz||0)/160)); ctx.restore();
   }},
-duck:{ kind:'ground', w:132, h:146, tier:1, draw(o,t){
-    shadowEllipse(64);
-    const b = Math.sin(t*3)*3;
-    ctx.save(); ctx.translate(0,b);
-    ctx.beginPath(); ctx.ellipse(-4,-42,60,44,0.06,0,TAU); paint(C.gold,5);
-    ctx.beginPath(); ctx.moveTo(-58,-46); ctx.quadraticCurveTo(-84,-64,-52,-76); ctx.quadraticCurveTo(-40,-64,-40,-48); ctx.closePath();
-    paint('#F5C531',4.6);
-    ctx.beginPath(); ctx.ellipse(34,-104,34,32,0,0,TAU); paint(C.gold,5);
-    ctx.beginPath(); ctx.moveTo(60,-108); ctx.quadraticCurveTo(88,-100,60,-90); ctx.closePath(); paint('#FF8A3D',4.6);
-    ctx.beginPath(); ctx.arc(38,-114,9,0,TAU); paint('#FFFFFF',3.4);
-    ctx.beginPath(); ctx.arc(40,-114,5,0,TAU); ctx.fillStyle=C.ink; ctx.fill();
-    ctx.beginPath(); ctx.arc(41.6,-115.6,1.9,0,TAU); ctx.fillStyle='#fff'; ctx.fill();
-    ctx.restore();
-  }},
-pizza:{ kind:'ground', w:150, h:150, tier:2, roll:-170, draw(o,t){
-    ctx.save(); ctx.translate(0,-74); ctx.rotate(o.rot||0);
-    ctx.beginPath(); ctx.arc(0,0,72,0,TAU); paint('#E8A33E',5);
-    ctx.beginPath(); ctx.arc(0,0,60,0,TAU); paint('#FFC24A',0);
-    ctx.beginPath(); ctx.arc(0,0,56,0,TAU); paint('#F5D98A',0);
-    for(let i=0;i<7;i++){
-      const a=i*TAU/7, r=36;
-      ctx.beginPath(); ctx.arc(Math.cos(a)*r, Math.sin(a)*r, 12, 0, TAU); paint('#E2453A',3.4);
-    }
-    ctx.beginPath(); ctx.arc(0,0,13,0,TAU); paint('#E2453A',3.4);
-    ctx.restore();
-    shadowEllipse(60);
-  }},
-cake:{ kind:'ground', w:140, h:158, tier:2, draw(o,t){
-    shadowEllipse(68);
-    ctx.beginPath(); ctx.roundRect(-66,-52,132,52,10); paint('#FF9FC4',5);
-    ctx.beginPath(); ctx.roundRect(-50,-104,100,54,10); paint('#FFC2D8',5);
-    ctx.beginPath(); ctx.roundRect(-32,-142,64,40,10); paint('#FFE0EB',5);
-    ctx.fillStyle=C.cream;
-    for(const [y,w] of [[-52,66],[-104,50],[-142,32]]){
-      for(let i=-w+8;i<w;i+=16){
-        ctx.beginPath(); ctx.arc(i,y,8,0,Math.PI); ctx.fill();
-      }
-    }
-    for(const cx of [-16,0,16]){
-      ctx.beginPath(); ctx.roundRect(cx-3,-166,6,26,3); paint('#6BD1FF',3);
-      const fl = 1+Math.sin(t*11+cx)*0.16;
-      ctx.beginPath(); ctx.ellipse(cx,-172,5*fl,10*fl,0,0,TAU); paint(C.gold,0);
-      ctx.beginPath(); ctx.ellipse(cx,-170,2.4*fl,5*fl,0,0,TAU); ctx.fillStyle=C.cream; ctx.fill();
-    }
-  }},
-/* ---- air: do NOT jump ---- */
 pigeon:{ kind:'air', w:96, base:210, h:230, tier:1, roll:-90, draw(o,t){
    for(let n=0;n<3;n++){
     const flap = Math.sin(t*15 + n*1.9);
@@ -2028,45 +1894,6 @@ paper:{ kind:'air', w:88, base:210, h:230, tier:1, draw(o,t){
     ctx.restore();
    }
   }},
-beachball:{ kind:'air', w:96, base:210, h:230, tier:1, draw(o,t){
-   for(let n=0;n<3;n++){
-    ctx.save(); ctx.translate(n%2?12:-10, -20-n*74+Math.sin(t*2.6+n*1.3)*14); ctx.rotate(t*1.4+n);
-    ctx.beginPath(); ctx.arc(0,0,45,0,TAU); paint(C.cream,5);
-    const cols=['#FF5E7A','#3FE0B0','#FFD54A','#6BD1FF'];
-    for(let i=0;i<4;i++){
-      ctx.beginPath(); ctx.moveTo(0,0);
-      ctx.arc(0,0,45, i*TAU/4 - 0.34, i*TAU/4 + 0.34); ctx.closePath();
-      ctx.fillStyle=cols[i]; ctx.fill();
-      ctx.beginPath(); ctx.moveTo(0,0);
-      ctx.arc(0,0,45, i*TAU/4 + Math.PI - 0.34, i*TAU/4 + Math.PI + 0.34); ctx.closePath();
-      ctx.fillStyle=cols[i]; ctx.fill();
-    }
-    ctx.beginPath(); ctx.arc(0,0,45,0,TAU); ctx.lineWidth=5; ctx.strokeStyle=C.ink; ctx.stroke();
-    ctx.beginPath(); ctx.arc(-15,-16,10,0,TAU); ctx.fillStyle='rgba(255,255,255,.5)'; ctx.fill();
-    ctx.restore();
-   }
-  }},
-/* ---- falling: telegraphed, then they sit on the ground ---- */
-sofa:{ kind:'fall', w:168, h:104, tier:3, draw(o,t){
-    shadowEllipse(80);
-    ctx.beginPath(); ctx.roundRect(-84,-58,168,44,12); paint('#7B4BC9',5);
-    ctx.beginPath(); ctx.roundRect(-84,-104,26,52,10); paint('#8E5CDE',5);
-    ctx.beginPath(); ctx.roundRect(58,-104,26,52,10); paint('#8E5CDE',5);
-    ctx.beginPath(); ctx.roundRect(-58,-100,116,44,10); paint('#6B3EB0',5);
-    ctx.beginPath(); ctx.moveTo(0,-100); ctx.lineTo(0,-58); ctx.strokeStyle='#5A3395'; ctx.lineWidth=4; ctx.stroke();
-    ctx.beginPath(); ctx.roundRect(-72,-14,14,14,4); paint('#4A2A78',3.6);
-    ctx.beginPath(); ctx.roundRect(58,-14,14,14,4); paint('#4A2A78',3.6);
-  }},
-sign:{ kind:'fall', w:110, h:132, tier:2, draw(o,t){
-    shadowEllipse(50);
-    ctx.beginPath(); ctx.roundRect(-6,-96,12,96,5); paint('#8FA3C4',4.6);
-    ctx.save(); ctx.rotate(Math.sin(t*4)*0.05);
-    ctx.beginPath(); ctx.roundRect(-54,-132,108,52,10); paint('#FF8A3D',5);
-    ctx.beginPath(); ctx.roundRect(-46,-124,92,36,6); paint(C.ink,0);
-    ctx.fillStyle=C.gold; ctx.font='900 20px Archivo, sans-serif'; ctx.textAlign='center';
-    ctx.fillText('OOPS',0,-99);
-    ctx.restore();
-  }}
 };
 /* ---------- the farm's own hazards ----------
    Painted props cut off a Gemini Studio sheet and keyed off flat green, sized
@@ -2084,7 +1911,7 @@ function loadProp(n){
 function farmProp(name, w, h, opt){
   opt = opt || {};
   loadProp(name);
-  const spec = { kind:opt.kind||'ground', w, h, tier:opt.tier||0, set:'farm',
+  const spec = { kind:opt.kind||'ground', w, h, tier:opt.tier||0,
     draw(o, t){
       const oh = Math.max(24, o.h || h), ow = w * (oh/h);
       if(spec.kind === 'ground') shadowEllipse(ow*0.50, 0.40);
@@ -2123,12 +1950,12 @@ Object.assign(OB, {
   tyre:     farmProp('tyre',        116, 142, { tier:1, roll:-190, bounce:true }),
   hopper:   farmProp('hopper',      154, 141, { tier:2 }),
   scarecrow:farmProp('scarecrow',   152, 240, { tier:2, sway:0.05 }),
+  /* Things that fall out of the sky. The two the game had -- a sofa and a shop
+     sign -- went with the city, and without a replacement tiers 2 and 3 quietly
+     lost a whole category of hazard. */
+  fallbale: farmProp('haybale',     182, 144, { tier:2, kind:'fall' }),
+  fallcrate:farmProp('crates',      104, 228, { tier:3, kind:'fall' }),
 });
-/* Everything that is unmistakably a city street stays in the city. The plain
-   junk -- cones, crates, a barrel, a ball -- reads anywhere and is left untagged
-   so a run never runs out of hazards on either map. */
-['coffee','vacuum','pizza','cake','sofa','sign','beachball','chair','cart','duck']
-  .forEach(k => { if(OB[k]) OB[k].set = 'city'; });
 
 const OB_KEYS = Object.keys(OB);
 
@@ -2168,82 +1995,7 @@ function makeLayer(w, h, drawFn){
 }
 function buildLayers(){
   layers.length = 0;
-  const TW = 2400;
-  if(THEME.id==='farm') return buildFarmLayers(TW);
-  if(THEME.id==='block') return buildBlockLayers(TW);
-  // far skyline
-  layers.push({ f:0.10, y:0, tile: makeLayer(TW, 640, (g)=>{
-    g.fillStyle = C.far;
-    let x=0, i=0;
-    while(x < 2400){
-      const w = 90+hash(i)*130, h = 150+hash(i*3.3)*300;
-      g.beginPath(); g.rect(x, -h, w, h); g.fill();
-      if(hash(i*7)>0.72){ g.beginPath(); g.rect(x+w*0.35,-h-34,10,34); g.fill(); }
-      x += w + 10+hash(i*1.7)*26; i++;
-    }
-  })});
-  // mid city
-  layers.push({ f:0.26, y:0, tile: makeLayer(TW, 620, (g)=>{
-    g.fillStyle = C.mid;
-    let x=0,i=100;
-    while(x<2400){
-      const w=120+hash(i)*160, h=180+hash(i*2.1)*300;
-      g.beginPath(); g.rect(x,-h,w,h); g.fill();
-      // water tower
-      if(hash(i*5.5)>0.8){
-        g.beginPath(); g.rect(x+w*0.4,-h-46,42,34); g.fill();
-        g.beginPath(); g.moveTo(x+w*0.4-6,-h-46); g.lineTo(x+w*0.4+21,-h-66); g.lineTo(x+w*0.4+48,-h-46); g.closePath(); g.fill();
-      }
-      // lit windows
-      g.fillStyle='rgba(255,196,107,.5)';
-      for(let wy=-h+22; wy<-24; wy+=30){
-        for(let wx=x+12; wx<x+w-16; wx+=26){
-          if(hash(wx*0.31+wy*0.77)>0.52){ g.fillRect(wx,wy,11,15); }
-        }
-      }
-      g.fillStyle=C.mid;
-      x += w + 14; i++;
-    }
-  })});
-  // near buildings + storefronts
-  layers.push({ f:0.52, y:0, tile: makeLayer(TW, 620, (g)=>{
-    let x=0,i=200;
-    while(x<2400){
-      const w=190+hash(i)*130, h=250+hash(i*1.3)*230;
-      g.fillStyle=C.near; g.beginPath(); g.rect(x,-h,w,h); g.fill();
-      // awning
-      const ac=['#F2684F','#3FE0B0','#FFD54A','#6BD1FF'][(hash(i*9)*4)|0];
-      g.fillStyle=ac;
-      g.beginPath(); g.moveTo(x+8,-92); g.lineTo(x+w-8,-92); g.lineTo(x+w-20,-58); g.lineTo(x+20,-58); g.closePath(); g.fill();
-      g.fillStyle='rgba(21,8,39,.28)';
-      for(let s=x+20;s<x+w-20;s+=22) g.fillRect(s,-92,11,34);
-      // door + window
-      g.fillStyle='rgba(255,196,107,.34)';
-      g.fillRect(x+26,-56,52,56); g.fillRect(x+w-96,-56,64,40);
-      // windows above
-      g.fillStyle='rgba(255,196,107,.34)';
-      for(let wy=-h+34; wy<-118; wy+=54){
-        for(let wx=x+22; wx<x+w-30; wx+=52){
-          if(hash(wx*0.13+wy*0.41)>0.4) g.fillRect(wx,wy,30,36);
-        }
-      }
-      x += w + 26; i++;
-    }
-  })});
-}
-
-/* Indoors there is nothing behind the wall, so the only tiled layer is the far
-   dark of the service corridor beyond the doorways. The wall itself is drawn
-   live in drawBlockProps so its fixtures can move. */
-function buildBlockLayers(TW){
-  layers.push({ f:0.14, y:0, tile: makeLayer(TW, 620, (g)=>{
-    g.fillStyle = C.far;
-    g.fillRect(0, -520, TW, 520);
-    g.fillStyle = 'rgba(0,0,0,.30)';                 // recessed bays further in
-    for(let x=140; x<TW; x+=760){
-      g.fillRect(x, -430, 250, 430);
-    }
-  })});
+  buildFarmLayers(2400);
 }
 function buildFarmLayers(TW){
   // The painted panels are the farm's middle distance. These coloured layers
@@ -2404,10 +2156,9 @@ function tierNow(){
   return 4;
 }
 /* Difficulty is speed, spacing and how many hazards share a screen -- never
-   withholding the art. The theme only decides WHICH cast, not how much of it. */
+   withholding the art. */
 function poolFor(tier){
-  const set = THEME.id === 'farm' ? 'farm' : 'city';
-  return OB_KEYS.filter(k => OB[k].tier <= tier && (!OB[k].set || OB[k].set === set));
+  return OB_KEYS.filter(k => OB[k].tier <= tier);
 }
 function spawnOne(key, aheadTime){
   const spec = OB[key];
@@ -2488,12 +2239,10 @@ function spawnZapper(tier){
   return false;
 }
 
-const GATE_TOPS_CITY  = ['cone','duck','cake','ball','box','coffee'];
-const GATE_HANGS_CITY = ['sofa','sign','vacuum','cart','coffee'];
-const GATE_TOPS_FARM  = ['haybale','crates','milkcan','drum_s','kennel','box'];
-const GATE_HANGS_FARM = ['trough','feedbin','barrow','tyre','milkcan'];
-const gateTops  = () => THEME.id === 'farm' ? GATE_TOPS_FARM  : GATE_TOPS_CITY;
-const gateHangs = () => THEME.id === 'farm' ? GATE_HANGS_FARM : GATE_HANGS_CITY;
+const GATE_TOPS  = ['haybale','crates','milkcan','drum_s','kennel','box'];
+const GATE_HANGS = ['trough','feedbin','barrow','tyre','milkcan'];
+const gateTops  = () => GATE_TOPS;
+const gateHangs = () => GATE_HANGS;
 function spawnGate(moving){
   const band = GROUND - CEIL;
   const gap  = clamp(lerp(430, 250, game.diff) * rnd(0.92,1.08), 230, 470);
@@ -2819,9 +2568,7 @@ document.addEventListener('visibilitychange', ()=>{
    FLOW
    ============================================================ */
 function toMenu(){
-  // the farm: he is in the cage in the side of the barn, not out in the yard
-  const yard = THEMES.findIndex(t=>t.id==='farm');
-  applyTheme(yard>=0 ? THEMES[yard] : THEMES[0]);
+  applyTheme();
   game.mode='menu'; game.obstacles.length=0; game.parts.length=0; game.pops.length=0;
   game.cageX = -CAGE_RUNOUT;             // parked so the escape ends on the play mark
   game.door=null; game.doorGone=false; game.lockGone=false; game.doorBow=0;
@@ -2834,11 +2581,7 @@ function toMenu(){
 }
 function startRun(){
   game.runCount = (game.runCount||0) + 1;
-  // every run starts on the farm he has just kicked his way out of, and
-  // travels from there
-  const yard = THEMES.findIndex(t=>t.id==='farm');
-  applyTheme(game.forceTheme || THEMES[yard>=0 ? yard : 0]);
-  game.swapK = 1; layersFrom = [];
+  applyTheme();
   game.mode='play'; game.runT=game.presetRunT||0; game.score=0; game.dist=0;
   game.near=0; game.combo=0; game.comboBest=0; game.comboT=0;
   game.speed=340*PACE; game.diff=0; game.spawnT=2.6;
@@ -2947,7 +2690,6 @@ function update(dt, rawDt){
   else if(game.mode==='dead')  updateDead(dt, rawDt);
   if(game.door) updateDoor(dt);        // outside the chain: it flies on into play
 
-  swapTick(dt);
   updateParticles(dt);
   musicTick(); trackTick(rawDt);
 }
@@ -3106,18 +2848,6 @@ function updateBlink(p, dt){
 function updatePlay(dt){
   const p = player;
   game.runT += dt;
-  /* The journey. A leg every 26s: out of the yard, across the country, into
-     the city, and round again. It is the only signal in the game that says
-     you are getting somewhere, so it must not be subtle. */
-  if(!game.forceTheme){
-    const leg = Math.floor(game.runT / 26) % THEMES.length;
-    // Leg 0 is the farm he has just kicked his way out of. With 'block' first
-    // the very first frame of the run swapped the bright farm for the prison
-    // interior, one second after breaking out of it.
-    const order = ['farm','city','block'];
-    const want = THEMES.find(t => t.id === order[leg]) || THEMES[leg];
-    swapTheme(want);
-  }
   game.diff = clamp(game.runT/95, 0, 1);
   game.speed = (340 + 400*game.diff)*PACE;
   const speedT = game.diff;
@@ -3455,8 +3185,8 @@ function updateParticles(dt){
 /* ============================================================
    RENDER
    ============================================================ */
-function drawSky(T){
-  T = T || THEME;
+function drawSky(){
+  const T = THEME;
   const top = Math.max(0, GROUND - 1150);
   const skyH = GROUND + 40;
   // sky band and sun: two gradients that never change -> one cached blit
@@ -3466,7 +3196,6 @@ function drawSky(T){
     gd.addColorStop(0, T.skyA); gd.addColorStop(0.30, T.skyB);
     gd.addColorStop(0.56, T.skyC); gd.addColorStop(0.80, T.skyD); gd.addColorStop(1, T.skyE);
     g.fillStyle=gd; g.fillRect(0,top,VW,GROUND+40-top);
-    if(T.indoor) return;                    // no sky in here
     // sun, sinking behind the skyline
     // A low sinking sun suits the city. On the farm the same disc reads as a
     // moon hanging in a bright blue midday sky, so the theme scales it down.
@@ -3481,8 +3210,6 @@ function drawSky(T){
     g.globalAlpha=0.5; g.beginPath(); g.arc(sx,sy,R*1.25,0,TAU);
     g.strokeStyle='rgba(255,233,168,.5)'; g.lineWidth=3; g.stroke(); g.globalAlpha=1;
   }), 0, 0, VW, skyH);
-
-  if(T.indoor) return;
 
   // clouds
   const t=game.t;
@@ -3572,59 +3299,12 @@ function loadPanels(SET){
   });
   return SET;
 }
-const WALL = loadPanels({ srcs:['sheets/v2/wall_a.png','sheets/v2/wall_b.png','sheets/v2/wall_c.png'],
-               imgs:[], ready:0, blend:110, floorFrac:0.72 });
-/* The farm the reference art is set in: painted panels rather than the coloured
-   rectangles the code parallax draws. `floorFrac` is where the painted ground
-   line sits in each image, measured off the art, so it can be landed exactly on
-   GROUND instead of guessed. */
 const FARM = loadPanels({ srcs:['sheets/v2/farm_a.webp','sheets/v2/farm_b.webp','sheets/v2/farm_c.webp'],
                imgs:[], ready:0, blend:120, floorFrac:0.806, haze:'rgba(146,196,246,.20)',
                // buildLayers has already run by the time the art lands, so the
                // fallback layers are still in `layers`. Throw them away.
                onReady(){ if(SCALE && THEME.id==='farm') buildLayers(); } });
 const FARMF = 0.40;                       // the farm's own parallax
-
-/* the concrete walkway, its hazard stripe, and the dark service level below */
-function drawBlockGround(){
-  const y = GROUND;
-  ctx.fillStyle = '#0A1216'; ctx.fillRect(0, y, VW, VH-y+340);   // the dark below
-  ctx.fillStyle = '#4A4A44'; ctx.fillRect(0, y-6, VW, 34);        // the slab
-  ctx.fillStyle = '#3A3A35'; ctx.fillRect(0, y+28, VW, 12);
-  const slab = 190, off = ((cam.x % slab) + slab) % slab;         // seams
-  ctx.strokeStyle = 'rgba(20,26,28,.5)'; ctx.lineWidth = 3;
-  for(let i=-1;i<VW/slab+2;i++){
-    const x = i*slab - off;
-    ctx.beginPath(); ctx.moveTo(x, y-6); ctx.lineTo(x, y+28); ctx.stroke();
-  }
-  // hazard stripe along the leading edge
-  const sw = 34, so = ((cam.x % (sw*2)) + sw*2) % (sw*2);
-  ctx.fillStyle = '#161616'; ctx.fillRect(0, y+40, VW, 22);
-  ctx.fillStyle = '#F2C230';
-  for(let x=-so; x<VW+sw*2; x+=sw*2){
-    ctx.beginPath();
-    ctx.moveTo(x, y+62); ctx.lineTo(x+sw*0.62, y+40);
-    ctx.lineTo(x+sw*1.24, y+40); ctx.lineTo(x+sw*0.62, y+62);
-    ctx.closePath(); ctx.fill();
-  }
-  ctx.fillStyle = 'rgba(255,255,255,.07)'; ctx.fillRect(0, y-6, VW, 4);
-  // service level: a ladder and a couple of covers, well below the action
-  const lsp = 900, lf = Math.floor((cam.x-200)/lsp);
-  for(let i=lf; i<lf+Math.ceil(VW/lsp)+2; i++){
-    const x = i*lsp - cam.x + 200;
-    ctx.strokeStyle = '#1B272C'; ctx.lineWidth = 6;
-    ctx.beginPath(); ctx.moveTo(x, y+78); ctx.lineTo(x, y+300);
-    ctx.moveTo(x+34, y+78); ctx.lineTo(x+34, y+300); ctx.stroke();
-    ctx.lineWidth = 5;
-    for(let r=y+100; r<y+300; r+=32){
-      ctx.beginPath(); ctx.moveTo(x, r); ctx.lineTo(x+34, r); ctx.stroke();
-    }
-    const mx = x + 470;
-    ctx.fillStyle = '#141D21';
-    ctx.beginPath(); ctx.ellipse(mx, y+150, 44, 13, 0, 0, TAU); ctx.fill();
-    ctx.strokeStyle = '#1B272C'; ctx.lineWidth = 4; ctx.stroke();
-  }
-}
 
 /* The title poster. The menu is this same file as a CSS background, and the
    canvas picks it up on the frame the menu hides -- `cover` here is the same
@@ -3645,69 +3325,6 @@ function titleRect(){
   return { w: iw*s, h: ih*s, x: (VW - iw*s)/2, y: (VH - ih*s)/2 };
 }
 
-/* the wall he is running along, and everything bolted to it */
-const WALLF = 0.46;                       // the wall's own parallax
-function drawBlockProps(){
-  const off = cam.x * WALLF;
-
-  if(WALL.ready){
-    // scaled so the painted floor line lands on the walkway, and tall enough
-    // that the ceiling is off the top of the frame
-    // Sized so the painted wall covers the lower part of the column and the
-    // rest stays dark ceiling, the way the reference frames it. Filling the
-    // whole play band would mean magnifying a 431px source about four times.
-    const first = WALL.imgs.find(Boolean);
-    const band = GROUND - CEIL;
-    const H = (band * 0.62) / WALL.floorFrac;
-    const W = H * (first.width / first.height);
-    const step = W - WALL.blend;
-    const top = GROUND - WALL.floorFrac * H;
-    let idx = Math.floor(off / step);
-    let x = idx*step - off;
-    ctx.fillStyle = '#0A171C';                       // behind, in case of a gap
-    ctx.fillRect(0, 0, VW, GROUND);
-    for(; x < VW + step; x += step, idx++){
-      const im = WALL.imgs[((idx % WALL.imgs.length) + WALL.imgs.length) % WALL.imgs.length];
-      if(im) ctx.drawImage(im, x, top, W, H);
-    }
-    // blend the top of the art into the dark above it rather than cutting it
-    const fh = band*0.42;
-    ctx.drawImage(surface('wallfade|'+Math.round(fh), VW, fh + 8, false, (g) => {
-      const fade = g.createLinearGradient(0, 0, 0, fh + 8);
-      fade.addColorStop(0,    '#0A171C');
-      fade.addColorStop(0.35, 'rgba(10,23,28,.72)');
-      fade.addColorStop(1,    'rgba(10,23,28,0)');
-      g.fillStyle = fade; g.fillRect(0, 0, VW, fh + 8);
-    }), 0, top - 8, VW, fh + 8);
-    // the lamps in the art are static, so the room gets its flicker here
-    const f = 0.04 + 0.018*Math.sin(game.t*17) + 0.014*Math.sin(game.t*3.1);
-    ctx.fillStyle = 'rgba(255,214,140,'+f.toFixed(3)+')';
-    ctx.fillRect(0, top, VW, GROUND-top);
-  } else {
-    ctx.fillStyle = '#12262E'; ctx.fillRect(0, 0, VW, GROUND);
-  }
-
-  // ---- things standing on the floor, at the player's own speed ----------
-  const fsp = 760, ff = Math.floor((cam.x-300)/fsp);
-  for(let i=ff; i<ff+Math.ceil(VW/fsp)+3; i++){
-    const sx = i*fsp - cam.x + 420;
-    if(sx < -260 || sx > VW+260) continue;
-    if(hash(i*5.1) > 0.62) continue;
-    ctx.save(); ctx.translate(sx, GROUND);
-    const crate = (x, y, w2, h2) => {
-      ctx.fillStyle='#6B4A2A';
-      ctx.beginPath(); ctx.roundRect(x, y-h2, w2, h2, 4); ctx.fill();
-      ctx.strokeStyle='#3C2915'; ctx.lineWidth=4; ctx.stroke();
-      ctx.strokeStyle='#8A6234'; ctx.lineWidth=5;
-      ctx.beginPath(); ctx.moveTo(x+5, y-h2+7); ctx.lineTo(x+w2-5, y-7); ctx.stroke();
-    };
-    crate(-64, 0, 72, 66); crate(6, 0, 62, 54);
-    ctx.fillStyle='#12191C';                                  // bin bag
-    ctx.beginPath(); ctx.ellipse(-96, -22, 26, 24, 0, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(-104,-40); ctx.lineTo(-96,-56); ctx.lineTo(-88,-40); ctx.closePath(); ctx.fill();
-    ctx.restore();
-  }
-}
 /* The painted farm. Sized so the fence rail lands at about two thirds of the
    bird's height -- sizing it against the play band instead magnifies a 572px
    source about fourfold and puts the silo tops off the frame, which is the same
@@ -3727,6 +3344,7 @@ function drawFarmPainted(){
     if(im) ctx.drawImage(im, x, top, W, H);
   }
 }
+/* The code-drawn fallback, for the moment before the panels load. */
 function drawFarmProps(){
   if(FARM.ready) return drawFarmPainted();
   const spacing=470, first=Math.floor((cam.x-200)/spacing);
@@ -3807,9 +3425,9 @@ function drawNPC(set, i, sx, gy, scale, flip){
   ctx.restore();
   return true;
 }
-function drawSpectators(T){
+/* Cricket guards in suits, watching him go past. */
+function drawSpectators(){
   const spacing = 545, first = Math.floor((cam.x-300)/spacing);
-  const inside = !!T.indoor;
   for(let i=first; i<first+Math.ceil(VW/spacing)+3; i++){
     if(hash(i*9.3) > 0.80) continue;                    // not at every stop
     const gx = i*spacing + 300;
@@ -3819,7 +3437,7 @@ function drawSpectators(T){
     const near = Math.abs(gx - player.x) < 520 && game.mode === 'play';
     const holding = false;                          // no cages along the route
     for(let k=0;k<n;k++){
-      const ox = (k-(n-1)/2) * (inside ? 78 : 62) + hash(i*7.7+k)*10;
+      const ox = (k-(n-1)/2) * 62 + hash(i*7.7+k)*10;
       const ph = hash(i*2.3+k*1.7)*TAU;
       const bob = near ? -Math.abs(Math.sin(game.t*9 + ph))*13
                        :  Math.sin(game.t*1.8 + ph)*2.2;
@@ -3830,7 +3448,7 @@ function drawSpectators(T){
         ? 1 + (Math.floor(game.t*11 + i*2.7 + k) % (n6-1))
         : 0;
       const lift = near ? bob*0.35 : Math.sin(game.t*1.6 + ph)*1.6;
-      if(drawNPC('cricket', pose, sx+ox, GROUND-8+lift, inside?1:0.9, inside)) continue;
+      if(drawNPC('cricket', pose, sx+ox, GROUND-8+lift, 0.9, false)) continue;
       ctx.save();
       ctx.translate(sx + ox, GROUND - 10);
       ctx.scale(0.82, 0.82);
@@ -3839,66 +3457,13 @@ function drawSpectators(T){
     }
   }
 }
-let _propTheme = null;
-function drawStreetProps(T){
-  _propTheme = T || THEME;
-  // The cell block paints a full-height wall, so anyone standing in the room
-  // has to be drawn after it or the wall covers them.
-  if(_propTheme.id==='block'){ drawBlockProps(); drawSpectators(_propTheme); return; }
-  drawSpectators(_propTheme);
-  if(_propTheme.id==='farm') return drawFarmProps();
-  // lamps + trees + hydrants drawn live so they can be lit/animated
-  const spacing = 460;
-  const first = Math.floor((cam.x-200)/spacing);
-  for(let i=first;i<first+Math.ceil(VW/spacing)+3;i++){
-    const x = i*spacing - cam.x + 120;
-    const kind = hash(i*3.7);
-    ctx.save(); ctx.translate(x, GROUND);
-    if(kind<0.42){
-      // street lamp
-      ctx.strokeStyle=C.prop; ctx.lineWidth=9; ctx.lineCap='round';
-      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-206);
-      ctx.quadraticCurveTo(0,-236,34,-236); ctx.stroke();
-      ctx.beginPath(); ctx.ellipse(38,-230,14,10,0,0,TAU); ctx.fillStyle=C.prop; ctx.fill();
-      const gg=ctx.createRadialGradient(38,-226,2,38,-226,86);
-      gg.addColorStop(0,'rgba(255,213,74,.55)'); gg.addColorStop(1,'rgba(255,213,74,0)');
-      ctx.fillStyle=gg; ctx.beginPath(); ctx.arc(38,-226,86,0,TAU); ctx.fill();
-      ctx.beginPath(); ctx.roundRect(-11,-14,22,14,4); ctx.fillStyle=C.prop; ctx.fill();
-    } else if(kind<0.74){
-      // tree, gently swaying
-      const s = Math.sin(game.t*1.2 + i)*0.035;
-      ctx.strokeStyle=C.prop; ctx.lineWidth=15; ctx.lineCap='round';
-      ctx.beginPath(); ctx.moveTo(0,0); ctx.quadraticCurveTo(s*40,-90,s*70,-150); ctx.stroke();
-      ctx.save(); ctx.translate(s*70,-150); ctx.rotate(s);
-      ctx.fillStyle=C.prop;
-      ctx.beginPath(); ctx.ellipse(0,-30,74,58,0,0,TAU); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(-46,-4,42,34,0,0,TAU); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(48,-8,40,32,0,0,TAU); ctx.fill();
-      ctx.fillStyle='rgba(255,180,71,.30)';
-      ctx.beginPath(); ctx.ellipse(26,-52,40,26,-0.4,0,TAU); ctx.fill();
-      ctx.restore();
-    } else if(kind<0.88){
-      // hydrant
-      ctx.fillStyle=C.prop;
-      ctx.beginPath(); ctx.roundRect(-15,-52,30,52,8); ctx.fill();
-      ctx.beginPath(); ctx.roundRect(-23,-40,46,12,5); ctx.fill();
-      ctx.beginPath(); ctx.arc(0,-56,11,0,TAU); ctx.fill();
-      ctx.fillStyle='rgba(255,180,71,.35)'; ctx.beginPath(); ctx.roundRect(7,-50,6,44,3); ctx.fill();
-    } else {
-      // bench
-      ctx.fillStyle=C.prop;
-      ctx.beginPath(); ctx.roundRect(-62,-40,124,12,5); ctx.fill();
-      ctx.beginPath(); ctx.roundRect(-62,-72,124,10,5); ctx.fill();
-      ctx.beginPath(); ctx.roundRect(-56,-30,10,30,4); ctx.fill();
-      ctx.beginPath(); ctx.roundRect(46,-30,10,30,4); ctx.fill();
-    }
-    ctx.restore();
-  }
+function drawProps(){
+  drawSpectators();
+  drawFarmProps();
 }
 function drawGround(){
   const y = GROUND;
-  if(THEME.indoor) return drawBlockGround();
-  if(THEME.id==='farm'){
+  {
     /* The dirt track. Its colour is sampled off the painted panels so the seam
        between the art and the code disappears -- a curb and a hazard stripe are
        a street, and this is a farm road he was just kicked out onto. */
@@ -3922,31 +3487,9 @@ function drawGround(){
       ctx.fillStyle='rgba(150,104,44,.55)';
       ctx.beginPath(); ctx.ellipse(sx2,yy,r*1.5,r,0,0,TAU); ctx.fill();
     }
-    return;
-  }
-  ctx.fillStyle=C.road; ctx.fillRect(0,y,VW,VH-y+340);
-  // sunlit curb rim
-  ctx.fillStyle=C.rim; ctx.fillRect(0,y-4,VW,5);
-  ctx.fillStyle='rgba(255,180,71,.25)'; ctx.fillRect(0,y+1,VW,10);
-  ctx.fillStyle=C.curb; ctx.fillRect(0,y+11,VW,16);
-  // paving seams
-  const slab=170, off=((cam.x%slab)+slab)%slab;
-  ctx.strokeStyle=C.roadLine; ctx.lineWidth=3;
-  for(let i=-1;i<VW/slab+2;i++){
-    const x=i*slab-off;
-    ctx.beginPath(); ctx.moveTo(x,y+27); ctx.lineTo(x-70,VH+340); ctx.stroke();
-  }
-  ctx.beginPath(); ctx.moveTo(0,y+90); ctx.lineTo(VW,y+90); ctx.stroke();
-  // manholes / drains
-  const sp=760, f=Math.floor((cam.x-200)/sp);
-  for(let i=f;i<f+Math.ceil(VW/sp)+2;i++){
-    const x=i*sp-cam.x+300;
-    ctx.beginPath(); ctx.ellipse(x, y+62, 44, 13, 0,0,TAU);
-    ctx.fillStyle=C.roadLine; ctx.fill();
-    ctx.strokeStyle=C.road; ctx.lineWidth=2.5;
-    for(let k=-2;k<=2;k++){ ctx.beginPath(); ctx.moveTo(x-30,y+62+k*4.5); ctx.lineTo(x+30,y+62+k*4.5); ctx.stroke(); }
   }
 }
+
 function drawObstacles(){
   for(const o of game.obstacles){
     const sx = o.x - cam.x;
@@ -4106,7 +3649,7 @@ function render(){
      and a zoom punch shrinks the world by a fraction, and both expose canvas
      outside the drawn band -- against the ink that reads as a black letterbox
      round a bright farm. Indoors the ink is still right. */
-  ctx.fillStyle = THEME.indoor ? C.ink2 : C.skyA; ctx.fillRect(0,0,CW,CH);
+  ctx.fillStyle = C.skyA; ctx.fillRect(0,0,CW,CH);
   ctx.save();
   ctx.scale(SCALE,SCALE);
 
@@ -4118,14 +3661,7 @@ function render(){
   ctx.translate(zx, zy); ctx.scale(Z, Z); ctx.translate(-zx, -zy);
   ctx.translate(cam.shakeX, cam.shakeY + game.camY);
 
-  if(game.swapK !== undefined && game.swapK < 1){
-    drawSky(THEME_FROM); drawLayers(layersFrom); drawStreetProps(THEME_FROM);
-    ctx.globalAlpha = game.swapK;
-    drawSky(THEME);      drawLayers(layers);     drawStreetProps(THEME);
-    ctx.globalAlpha = 1;
-  } else {
-    drawSky(THEME); drawLayers(layers); drawStreetProps(THEME);
-  }
+  drawSky(); drawLayers(layers); drawProps();
   drawGround();
   drawObstacles();
   drawEggs();
@@ -4331,8 +3867,6 @@ function boot(){
   const sz=/[?&]sz=([0-9.]+)/.exec(location.search); if(sz) game.soloZoom=parseFloat(sz[1]);
   const pm=/[?&]pose=([a-z]+)(?::([0-9.]+))?/.exec(location.search);
   if(pm){ game.demoPose=pm[1]; game.demoPoseK = pm[2]!==undefined?parseFloat(pm[2]):1; }
-  const th=/[?&]theme=([a-z]+)/.exec(location.search);
-  if(th) game.forceTheme = THEMES.find(t=>t.id===th[1]) || THEMES[0];
   if(/[?&]hold=0/.test(location.search)) game.holdOff = true;
   const wm=/[?&]wear=([^&]+)/.exec(location.search);
   if(wm) decodeURIComponent(wm[1]).split(',').forEach(pair=>{
