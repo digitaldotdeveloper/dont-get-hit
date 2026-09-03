@@ -75,15 +75,19 @@
 <div class="wrap">
   <header>
     <h1>TRACK TEST</h1>
-    <div class="sub">THREE CANDIDATES &nbsp;·&nbsp; PICK ONE</div>
+    <div class="sub">THE GAME PLAYS 1 THEN 2 &nbsp;·&nbsp; 5 MINUTES 25 BEFORE IT REPEATS</div>
   </header>
 
   <div id="list"></div>
 
-  <p class="note">All three loop by default, so you can hear whether the join is
-    clean — that matters more than the first ten seconds, because in the game it
-    repeats for the whole run. <b>A/B</b> keeps your position when you switch, so you
-    can jump between them at the same point in the bar.</p>
+  <p class="note">The 30-second limit was the <b>model</b>, not the prompt. Gemini Studio
+    never selected one for music, so every track was generated on whichever model
+    happened to be selected last — Flash-Lite — and came back at 30.8s however long a
+    piece it was asked for. The long-form music model sits behind <b>3.1&nbsp;Pro</b>.
+    Same prompt, Flash: 30.8s. Pro: <b>2 minutes 27</b>. Studio now selects Pro for
+    every music job.<br><br>
+    <b>A/B</b> keeps your position when you switch, so you can compare the same bar.
+    Loop is on by default so you can hear whether the join is clean.</p>
 
   <a class="back" href="index.html">BACK TO THE GAME</a>
 </div>
@@ -92,19 +96,27 @@
   <button class="btn on" id="loop">LOOP: ON</button>
   <button class="btn on" id="ab">A/B: KEEP POSITION</button>
   <button class="btn" id="stop">STOP</button>
-  <div class="hint">KEYS &nbsp; 1 2 3 SWITCH &nbsp;·&nbsp; SPACE PLAY/PAUSE</div>
+  <div class="hint">KEYS &nbsp; 1&ndash;7 SWITCH &nbsp;·&nbsp; SPACE PLAY/PAUSE</div>
 </div></div>
 
 <script>
 (() => {
 'use strict';
 const TRACKS = [
-  { file:'audio/music_digital.mp3', name:'DIGITAL FUNK', def:true,
-    desc:'Programmed electronic kit, fat analogue synth bass, Rhodes chords with an acoustic piano lead. Nu-disco polish.' },
+  { file:'audio/music_spy_long.mp3', name:'SPY HEIST — LONG', def:true,
+    desc:'2:27. The theme you picked, regenerated on the Pro model with a piano solo through the middle. Surf guitar, brass stabs, walking bass, driving swing kit.' },
+  { file:'audio/music_spy_long_b.mp3', name:'SPY HEIST — LONG II', part:true,
+    desc:'2:58. A second take on the same theme, same band and tempo, new melodies. Plays straight after the first.' },
+  { file:'audio/music_swing_long.mp3', name:'ELECTRO SWING — LONG',
+    desc:'2:59. Big band horns over a hard modern beat, swung sixteenths, with the piano leading and soloing.' },
+  { file:'audio/music_spy.mp3', name:'SPY HEIST — SHORT',
+    desc:'0:30. The original you picked, before the long-form model was reachable. Kept for comparison.' },
+  { file:'audio/music_digital.mp3', name:'DIGITAL FUNK',
+    desc:'0:30. Programmed kit, analogue synth bass, Rhodes chords with an acoustic piano lead.' },
   { file:'audio/music_funkpiano.mp3', name:'FUNK PIANO',
-    desc:'Funk groove rather than swing — slap bass and a hard backbeat, with a Rhodes and piano melody doubled by muted trumpet and sax.' },
-  { file:'audio/music_piano.mp3', name:'PIANO SWING',
-    desc:'Fast piano-led swing, boogie-woogie left hand, walking upright bass, brushed kit and brass stabs.' }
+    desc:'0:30. Funk groove rather than swing, Rhodes and piano melody doubled by muted trumpet and sax.' },
+  { file:'audio/music_swing.mp3', name:'ELECTRO SWING — SHORT',
+    desc:'0:30. The short version of the swing one.' }
 ];
 
 const list = document.getElementById('list');
@@ -122,7 +134,7 @@ TRACKS.forEach((t, i) => {
       '<button class="play" aria-label="Play ' + t.name + '">' + ICON_PLAY + '</button>' +
       '<div class="meta"><div class="name">' + (i+1) + '. ' + t.name + '</div>' +
       '<div class="desc">' + t.desc + '</div>' +
-      (t.def ? '<span class="tag def">CURRENTLY IN THE GAME</span>' : '<span class="tag">CANDIDATE</span>') +
+      (t.def ? '<span class="tag def">IN THE GAME · PLAYS FIRST</span>' : t.part ? '<span class="tag def">IN THE GAME · PLAYS NEXT</span>' : '<span class="tag">ALTERNATIVE</span>') +
       '</div></div>' +
     '<div class="wave"><canvas></canvas><div class="head"></div></div>' +
     '<div class="times"><span class="cur">0:00</span><span class="dur">--:--</span></div>';

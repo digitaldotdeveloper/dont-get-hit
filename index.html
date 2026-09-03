@@ -558,20 +558,49 @@ function musicTick(){
     A.nextNote += spb; A.step++;
   }
 }
-let TRACK = null, trackWanted = 0;
+let TRACK = null, trackWanted = 0, TRACKS = [], trackIdx = 0;
+/* Two long-form tracks, ~2.5 minutes each, so the soundtrack runs about five
+   minutes before anything repeats. These come from the Pro model: everything
+   generated on Flash comes back at 30.8s no matter what the prompt asks for. */
+const MOVEMENTS = ['spy_long', 'spy_long_b'];
 function initTrack(){
-  if(TRACK) return;
+  if(TRACKS.length) return;
   const alt = /[?&]track=(\w+)/.exec(location.search);
-  TRACK = new Audio('audio/music_' + (alt ? alt[1] : 'spy') + '.mp3');
-  TRACK.loop = true; TRACK.volume = 0; TRACK.preload = 'auto';
-  TRACK.addEventListener('canplaythrough', ()=>{ TRACK.ready = true; }, {once:true});
-  TRACK.addEventListener('error', ()=>{ TRACK = null; });   // fall back to the synth
+  const names = alt ? [alt[1]] : MOVEMENTS;
+  names.forEach((n, i) => {
+    const a = new Audio('audio/music_' + n + '.mp3');
+    a.preload = i === 0 ? 'auto' : 'none';       // only the first one up front
+    a.loop = names.length === 1;                 // one movement? then it repeats
+    a.volume = 0;
+    a.addEventListener('ended', nextTrack);
+    a.addEventListener('error', () => { a.dead = true; });
+    TRACKS.push(a);
+  });
+  TRACK = TRACKS[0];
+}
+function nextTrack(){
+  if(!TRACKS.length) return;
+  const vol = TRACK ? TRACK.volume : 0;
+  if(TRACK){ TRACK.pause(); try{ TRACK.currentTime = 0; }catch(e){} }
+  for(let n = 1; n <= TRACKS.length; n++){       // skip any that failed to load
+    const i = (trackIdx + n) % TRACKS.length;
+    if(!TRACKS[i].dead){ trackIdx = i; break; }
+    if(n === TRACKS.length){ TRACK = null; return; }   // none of them work
+  }
+  TRACK = TRACKS[trackIdx];
+  TRACK.volume = vol;
+  const pr = TRACK.play(); if(pr && pr.catch) pr.catch(()=>{});
+  const nx = TRACKS[(trackIdx + 1) % TRACKS.length];   // buffer the next one now
+  if(nx && nx !== TRACK && nx.preload === 'none'){ nx.preload = 'auto'; nx.load(); }
 }
 function trackVol(v){
   trackWanted = v;
   if(!TRACK) return false;
+  if(TRACK.dead){ nextTrack(); if(!TRACK) return false; }
   if(v > 0){
     if(TRACK.paused){ const pr = TRACK.play(); if(pr && pr.catch) pr.catch(()=>{}); }
+    const nx = TRACKS[(trackIdx + 1) % TRACKS.length];
+    if(nx && nx !== TRACK && nx.preload === 'none'){ nx.preload = 'auto'; nx.load(); }
   }
   return true;
 }
@@ -2370,7 +2399,7 @@ const pressJump = thrustOn, releaseJump = thrustOff;   // old names, one system
    pressJump/releaseJump are idempotent, so overlapping families are harmless.
    Every raw down is counted before any filtering, so the readout can tell
    "no event arrived" apart from "event arrived and was filtered". */
-const BUILD = 'b0903-1143';   // shown in ?dbg=1 so a cached build is obvious
+const BUILD = 'b0903-1311';   // shown in ?dbg=1 so a cached build is obvious
 const TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints||0) > 0;
 /* Only the mute button may swallow a press. Filtering on any <button> was the
    bug: on device every tap reported lastEv=start with taps=0, because the target
