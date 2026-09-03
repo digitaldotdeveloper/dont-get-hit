@@ -137,14 +137,56 @@ def cut_props():
         print("  %-18s %d pieces -> %s" % (f, len(ps), ", ".join(names)))
 
 
+# Where each panel's painted ground line and top fence rail sit, as fractions of
+# its own image height. Measured, not guessed -- see the handover doc.
+MARKS = {"farm_a": (0.7850, 0.6084), "farm_b": (0.8024, 0.6102), "farm_c": (0.8199, 0.6119)}
+TONE_CLAMP = (0.86, 1.16)
+
+
 def cut_panels():
-    for name, src in (("farm_a", "farm_a_src.png"), ("farm_b", "farm_b_src.png"),
-                      ("farm_c", "farm_c_src.png")):
-        rgba = key_sky(Image.open(os.path.join(SH, src)))
+    """Key the sky out of each panel and MATCH THE THREE TO EACH OTHER.
+
+    They came back from three separate generations at three different
+    exposures -- panel C's grass was 21% brighter in green than panel A's -- so
+    wherever one panel ended and the next began there was a visible tonal step
+    running the full height of the screen. A 46px crossfade cannot hide a
+    whole-panel tone difference; it only smears the step.
+
+    The match is made on the GRASS BAND, because the grass is what actually
+    meets at a seam and runs the full width of every panel, and applied to the
+    whole panel as a per-channel gain. The gains are clamped: blue is a small
+    number in grass, so its ratio is noisy, and unclamped it swings the hills
+    and the buildings around.
+
+    The cage scene is deliberately NOT matched this way. Its right third is
+    open farm, but the rest of it is a big red barn, and a gain that fixes the
+    grass turns the barn olive. A foreground building is allowed its own tone.
+    """
+    srcs, keys, means = {}, {}, {}
+    for name in MARKS:
+        im = Image.open(os.path.join(SH, name + "_src.png")).convert("RGB")
+        a = np.asarray(im).astype(float)
+        rgba = key_sky(im)
+        al = rgba[..., 3] > 200
+        H = a.shape[0]
+        gf = MARKS[name][0]
+        lo, hi = int(H*(gf-0.16)), int(H*(gf-0.01))
+        band, bal = a[lo:hi], al[lo:hi]
+        srcs[name], keys[name] = a, al
+        means[name] = np.array([band[..., c][bal].mean() for c in range(3)])
+    target = np.mean([means[n] for n in MARKS], axis=0)
+    print("  grass target %s" % np.round(target, 1))
+    for name in MARKS:
+        g = np.clip(target / means[name], *TONE_CLAMP)
+        out = np.clip(srcs[name] * g, 0, 255).astype(np.uint8)
+        rgba = np.dstack([out, np.where(keys[name], 255, 0).astype(np.uint8)])
         Image.fromarray(rgba, "RGBA").save(os.path.join(SH, name + ".webp"),
                                            "WEBP", quality=86, method=6)
-        print("  %-10s -> %s.webp" % (src, name))
-    rgba = key_sky(Image.open(os.path.join(SH, "cage_src.png")))
+        print("  %-7s grass %s  gain %s" % (name, np.round(means[name], 1), np.round(g, 3)))
+    # the barn keeps the alpha the apex build gave it as well as the sky key
+    src = Image.open(os.path.join(SH, "barn_apex.png"))
+    rgba = key_sky(src.convert("RGB"))
+    rgba[..., 3] = np.minimum(rgba[..., 3], np.asarray(src)[..., 3])
     Image.fromarray(rgba, "RGBA").save(os.path.join(SH, "cage_scene.webp"),
                                        "WEBP", quality=90, method=6)
     d = despill(key_green(Image.open(os.path.join(SH, "cage_door_src.png"))))

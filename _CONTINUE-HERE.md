@@ -622,6 +622,17 @@ Three things that cost a round each and are the reason it reads:
   translucent blobs the code used to draw sat next to cel-shaded painted clouds
   looking like smudges on the lens. Every one is optional and falls back to the
   old blob.
+- **The three panels are TONE-MATCHED to each other** (`cut_panels`). They came
+  back from three separate generations at three different exposures -- panel C's
+  grass was 21% brighter in green than panel A's -- so wherever one ended and the
+  next began there was a tonal step running the full height of the screen, which
+  is what "the fences look faded" actually was. A 46px crossfade cannot hide a
+  whole-panel tone difference; it only smears the step. The match is made on the
+  GRASS BAND, because the grass is what meets at a seam and runs the full width
+  of every panel, and applied to the whole panel as a clamped per-channel gain.
+  **The cage scene is deliberately NOT matched this way**: its right third is
+  open farm, but the rest is a big red barn, and the gain that fixes the grass
+  turns the barn olive. A foreground building is allowed its own tone.
 - **`haze` washes the distance out** (`source-atop`, so it tints the art and
   never the keyed-out sky). The hazards are painted in the same style at the
   same saturation as the map, so without it a hay bale in front of a hay field
