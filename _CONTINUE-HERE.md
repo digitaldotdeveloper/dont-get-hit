@@ -577,11 +577,58 @@ dropped frame every 26s, for tens of MB of canvas held on a phone.
     python tools/probe.py URL [wait]        # run a ?test flag, print the panel
     python tools/clip.py URL out.gif [s]    # real-time GIF over screencast
     python tools/shot.py URL out.png        # one screenshot, real device metrics
+    python tools/title_art.py               # rebuild the title poster from ref/
 
 `clip.py` uses `Page.startScreencast`, which timestamps frames, so the GIF keeps
 the game's real timing. Screenshot-per-frame does not -- each capture stalls the
 page and the clip plays back at the wrong speed, which is useless when the thing
 being judged is how fast it feels.
+
+## The title screen
+
+`art/title.webp` is the menu, as a CSS background on `#menu`. The DOM logo and
+tagline are hidden there -- the picture carries both -- and a scrim over the
+bottom 46% keeps the chips and the PLAY button legible.
+
+It is built from `ref/keyart.png` by `tools/title_art.py`, and the two numbers
+in that script are the whole story:
+
+- **The crop is arithmetic, not taste.** A phone is about 0.47 wide for its
+  height and the poster is 0.5625, so `background-size:cover` throws away ~17%
+  of the width: only 0.085..0.915 of the picture is ever on screen. The logo
+  and the chicken both have to live inside that, which pins the crop to
+  0.171..0.781 of the source. The first attempt used 0.19..0.75, which put the
+  T of HIT at 0.935 and a phone sliced it in half. **Re-check this if the crop
+  is ever touched.**
+- **The picture is extended, not stretched.** The poster is 16:9 and the screen
+  is 9:16, so flat graded sky is added above and dirt below. The fill is one
+  colour per row; stretching the edge pixels instead drags whatever touches the
+  edge -- the barn's roof line, the tip of a siren ray -- into a full-height
+  streak, which is what the first build looked like. Only the last ~34px before
+  the seam cross-fade to the real edge colours, so anything cut off dissolves.
+
+Nothing inside the poster is redrawn or regenerated. Every original pixel is
+still there, in place.
+
+**Pressing PLAY blows the poster off the screen.** The canvas picks the same
+file up (`TITLE`, `titleRect()`) on the frame the DOM menu hides -- `cover`
+there is the same arithmetic as `background-size:cover` in CSS, so the handover
+is invisible -- and `drawTitle` then grows and fades it over a third of a
+second, uncovering the cell before he swings off the bunk at `T_UP`. If the
+image has not loaded yet, `startIntro` leaves `titleT` positive and the old
+drawn wordmark stands in.
+
+Two bugs fixed on the way in, both worth knowing about:
+
+- **The PLAY button skipped the escape.** It called `startRun()` directly, so
+  the one control a player is most likely to press was the one that threw away
+  the opening; only tapping elsewhere ran the intro. Both buttons now go
+  through `startIntro()`, guarded by a mode check because a real press has
+  already started it via `pointerdown` by the time the click lands.
+- **The title blast never animated.** It walked `titleT` toward zero and then
+  clamped it with `Math.min(-0.001, ...)`, so it stuck on the first frame; the
+  kick set `-1` and the title simply vanished between two frames. It now walks
+  the other way, `-0.001` to `-1`.
 
 ## Next
 

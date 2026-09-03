@@ -15,7 +15,7 @@ from PIL import Image
 CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 
 
-def record(url, secs=6.0, w=420, h=900, dpr=1, scale=1.0, settle=3.0):
+def record(url, secs=6.0, w=420, h=900, dpr=1, scale=1.0, settle=3.0, js=None, js_at=None):
     """-> [(t_seconds, PIL.Image), ...] in real time from the first frame."""
     s = socket.socket(); s.bind(('127.0.0.1', 0)); port = s.getsockname()[1]; s.close()
     prof = (os.environ.get('CLAUDE_JOB_DIR') or os.environ['TEMP']) + '/clip-%d' % port
@@ -45,11 +45,22 @@ def record(url, secs=6.0, w=420, h=900, dpr=1, scale=1.0, settle=3.0):
         cmd('Emulation.setDeviceMetricsOverride', width=w, height=h, deviceScaleFactor=dpr, mobile=True)
         cmd('Page.enable'); cmd('Page.navigate', url=url)
         time.sleep(settle)
+        if js and js_at is None:    # e.g. press PLAY, so the transition is captured
+            cmd('Runtime.evaluate', expression=js)
         cmd('Page.startScreencast', format='jpeg', quality=80,
             maxWidth=int(w*scale), maxHeight=int(h*scale), everyNthFrame=1)
         frames, t0, deadline = [], None, time.time() + secs
+        # A screencast takes a moment to produce its first frame, so anything
+        # that has to be *seen* starting -- a button press, say -- is fired from
+        # inside the loop once frames are actually arriving.
+        fired = js_at is None
         ws.settimeout(5)
         while time.time() < deadline:
+            if not fired and frames and frames[-1][0] >= js_at:
+                n[0] += 1
+                ws.send(json.dumps({'id': n[0], 'method': 'Runtime.evaluate',
+                                    'params': {'expression': js}}))
+                fired = True
             try: m = json.loads(ws.recv())
             except Exception: break
             if m.get('method') != 'Page.screencastFrame': continue
