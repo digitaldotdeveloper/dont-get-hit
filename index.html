@@ -47,6 +47,15 @@
          color:var(--cream);text-shadow:0 3px 0 rgba(36,16,67,.85),0 0 26px rgba(255,180,71,.35)}
   #score.pop{animation:pop .18s ease-out}
   @keyframes pop{0%{transform:scale(1)}45%{transform:scale(1.13)}100%{transform:scale(1)}}
+  #eggWrap{position:absolute;top:calc(env(safe-area-inset-top,0px) + 14px);left:14px;
+    display:flex;align-items:center;gap:7px;opacity:0;transition:opacity .3s}
+  #hud.on #eggWrap{opacity:1}
+  #eggIcon{width:17px;height:22px;border-radius:50% 50% 50% 50%/60% 60% 40% 40%;
+    background:linear-gradient(150deg,#FFE9A8,#FFD54A 45%,#E09A22);
+    box-shadow:0 0 0 2.5px #241043, 0 0 12px rgba(255,213,74,.45)}
+  #eggCount{font-family:'Bungee',cursive;font-size:19px;color:#FFD54A;
+    text-shadow:0 2px 0 #241043;font-variant-numeric:tabular-nums}
+  #eggCount.pop{animation:pop .2s ease-out}
   #bestLine{font-size:11px;font-weight:700;letter-spacing:.18em;color:rgba(255,242,222,.5);
             font-variant-numeric:tabular-nums;margin-top:2px}
 
@@ -175,6 +184,7 @@
       <div id="score">000000</div>
       <div id="bestLine">BEST 000000</div>
     </div>
+    <div id="eggWrap"><span id="eggIcon"></span><span id="eggCount">0</span></div>
     <div id="combo"><span id="comboTxt">x2</span></div>
     <button id="mute" aria-label="Toggle sound">
       <svg class="on" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4zm12.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 2.2v2.1a7.8 7.8 0 0 1 0 15.4v2.1a9.9 9.9 0 0 0 0-19.6z"/></svg>
@@ -481,6 +491,11 @@ const S = {
     tone(920, 0.075, 'square', 0.06, 920, null, 0.12);
   },
   whoosh(){ noise(0.17, 260, 1400, 0.045, 1.25); },
+  egg(streak){                              // climbs as you keep collecting
+    const k = Math.min(streak||1, 12);
+    tone(880*Math.pow(1.055,k), 0.075, 'triangle', 0.10, 1320*Math.pow(1.055,k));
+    tone(1760*Math.pow(1.055,k), 0.05, 'sine', 0.045, 2200);
+  },
   cagerattle(){ noise(0.06, 1800, 900, 0.05, 4.0); tone(300,0.05,'square',0.035,240); },
   bedcreak(){ wob(420, 180, 0.22, {type:'sawtooth', vol:0.055, depth:22, rate:9});
               noise(0.10, 900, 380, 0.035, 2.2); },
@@ -1002,7 +1017,7 @@ function cosmeticImage(id, slot, src, opt){
    swappable while frames are in use. If any image fails to load the
    procedural puppet draws instead - the character can never vanish.
    ============================================================ */
-const FRAME_DATA = {"run":[{"f":"run0.webp","w":206,"h":199,"ay":199},{"f":"run1.webp","w":138,"h":182,"ay":182},{"f":"run2.webp","w":136,"h":181,"ay":181},{"f":"run3.webp","w":187,"h":196,"ay":196},{"f":"run4.webp","w":140,"h":181,"ay":181},{"f":"run5.webp","w":179,"h":195,"ay":195}],"fly":[{"f":"fly0.webp","w":110,"h":161,"ay":162.3},{"f":"fly1.webp","w":112,"h":158,"ay":163.1},{"f":"fly2.webp","w":163,"h":210,"ay":191.6},{"f":"fly3.webp","w":147,"h":158,"ay":181.3},{"f":"fly4.webp","w":148,"h":186,"ay":187.3},{"f":"fly5.webp","w":130,"h":185,"ay":179.7}],"fall":[{"f":"fall0.webp","w":122,"h":187,"ay":184.0},{"f":"fall1.webp","w":145,"h":199,"ay":186.0},{"f":"fall2.webp","w":174,"h":210,"ay":179.8},{"f":"fall3.webp","w":143,"h":198,"ay":182.3}],"jump":[{"f":"jump0.webp","w":122,"h":148,"ay":171.0},{"f":"jump1.webp","w":140,"h":171,"ay":169.4},{"f":"jump2.webp","w":138,"h":221,"ay":193.2},{"f":"jump3.webp","w":183,"h":186,"ay":179.6},{"f":"jump4.webp","w":155,"h":186,"ay":180.3}],"land":[{"f":"land0.webp","w":145,"h":183,"ay":183},{"f":"land1.webp","w":157,"h":179,"ay":179},{"f":"land2.webp","w":122,"h":121,"ay":121},{"f":"land3.webp","w":165,"h":186,"ay":186}],"hit":[{"f":"hit0.webp","w":145,"h":164,"ay":172.9},{"f":"hit1.webp","w":163,"h":186,"ay":185.1},{"f":"hit2.webp","w":122,"h":154,"ay":173.6},{"f":"hit3.webp","w":106,"h":126,"ay":166.0},{"f":"hit4.webp","w":178,"h":81,"ay":140.5},{"f":"hit5.webp","w":128,"h":146,"ay":173.4}],"cage":[{"f":"cage0.webp","w":150,"h":146,"ay":146.0},{"f":"cage1.webp","w":129,"h":136,"ay":136.0},{"f":"cage2.webp","w":106,"h":139,"ay":140.2},{"f":"cage3.webp","w":183,"h":142,"ay":168.9}],"cell":[{"f":"cell0.webp","w":131,"h":202,"ay":202},{"f":"cell1.webp","w":133,"h":201,"ay":201},{"f":"cell2.webp","w":130,"h":198,"ay":198},{"f":"cell3.webp","w":145,"h":177,"ay":175.6},{"f":"cell4.webp","w":197,"h":193,"ay":193}],"cricket":[{"f":"cricket0.webp","w":44,"h":132,"ay":132},{"f":"cricket1.webp","w":48,"h":116,"ay":116},{"f":"cricket2.webp","w":58,"h":119,"ay":119},{"f":"cricket3.webp","w":62,"h":126,"ay":126}]};
+const FRAME_DATA = {"run":[{"f":"run0.webp","w":206,"h":199,"ay":199},{"f":"run1.webp","w":138,"h":182,"ay":182},{"f":"run2.webp","w":136,"h":181,"ay":181},{"f":"run3.webp","w":187,"h":196,"ay":196},{"f":"run4.webp","w":140,"h":181,"ay":181},{"f":"run5.webp","w":179,"h":195,"ay":195}],"fly":[{"f":"fly0.webp","w":110,"h":161,"ay":162.3},{"f":"fly1.webp","w":112,"h":158,"ay":163.1},{"f":"fly2.webp","w":163,"h":210,"ay":191.6},{"f":"fly3.webp","w":147,"h":158,"ay":181.3},{"f":"fly4.webp","w":148,"h":186,"ay":187.3},{"f":"fly5.webp","w":130,"h":185,"ay":179.7}],"fall":[{"f":"fall0.webp","w":122,"h":187,"ay":184.0},{"f":"fall1.webp","w":145,"h":199,"ay":186.0},{"f":"fall2.webp","w":174,"h":210,"ay":179.8},{"f":"fall3.webp","w":143,"h":198,"ay":182.3}],"jump":[{"f":"jump0.webp","w":122,"h":148,"ay":171.0},{"f":"jump1.webp","w":140,"h":171,"ay":169.4},{"f":"jump2.webp","w":138,"h":221,"ay":193.2},{"f":"jump3.webp","w":183,"h":186,"ay":179.6},{"f":"jump4.webp","w":155,"h":186,"ay":180.3}],"land":[{"f":"land0.webp","w":145,"h":183,"ay":183},{"f":"land1.webp","w":157,"h":179,"ay":179},{"f":"land2.webp","w":122,"h":121,"ay":121},{"f":"land3.webp","w":165,"h":186,"ay":186}],"hit":[{"f":"hit0.webp","w":145,"h":164,"ay":172.9},{"f":"hit1.webp","w":163,"h":186,"ay":185.1},{"f":"hit2.webp","w":122,"h":154,"ay":173.6},{"f":"hit3.webp","w":106,"h":126,"ay":166.0},{"f":"hit4.webp","w":178,"h":81,"ay":140.5},{"f":"hit5.webp","w":128,"h":146,"ay":173.4}],"cage":[{"f":"cage0.webp","w":150,"h":146,"ay":146.0},{"f":"cage1.webp","w":129,"h":136,"ay":136.0},{"f":"cage2.webp","w":106,"h":139,"ay":140.2},{"f":"cage3.webp","w":183,"h":142,"ay":168.9}],"cell":[{"f":"cell0.webp","w":131,"h":202,"ay":202},{"f":"cell1.webp","w":133,"h":201,"ay":201},{"f":"cell2.webp","w":130,"h":198,"ay":198},{"f":"cell3.webp","w":145,"h":177,"ay":175.6},{"f":"cell4.webp","w":197,"h":193,"ay":193}],"cricket":[{"f":"cricket0.webp","w":45,"h":136,"ay":136.0},{"f":"cricket1.webp","w":44,"h":143,"ay":143.0},{"f":"cricket2.webp","w":67,"h":127,"ay":127.0},{"f":"cricket3.webp","w":58,"h":129,"ay":129.0},{"f":"cricket4.webp","w":62,"h":121,"ay":121.0},{"f":"cricket5.webp","w":55,"h":107,"ay":107.0}],"egg":[{"f":"egg0.webp","w":47,"h":58,"ay":29.0},{"f":"egg1.webp","w":45,"h":58,"ay":29.0},{"f":"egg2.webp","w":43,"h":58,"ay":29.0},{"f":"egg3.webp","w":39,"h":58,"ay":29.0},{"f":"egg4.webp","w":22,"h":58,"ay":29.0},{"f":"egg5.webp","w":15,"h":55,"ay":27.5},{"f":"egg6.webp","w":39,"h":55,"ay":27.5},{"f":"egg7.webp","w":41,"h":55,"ay":27.5},{"f":"egg8.webp","w":42,"h":55,"ay":27.5},{"f":"egg9.webp","w":43,"h":55,"ay":27.5}]};
 const FR = { ready:false, n:0, need:0, img:{} };
 const SPR = 175/190;                       // world units per frame pixel
 (function loadFrames(){
@@ -2061,6 +2076,9 @@ function buildFarmLayers(TW){
 const game = {
   mode:'menu',            // menu | play | dying | dead
   t:0, runT:0, diff:0,
+  eggs:[], eggT:1.6, runEggs:0, eggStreak:0, eggStreakT:0,
+  eggBank: (()=>{ try{ return parseInt(localStorage.getItem('dgh_eggs')||'0',10)||0; }
+                  catch(e){ return 0; } })(),
   speed:620, score:0, best:0,
   dist:0, near:0, combo:0, comboBest:0, comboT:0,
   obstacles:[], parts:[], pops:[], ui:[],
@@ -2109,6 +2127,7 @@ const VY_UP = -1500, VY_DOWN = 1500;       // safety rails only; drag sets the r
 /* ---------- DOM ---------- */
 const $ = s => document.querySelector(s);
 const elHud=$('#hud'), elScore=$('#score'), elBestLine=$('#bestLine'),
+      elEggCount=$('#eggCount'),
       elCombo=$('#combo'), elComboTxt=$('#comboTxt'),
       elMenu=$('#menu'), elOver=$('#over'), elCard=$('#card'),
       elFinal=$('#finalScore'), elFinalBest=$('#finalBest'),
@@ -2255,6 +2274,113 @@ function spawnGate(moving){
   mk(OB.hanger, true,  band - (c + gap/2),   pick(GATE_HANGS));
   return g;
 }
+/* Eggs are laid out in runs you can follow with one held press: a flat line, a
+   climb, or an arc. Each candidate is dropped if it lands inside a hazard --
+   better a short run than a run that baits you into a zapper. */
+const EGG_R = 26;
+function eggFree(x, y){
+  for(const o of game.obstacles){
+    if(o.kind === 'beam'){
+      const [x0,y0,x1,y1] = beamEnds(o);
+      if(segDist(x, y, x0,y0,x1,y1) < 74) return false;
+      continue;
+    }
+    const ow = o.w*0.42 + 54;
+    if(Math.abs(o.x - x) > ow) continue;
+    let obot, otop;
+    if(o.hang){ otop = (GROUND-CEIL); obot = otop - o.h; }
+    else if(o.kind === 'air'){ obot = o.base; otop = o.base + o.h; }
+    else { obot = o.y||0; otop = (o.y||0) + o.h; }
+    if(y > obot-54 && y < otop+54) return false;
+  }
+  return true;
+}
+function spawnEggs(){
+  const band = GROUND - CEIL;
+  const n = 5 + (Math.random()*5 | 0);
+  const gap = 78;
+  const x0 = player.x + game.speed * 1.9;
+  const shape = Math.random();
+  const lo = 70, hi = band - 140;
+  const base = rnd(lo, hi);
+  for(let i=0;i<n;i++){
+    const t = i/(n-1 || 1);
+    let y;
+    if(shape < 0.42)      y = base;                                  // a flat line
+    else if(shape < 0.72) y = base + Math.sin(t*Math.PI) * 190;      // an arc over
+    else                  y = base + t * 190;                        // a climb
+    y = clamp(y, lo, hi);
+    const x = x0 + i*gap;
+    if(!eggFree(x, y)) continue;
+    game.eggs.push({ x, y, t: rnd(0,TAU), got:0 });
+  }
+  game.eggT = rnd(1.5, 2.6);
+}
+function updateEggs(dt){
+  const p = player;
+  game.eggT -= dt;
+  if(game.eggT <= 0) spawnEggs();
+  game.eggStreakT = Math.max(0, game.eggStreakT - dt);
+  if(game.eggStreakT <= 0) game.eggStreak = 0;
+  for(let i=game.eggs.length-1;i>=0;i--){
+    const e = game.eggs[i];
+    e.t += dt*3.4;
+    if(e.got){                                   // flying to the counter
+      e.got += dt*3.2;
+      if(e.got >= 1){ game.eggs.splice(i,1); continue; }
+      continue;
+    }
+    if(Math.abs(e.x - p.x) < EGG_R+46 && Math.abs(e.y - (p.y+74)) < EGG_R+62){
+      e.got = 0.001;
+      game.runEggs++; game.eggBank++;
+      game.eggStreak = Math.min(12, game.eggStreak+1); game.eggStreakT = 0.9;
+      S.egg(game.eggStreak);
+      elEggCount.textContent = game.eggBank;
+      elEggCount.classList.remove('pop'); void elEggCount.offsetWidth;
+      elEggCount.classList.add('pop');
+      spark(e.x, GROUND - e.y, 6, {col:C.gold, s0:90,s1:260, l0:0.2,l1:0.45, r0:2,r1:6, g:220});
+      try{ localStorage.setItem('dgh_eggs', String(game.eggBank)); }catch(err){}
+      continue;
+    }
+    if(e.x < cam.x - 200) game.eggs.splice(i,1);
+  }
+}
+function drawEggs(){
+  const list = FRAME_DATA.egg;
+  for(const e of game.eggs){
+    const sx = e.x - cam.x;
+    if(sx < -80 || sx > VW+80) continue;
+    let x = sx, y = GROUND - e.y, sc = 1, a = 1;
+    if(e.got){                                   // slides up to the counter
+      const k = e.got;
+      x = lerp(sx, 34, k*k); y = lerp(y, 34, k*k);
+      sc = 1 - k*0.45; a = 1 - k*0.75;
+    }
+    ctx.save(); ctx.globalAlpha = a;
+    ctx.translate(x, y + Math.sin(e.t*0.9)*4);
+    let drew = false;
+    if(list && FR.ready){
+      const fr = list[Math.floor((((e.t*0.30) % 1)+1)%1 * list.length) % list.length];
+      const im = FR.img[fr.f];
+      if(im && im.complete && im.naturalWidth){
+        const w = fr.w*SPR*sc, h = fr.h*SPR*sc;
+        ctx.drawImage(im, -w/2, -h/2, w, h);
+        drew = true;
+      }
+    }
+    if(!drew){
+      const wob = Math.abs(Math.cos(e.t*0.9));
+      ctx.beginPath();
+      ctx.ellipse(0, 0, (10+16*wob)*sc, 26*sc, 0, 0, TAU);
+      const g2 = ctx.createLinearGradient(-18*sc,-24*sc, 14*sc, 24*sc);
+      g2.addColorStop(0,'#FFF0BE'); g2.addColorStop(0.45,'#FFD54A'); g2.addColorStop(1,'#D9901C');
+      ctx.fillStyle = g2; ctx.fill();
+      ctx.lineWidth = 4*sc; ctx.strokeStyle = '#241043'; ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
 /* Jetpack Joyride spacing. One hazard at a time, dropped anywhere in the
    column with clear air all round it -- never a floor piece and a ceiling
    piece stacked into a narrow slot. That stacking is Flappy Bird, and it is
@@ -2354,7 +2480,7 @@ const pressJump = thrustOn, releaseJump = thrustOff;   // old names, one system
    pressJump/releaseJump are idempotent, so overlapping families are harmless.
    Every raw down is counted before any filtering, so the readout can tell
    "no event arrived" apart from "event arrived and was filtered". */
-const BUILD = 'b0903-1431';   // shown in ?dbg=1 so a cached build is obvious
+const BUILD = 'b0903-1454';   // shown in ?dbg=1 so a cached build is obvious
 const TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints||0) > 0;
 /* Only the mute button may swallow a press. Filtering on any <button> was the
    bug: on device every tap reported lastEv=start with taps=0, because the target
@@ -2469,6 +2595,7 @@ function startRun(){
   game.near=0; game.combo=0; game.comboBest=0; game.comboT=0;
   game.speed=340; game.diff=0; game.spawnT=2.6;
   game.obstacles.length=0; game.parts.length=0; game.pops.length=0; game.ui.length=0;
+  game.eggs.length=0; game.eggT=1.6; game.runEggs=0; game.eggStreak=0;
   game.freeze=0; game.timeScale=1; game.tsTarget=1; game.shake=0; game.zoom=1; game.zoomT=1;
   game.camY=0; game.camYT=0; game.deadT=0; game.newBest=false;
   game.door=null; game.doorGone=false; game.lockGone=false; game.doorBow=0;
@@ -2640,6 +2767,7 @@ function updateIntro(dt){
   }
   if(was < T_OUT && t >= T_OUT){                         // straight into the run
     elHud.classList.add('on');
+    elEggCount.textContent = game.eggBank;
     if(game.tut) elTut.classList.add('show');
     player.y = 0; player.vy = 0; player.onGround = true;
     player.kickT = 0.14;
@@ -2785,6 +2913,8 @@ function updatePlay(dt){
       spark(p.x-24, GROUND, 3, {col:'rgba(255,242,222,.45)', a0:Math.PI*1.1,a1:Math.PI*1.85, s0:50,s1:150, l0:0.18,l1:0.4, r0:2,r1:5, g:420});
     }
   }
+
+  updateEggs(dt);
 
   // ---- spawn ----
   game.spawnT -= dt;
@@ -3095,6 +3225,33 @@ function drawLayers(list){
     }
   }
 }
+/* The painted wall panels. Each is redrawn into an offscreen canvas with its
+   left edge ramped to transparent, so overlapping neighbours dissolve into one
+   another instead of butting up in a visible line. */
+const WALL = { srcs:['sheets/v2/wall_a.png','sheets/v2/wall_b.png','sheets/v2/wall_c.png'],
+               imgs:[], ready:0, blend:110, floorFrac:0.72 };
+WALL.srcs.forEach((src, i) => {
+  const im = new Image();
+  im.onload = () => {
+    const c = document.createElement('canvas');
+    c.width = im.naturalWidth; c.height = im.naturalHeight;
+    const g = c.getContext('2d');
+    g.drawImage(im, 0, 0);
+    // One pass, over the whole canvas: destination-in clears everything the
+    // source does not cover, so masking a strip at a time wipes the rest of
+    // the panel and leaves an almost entirely transparent image.
+    g.globalCompositeOperation = 'destination-in';
+    const grad = g.createLinearGradient(0, 0, c.width, 0);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(Math.min(0.5, WALL.blend/c.width), 'rgba(0,0,0,1)');
+    grad.addColorStop(1, 'rgba(0,0,0,1)');
+    g.fillStyle = grad; g.fillRect(0, 0, c.width, c.height);
+    WALL.imgs[i] = c; WALL.ready++;
+  };
+  im.onerror = () => { WALL.imgs[i] = null; };
+  im.src = src;
+});
+
 /* the concrete walkway, its hazard stripe, and the dark service level below */
 function drawBlockGround(){
   const y = GROUND;
@@ -3139,125 +3296,41 @@ function drawBlockGround(){
 /* the wall he is running along, and everything bolted to it */
 const WALLF = 0.46;                       // the wall's own parallax
 function drawBlockProps(){
-  const off = cam.x * WALLF, span = 980;
-  const top = 0;                          // interior: wall fills the frame
+  const off = cam.x * WALLF;
 
-  // ---- breeze block wall -------------------------------------------------
-  const wall = ctx.createLinearGradient(0, top, 0, GROUND);
-  wall.addColorStop(0,    '#081319');     // the dark up under the ceiling
-  wall.addColorStop(0.16, '#12262E');
-  wall.addColorStop(0.62, '#20424C');
-  wall.addColorStop(1,    '#274A54');
-  ctx.fillStyle = wall; ctx.fillRect(0, top, VW, GROUND-top);
-  const bw = 96, bh = 40, bo = ((off % (bw*2)) + bw*2) % (bw*2);
-  ctx.strokeStyle = 'rgba(8,20,26,.55)'; ctx.lineWidth = 3;
-  ctx.beginPath();
-  for(let row=0, y=GROUND; y>top; row++, y-=bh){
-    ctx.moveTo(0, y); ctx.lineTo(VW, y);
-    const stagger = (row & 1) ? bw*0.5 : 0;
-    for(let x=-bo+stagger; x<VW+bw; x+=bw){ ctx.moveTo(x, y); ctx.lineTo(x, y-bh); }
-  }
-  ctx.stroke();
-
-  // ---- pipework along the top -------------------------------------------
-  const py = Math.max(56, GROUND*0.13);
-  const pipe = (yy, th) => {
-    ctx.lineCap='butt'; ctx.strokeStyle='#0D1A20'; ctx.lineWidth=th+7;
-    ctx.beginPath(); ctx.moveTo(0,yy); ctx.lineTo(VW,yy); ctx.stroke();
-    ctx.strokeStyle='#3D5560'; ctx.lineWidth=th;
-    ctx.beginPath(); ctx.moveTo(0,yy); ctx.lineTo(VW,yy); ctx.stroke();
-    ctx.strokeStyle='rgba(255,255,255,.10)'; ctx.lineWidth=Math.max(2,th*0.24);
-    ctx.beginPath(); ctx.moveTo(0,yy-th*0.26); ctx.lineTo(VW,yy-th*0.26); ctx.stroke();
-  };
-  pipe(py, 20); pipe(py + 74, 12);
-  ctx.fillStyle='#2A3D46';                                  // joint collars
-  for(let x=-((off%240)+240)%240; x<VW+240; x+=240){
-    ctx.fillRect(x-7, py-15, 14, 30);
-    ctx.fillRect(x+110-7, py+74-10, 14, 20);
-  }
-
-  const first = Math.floor((cam.x*WALLF - VW)/span);
-  for(let i=first; i<first+Math.ceil(VW/span)+3; i++){
-    const sx = i*span - off;
-    if(sx < -420 || sx > VW+420) continue;
-    const seed = hash(i*3.9);
-
-    // ---- caged lamp, and the cone it throws --------------------------
-    const lx = sx + 300, ly = py + 30;
-    const flick = 0.86 + 0.14*Math.sin(game.t*23 + i) * (hash(i*7.3)>0.75 ? 1 : 0.15);
-    ctx.strokeStyle='#0D1A20'; ctx.lineWidth=7;
-    ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx, ly+56); ctx.stroke();
-    const cone = ctx.createLinearGradient(lx, ly+80, lx, GROUND);
-    cone.addColorStop(0, 'rgba(245,217,138,'+(0.30*flick).toFixed(3)+')');
-    cone.addColorStop(1, 'rgba(245,217,138,0)');
-    ctx.fillStyle = cone;
-    ctx.beginPath(); ctx.moveTo(lx-40, ly+80); ctx.lineTo(lx+40, ly+80);
-    ctx.lineTo(lx+250, GROUND); ctx.lineTo(lx-250, GROUND); ctx.closePath(); ctx.fill();
-    ctx.fillStyle='#16262C';                                  // shade
-    ctx.beginPath(); ctx.moveTo(lx-46, ly+80); ctx.lineTo(lx-20, ly+52);
-    ctx.lineTo(lx+20, ly+52); ctx.lineTo(lx+46, ly+80); ctx.closePath(); ctx.fill();
-    ctx.beginPath(); ctx.arc(lx, ly+80, 15, 0, Math.PI);
-    ctx.fillStyle='rgba(255,238,182,'+(0.95*flick).toFixed(3)+')'; ctx.fill();
-
-    // ---- extractor fan ------------------------------------------------
-    const fx = sx + 20, fy = py + 132;
-    ctx.fillStyle='#16262C'; ctx.strokeStyle='#0D1A20'; ctx.lineWidth=5;
-    ctx.beginPath(); ctx.roundRect(fx-42, fy-42, 84, 84, 6); ctx.fill(); ctx.stroke();
-    ctx.save(); ctx.translate(fx, fy); ctx.rotate(game.t*2.1 + i);
-    ctx.fillStyle='#3D5560';
-    for(let b=0;b<4;b++){
-      ctx.rotate(Math.PI/2);
-      ctx.beginPath(); ctx.ellipse(15, 0, 15, 7, 0, 0, TAU); ctx.fill();
+  if(WALL.ready){
+    // scaled so the painted floor line lands on the walkway, and tall enough
+    // that the ceiling is off the top of the frame
+    // Sized so the painted wall covers the lower part of the column and the
+    // rest stays dark ceiling, the way the reference frames it. Filling the
+    // whole play band would mean magnifying a 431px source about four times.
+    const first = WALL.imgs.find(Boolean);
+    const band = GROUND - CEIL;
+    const H = (band * 0.62) / WALL.floorFrac;
+    const W = H * (first.width / first.height);
+    const step = W - WALL.blend;
+    const top = GROUND - WALL.floorFrac * H;
+    let idx = Math.floor(off / step);
+    let x = idx*step - off;
+    ctx.fillStyle = '#0A171C';                       // behind, in case of a gap
+    ctx.fillRect(0, 0, VW, GROUND);
+    for(; x < VW + step; x += step, idx++){
+      const im = WALL.imgs[((idx % WALL.imgs.length) + WALL.imgs.length) % WALL.imgs.length];
+      if(im) ctx.drawImage(im, x, top, W, H);
     }
-    ctx.restore();
-    ctx.beginPath(); ctx.arc(fx, fy, 8, 0, TAU); ctx.fillStyle='#0D1A20'; ctx.fill();
-
-    if(seed < 0.5){
-      // ---- security camera --------------------------------------------
-      const cx2 = sx + 560, cy2 = py + 96;
-      ctx.strokeStyle='#0D1A20'; ctx.lineWidth=6;
-      ctx.beginPath(); ctx.moveTo(cx2, cy2-16); ctx.lineTo(cx2, cy2+4); ctx.stroke();
-      ctx.save(); ctx.translate(cx2, cy2+10);
-      ctx.rotate(Math.sin(game.t*0.6 + i)*0.28);
-      ctx.fillStyle='#2A3D46';
-      ctx.beginPath(); ctx.roundRect(-34, -13, 68, 26, 5); ctx.fill();
-      ctx.beginPath(); ctx.arc(34, 0, 9, 0, TAU); ctx.fillStyle='#0D1A20'; ctx.fill();
-      ctx.beginPath(); ctx.arc(34, 0, 5, 0, TAU);
-      ctx.fillStyle = (game.t*2 % 2 < 1.4) ? '#FF3B30' : '#5A1512'; ctx.fill();
-      ctx.restore();
-    } else {
-      // ---- barred window, lit from the far side -----------------------
-      const wx2 = sx + 560, wy2 = py + 100, ww = 118, wh = 84;
-      ctx.fillStyle='#0D1A20';
-      ctx.beginPath(); ctx.roundRect(wx2-ww/2-7, wy2-wh/2-7, ww+14, wh+14, 5); ctx.fill();
-      const gl = ctx.createLinearGradient(0, wy2-wh/2, 0, wy2+wh/2);
-      gl.addColorStop(0, '#5BF0E4'); gl.addColorStop(1, '#1E8F92');
-      ctx.fillStyle = gl; ctx.fillRect(wx2-ww/2, wy2-wh/2, ww, wh);
-      ctx.strokeStyle='#0D1A20'; ctx.lineWidth=8;
-      for(let b=1;b<4;b++){
-        const bx2 = wx2-ww/2 + ww*b/4;
-        ctx.beginPath(); ctx.moveTo(bx2, wy2-wh/2); ctx.lineTo(bx2, wy2+wh/2); ctx.stroke();
-      }
-    }
-
-    // ---- red alarm ------------------------------------------------------
-    const ax = sx + 800, ay = py + 180;
-    const pulse = 0.45 + 0.55*Math.abs(Math.sin(game.t*2.4 + i*1.3));
-    ctx.fillStyle = 'rgba(232,67,60,'+(0.20*pulse).toFixed(3)+')';
-    ctx.beginPath(); ctx.arc(ax, ay, 46, 0, TAU); ctx.fill();
-    ctx.fillStyle='#16262C';
-    ctx.beginPath(); ctx.roundRect(ax-13, ay-24, 26, 12, 3); ctx.fill();
-    ctx.beginPath(); ctx.arc(ax, ay, 13, 0, TAU);
-    ctx.fillStyle = 'rgb('+Math.round(120+135*pulse)+',40,36)'; ctx.fill();
-    ctx.strokeStyle='#0D1A20'; ctx.lineWidth=4; ctx.stroke();
-
-    // ---- scratched tally ------------------------------------------------
-    ctx.strokeStyle='rgba(220,238,240,.22)'; ctx.lineWidth=3; ctx.lineCap='round';
-    const tx = sx + 720, ty = GROUND - 260;
-    for(let m=0;m<4;m++){
-      ctx.beginPath(); ctx.moveTo(tx+m*11, ty); ctx.lineTo(tx+m*11+4, ty+26); ctx.stroke();
-    }
-    ctx.beginPath(); ctx.moveTo(tx-6, ty+24); ctx.lineTo(tx+40, ty+2); ctx.stroke();
+    // blend the top of the art into the dark above it rather than cutting it
+    const fh = band*0.42;
+    const fade = ctx.createLinearGradient(0, top - 8, 0, top + fh);
+    fade.addColorStop(0,    '#0A171C');
+    fade.addColorStop(0.35, 'rgba(10,23,28,.72)');
+    fade.addColorStop(1,    'rgba(10,23,28,0)');
+    ctx.fillStyle = fade; ctx.fillRect(0, top - 8, VW, fh + 8);
+    // the lamps in the art are static, so the room gets its flicker here
+    const f = 0.04 + 0.018*Math.sin(game.t*17) + 0.014*Math.sin(game.t*3.1);
+    ctx.fillStyle = 'rgba(255,214,140,'+f.toFixed(3)+')';
+    ctx.fillRect(0, top, VW, GROUND-top);
+  } else {
+    ctx.fillStyle = '#12262E'; ctx.fillRect(0, 0, VW, GROUND);
   }
 
   // ---- things standing on the floor, at the player's own speed ----------
@@ -3370,35 +3443,24 @@ function drawSpectators(T){
     if(sx < -220 || sx > VW+220) continue;
     const n = 1 + (hash(i*4.1)*2.99 | 0);
     const near = Math.abs(gx - player.x) < 520 && game.mode === 'play';
-    const holding = inside && hash(i*8.7) < 0.42;   // a cell, not a guard post
+    const holding = false;                          // no cages along the route
     for(let k=0;k<n;k++){
       const ox = (k-(n-1)/2) * (inside ? 78 : 62) + hash(i*7.7+k)*10;
       const ph = hash(i*2.3+k*1.7)*TAU;
       const bob = near ? -Math.abs(Math.sin(game.t*9 + ph))*13
                        :  Math.sin(game.t*1.8 + ph)*2.2;
-      if(inside && !holding){
-        // a guard on his rounds, until a chicken goes past at speed
-        const pose = near ? 2 : (hash(i*6.1+k) > 0.5 ? 1 : 0);
-        if(drawNPC('cricket', pose, sx+ox, GROUND-8 + (near?bob:0), 1, true)) continue;
-      } else if(!inside){
-        if(drawNPC('cricket', near ? 3 : 0, sx+ox, GROUND-8+bob, 0.9, false)) continue;
-      }
+      // frame 0 is him stood there; 1..5 is the panic loop, played only while
+      // a chicken is going past at speed
+      const n6 = (FRAME_DATA.cricket || []).length;
+      const pose = (near && n6 > 1)
+        ? 1 + (Math.floor(game.t*11 + i*2.7 + k) % (n6-1))
+        : 0;
+      const lift = near ? bob*0.35 : Math.sin(game.t*1.6 + ph)*1.6;
+      if(drawNPC('cricket', pose, sx+ox, GROUND-8+lift, inside?1:0.9, inside)) continue;
       ctx.save();
       ctx.translate(sx + ox, GROUND - 10);
       ctx.scale(0.82, 0.82);
       drawLilChicken(near, bob);
-      ctx.restore();
-    }
-    if(inside && holding){          // a cell with someone still in it
-      ctx.save();
-      ctx.translate(sx, GROUND - 8);
-      const cw = 52 + n*74, ch = 104;
-      ctx.strokeStyle = 'rgba(150,190,200,.40)'; ctx.lineWidth = 6;
-      ctx.strokeRect(-cw*0.5, -ch, cw, ch);
-      ctx.lineWidth = 4;
-      for(let bx=-cw*0.5+18; bx<cw*0.5-6; bx+=22){
-        ctx.beginPath(); ctx.moveTo(bx,-ch+4); ctx.lineTo(bx,-4); ctx.stroke();
-      }
       ctx.restore();
     }
   }
@@ -3664,6 +3726,7 @@ function render(){
   }
   drawGround();
   drawObstacles();
+  drawEggs();
 
   // character
   let px = (game.mode==='menu') ? PX : player.x - cam.x;
