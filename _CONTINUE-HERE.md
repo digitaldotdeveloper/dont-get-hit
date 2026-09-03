@@ -517,6 +517,72 @@ does, so every run was cones and cardboard boxes and the obstacles felt lame.
 Variety now arrives at 9s and the whole cast is in play by 22s. If it needs to be
 harder, move `game.diff`, the spawn gaps, and the zapper share - not the tiers.
 
+## Pace
+
+`PACE` (top of the physics block) is how fast the whole game runs; it is 1.85.
+Raising the scroll speed on its own would only have shortened the time you get
+to react, so the vertical model is scaled with it: **speeds by PACE,
+accelerations by PACE^2**. That leaves every arc, gap and corridor exactly the
+same shape in *space* and simply plays it faster -- the maths is that scaling
+`a -> k^2 a` and the drag rate `D -> kD` gives `y_new(t) = y_old(kt)`. Hazard
+spacing is in seconds, so the cadence per second stays put as well and only
+the fixed human reaction time gets harder.
+
+Everything written in velocities therefore has to be divided by `PACE` to keep
+its old meaning -- the landing shake and the landing feather burst are, and
+anything similar added later must be too. `?pace=N` tries another value; the
+`?selftest=1` arcs are sampled per frame, so at 1.85 they show the old curve
+read 1.85x further along, not a taller one.
+
+## Performance -- it is fill rate, nothing else
+
+Profiled with `tools/prof.py` (wraps every draw section over CDP and reports
+ms/frame, plus `Emulation.setCPUThrottlingRate` to stand in for a slow phone):
+at a 6x throttle the **entire script cost 4ms a frame while the frames took
+120ms**. None of the cost is JS. It is all rasterising, and rasterising is
+priced in pixels. Do not go looking for slow loops.
+
+The A/B, measured by no-oping one draw at a time at 4x throttle:
+
+| change | frame time |
+|---|---|
+| backing store 2.25x -> 1x | **-72%** |
+| drawStreetProps off | -36% |
+| drawSky off | -28% |
+| vignette off | -18% |
+| drawLayers off | -12% |
+| everything else | <6% each |
+
+So two things were done, and they took the same run from 73ms to 30ms a frame
+at 4x throttle (13 fps -> 33 fps):
+
+- **The backing store is the dial.** `DPR` is capped at `dprCap`, which starts
+  at 1.75 and is moved by `perfWatch` off the measured frame time: below ~43fps
+  it gives up a quarter, and once it has dropped it never climbs back (that
+  ratchet is what stops it oscillating). Floor 1x.
+- **Full-screen gradients are cached.** A gradient is shaded per pixel on every
+  fill, and the sky, the wall's top fade and the vignette are all full-screen
+  and identical frame to frame, so each is painted once into a bitmap by
+  `surface()` and blitted after that. The cache is keyed by size and `SCALE*DPR`
+  and cleared by `resize()` -- **anything else cached per frame must be cleared
+  there too**.
+
+What is *not* worth doing: caching the parallax tiles per theme. A theme swap
+rebuilds them and the whole rebuild measured 16ms at 2x throttle, i.e. one
+dropped frame every 26s, for tens of MB of canvas held on a phone.
+
+## Tools
+
+    python tools/prof.py URL [secs] [cpu]   # ms/frame per draw section
+    python tools/probe.py URL [wait]        # run a ?test flag, print the panel
+    python tools/clip.py URL out.gif [s]    # real-time GIF over screencast
+    python tools/shot.py URL out.png        # one screenshot, real device metrics
+
+`clip.py` uses `Page.startScreencast`, which timestamps frames, so the GIF keeps
+the game's real timing. Screenshot-per-frame does not -- each capture stalls the
+page and the clip plays back at the wrong speed, which is useless when the thing
+being judged is how fast it feels.
+
 ## Next
 
 - Nothing spends the eggs yet.

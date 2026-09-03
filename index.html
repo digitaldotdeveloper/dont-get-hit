@@ -343,10 +343,28 @@ if(!ctx.roundRect){
 }
 
 let DPR=1, CW=0, CH=0, SCALE=1, VW=1300, VH=880, GROUND=0, CEIL=0, PX=0, PORTRAIT=false;
+/* The backing store is the only real performance dial in this game. Profiled
+   under a 6x CPU throttle the entire script cost 4ms a frame while the frames
+   took 120ms -- it is all rasterising, and rasterising is priced in pixels.
+   Halving the backing store roughly halves the frame. So render at a modest
+   scale and let the measured frame time move it, floor 1x, ceiling 1.75x. */
+const DPR_MAX = 1.75, DPR_MIN = 1;
+let dprCap = DPR_MAX, perfAcc = 0, perfN = 0, perfCool = 2.5, perfDropped = false;
+function perfWatch(raw){
+  if(perfCool > 0){ perfCool -= raw; return; }
+  perfAcc += Math.min(raw, 0.25); perfN++;
+  if(perfN < 48) return;
+  const avg = perfAcc/perfN; perfAcc = 0; perfN = 0;
+  if(avg > 0.0235 && dprCap > DPR_MIN){          // below ~43fps: give up pixels
+    dprCap = Math.max(DPR_MIN, dprCap - 0.25); perfDropped = true; perfCool = 3; resize();
+  } else if(avg < 0.0172 && dprCap < DPR_MAX && !perfDropped){
+    dprCap = Math.min(DPR_MAX, dprCap + 0.25); perfCool = 3; resize();
+  }
+}
 function resize(){
   CW = cv.clientWidth || window.innerWidth;
   CH = cv.clientHeight || window.innerHeight;
-  DPR = Math.min(window.devicePixelRatio||1, 2.25);
+  DPR = Math.min(window.devicePixelRatio||1, dprCap);
   cv.width  = Math.round(CW*DPR);
   cv.height = Math.round(CH*DPR);
   // Keep at least 1300 world-units wide and 880 tall visible -> constant difficulty
@@ -359,6 +377,7 @@ function resize(){
   GROUND = VH - roadH;
   CEIL = Math.max(40, GROUND - clamp(VH*0.80, 620, 1120));
   PX = VW*(PORTRAIT ? 0.30 : 0.27);
+  SURF.clear();
   buildLayers();
 }
 window.addEventListener('resize', resize);
@@ -1959,6 +1978,28 @@ const OB_KEYS = Object.keys(OB);
    PARALLAX LAYERS — baked once per resize
    ============================================================ */
 const layers = [];
+/* Full-screen gradients are shaded per pixel every single time they are
+   filled, and the sky, the wall's top fade and the vignette are all
+   full-screen and identical frame to frame. Paint each once into a bitmap and
+   blit it after that. Turning the vignette off alone was worth 18% of the
+   frame, which is roughly what the blit saves. Cleared by resize(). */
+const SURF = new Map();
+function surface(key, w, h, opaque, drawFn){
+  const q = SCALE*DPR;
+  const k = key+'|'+Math.round(w)+'x'+Math.round(h)+'|'+q.toFixed(3);
+  let s = SURF.get(k);
+  if(!s){
+    if(SURF.size > 10) SURF.clear();
+    const c = document.createElement('canvas');
+    c.width  = Math.max(1, Math.round(w*q));
+    c.height = Math.max(1, Math.round(h*q));
+    const g = c.getContext('2d', { alpha: !opaque });
+    g.scale(q, q);
+    drawFn(g, w, h);
+    s = c; SURF.set(k, s);
+  }
+  return s;
+}
 function makeLayer(w, h, drawFn){
   const c = document.createElement('canvas');
   c.width = Math.round(w*SCALE*DPR); c.height = Math.round(h*SCALE*DPR);
@@ -2133,16 +2174,24 @@ try{ game.firstRun = !localStorage.getItem('dgh.played'); }catch(e){}
    No jump impulse, no fixed jump height, no tap-to-jump. Altitude is controlled
    purely by how long you hold. Smoothness comes from acceleration plus drag,
    never from an impulse. */
-const GRAV = 2500, FLAP_HZ = 4.6;
+/* How fast the whole game runs. Jetpack Joyride pace: the world has to whip
+   past, not drift. Raising the scroll speed on its own would only shorten the
+   time you get to react, so the vertical model is scaled with it -- speeds by
+   PACE, accelerations by PACE^2 -- which leaves every arc, gap and corridor
+   exactly the same shape in space and simply plays it faster. Hazard spacing
+   is in seconds, so the cadence stays put too. ?pace=N to try another. */
+const PACE = (() => { const m = /[?&]pace=([0-9.]+)/.exec(location.search);
+                      return m ? clamp(parseFloat(m[1]), 0.4, 4) : 1.85; })();
+const GRAV = 2500*PACE*PACE, FLAP_HZ = 4.6*PACE;
 /* Air drag is what makes flight feel smooth: velocity eases toward a terminal
    value instead of ramping linearly into a hard clamp. Terminal speeds land at
    about +/-1000, reached over ~0.4s. */
-const DRAG = 2.6;
+const DRAG = 2.6*PACE;
 /* Jetpack Joyride mechanics: holding applies CONSTANT lift, not pulses.
    Pulsed lift made a hold feel like it was not registering, so players tapped
    instead of holding. The wingbeat is now purely visual. */
-const THRUST = 5200;                       // continuous while held, vs gravity 2500
-const VY_UP = -1500, VY_DOWN = 1500;       // safety rails only; drag sets the real terminal
+const THRUST = 5200*PACE*PACE;             // continuous while held, vs gravity
+const VY_UP = -1500*PACE, VY_DOWN = 1500*PACE;   // rails only; drag sets the real terminal
 /* Every press also lands an instant impulse, so a quick tap lifts even if the
    finger is gone before the downstroke completes. */
 
@@ -2615,7 +2664,7 @@ function startRun(){
   game.swapK = 1; layersFrom = [];
   game.mode='play'; game.runT=game.presetRunT||0; game.score=0; game.dist=0;
   game.near=0; game.combo=0; game.comboBest=0; game.comboT=0;
-  game.speed=340; game.diff=0; game.spawnT=2.6;
+  game.speed=340*PACE; game.diff=0; game.spawnT=2.6;
   game.obstacles.length=0; game.parts.length=0; game.pops.length=0; game.ui.length=0;
   game.eggs.length=0; game.eggT=1.6; game.runEggs=0; game.eggStreak=0;
   game.freeze=0; game.timeScale=1; game.tsTarget=1; game.shake=0; game.zoom=1; game.zoomT=1;
@@ -2856,8 +2905,8 @@ function updatePlay(dt){
     swapTheme(want);
   }
   game.diff = clamp(game.runT/95, 0, 1);
-  game.speed = 340 + 400*game.diff;
-  const speedT = clamp((game.speed-340)/400, 0, 1);
+  game.speed = (340 + 400*game.diff)*PACE;
+  const speedT = game.diff;
 
   p.x += game.speed*dt;
   game.dist += game.speed*dt;
@@ -2912,10 +2961,10 @@ function updatePlay(dt){
     p.y = 0; p.vy = 0;
     if(!p.onGround){
       p.onGround = true; p.state='land'; p.stateT=0;
-      p.landT = clamp(impact/1200, 0.35, 1);
-      S.land(); addShake(clamp(impact/220, 2, 9)); game.camYT = 14;
+      p.landT = clamp(impact/(1200*PACE), 0.35, 1);
+      S.land(); addShake(clamp(impact/(220*PACE), 2, 9)); game.camYT = 14;
       spark(p.x-6, GROUND, 14, {col:'rgba(255,242,222,.7)', a0:Math.PI*1.05,a1:Math.PI*1.95, s0:110,s1:330, l0:0.22,l1:0.55, r0:3,r1:9, g:520});
-      if(impact>700) featherBurst(p.x, GROUND-24, 3, 190);
+      if(impact>700*PACE) featherBurst(p.x, GROUND-24, 3, 190);
     }
   } else if(p.y > 2){
     if(p.onGround){ p.onGround=false; p.state='fly'; p.stateT=0; S.takeoff(); }
@@ -3195,22 +3244,27 @@ function updateParticles(dt){
 function drawSky(T){
   T = T || THEME;
   const top = Math.max(0, GROUND - 1150);
-  ctx.fillStyle=T.skyA; ctx.fillRect(0,0,VW,top+2);
-  const g = ctx.createLinearGradient(0,top,0,GROUND+40);
-  g.addColorStop(0, T.skyA); g.addColorStop(0.30, T.skyB);
-  g.addColorStop(0.56, T.skyC); g.addColorStop(0.80, T.skyD); g.addColorStop(1, T.skyE);
-  ctx.fillStyle=g; ctx.fillRect(0,top,VW,GROUND+40-top);
+  const skyH = GROUND + 40;
+  // sky band and sun: two gradients that never change -> one cached blit
+  ctx.drawImage(surface('sky|'+T.id+'|'+Math.round(GROUND), VW, skyH, true, (g) => {
+    g.fillStyle=T.skyA; g.fillRect(0,0,VW,top+2);
+    const gd = g.createLinearGradient(0,top,0,GROUND+40);
+    gd.addColorStop(0, T.skyA); gd.addColorStop(0.30, T.skyB);
+    gd.addColorStop(0.56, T.skyC); gd.addColorStop(0.80, T.skyD); gd.addColorStop(1, T.skyE);
+    g.fillStyle=gd; g.fillRect(0,top,VW,GROUND+40-top);
+    if(T.indoor) return;                    // no sky in here
+    // sun, sinking behind the skyline
+    const sx = VW*0.76, sy = GROUND - 500;
+    const gr = g.createRadialGradient(sx,sy,10,sx,sy,420);
+    gr.addColorStop(0,'rgba(255,233,168,.8)'); gr.addColorStop(0.32,'rgba(255,180,71,.30)');
+    gr.addColorStop(1,'rgba(255,180,71,0)');
+    g.fillStyle=gr; g.beginPath(); g.arc(sx,sy,420,0,TAU); g.fill();
+    g.beginPath(); g.arc(sx,sy,96,0,TAU); g.fillStyle=T.sun; g.fill();
+    g.globalAlpha=0.5; g.beginPath(); g.arc(sx,sy,120,0,TAU);
+    g.strokeStyle='rgba(255,233,168,.5)'; g.lineWidth=3; g.stroke(); g.globalAlpha=1;
+  }), 0, 0, VW, skyH);
 
-  if(T.indoor) return;                      // no sky in here
-  // sun, sinking behind the skyline
-  const sx = VW*0.76, sy = GROUND - 500;
-  const gr = ctx.createRadialGradient(sx,sy,10,sx,sy,420);
-  gr.addColorStop(0,'rgba(255,233,168,.8)'); gr.addColorStop(0.32,'rgba(255,180,71,.30)');
-  gr.addColorStop(1,'rgba(255,180,71,0)');
-  ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(sx,sy,420,0,TAU); ctx.fill();
-  ctx.beginPath(); ctx.arc(sx,sy,96,0,TAU); ctx.fillStyle=T.sun; ctx.fill();
-  ctx.globalAlpha=0.5; ctx.beginPath(); ctx.arc(sx,sy,120,0,TAU);
-  ctx.strokeStyle='rgba(255,233,168,.5)'; ctx.lineWidth=3; ctx.stroke(); ctx.globalAlpha=1;
+  if(T.indoor) return;
 
   // clouds
   const t=game.t;
@@ -3343,11 +3397,13 @@ function drawBlockProps(){
     }
     // blend the top of the art into the dark above it rather than cutting it
     const fh = band*0.42;
-    const fade = ctx.createLinearGradient(0, top - 8, 0, top + fh);
-    fade.addColorStop(0,    '#0A171C');
-    fade.addColorStop(0.35, 'rgba(10,23,28,.72)');
-    fade.addColorStop(1,    'rgba(10,23,28,0)');
-    ctx.fillStyle = fade; ctx.fillRect(0, top - 8, VW, fh + 8);
+    ctx.drawImage(surface('wallfade|'+Math.round(fh), VW, fh + 8, false, (g) => {
+      const fade = g.createLinearGradient(0, 0, 0, fh + 8);
+      fade.addColorStop(0,    '#0A171C');
+      fade.addColorStop(0.35, 'rgba(10,23,28,.72)');
+      fade.addColorStop(1,    'rgba(10,23,28,0)');
+      g.fillStyle = fade; g.fillRect(0, 0, VW, fh + 8);
+    }), 0, top - 8, VW, fh + 8);
     // the lamps in the art are static, so the room gets its flicker here
     const f = 0.04 + 0.018*Math.sin(game.t*17) + 0.014*Math.sin(game.t*3.1);
     ctx.fillStyle = 'rgba(255,214,140,'+f.toFixed(3)+')';
@@ -3790,9 +3846,11 @@ function render(){
   }
 
   // vignette + warm bloom
-  const vg = ctx.createRadialGradient(VW*0.5,VH*0.5,VH*0.30, VW*0.5,VH*0.5,VH*0.85);
-  vg.addColorStop(0,'rgba(21,8,39,0)'); vg.addColorStop(1,'rgba(21,8,39,.5)');
-  ctx.fillStyle=vg; ctx.fillRect(0,0,VW,VH);
+  ctx.drawImage(surface('vignette', VW, VH, false, (g) => {
+    const vg = g.createRadialGradient(VW*0.5,VH*0.5,VH*0.30, VW*0.5,VH*0.5,VH*0.85);
+    vg.addColorStop(0,'rgba(21,8,39,0)'); vg.addColorStop(1,'rgba(21,8,39,.5)');
+    g.fillStyle=vg; g.fillRect(0,0,VW,VH);
+  }), 0, 0, VW, VH);
   ctx.restore();
 }
 
@@ -3803,6 +3861,7 @@ let last = performance.now();
 function frame(now){
   requestAnimationFrame(frame);
   let raw = (now-last)/1000; last = now;
+  perfWatch(raw);
   raw = Math.min(raw, 0.05);
   let dt = raw*game.timeScale;
   if(game.freeze>0){ game.freeze -= raw; dt = raw*0.06; }

@@ -4,3 +4,4 @@ _*.html
 _*.py
 __pycache__/
 anim_src/
+_*.gif
