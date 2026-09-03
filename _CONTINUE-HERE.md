@@ -651,6 +651,20 @@ semitone per egg in a streak. `game.eggBank` persists in `localStorage` under
 
 ## NPCs
 
+**The farmer** (`drawFarmer`, `FRAME_DATA.farmer`) owns the place and Nugget has
+just left it: six frames of escalating rage -- noticing, fists up, pointing, hat
+off, doubled over -- played only while a chicken is going past, and standing
+about the rest of the time. He gets his OWN pass at his own spacing rather than
+joining the livestock, because one farmer reads as a man and three in a row
+reads as a bug, while the animals want to come in groups.
+
+**The lookouts** (`drawSpyPigeons`, `SPY`, `FRAME_DATA.spy`) are three pigeons in
+sunglasses on the watchtower's balcony rail. The tower is painted into panel C,
+so they are drawn per panel at fractions measured off that image and ride with it
+wherever it repeats -- which is why they live in `drawFarmPainted` and not in the
+props pass. They barely animate on purpose: a lookout that fidgets is not cool.
+
+
 Cricket guards in suits, `cricket0..5`, a six-frame panic loop with the antennae
 whipping. `drawSpectators` plays the loop only while a chicken is going past at
 speed and holds frame 0 otherwise. `drawLilChicken` is the flat fallback if the

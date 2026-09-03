@@ -1114,7 +1114,7 @@ function cosmeticImage(id, slot, src, opt){
    swappable while frames are in use. If any image fails to load the
    procedural puppet draws instead - the character can never vanish.
    ============================================================ */
-const FRAME_DATA = {"cow":[{"f":"cow0.webp","w":89,"h":154,"ay":153.5},{"f":"cow1.webp","w":85,"h":146,"ay":152.0},{"f":"cow2.webp","w":84,"h":164,"ay":165.1},{"f":"cow3.webp","w":91,"h":163,"ay":164.0},{"f":"cow4.webp","w":92,"h":146,"ay":147.2},{"f":"cow5.webp","w":60,"h":146,"ay":147.2}],"cowrun":[{"f":"cowrun0.webp","w":118,"h":164,"ay":164.0},{"f":"cowrun1.webp","w":120,"h":164,"ay":165.8},{"f":"cowrun2.webp","w":128,"h":154,"ay":159.1},{"f":"cowrun3.webp","w":154,"h":152,"ay":156.6},{"f":"cowrun4.webp","w":157,"h":147,"ay":152.9},{"f":"cowrun5.webp","w":170,"h":158,"ay":164.0}],"pig":[{"f":"pig0.webp","w":98,"h":156,"ay":156.0},{"f":"pig1.webp","w":113,"h":155,"ay":156.0},{"f":"pig2.webp","w":90,"h":154,"ay":156.0},{"f":"pig3.webp","w":110,"h":156,"ay":156.0},{"f":"pig4.webp","w":89,"h":155,"ay":156.0},{"f":"pig5.webp","w":92,"h":155,"ay":156.0}],"pigrun":[{"f":"pigrun0.webp","w":105,"h":156,"ay":156.0},{"f":"pigrun1.webp","w":110,"h":150,"ay":152.3},{"f":"pigrun2.webp","w":91,"h":132,"ay":135.0},{"f":"pigrun3.webp","w":125,"h":133,"ay":133.1},{"f":"pigrun4.webp","w":96,"h":125,"ay":125.8},{"f":"pigrun5.webp","w":107,"h":137,"ay":136.8}],"goat":[{"f":"goat0.webp","w":92,"h":159,"ay":161.4},{"f":"goat1.webp","w":91,"h":159,"ay":161.4},{"f":"goat2.webp","w":81,"h":158,"ay":159.5},{"f":"goat3.webp","w":82,"h":160,"ay":160.0},{"f":"goat4.webp","w":89,"h":160,"ay":159.5},{"f":"goat5.webp","w":92,"h":158,"ay":161.0}],"goatrun":[{"f":"goatrun0.webp","w":94,"h":159,"ay":160.0},{"f":"goatrun1.webp","w":84,"h":160,"ay":160.0},{"f":"goatrun2.webp","w":118,"h":148,"ay":147.7},{"f":"goatrun3.webp","w":125,"h":145,"ay":149.3},{"f":"goatrun4.webp","w":132,"h":143,"ay":147.7},{"f":"goatrun5.webp","w":141,"h":144,"ay":147.7}],"run":[{"f":"run0.webp","w":206,"h":199,"ay":199},{"f":"run1.webp","w":138,"h":182,"ay":182},{"f":"run2.webp","w":136,"h":181,"ay":181},{"f":"run3.webp","w":187,"h":196,"ay":196},{"f":"run4.webp","w":140,"h":181,"ay":181},{"f":"run5.webp","w":179,"h":195,"ay":195}],"fly":[{"f":"fly0.webp","w":110,"h":161,"ay":162.3},{"f":"fly1.webp","w":112,"h":158,"ay":163.1},{"f":"fly2.webp","w":163,"h":210,"ay":191.6},{"f":"fly3.webp","w":147,"h":158,"ay":181.3},{"f":"fly4.webp","w":148,"h":186,"ay":187.3},{"f":"fly5.webp","w":130,"h":185,"ay":179.7}],"fall":[{"f":"fall0.webp","w":122,"h":187,"ay":184.0},{"f":"fall1.webp","w":145,"h":199,"ay":186.0},{"f":"fall2.webp","w":174,"h":210,"ay":179.8},{"f":"fall3.webp","w":143,"h":198,"ay":182.3}],"jump":[{"f":"jump0.webp","w":122,"h":148,"ay":171.0},{"f":"jump1.webp","w":140,"h":171,"ay":169.4},{"f":"jump2.webp","w":138,"h":221,"ay":193.2},{"f":"jump3.webp","w":183,"h":186,"ay":179.6},{"f":"jump4.webp","w":155,"h":186,"ay":180.3}],"land":[{"f":"land0.webp","w":145,"h":183,"ay":183},{"f":"land1.webp","w":157,"h":179,"ay":179},{"f":"land2.webp","w":122,"h":121,"ay":121},{"f":"land3.webp","w":165,"h":186,"ay":186}],"hit":[{"f":"hit0.webp","w":145,"h":164,"ay":172.9},{"f":"hit1.webp","w":163,"h":186,"ay":185.1},{"f":"hit2.webp","w":122,"h":154,"ay":173.6},{"f":"hit3.webp","w":106,"h":126,"ay":166.0},{"f":"hit4.webp","w":178,"h":81,"ay":140.5},{"f":"hit5.webp","w":128,"h":146,"ay":173.4}],"kick":[{"f":"kick0.webp","w":164,"h":239,"ay":239.0},{"f":"kick1.webp","w":162,"h":228,"ay":228.0},{"f":"kick2.webp","w":172,"h":172,"ay":179.4},{"f":"kick3.webp","w":132,"h":192,"ay":178.6},{"f":"kick4.webp","w":182,"h":194,"ay":194.0}],"boom":[{"f":"boom0.webp","w":121,"h":125},{"f":"boom1.webp","w":194,"h":215},{"f":"boom2.webp","w":260,"h":273},{"f":"boom3.webp","w":209,"h":215},{"f":"boom4.webp","w":170,"h":175}],"cricket":[{"f":"cricket0.webp","w":45,"h":136,"ay":136.0},{"f":"cricket1.webp","w":44,"h":143,"ay":143.0},{"f":"cricket2.webp","w":67,"h":127,"ay":127.0},{"f":"cricket3.webp","w":58,"h":129,"ay":129.0},{"f":"cricket4.webp","w":62,"h":121,"ay":121.0},{"f":"cricket5.webp","w":55,"h":107,"ay":107.0}],"egg":[{"f":"egg0.webp","w":47,"h":58,"ay":29.0},{"f":"egg1.webp","w":45,"h":58,"ay":29.0},{"f":"egg2.webp","w":43,"h":58,"ay":29.0},{"f":"egg3.webp","w":39,"h":58,"ay":29.0},{"f":"egg4.webp","w":22,"h":58,"ay":29.0},{"f":"egg5.webp","w":15,"h":55,"ay":27.5},{"f":"egg6.webp","w":39,"h":55,"ay":27.5},{"f":"egg7.webp","w":41,"h":55,"ay":27.5},{"f":"egg8.webp","w":42,"h":55,"ay":27.5},{"f":"egg9.webp","w":43,"h":55,"ay":27.5}],"hensad":[{"f":"hensad0.webp","w":92,"h":98,"ay":98.0},{"f":"hensad1.webp","w":95,"h":98,"ay":98.0},{"f":"hensad2.webp","w":98,"h":98,"ay":98.0},{"f":"hensad3.webp","w":93,"h":98,"ay":98.0},{"f":"hensad4.webp","w":83,"h":98,"ay":98.0}],"henjoy":[{"f":"henjoy0.webp","w":94,"h":98,"ay":98.0},{"f":"henjoy1.webp","w":80,"h":98,"ay":98.0},{"f":"henjoy2.webp","w":80,"h":98,"ay":98.0},{"f":"henjoy3.webp","w":80,"h":98,"ay":98.0}]};
+const FRAME_DATA = {"cow":[{"f":"cow0.webp","w":89,"h":154,"ay":153.5},{"f":"cow1.webp","w":85,"h":146,"ay":152.0},{"f":"cow2.webp","w":84,"h":164,"ay":165.1},{"f":"cow3.webp","w":91,"h":163,"ay":164.0},{"f":"cow4.webp","w":92,"h":146,"ay":147.2},{"f":"cow5.webp","w":60,"h":146,"ay":147.2}],"cowrun":[{"f":"cowrun0.webp","w":118,"h":164,"ay":164.0},{"f":"cowrun1.webp","w":120,"h":164,"ay":165.8},{"f":"cowrun2.webp","w":128,"h":154,"ay":159.1},{"f":"cowrun3.webp","w":154,"h":152,"ay":156.6},{"f":"cowrun4.webp","w":157,"h":147,"ay":152.9},{"f":"cowrun5.webp","w":170,"h":158,"ay":164.0}],"pig":[{"f":"pig0.webp","w":98,"h":156,"ay":156.0},{"f":"pig1.webp","w":113,"h":155,"ay":156.0},{"f":"pig2.webp","w":90,"h":154,"ay":156.0},{"f":"pig3.webp","w":110,"h":156,"ay":156.0},{"f":"pig4.webp","w":89,"h":155,"ay":156.0},{"f":"pig5.webp","w":92,"h":155,"ay":156.0}],"pigrun":[{"f":"pigrun0.webp","w":105,"h":156,"ay":156.0},{"f":"pigrun1.webp","w":110,"h":150,"ay":152.3},{"f":"pigrun2.webp","w":91,"h":132,"ay":135.0},{"f":"pigrun3.webp","w":125,"h":133,"ay":133.1},{"f":"pigrun4.webp","w":96,"h":125,"ay":125.8},{"f":"pigrun5.webp","w":107,"h":137,"ay":136.8}],"goat":[{"f":"goat0.webp","w":92,"h":159,"ay":161.4},{"f":"goat1.webp","w":91,"h":159,"ay":161.4},{"f":"goat2.webp","w":81,"h":158,"ay":159.5},{"f":"goat3.webp","w":82,"h":160,"ay":160.0},{"f":"goat4.webp","w":89,"h":160,"ay":159.5},{"f":"goat5.webp","w":92,"h":158,"ay":161.0}],"goatrun":[{"f":"goatrun0.webp","w":94,"h":159,"ay":160.0},{"f":"goatrun1.webp","w":84,"h":160,"ay":160.0},{"f":"goatrun2.webp","w":118,"h":148,"ay":147.7},{"f":"goatrun3.webp","w":125,"h":145,"ay":149.3},{"f":"goatrun4.webp","w":132,"h":143,"ay":147.7},{"f":"goatrun5.webp","w":141,"h":144,"ay":147.7}],"run":[{"f":"run0.webp","w":206,"h":199,"ay":199},{"f":"run1.webp","w":138,"h":182,"ay":182},{"f":"run2.webp","w":136,"h":181,"ay":181},{"f":"run3.webp","w":187,"h":196,"ay":196},{"f":"run4.webp","w":140,"h":181,"ay":181},{"f":"run5.webp","w":179,"h":195,"ay":195}],"fly":[{"f":"fly0.webp","w":110,"h":161,"ay":162.3},{"f":"fly1.webp","w":112,"h":158,"ay":163.1},{"f":"fly2.webp","w":163,"h":210,"ay":191.6},{"f":"fly3.webp","w":147,"h":158,"ay":181.3},{"f":"fly4.webp","w":148,"h":186,"ay":187.3},{"f":"fly5.webp","w":130,"h":185,"ay":179.7}],"fall":[{"f":"fall0.webp","w":122,"h":187,"ay":184.0},{"f":"fall1.webp","w":145,"h":199,"ay":186.0},{"f":"fall2.webp","w":174,"h":210,"ay":179.8},{"f":"fall3.webp","w":143,"h":198,"ay":182.3}],"jump":[{"f":"jump0.webp","w":122,"h":148,"ay":171.0},{"f":"jump1.webp","w":140,"h":171,"ay":169.4},{"f":"jump2.webp","w":138,"h":221,"ay":193.2},{"f":"jump3.webp","w":183,"h":186,"ay":179.6},{"f":"jump4.webp","w":155,"h":186,"ay":180.3}],"land":[{"f":"land0.webp","w":145,"h":183,"ay":183},{"f":"land1.webp","w":157,"h":179,"ay":179},{"f":"land2.webp","w":122,"h":121,"ay":121},{"f":"land3.webp","w":165,"h":186,"ay":186}],"hit":[{"f":"hit0.webp","w":145,"h":164,"ay":172.9},{"f":"hit1.webp","w":163,"h":186,"ay":185.1},{"f":"hit2.webp","w":122,"h":154,"ay":173.6},{"f":"hit3.webp","w":106,"h":126,"ay":166.0},{"f":"hit4.webp","w":178,"h":81,"ay":140.5},{"f":"hit5.webp","w":128,"h":146,"ay":173.4}],"kick":[{"f":"kick0.webp","w":164,"h":239,"ay":239.0},{"f":"kick1.webp","w":162,"h":228,"ay":228.0},{"f":"kick2.webp","w":172,"h":172,"ay":179.4},{"f":"kick3.webp","w":132,"h":192,"ay":178.6},{"f":"kick4.webp","w":182,"h":194,"ay":194.0}],"boom":[{"f":"boom0.webp","w":121,"h":125},{"f":"boom1.webp","w":194,"h":215},{"f":"boom2.webp","w":260,"h":273},{"f":"boom3.webp","w":209,"h":215},{"f":"boom4.webp","w":170,"h":175}],"cricket":[{"f":"cricket0.webp","w":45,"h":136,"ay":136.0},{"f":"cricket1.webp","w":44,"h":143,"ay":143.0},{"f":"cricket2.webp","w":67,"h":127,"ay":127.0},{"f":"cricket3.webp","w":58,"h":129,"ay":129.0},{"f":"cricket4.webp","w":62,"h":121,"ay":121.0},{"f":"cricket5.webp","w":55,"h":107,"ay":107.0}],"egg":[{"f":"egg0.webp","w":47,"h":58,"ay":29.0},{"f":"egg1.webp","w":45,"h":58,"ay":29.0},{"f":"egg2.webp","w":43,"h":58,"ay":29.0},{"f":"egg3.webp","w":39,"h":58,"ay":29.0},{"f":"egg4.webp","w":22,"h":58,"ay":29.0},{"f":"egg5.webp","w":15,"h":55,"ay":27.5},{"f":"egg6.webp","w":39,"h":55,"ay":27.5},{"f":"egg7.webp","w":41,"h":55,"ay":27.5},{"f":"egg8.webp","w":42,"h":55,"ay":27.5},{"f":"egg9.webp","w":43,"h":55,"ay":27.5}],"hensad":[{"f":"hensad0.webp","w":92,"h":98,"ay":98.0},{"f":"hensad1.webp","w":95,"h":98,"ay":98.0},{"f":"hensad2.webp","w":98,"h":98,"ay":98.0},{"f":"hensad3.webp","w":93,"h":98,"ay":98.0},{"f":"hensad4.webp","w":83,"h":98,"ay":98.0}],"henjoy":[{"f":"henjoy0.webp","w":94,"h":98,"ay":98.0},{"f":"henjoy1.webp","w":80,"h":98,"ay":98.0},{"f":"henjoy2.webp","w":80,"h":98,"ay":98.0},{"f":"henjoy3.webp","w":80,"h":98,"ay":98.0}],"farmer":[{"f":"farmer0.webp","w":94,"h":224,"ay":224.0},{"f":"farmer1.webp","w":102,"h":224,"ay":224.0},{"f":"farmer2.webp","w":141,"h":224,"ay":224.0},{"f":"farmer3.webp","w":160,"h":224,"ay":224.0},{"f":"farmer4.webp","w":114,"h":224,"ay":224.0},{"f":"farmer5.webp","w":145,"h":224,"ay":224.0}],"spy":[{"f":"spy0.webp","w":62,"h":86,"ay":86.0},{"f":"spy1.webp","w":62,"h":86,"ay":86.0},{"f":"spy2.webp","w":62,"h":86,"ay":86.0},{"f":"spy3.webp","w":90,"h":86,"ay":86.0},{"f":"spy4.webp","w":63,"h":86,"ay":86.0},{"f":"spy5.webp","w":76,"h":86,"ay":86.0}]};
 const FR = { ready:false, n:0, need:0, img:{} };
 const SPR = 175/190;                       // world units per frame pixel
 /* The roadside animals are scenery. They are loaded like everything else but
@@ -3303,6 +3303,23 @@ function farmGeom(){
   FARM.geom = { ground:GROUND, n:FARM.ready, P, xs, cycle:x || 1 };
   return FARM.geom;
 }
+/* THE LOOKOUTS. Three pigeons in sunglasses on the watchtower's balcony rail.
+   The tower is painted into panel C, so they are drawn per panel at fractions
+   measured off that image and ride with it wherever it repeats -- which is also
+   why they are in here rather than in the props pass. */
+const SPY = { x0:0.170, x1:0.258, y:0.400, panel:2, h:0.075 };
+function drawSpyPigeons(x, q){
+  const list = FRAME_DATA.spy; if(!list || !list.length) return;
+  const y = q.top + SPY.y*q.H;
+  for(let i=0;i<3;i++){
+    const fx = SPY.x0 + (SPY.x1-SPY.x0)*(i/2);
+    // barely animated on purpose: a lookout that fidgets is not cool
+    const fr = list[Math.floor(game.t*0.7 + i*3.3) % list.length];
+    const im = FR.img[fr.f]; if(!im || !im.complete || !im.naturalWidth) continue;
+    const h = SPY.h*q.H, w = h*(fr.w/fr.h);
+    ctx.drawImage(im, x + fx*q.W - w*0.5, y - h, w, h);
+  }
+}
 function drawFarmPainted(){
   const g = farmGeom(); if(!g.P.length) return;
   const off = cam.x * FARMF;
@@ -3316,6 +3333,7 @@ function drawFarmPainted(){
       // bands would end at different depths and step along the bottom
       ctx.drawImage(q.im, 0, 0, q.im.width, q.im.height*q.gf,
                     x, q.top, q.W, q.gf*q.H);
+      if(i === SPY.panel) drawSpyPigeons(x, q);
     }
   }
 }
@@ -3446,12 +3464,42 @@ function drawSpectators(){
     }
   }
 }
+/* THE FARMER. He owns the place, and Nugget has just left it. Six frames of
+   escalating rage -- noticing, fists up, pointing, hat off, doubled over --
+   played only while a chicken is going past, and standing about the rest of the
+   time.
+
+   He gets his own pass at his own spacing rather than joining the livestock:
+   one farmer reads as a man, three in a row reads as a bug, and the animals
+   want to come in groups. */
+function drawFarmer(){
+  const list = FRAME_DATA.farmer; if(!list || !list.length) return;
+  const spacing = 1180, first = Math.floor((cam.x-300)/spacing);
+  for(let i=first; i<first+Math.ceil(VW/spacing)+3; i++){
+    if(hash(i*3.9) > 0.62) continue;                   // not at every stop
+    const gx = i*spacing + 640;
+    const sx = gx - cam.x;
+    if(sx < -260 || sx > VW+260) continue;
+    // same window the livestock use: he starts before Nugget arrives and is
+    // still going when he is most of a screen away
+    const dx = player.x - gx;
+    const near = game.mode === 'play' && dx > -430 && dx < 900;
+    const ph = hash(i*2.7)*TAU;
+    const bob = near ? -Math.abs(Math.sin(game.t*7 + ph))*8 : Math.sin(game.t*1.4 + ph)*2;
+    const pose = near ? 2 + (Math.floor(game.t*8 + i) % 4)
+                      : (hash(i*5.1) > 0.5 ? 1 : 0);
+    // behind the fence and a good head taller than the bird, so he is drawn
+    // smaller than his own art and stood a little back from the road
+    drawNPC('farmer', pose, sx, GROUND-30+bob, 0.60, false);
+  }
+}
 function drawProps(){
   // The panels paint the whole middle distance, so anyone standing in the field
   // has to be drawn AFTER them or the fence simply covers them -- which is what
   // happened to the crickets the moment the art landed.
   drawFarmProps();
   drawSpectators();
+  drawFarmer();
 }
 function drawGround(){
   const y = GROUND;
