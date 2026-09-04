@@ -1469,13 +1469,13 @@ function drawPart(id, scaleX, scaleY){
   ctx.restore();
   return true;
 }
-loadPart('body','art/part-bodyref.png', {w:150, ax:0.5000, ay:0.5000});
-loadPart('headref','art/part-headref.png',{w:84, ax:0.5146, ay:0.4978});
-loadPart('head','art/part-head.png',    {w:78, ax:0.4324, ay:0.4607});   // bare head, for other hats
-loadPart('wing','art/part-wing.png', {w:78,   ax:0.4282, ay:0.0809, rot:0.409});
-loadPart('wingfold','art/part-wingfold.png', {w:62, ax:0.6158, ay:0.0824, rot:-0.162});
+loadPart('body','art/part-bodyref.webp', {w:150, ax:0.5000, ay:0.5000});
+loadPart('headref','art/part-headref.webp',{w:84, ax:0.5146, ay:0.4978});
+loadPart('head','art/part-head.webp',    {w:78, ax:0.4324, ay:0.4607});   // bare head, for other hats
+loadPart('wing','art/part-wing.webp', {w:78,   ax:0.4282, ay:0.0809, rot:0.409});
+loadPart('wingfold','art/part-wingfold.webp', {w:62, ax:0.6158, ay:0.0824, rot:-0.162});
 // no tail part: the reference's tail is part of the body silhouette itself
-loadPart('shoe','art/part-shoe.png', {w:36,   ax:0.2200, ay:0.220});
+loadPart('shoe','art/part-shoe.webp', {w:36,   ax:0.2200, ay:0.220});
 /* the foot IK aims the ankle ANKLE units above the ground, and the shoe hangs
    (1-ay)*height below the ankle - so those two must be the same number or the
    sneakers float or sink. Read it off the art rather than guessing. */
@@ -1483,7 +1483,7 @@ PARTS['shoe'].img.addEventListener('load', ()=>{
   const q = PARTS['shoe'];
   CK.ANKLE = (1-q.ay) * q.w * (q.img.naturalHeight/q.img.naturalWidth);
 }, {once:true});
-loadPart('leg', 'art/part-leg.png',  {w:17,  ax:0.50, ay:0.00});
+loadPart('leg', 'art/part-leg.webp',  {w:17,  ax:0.50, ay:0.00});
 
 /* ---- the head, drawn in the same language as the body ---- */
 function hatSnapback(R){
@@ -1526,8 +1526,8 @@ defineCosmetic({ id:'shades_code',  slot:'face', draw:(R)=>{
   ctx.restore();
 }});
 /* PNG cosmetics from Gemini Studio — same slots, same pivots, no code changes */
-cosmeticImage('shades_art',  'face', 'art/cos-shades.png',  {w:1.60, ox:11,  oy:-7,  ax:0.42, ay:0.52});
-cosmeticImage('scarf_art',   'neck', 'art/cos-scarf.png',   {w:1.30, ox:14,  oy:-30, ax:0.56, ay:0.50, rot:0.12});
+cosmeticImage('shades_art',  'face', 'art/cos-shades.webp',  {w:1.60, ox:11,  oy:-7,  ax:0.42, ay:0.52});
+cosmeticImage('scarf_art',   'neck', 'art/cos-scarf.webp',   {w:1.30, ox:14,  oy:-30, ax:0.56, ay:0.50, rot:0.12});
 
 defineCosmetic({ id:'chain_code', slot:'neck', ox:6, oy:-24, draw:(R)=>{
   ctx.beginPath(); ctx.moveTo(-14,-6); ctx.quadraticCurveTo(4,20, 24,-4);
@@ -1803,13 +1803,17 @@ const rag = {
                basket drops away, and there is a moment of grace before the
                bird is solid again.
    ============================================================ */
-const RIDE_TIME = 14, RIDE_GRACE = 0.85, RIDE_EVERY = [17, 26];
+const RIDE_TIME = 22, RIDE_GRACE = 0.85, RIDE_EVERY = [17, 26];
 /* It DRIVES. Gravity at full strength and almost no drag, because the arc of a
    jump is the whole feel of a ground vehicle and drag is what turns a jump
    into a float. There is no thrust at all -- holding does nothing, the press
    is a jump, and that is the difference between this and the bird. */
 const RIDE_G = 1.0, RIDE_D = 0.22;
-const RIDE_JUMP = 2350, RIDE_JUMP2 = 1900;   // the launch, and the one in the air
+/* The launch, and the one in the air. 3000 clears about 520 units, which is
+   measured against the two things it has to clear: a fence at 148 and the tall
+   wire at 352. Under that and the wire is not jumpable, which would make the
+   vehicle's own level unfair; far over it and the jump stops being a decision. */
+const RIDE_JUMP = 3250, RIDE_JUMP2 = 2600;
 const RIDE_BOOST = 1.22;                     // it is faster than running, too
 const CLEAR_RIDE = 560;
 const TRUCK = { img: new Image(), ready:false };
@@ -3155,7 +3159,11 @@ function updateCrows(dt){
       else die(c);
     }
     if(overlapX){
-      const gap = (pb > c.y) ? (pb - (c.y+CROW_HH)) : ((c.y-CROW_HH) - pt);
+      // rbox, not pb/pt: those are the obstacle loop's locals and do not exist
+      // here, so this threw "pb is not defined" the first time a crow lined up
+      // with him -- and it threw from inside updateCrows, which runs every
+      // frame, so it took the rest of the frame's update with it.
+      const gap = (rbox.b > c.y) ? (rbox.b - (c.y+CROW_HH)) : ((c.y-CROW_HH) - rbox.t);
       if(gap > 0) c.minGap = Math.min(c.minGap, gap);
     }
     if(!c.counted && c.x < p.x-30){
@@ -3403,13 +3411,30 @@ const PAT = [
    Spaced wider than the equivalent tier on foot, because a jump commits: once
    he is in the air the only thing he can do about the next fence is have left
    earlier. */
+/* Built around the jump rather than borrowed from the run.
+
+   There are only two verbs in the truck -- jump it or drive through it -- so
+   the table is written in those terms. `e_fence` (148 tall) is the easy one,
+   `e_wire` (352) is the one that needs a real jump, and corn is what he goes
+   through. The rhythm alternates deliberately: a thing to smash right after a
+   thing to jump is a landing you can take at speed, and two tall wires in a
+   row is the double jump being asked for by name.
+
+   Wider tails than the equivalent tier on foot, because a jump commits: once
+   he is in the air the only thing he can do about the next fence is have left
+   earlier. */
 const RIDE_PAT = [
-  mkPat(0, [1.75,2.15], ['#fence']),
+  mkPat(0, [1.75,2.15], ['e_fence']),
   mkPat(0, [1.70,2.10], ['#corn']),
-  mkPat(1, [1.65,2.00], ['#fence', 1.30, '#corn']),
-  mkPat(1, [1.60,1.95], ['#corn', 1.25, '#fence']),
-  mkPat(2, [1.55,1.90], ['#fence', 1.25, '#fence']),
-  mkPat(2, [1.55,1.90], ['#corn', 1.20, '#fence', 1.30, '#corn']),
+  mkPat(0, [1.70,2.05], ['e_fence', 1.25, '#corn']),
+  mkPat(1, [1.65,2.00], ['#corn', 1.20, 'e_fence']),
+  mkPat(1, [1.70,2.05], ['e_wire']),
+  mkPat(1, [1.65,2.00], ['e_fence', 1.30, 'e_fence']),
+  mkPat(2, [1.60,1.95], ['e_wire', 1.35, '#corn']),
+  mkPat(2, [1.60,1.95], ['#corn', 1.15, 'e_fence', 1.30, '#corn']),
+  mkPat(2, [1.65,2.00], ['e_fence', 1.25, 'e_wire']),
+  mkPat(3, [1.55,1.90], ['e_wire', 1.40, 'e_wire']),
+  mkPat(3, [1.55,1.90], ['#corn', 1.15, 'e_wire', 1.35, 'e_fence']),
 ];
 function spawnPattern(){
   const tier = tierNow();
@@ -3675,6 +3700,21 @@ function startRide(){
 /* Losing it is not dying. The balloons go, the basket drops away behind him,
    and for RIDE_GRACE seconds nothing can touch him -- without that he is
    solid again inside the same gap that just took the basket. */
+/* The corn goes UNDER the truck. It is the one hazard in the ride's table that
+   is shorter than the bonnet, and a vehicle built out of monster-truck tyres
+   that is stopped by a plant reads as a bug -- the key art promises it smashes
+   through things, and this is the thing it smashes through. Everything else in
+   the table is a fence, and a fence is for jumping. */
+const SMASHABLE = ['corn_one', 'corn_clump', 'corn_row'];
+function smash(o){
+  o.hitBy = true; o.spin = rnd(-7, 7); o.vy = -260 - Math.random()*220;
+  addShake(7); S.step();
+  const gy = GROUND - player.y;
+  spark(o.x - cam.x, gy - 60, 16,
+        {col:'rgba(150,205,80,.95)', s0:180, s1:520, l0:0.25, l1:0.6, r0:4, r1:11, g:900});
+  pop(o.x - cam.x, gy - 210, 'SMASH!', C.mint, 46, -70);
+  game.score += 25;
+}
 function loseRide(o){
   game.ride = 0; game.rideGrace = RIDE_GRACE;
   addShake(16); game.flash = 0.35; S.hit();
@@ -4068,7 +4108,14 @@ function updatePlay(dt){
   // ---- flight ----
   p.powerT = Math.max(0, (p.powerT||0) - dt*3.2);
   if(game.demo){
-    p.thrusting = game.holdOff ? false : (game.demoFlap!==undefined ? true : Math.sin(game.runT*2.3) > -0.15);
+    const want = game.holdOff ? false
+               : (game.demoFlap!==undefined ? true : Math.sin(game.runT*2.3) > -0.15);
+    /* In the truck the autopilot has to PRESS, not hold: a jump happens on the
+       edge, and setting the flag straight never reaches thrustOn() -- which is
+       why ?demo=1 could not drive the truck at all and every measurement of it
+       came back as "never left the ground". */
+    if(riding()){ if(want && !p.thrusting) thrustOn(); else if(!want) thrustOff(); }
+    else p.thrusting = want;
     if(game.demoFlap!==undefined) p.flapT = game.demoFlap;
   }
   p.nearCool = Math.max(0, p.nearCool-dt);
@@ -4105,7 +4152,12 @@ function updatePlay(dt){
   const vT  = acc/k;                                 // terminal speed, this input
   const e   = Math.exp(-k*dt);
   const v0  = p.vy;
-  p.vy = clamp(vT + (v0 - vT)*e, VY_UP, VY_DOWN);    // rails are a safety net only
+  /* The rails are a safety net for the bird -- and they were quietly the real
+     ceiling on the truck's jump. VY_UP is -2775 at this pace, so raising the
+     jump impulse from 3000 to 3250 changed the apex by four units: both were
+     being clipped on the frame they were applied. The truck gets its own rail. */
+  const vUp = riding() ? VY_UP*1.55 : VY_UP;
+  p.vy = clamp(vT + (v0 - vT)*e, vUp, VY_DOWN);
   p.y -= vT*dt + (v0 - vT)*(1 - e)/k;                // exact ∫v dt over the step
 
   if(p.thrusting){                                   // wingbeat is animation only
@@ -4187,6 +4239,7 @@ function updatePlay(dt){
     const overlapX = pr > o.x-ow && pl < o.x+ow;
     if(overlapX && !o.hitBy && o.spec.hit(o, pl+8, pr-8, pb+8, pt-8)){
       if(game.rideGrace > 0){ /* just lost it; let him get clear */ }
+      else if(riding() && SMASHABLE.indexOf(o.key) >= 0) smash(o);
       else if(riding()) loseRide(o);
       else die(o);
     }

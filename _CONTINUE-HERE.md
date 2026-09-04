@@ -1333,10 +1333,22 @@ it is a GROUND vehicle:
   difference from the bird, whose entire control is the hold. Same solved
   movement model, gravity at full strength and the drag almost off, because
   drag is what turns a jump into a float.
-- **Level.** `RIDE_PAT` replaces the pattern table: things that stand on the
-  ground and can be jumped, fences and corn, and nothing that hangs in the air.
-  A gate with an opening halfway up the screen is a fine hazard for something
-  that flies and an impossible one for something with wheels.
+- **The rail was the real ceiling.** `VY_UP` is -2775 at this pace, so raising
+  the impulse from 3000 to 3250 moved the apex by *four units* -- both were
+  being clipped on the frame they were applied. The truck gets its own rail
+  (`VY_UP*1.55`) and now tops out at 490, which is measured against what it has
+  to clear: a fence at 148 and the tall wire at 352. **Measure the apex, do not
+  compute it** -- the drag term makes the paper figure 30% optimistic.
+- **`?demo=1` could not drive it.** The autopilot set `p.thrusting` directly,
+  which never reaches `thrustOn()`, and a jump happens on the edge -- so every
+  measurement of the truck came back "never left the ground". It presses now.
+- **Level.** `RIDE_PAT` replaces the pattern table, and it is written in the
+  truck's two verbs rather than borrowed from the run: **jump it** (`e_fence` at
+  148, `e_wire` at 352) or **drive through it** (corn, which `SMASHABLE` lets
+  the bumper destroy for 25 points instead of ending the ride -- a vehicle on
+  monster-truck tyres stopped by a plant reads as a bug). Nothing that hangs in
+  the air: a gate with an opening halfway up the screen is a fine hazard for
+  something that flies and an impossible one for something with wheels.
 - **It is faster** (`RIDE_BOOST`), which is the other half of why it reads as a
   reward.
 - **He is lifted to the rim** and the truck is drawn after him, so the wire
