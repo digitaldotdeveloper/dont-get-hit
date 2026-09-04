@@ -59,7 +59,7 @@ def main():
         cmd("Emulation.setDeviceMetricsOverride", width=W, height=H,
             deviceScaleFactor=2, mobile=True)
         cmd("Page.enable"); cmd("Page.navigate", url=url)
-        time.sleep(6.0)                      # every prop through the load queue
+        time.sleep(float(__import__("os").environ.get("OBSHOT_SETTLE","6")))
 
         shots = []
         for k in keys:
