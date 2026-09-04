@@ -1148,17 +1148,40 @@ const NPC_SETS = ['cow','cowrun','pig','pigrun','goat','goatrun'];
    Six at a time. The image objects are created up front so everything that
    looks one up still finds it -- an Image with no src reports naturalWidth 0,
    which is exactly the 'not ready yet' the draw calls already test for. */
-const IMQ = { q: [], live: 0, max: 6 };
+/* Three lanes, not one. The frames and the obstacle art are both needed
+   early and neither can be made to wait on the whole of the other, so the
+   pump alternates between them; scenery still goes last, and `max` is
+   untouched.
+
+   Measured against the live CDN before this: 129 frames finished at 20.1s and
+   the FIRST prop at 20.2s, because the props are registered further down the
+   file and simply queued behind everything. Twenty seconds is most of a run,
+   and a hazard whose art has not arrived draws as a flat coloured block --
+   which is a fallback that keeps the game honest but tells the player nothing
+   about what they are dodging. The chicken has a real fallback for this; a
+   hazard's is a rectangle, so the hazard is the one that cannot afford to
+   wait. Alternating costs the frames a few seconds and buys the obstacles
+   about fourteen. */
+const IMQ = { q: [], gp: [], late: [], live: 0, max: 6, turn: 0 };
+function imqNext(){
+  if(IMQ.q.length && IMQ.gp.length) return (IMQ.turn ^= 1) ? IMQ.gp.shift() : IMQ.q.shift();
+  if(IMQ.q.length)  return IMQ.q.shift();
+  if(IMQ.gp.length) return IMQ.gp.shift();
+  return IMQ.late.shift();
+}
 function imqPump(){
-  while(IMQ.live < IMQ.max && IMQ.q.length){
-    const job = IMQ.q.shift();
+  while(IMQ.live < IMQ.max && (IMQ.q.length || IMQ.gp.length || IMQ.late.length)){
+    const job = imqNext();
     IMQ.live++;
     job.im.onload  = () => { IMQ.live--; job.ok();  imqPump(); };
     job.im.onerror = () => { IMQ.live--; job.err(); imqPump(); };
     job.im.src = job.src;
   }
 }
-function imqLoad(im, src, ok, err){ IMQ.q.push({ im, src, ok, err }); imqPump(); }
+function imqLoad(im, src, ok, err, lane){
+  (lane ? IMQ[lane] : IMQ.q).push({ im, src, ok, err });
+  imqPump();
+}
 (function loadFrames(){
   for(const set in FRAME_DATA){
     if(NPC_SETS.indexOf(set) < 0) FR.need += FRAME_DATA[set].length;
@@ -1175,7 +1198,8 @@ function imqLoad(im, src, ok, err){ IMQ.q.push({ im, src, ok, err }); imqPump();
       imqLoad(im, 'anim/' + fr.f,
         ()=>{ if(scenery) return;
               FR.n++; if(FR.n >= FR.need) FR.ready = true; },
-        ()=>{ if(!scenery){ FR.need--; if(FR.n >= FR.need) FR.ready = true; } });
+        ()=>{ if(!scenery){ FR.need--; if(FR.n >= FR.need) FR.ready = true; } },
+        scenery ? 'late' : null);
     });
   }
 })();
@@ -1971,7 +1995,7 @@ function loadProp(n){
   if(PROPS[n]) return;                        // several pieces share a post
   const im = new Image();
   PROPS[n] = im;
-  imqLoad(im, 'art/farm/' + n + '.webp', ()=>{}, ()=>{ delete PROPS[n]; });
+  imqLoad(im, 'art/farm/' + n + '.webp', ()=>{}, ()=>{ delete PROPS[n]; }, 'gp');
 }
 function farmProp(name, w, h, opt){
   opt = opt || {};
@@ -2298,7 +2322,14 @@ Object.assign(OB, {
    left whatever slot they happened to leave, which is Flappy Bird; a ladder
    is one object that owns both halves and therefore owns the gap as well. */
 function elecLadder(tier, o){
+  /* The art list is what registers a piece's images for loading, so a ladder
+     that does not declare its own posts and cap gets neither. e_gateframe is
+     used by nothing else, so the gate's painted frame was never requested at
+     all and quietly fell back to a plain post -- silently, because a missing
+     image is a fallback here and not an error. If you add a `cap`, it belongs
+     in this list too. */
   return elecSpec({ tier, hw:o.hw,
+    art: ['e_posttall'].concat(o.cap ? [o.cap] : []),
     ladder:{ lo:o.lo, gap:o.gap, rung:o.rung||RUNG, cap:o.cap||null },
     build(ob){
       const px=o.hw-26, lo=ob.lo||160, hi=ob.hi||(lo+CLEAR), band=ob.band||700;
