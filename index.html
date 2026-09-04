@@ -2416,7 +2416,7 @@ const game = {
                   catch(e){ return 0; } })(),
   speed:620, score:0, best:0,
   dist:0, near:0, combo:0, comboBest:0, comboT:0,
-  obstacles:[], parts:[], pops:[], ui:[], crows:[], crowT:1e9, crowN:0,
+  obstacles:[], parts:[], pops:[], ui:[], crows:[], crowT:1e9, crowN:0, crowWait:0,
   spawnT:1.2, cornT:0, tier:0,
   freeze:0, timeScale:1, tsTarget:1,
   shake:0, flash:0, zoom:1, zoomT:1, camY:0, camYT:0,
@@ -2775,9 +2775,24 @@ const crowLane = () => [40, (GROUND-CEIL) - 10];
    on, and looking for it every 0.3s finds one within a few seconds. */
 function crowFlightTime(){ return (VW - PX + 260)/(CROW_SPEED + game.speed); }
 function crowSpan(){ return CROW_WARN + crowFlightTime(); }
+/* Past this far into a run a volley is never a single bird again.
+
+   Distance and not game.diff, which is what every other difficulty decision
+   here keys off. The two are close cousins -- diff climbs with runT and the
+   speed climbs with diff -- but they answer different questions. game.diff is
+   "how fast is this going", and it saturates: a player who is still alive at
+   three minutes is at the same diff as one at two. Distance is "how long have
+   you been getting away with this", and it never stops climbing, which is the
+   right shape for the one hazard that is meant to eventually outnumber you.
+   It is also the number on the score card, so a player can see the threshold
+   coming rather than just feeling the game get worse. */
+const CROW_FLOCK_M = 1500;
+const crowFloor = () => game.dist >= CROW_FLOCK_M*10 ? 2 : 1;
 function crowVolleySize(){
   /* One bird is a dodge. Two is a dodge you have to hold, because the second
-     badge locks onto wherever the first one chased you. */
+     badge locks onto wherever the first one chased you. Three is the same
+     trick again with nowhere left to have gone. */
+  if(game.dist >= CROW_FLOCK_M*10) return Math.random() < 0.40 ? 3 : 2;
   return (game.diff > 0.82 && Math.random() < 0.20) ? 3
        : (game.diff > 0.50 && Math.random() < 0.42) ? 2 : 1;
 }
@@ -2814,10 +2829,29 @@ function updateCrows(dt){
       /* The size is chosen ONCE and then kept until it can be flown, because
          re-rolling it every retry quietly selects for whichever size happens
          to fit -- and a three-bird volley needs the widest window of all. */
-      if(!game.crowN) game.crowN = crowVolleySize();
+      if(!game.crowN){ game.crowN = crowVolleySize(); game.crowWait = 0; }
+      /* The size is chosen when the timer comes up and then held while it
+         waits for a window, which can be seconds -- long enough to cross the
+         threshold in between. Re-floor it here, BEFORE the window is measured,
+         or a single bird chosen at 1490m flies at 1520m and the rule is not
+         the rule. Raising it after the check would be worse: the window would
+         have been measured for a volley smaller than the one that flew. */
+      if(game.crowN < crowFloor()) game.crowN = crowFloor();
       if(game.runT >= CROW_T0*CROW_GAP && !game.crows.length &&
          crowWindowClear(game.crowN)){ launchCrows(game.crowN); game.crowN = 0; }
-      else game.crowT = 0.30;                  // not yet -- ask again in a moment
+      else {
+        game.crowT = 0.30;                     // not yet -- ask again in a moment
+        /* The window a volley needs grows with the volley, so the big ones can
+           sit here waiting while a single bird would have flown long ago. Once
+           every volley past 1500m is at least two, that wait is no longer an
+           edge case -- so a size that cannot find its window gives up a bird
+           rather than letting the flock never arrive. Never below the floor
+           the distance has set: the point of the rule is that it holds. */
+        game.crowWait += 0.30;
+        if(game.crowWait > 4 && game.crowN > crowFloor()){
+          game.crowN--; game.crowWait = 0;
+        }
+      }
     }
   }
   for(let i=game.crows.length-1;i>=0;i--){
@@ -3237,7 +3271,7 @@ document.addEventListener('visibilitychange', ()=>{
 function toMenu(){
   applyTheme();
   game.mode='menu'; game.obstacles.length=0; game.parts.length=0; game.pops.length=0;
-  game.crows.length=0; game.crowT=1e9; game.crowN=0;
+  game.crows.length=0; game.crowT=1e9; game.crowN=0; game.crowWait=0;
   game.cageX = -CAGE_RUNOUT;             // parked so the escape ends on the play mark
   game.door=null; game.doorGone=false; game.lockGone=false; game.doorBow=0;
   player.state='idle'; player.stateT=0; player.beat=''; player.beatT=1.2;
@@ -3250,12 +3284,13 @@ function toMenu(){
 function startRun(){
   game.runCount = (game.runCount||0) + 1;
   applyTheme();
-  game.mode='play'; game.runT=game.presetRunT||0; game.score=0; game.dist=0;
+  game.mode='play'; game.runT=game.presetRunT||0; game.score=0;
+  game.dist=(game.presetDist||0)*10;           // ?dist=N starts the odometer there
   game.near=0; game.combo=0; game.comboBest=0; game.comboT=0;
   game.speed=340*PACE; game.diff=0; game.spawnT=2.6; game.cornT=0;
   game.obstacles.length=0; game.parts.length=0; game.pops.length=0; game.ui.length=0;
   game.eggs.length=0; game.eggT=1.6; game.runEggs=0; game.eggStreak=0;
-  game.crows.length=0; game.crowT=5*CROW_GAP; game.crowN=0;
+  game.crows.length=0; game.crowT=5*CROW_GAP; game.crowN=0; game.crowWait=0;
   game.freeze=0; game.timeScale=1; game.tsTarget=1; game.shake=0; game.zoom=1; game.zoomT=1;
   game.camY=0; game.camYT=0; game.deadT=0; game.newBest=false;
   game.door=null; game.doorGone=false; game.lockGone=false; game.doorBow=0;
@@ -4620,6 +4655,8 @@ function boot(){
   if(sl) game.introSlow = Math.max(1, parseFloat(sl[1]));  // run the escape in slow motion
   const rt=/[?&]runt=([0-9.]+)/.exec(location.search);
   if(rt) game.presetRunT = parseFloat(rt[1]);   // jump to a difficulty tier
+  const ds=/[?&]dist=([0-9.]+)/.exec(location.search);
+  if(ds) game.presetDist = parseFloat(ds[1]);   // ...and to a distance, in metres
   if(/[?&]rig/.test(location.search)) game.rig = true;
   if(/[?&]align/.test(location.search)) game.align = true;
   if(/[?&]selftest/.test(location.search)){
@@ -4733,9 +4770,14 @@ function boot(){
         game.obstacles.length = 0; game.spawnT = 0;
         game.crows.length = 0; game.crowT = 0; game.crowN = 0;
         player.x = 0; player.y = 300; cam.x = -PX;
-        const waits = []; let wait = 0, sizes = [0,0,0,0];
+        const waits = []; let wait = 0;
+        /* Split at the flock threshold, because the whole claim being tested
+           is that the sizes on one side of it differ from the other. */
+        const sizes = { pre:[0,0,0,0], post:[0,0,0,0] };
         for(let T=0; T<120; T+=dt){
           player.x += game.speed*dt; cam.x = player.x - PX;
+          game.dist += game.speed*dt;          // the rule reads this
+
           game.spawnT -= dt;
           if(game.spawnT <= 0) spawnPattern();
           for(let i=game.obstacles.length-1;i>=0;i--)
@@ -4743,7 +4785,7 @@ function boot(){
           wait += dt;
           updateCrows(dt);
           if(game.crows.length){                 // a volley got its window
-            sizes[game.crows.length]++;
+            (game.dist >= CROW_FLOCK_M*10 ? sizes.post : sizes.pre)[game.crows.length]++;
             waits.push(wait); wait = 0;
             game.crows.length = 0;               // no camera here to fly it across
           }
@@ -4752,7 +4794,8 @@ function boot(){
         const av = waits.length ? waits.reduce((a,b)=>a+b,0)/waits.length : 999;
         out.push('runT='+rt+'  volleys='+waits.length+
                  '  every '+av.toFixed(1)+'s  worst '+mx.toFixed(1)+'s'+
-                 '  sizes 1/2/3='+sizes[1]+'/'+sizes[2]+'/'+sizes[3]);
+                 '  1/2/3 under '+CROW_FLOCK_M+'m='+sizes.pre.slice(1).join('/')+
+                 '  over='+sizes.post.slice(1).join('/'));
       }
       /* And the other half of "fair": a locked bird has to be able to reach
          him wherever he is, including pinned to the floor and pinned to the
