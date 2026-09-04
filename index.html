@@ -860,6 +860,16 @@ let MENU_TRACK = null, menuWanted = 0;
    minutes before anything repeats. These come from the Pro model: everything
    generated on Flash comes back at 30.8s no matter what the prompt asks for. */
 const MOVEMENTS = ['spy_long', 'spy_long_b'];
+/* These two and music_menu are the whole soundtrack SHIPPED. Four other
+   generated tracks and a second long one were carried for a while and never
+   referenced by anything -- 6.1 MB of a game whose images are 2.8 -- so they
+   were deleted on 2026-09-05. The 192k masters are still in audio/src/, which
+   nothing loads from and no bundle should include, so bringing one back is a
+   re-encode rather than a regeneration.
+
+   ?track=NAME therefore only works for a name that is still here. An unknown
+   one 404s, the error handler below marks it dead, and the run is silent
+   rather than broken -- which is the right failure for a debug flag. */
 /* Opus where it exists, MP3 where it does not.
 
    The masters were 192 kbps joint-stereo -- CD rates for music that plays
