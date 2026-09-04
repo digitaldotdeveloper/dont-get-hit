@@ -662,17 +662,19 @@ semitone per egg in a streak. `game.eggBank` persists in `localStorage` under
 
 ## NPCs
 
-**`NPC_REACT` is FALSE: they walk and do nothing else.** Jetpack Joyride's
-scientists are a continuous band of movement across the bottom of the screen,
-not a set of encounters -- you never notice an individual one, you notice that
-the world is busy. Reactions turned that into encounters: a gap, a thing
-happening, another gap. Setting the flag to `true` restores every reaction at
-once -- the livestock panic run, the farmer's rage, the pigeons' alert. All the
-frame sets are still loaded and still sliced; only the switch is off.
+**`NPC_REACT` is FALSE: they walk and do nothing else.** Reactions made every
+one of them an encounter -- a gap, a thing happening, another gap -- when what a
+background wants is for someone to be passing by. Setting the flag to `true`
+restores every reaction at once: the livestock panic run, the farmer's rage, the
+pigeons' alert. All the frame sets are still loaded and still sliced; only the
+switch is off.
 
-Spacing goes with it. The animals stand every **232** units with 82% of stops
-populated, ones and twos rather than crowds, and the farmer every 470. That is
-roughly ten figures on screen at all times.
+**One at a time, not a crowd.** Animals every **1750** units with 58% of stops
+populated and exactly one animal per stop; the farmer every **3200** at 55%.
+That works out at about one figure on screen, sometimes two, often none -- which
+is what "someone happens to be walking past" looks like. A dense band of them
+reads as a parade, and the eye starts watching the crowd instead of the bird.
+`NPC_WALK` is 78 units a second, an amble.
 
 ### They TRAVEL, and the phase comes from distance
 

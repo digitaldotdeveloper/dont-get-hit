@@ -3253,9 +3253,23 @@ function loadPanels(SET){
    lines at 0.785, 0.802 and 0.820, so anchoring all of them on 0.806 stepped
    the grass by up to 13px at every join and left the fence rails meeting at
    different heights, which is what read as fences that do not attach. */
-const FARM = loadPanels({ srcs:['sheets/v2/farm_a.webp','sheets/v2/farm_b.webp','sheets/v2/farm_c.webp'],
-               imgs:[], ready:0, blend:46, haze:'rgba(146,196,246,.15)',
-               marks:[[0.7850,0.6084],[0.8024,0.6102],[0.8199,0.6119]],
+/* ONE painting. The three panels used to be drawn as three: overlapped by 46
+   units, cross-faded into each other through an alpha ramp, and each scaled by
+   a different amount so its own two landmarks would land where the game wanted
+   them. Every complaint about this background came out of that. The cross-fade
+   showed one painting through another -- a silo ghosting through a windmill --
+   and the per-panel scale made the fence change size halfway across the field,
+   which is what read as fences that do not join.
+
+   tools/farm_strip.py now joins them once, offline: the seam is searched for
+   rather than assumed, the ground lines are levelled by sliding each panel
+   instead of scaling it, and the skies and fields are tone-matched row by row.
+   The game draws the result as a single opaque image, tiled -- so `blend` is 0
+   and there is nothing left to see through. Re-run that tool if the panels are
+   ever repainted; it prints the two marks below. */
+const FARM = loadPanels({ srcs:['sheets/v2/farm_strip.webp'],
+               imgs:[], ready:0, blend:0, haze:'rgba(146,196,246,.15)',
+               marks:[[0.8199,0.6276]],
                // buildLayers has already run by the time the art lands, so the
                // fallback layers are still in `layers`. Throw them away.
                onReady(){ if(SCALE) buildLayers(); } });
@@ -3304,10 +3318,12 @@ function farmGeom(){
   return FARM.geom;
 }
 /* THE LOOKOUTS. Three pigeons in sunglasses on the watchtower's balcony rail.
-   The tower is painted into panel C, so they are drawn per panel at fractions
-   measured off that image and ride with it wherever it repeats -- which is also
-   why they are in here rather than in the props pass. */
-const SPY = { x0:0.170, x1:0.258, y:0.400, panel:2, h:0.075 };
+   The tower is painted into the strip, so they are drawn at fractions measured
+   off it and ride with it wherever it repeats -- which is also why they are in
+   here rather than in the props pass. The fractions are of the whole strip now,
+   not of the panel the tower came from; tools/farm_strip.py is where the panel
+   ended up in it. */
+const SPY = { x0:0.6765, x1:0.7128, y:0.400, panel:0, h:0.075 };
 function drawSpyPigeons(x, q){
   const y = q.top + SPY.y*q.H;
   const px = player.x - cam.x;                       // where he is on screen
@@ -3464,7 +3480,7 @@ const NPC_KIND = ['cow', 'pig', 'goat'];
 
    `NPC_STRIDE` is world units covered per full six-frame cycle, and it scales
    with how tall the figure is drawn -- a farmer's pace is not a goat's. */
-const NPC_WALK = 155;                   // world units a second
+const NPC_WALK = 78;                    // world units a second, an amble
 const NPC_STRIDE = 0.92;                // ... per cycle, as a fraction of height
 const npcWalk = () => game.t * NPC_WALK;
 function npcPose(list, height, phase){
@@ -3473,14 +3489,14 @@ function npcPose(list, height, phase){
   return Math.floor((cycles + phase) * list.length) % list.length;
 }
 function drawSpectators(){
-  const spacing = 232, walk = npcWalk();
+  const spacing = 1750, walk = npcWalk();
   const first = Math.floor((cam.x - 300 + walk)/spacing);
   for(let i=first; i<first+Math.ceil(VW/spacing)+3; i++){
-    if(hash(i*9.3) > 0.82) continue;                    // nearly every stop
+    if(hash(i*9.3) > 0.58) continue;                    // most stops are empty
     const gx = i*spacing + 300 - walk;                  // they are going somewhere
     const sx = gx - cam.x;
     if(sx < -220 || sx > VW+220) continue;
-    const n = 1 + (hash(i*4.1)*1.99 | 0);               // ones and twos, not crowds
+    const n = 1;                                        // one animal, on its own
     /* Panic starts shortly before he arrives and carries on well after: they
        are still going when he is most of a screen down the road, which sells it
        as a reaction to him rather than a state of the scenery. Kept tight on
@@ -3520,10 +3536,10 @@ function drawSpectators(){
    want to come in groups. */
 function drawFarmer(){
   const list = FRAME_DATA.farmer; if(!list || !list.length) return;
-  const spacing = 470, travelled = npcWalk();
+  const spacing = 3200, travelled = npcWalk();
   const first = Math.floor((cam.x - 300 + travelled)/spacing);
   for(let i=first; i<first+Math.ceil(VW/spacing)+3; i++){
-    if(hash(i*3.9) > 0.55) continue;                   // rarer than the animals
+    if(hash(i*3.9) > 0.55) continue;                   // rarer still than the animals
     const gx = i*spacing + 640 - travelled;
     const sx = gx - cam.x;
     if(sx < -260 || sx > VW+260) continue;
