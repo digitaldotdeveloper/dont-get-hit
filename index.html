@@ -1788,23 +1788,23 @@ const rag = {
                bird is solid again.
    ============================================================ */
 const RIDE_TIME = 14, RIDE_GRACE = 0.85, RIDE_EVERY = [17, 26];
-const RIDE_G = 0.34, RIDE_T = 0.38, RIDE_D = 1.85;   // gravity, thrust, drag
-/* Measured, not picked: basket plus balloons stands about 410 units tall, so
-   an opening of 430 left twenty units of slack and the ride was a punishment.
-   The vehicle is supposed to be the safe part of the run. */
+/* It DRIVES. Gravity at full strength and almost no drag, because the arc of a
+   jump is the whole feel of a ground vehicle and drag is what turns a jump
+   into a float. There is no thrust at all -- holding does nothing, the press
+   is a jump, and that is the difference between this and the bird. */
+const RIDE_G = 1.0, RIDE_D = 0.22;
+const RIDE_JUMP = 2350, RIDE_JUMP2 = 1900;   // the launch, and the one in the air
+const RIDE_BOOST = 1.22;                     // it is faster than running, too
 const CLEAR_RIDE = 560;
-const BASKET = { img: new Image(), ready:false };
-const BALLOONS = { img: new Image(), ready:false };
-BASKET.img.onload   = () => { BASKET.ready = true; };
-BALLOONS.img.onload = () => { BALLOONS.ready = true; };
-BASKET.img.src   = 'art/basket.webp';
-BALLOONS.img.src = 'art/balloons.webp';
-/* Drawn from the bird's feet: the basket he sits in, and the balloons over it.
-   Sized off GROUND so the whole rig scales with the play area. */
-function basketGeom(){
-  const bw = GROUND*0.30, bh = bw*(952/980);
-  const lw = GROUND*0.26, lh = lw*(884/732);
-  return { bw, bh, lw, lh, lift: bh*0.62 };
+const TRUCK = { img: new Image(), ready:false };
+TRUCK.img.onload = () => { TRUCK.ready = true; };
+TRUCK.img.src = 'art/truck.webp';
+/* Sized off GROUND so the rig scales with the play area, and anchored on the
+   axle line rather than the sprite's bottom: the tyres are what sit on the
+   road, and they are a good fraction of the picture. */
+function truckGeom(){
+  const tw = GROUND*0.46, th = tw*(546/815);
+  return { tw, th, sink: th*0.06 };
 }
 const riding = () => game.ride > 0;
 /* ONE definition of what can be hit, because two of them drift. The obstacle
@@ -1813,9 +1813,12 @@ const riding = () => game.ride > 0;
 function rideBox(){
   const p = player;
   if(!riding()) return { l: p.x-48, r: p.x+48, b: p.y+8, t: p.y+150 };
-  const g = basketGeom();
-  return { l: p.x - g.bw*0.42, r: p.x + g.bw*0.42,
-           b: p.y - g.bh*0.12,  t: p.y + g.lift + g.lh*0.45 };
+  const g = truckGeom();
+  /* Wider than the bird and about as tall, because he is sitting in it: the
+     truck is a long low thing, and a box the height of the whole picture would
+     have the tyres colliding with the sky. */
+  return { l: p.x - g.tw*0.40, r: p.x + g.tw*0.40,
+           b: p.y + 6,          t: p.y + g.th*0.92 };
 }
 
 const CAGE = {
@@ -3330,14 +3333,22 @@ const PAT = [
    cannot fail is worse than no hazard at all. Spaced a little wider than the
    equivalent tier on foot, because the thing you are steering is twice the
    size and turns like a barge. */
+/* What the truck drives through. Things that STAND ON THE GROUND and can be
+   jumped -- fences and corn -- and nothing that hangs in the air. A gate with
+   an opening halfway up the screen is a fine hazard for something that flies
+   and an impossible one for something with wheels, and the vehicle is supposed
+   to be the safe part of the run.
+
+   Spaced wider than the equivalent tier on foot, because a jump commits: once
+   he is in the air the only thing he can do about the next fence is have left
+   earlier. */
 const RIDE_PAT = [
-  mkPat(0, [1.60,2.00], ['#lad']),
-  mkPat(0, [1.55,1.95], ['#zap']),
-  mkPat(1, [1.50,1.85], ['#zap', 1.15, '#lad']),
-  mkPat(1, [1.45,1.80], ['#lad', 1.20, '#zap']),
-  mkPat(2, [1.40,1.75], ['#zap', 1.05, '#zap']),
-  mkPat(2, [1.40,1.75], ['#lad', 1.10, '#lad']),
-  mkPat(3, [1.35,1.70], ['#zap', 1.00, '#lad', 1.10, '#zap']),
+  mkPat(0, [1.75,2.15], ['#fence']),
+  mkPat(0, [1.70,2.10], ['#corn']),
+  mkPat(1, [1.65,2.00], ['#fence', 1.30, '#corn']),
+  mkPat(1, [1.60,1.95], ['#corn', 1.25, '#fence']),
+  mkPat(2, [1.55,1.90], ['#fence', 1.25, '#fence']),
+  mkPat(2, [1.55,1.90], ['#corn', 1.20, '#fence', 1.30, '#corn']),
 ];
 function spawnPattern(){
   const tier = tierNow();
@@ -3391,6 +3402,26 @@ function thrustOn(){
     if(game.deadT>0.35) startIntro(); return;
   }
   if(game.mode!=='play') return;
+  /* In the truck the press is a JUMP, not lift: one off the ground and one
+     more in the air, and nothing while the second is spent. Holding does
+     nothing at all -- which is the point, because the bird's whole control is
+     holding, and a vehicle that reuses it is not a different vehicle. */
+  if(riding()){
+    player.thrusting = true;
+    if(player.onGround){
+      player.vy = -RIDE_JUMP; player.onGround = false;
+      player.rideJumps = 1; S.takeoff();
+      spark(player.x-40, GROUND-player.y, 10,
+            {col:'rgba(210,180,140,.9)', a0:Math.PI*0.9, a1:Math.PI*1.4,
+             s0:120, s1:340, l0:0.2, l1:0.5, r0:4, r1:10, g:900});
+    } else if((player.rideJumps||0) < 2){
+      player.vy = -RIDE_JUMP2; player.rideJumps = 2; S.flap();
+      spark(player.x, GROUND-player.y-30, 8,
+            {col:'rgba(255,190,80,.9)', a0:Math.PI*0.7, a1:Math.PI*1.3,
+             s0:100, s1:260, l0:0.2, l1:0.45, r0:3, r1:8, g:700});
+    }
+    return;
+  }
   const wasOff = !player.thrusting;
   player.thrusting = true;                     // FIRST. Nothing below may block it.
   if(wasOff){
@@ -3532,7 +3563,7 @@ function startRun(){
   game.speed=340*PACE; game.diff=0; game.spawnT=2.6; game.cornT=0;
   game.obstacles.length=0; game.parts.length=0; game.pops.length=0; game.ui.length=0;
   game.eggs.length=0; game.eggT=1.6; game.runEggs=0; game.eggStreak=0;
-  game.ride=game.forceRide?RIDE_TIME:0; game.rideGrace=0; game.drop=null;
+  game.ride=game.forceRide?RIDE_TIME:0; game.rideGrace=0; game.drop=null; game.npcHit={};
   game.dropT=game.forceRide?1e9:rnd(9, 14);
   game.crows.length=0; game.crowT=5*CROW_GAP; game.crowN=0; game.crowWait=0;
   game.freeze=0; game.timeScale=1; game.tsTarget=1; game.shake=0; game.zoom=1; game.zoomT=1;
@@ -3571,9 +3602,12 @@ function spawnBasketDrop(){
 function startRide(){
   game.ride = RIDE_TIME; game.rideGrace = 0;
   game.drop = null;
-  player.vy = Math.min(player.vy, -60);        // a little lift as he climbs in
+  /* Straight down onto the road: it is a ground vehicle, and being handed one
+     in mid-air with no way to fly it is a worse surprise than the drop. */
+  player.vy = Math.max(player.vy, 260);
+  player.rideJumps = 0;
   S.egg && S.egg();
-  pop(player.x, GROUND - player.y - 210, 'BASKET!', C.gold, 56, -70);
+  pop(player.x, GROUND - player.y - 210, 'FLOOR IT!', C.gold, 56, -70);
   spark(player.x, GROUND - player.y - 120, 16,
         {col:C.gold, s0:120,s1:380, l0:0.3,l1:0.7, r0:3,r1:9});
 }
@@ -3589,7 +3623,34 @@ function loseRide(o){
   pop(player.x, gy - 230, 'POP!', C.coral, 48, -60);
   if(o){ o.hitBy = true; o.spin = rnd(-5,5); o.vy = -320; }
 }
+/* WHAT THE TRUCK DOES TO THE NEIGHBOURS.
+
+   Two different things, and they read differently on purpose:
+
+     SCORCHED  the exhaust reaches back about a truck and a half. Anything in
+               that stretch drops its amble and runs -- the panic sets already
+               exist, so this costs a change of frame table and a flip.
+     BOWLED    the bumper. Driving into one, or landing on one, sends it
+               tumbling off the way everything else in this game leaves: an
+               arc, a spin, and gone.
+
+   The livestock are drawn from a hash rather than stored, so the only state
+   kept is the ones that have been hit -- an index and when. Everything else is
+   still derived, which is why a hundred of them cost nothing. */
+const NPC_BURN = 520;          // how far behind the truck the flame still bites
+const NPC_HIT_W = 120;         // and how close the bumper has to be
+function npcHits(){ return game.npcHit || (game.npcHit = {}); }
+function updateNpcHits(dt){
+  const h = npcHits();
+  for(const k in h){
+    const o = h[k];
+    o.t += dt; o.vy += 2400*dt;
+    o.x += o.vx*dt; o.y -= o.vy*dt; o.rot += o.spin*dt;
+    if(o.t > 2.2 || o.y < -400) delete h[k];
+  }
+}
 function updateRide(dt){
+  updateNpcHits(dt);
   game.rideGrace = Math.max(0, (game.rideGrace||0) - dt);
   if(riding()){
     game.ride -= dt;
@@ -3615,33 +3676,51 @@ function updateRide(dt){
     spawnBasketDrop();
   }
 }
-function drawBasket(){
-  const g = basketGeom();
+function drawTruck(){
+  const g = truckGeom();
   const x = player.x - cam.x, y = GROUND - player.y;
-  if(BALLOONS.ready){
-    const sway = Math.sin(game.t*1.7)*0.06 + clamp(player.vy/2600, -0.18, 0.18);
-    ctx.save();
-    ctx.translate(x, y - g.lift);
-    ctx.rotate(sway);
-    ctx.drawImage(BALLOONS.img, -g.lw*0.5, -g.lh, g.lw, g.lh);
-    ctx.restore();
-  }
-  if(BASKET.ready) ctx.drawImage(BASKET.img, x - g.bw*0.5, y - g.bh*0.72, g.bw, g.bh);
+  /* The exhaust fire is drawn rather than painted, because it has to flicker
+     and because it is the part that reaches back to whatever he is passing --
+     the same flame the livestock react to, so its length is a number the rest
+     of the game can read. */
+  /* The pipes sit at the back, a bit under half way up the picture. */
+  drawExhaust(x - g.tw*0.46, y - g.th*0.42, g.tw*0.55*flameLen());
+  if(TRUCK.ready) ctx.drawImage(TRUCK.img, x - g.tw*0.5, y - g.th + g.sink, g.tw, g.th);
 }
-/* The pickup itself: the basket, small, bobbing, with the glow the eggs use so
-   it reads as something to go and get rather than something to avoid. */
-function drawBasketDrop(){
-  const d = game.drop; if(!d || !BASKET.ready) return;
+/* 0..1 of a truck length, pulsing, and longer for the moment after a jump --
+   the whole point of a monster truck is that the noise comes out of the back. */
+function flameLen(){
+  const kick = clamp((player.rideJumps ? 1 : 0) * (player.vy < -200 ? 1 : 0), 0, 1);
+  return 0.55 + 0.16*Math.sin(game.t*38) + 0.10*Math.sin(game.t*23) + kick*0.35;
+}
+function drawExhaust(x, y, len){
+  if(len <= 0) return;
+  for(let k = 0; k < 3; k++){
+    const t = k/2, w = len*(1 - t*0.40), h = 15*(1 - t*0.28);
+    ctx.beginPath();
+    ctx.moveTo(x, y - h*0.5 - k*13);
+    ctx.quadraticCurveTo(x - w*0.55, y - h*1.2 - k*13, x - w, y - k*13);
+    ctx.quadraticCurveTo(x - w*0.55, y + h*1.2 - k*13, x, y + h*0.5 - k*13);
+    ctx.closePath();
+    ctx.fillStyle = k === 0 ? 'rgba(255,238,140,.95)'
+                  : k === 1 ? 'rgba(255,150,40,.85)'
+                            : 'rgba(226,74,32,.55)';
+    ctx.fill();
+  }
+}
+/* The pickup: the truck, small, bobbing, with the glow the eggs use so it
+   reads as something to go and get rather than something to avoid. */
+function drawTruckDrop(){
+  const d = game.drop; if(!d || !TRUCK.ready) return;
   const sx = d.x - cam.x;
   if(sx < -200 || sx > VW + 200) return;
-  const w = GROUND*0.15, h = w*(952/980);
+  const w = GROUND*0.22, h = w*(546/815);
   const yy = GROUND - d.y + Math.sin(game.t*2.6)*7;
   ctx.save();
-  ctx.globalAlpha = 0.30;
-  ctx.fillStyle = C.gold;
-  ctx.beginPath(); ctx.ellipse(sx, yy - h*0.3, w*0.7, h*0.55, 0, 0, TAU); ctx.fill();
+  ctx.globalAlpha = 0.30; ctx.fillStyle = C.gold;
+  ctx.beginPath(); ctx.ellipse(sx, yy - h*0.4, w*0.62, h*0.72, 0, 0, TAU); ctx.fill();
   ctx.restore();
-  ctx.drawImage(BASKET.img, sx - w*0.5, yy - h*0.72, w, h);
+  ctx.drawImage(TRUCK.img, sx - w*0.5, yy - h, w, h);
 }
 function die(o){
   if(game.mode!=='play') return;
@@ -3886,7 +3965,9 @@ function updatePlay(dt){
   const p = player;
   game.runT += dt;
   game.diff = clamp(game.runT/95, 0, 1);
-  game.speed = (340 + 400*game.diff)*PACE;
+  /* The truck is faster than running, which is half of why it feels like a
+     reward -- the other half being that it takes the hit for you. */
+  game.speed = (340 + 400*game.diff)*PACE*(riding() ? RIDE_BOOST : 1);
   const speedT = game.diff;
 
   p.x += game.speed*dt;
@@ -3913,9 +3994,11 @@ function updatePlay(dt){
      thrust; releasing removes it that same frame. Drag makes velocity ease
      toward a terminal speed instead of ramping forever, which is what gives
      smooth acceleration and deceleration without any impulse. */
-  /* The same three lines run the basket; only the constants change. A second
-     movement model would be a second thing to keep in step with this one. */
-  const rG = riding() ? RIDE_G : 1, rT = riding() ? RIDE_T : 1, rD = riding() ? RIDE_D : 1;
+  /* The same solved model runs the truck; only the constants change, and the
+     thrust term is simply not there for it -- holding does nothing in a
+     vehicle whose control is a jump. A second movement model would be a second
+     thing to keep in step with this one. */
+  const rG = riding() ? RIDE_G : 1, rD = riding() ? RIDE_D : 1;
   /* Solved, not stepped.
 
      `dv/dt = a - k*v` is the whole movement model, and it has a closed form:
@@ -3932,7 +4015,7 @@ function updatePlay(dt){
      -- moving by `v*dt` after solving for v would put the step error straight
      back into y. Two exp() calls a frame and no accumulator, which keeps the
      one loop this game has. */
-  const acc = GRAV*rG - (p.thrusting ? THRUST*rT : 0);
+  const acc = GRAV*rG - ((p.thrusting && !riding()) ? THRUST : 0);
   const k   = DRAG*rD;
   const vT  = acc/k;                                 // terminal speed, this input
   const e   = Math.exp(-k*dt);
@@ -4665,19 +4748,52 @@ function drawSpectators(){
        are still going when he is most of a screen down the road, which sells
        it as a reaction to him rather than a state of the scenery. */
     const dx = player.x - gx;
-    const near = NPC_REACT && game.mode === 'play' && dx > -430 && dx < 900;
-    const ph = hash(i*2.3)*TAU;
-    const bob = near ? -Math.abs(Math.sin(game.t*9 + ph))*13
-                     :  Math.sin(game.t*1.8 + ph)*2.2;
     const kind = NPC_KIND[(hash(i*5.7)*2.999)|0];
+    const hits = npcHits();
+    /* The bumper. It only counts while he is actually in the truck and low
+       enough to be hitting anything -- driving through one and landing on one
+       are the same event as far as the animal is concerned. */
+    const rb = rideBox();
+    if(riding() && !hits[i] && game.mode === 'play'
+       && Math.abs(dx) < NPC_HIT_W && player.y < 210){
+      hits[i] = { t:0, x:0, y:0, vx: 120 + Math.random()*120,
+                  vy: 430 + Math.random()*260, rot:0, spin: rnd(-9, 9), kind };
+      pop(sx, GROUND - 250, pick(['MOOO!','OINK!','BAAA!','WHOA!']), C.gold, 44, -70);
+      featherBurst(gx, GROUND - 90, 5, 260);
+      addShake(9); S.step();
+    }
+    const hit = hits[i];
+    if(hit){
+      /* Gone over the bonnet: the panic frame, spinning, on its way out of the
+         picture. Drawn here rather than in a system of its own because it is
+         the same animal, one frame later. */
+      const hl = FRAME_DATA[kind+'run'] || FRAME_DATA[kind] || [];
+      ctx.save();
+      ctx.translate(sx + hit.x, GROUND - 6 - hit.y);
+      ctx.rotate(hit.rot);
+      ctx.globalAlpha = clamp(1 - (hit.t-1.4)/0.8, 0, 1);
+      drawNPC(kind+'run', hl.length ? (Math.floor(game.t*16) % hl.length) : 0,
+              0, 0, 1, false);
+      ctx.restore();
+      continue;
+    }
+    /* The flame. Anything in its reach drops the amble and runs, and turns to
+       run the way the truck is going -- away from it. */
+    const scorched = riding() && game.mode === 'play' && dx > -140 && dx < NPC_BURN;
+    const near = scorched
+              || (NPC_REACT && game.mode === 'play' && dx > -430 && dx < 900);
+    const ph = hash(i*2.3)*TAU;
+    const bob = near ? -Math.abs(Math.sin(game.t*(scorched?13:9) + ph))*(scorched?18:13)
+                     :  Math.sin(game.t*1.8 + ph)*2.2;
     const set = near ? kind+'run' : kind;
     const list = FRAME_DATA[set] || [];
     const fr0 = list[0];
     const pose = near
-      ? (list.length ? Math.floor(game.t*13 + ph*2) % list.length : 0)
+      ? (list.length ? Math.floor(game.t*(scorched?18:13) + ph*2) % list.length : 0)
       : npcPose(list, fr0 ? fr0.h*SPR : 140, hash(i*2.3));
     const lift = near ? bob*0.35 : Math.sin(game.t*1.6 + ph)*1.6;
-    if(drawNPC(set, pose, sx, GROUND - 6 + lift, 1, !near)) continue;
+    // scorched, they face the way they are running: away
+    if(drawNPC(set, pose, sx, GROUND - 6 + lift, 1, scorched ? false : !near)) continue;
     ctx.save();
     ctx.translate(sx, GROUND - 8);
     ctx.scale(0.82, 0.82);
@@ -4954,7 +5070,7 @@ function render(){
   drawGround();
   drawObstacles();
   drawEggs();
-  drawBasketDrop();
+  drawTruckDrop();
 
   // character
   let px = (game.mode==='menu') ? PX : player.x - cam.x;
@@ -4977,10 +5093,12 @@ function render(){
     drawChicken(x, GROUND, player.pose);
   } else {
     drawPlayerShadow(px, py);
-    drawChicken(px, GROUND - py, player.pose);
-    /* After him, so the rim of the basket crosses his legs and the balloons
-       ride over his head -- he is IN it rather than next to it. */
-    if(riding()) drawBasket();
+    /* Riding, he is lifted to the rim of the basket and the truck is drawn
+       after him, so the wire front crosses his legs and his head and shoulders
+       clear the top. Drawn at his feet he simply vanishes inside it -- the
+       basket is taller than he is. */
+    drawChicken(px, GROUND - py - (riding() ? truckGeom().th*0.50 : 0), player.pose);
+    if(riding()) drawTruck();
     /* ?hit=1 shows NUGGET'S box over Nugget, next to the hazards' own. The
        question this answers is the only one that matters about a hitbox --
        does it look like the thing it is standing in for -- and it cannot be
