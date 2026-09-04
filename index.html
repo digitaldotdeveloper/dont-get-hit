@@ -311,6 +311,11 @@ function hash(n){ const s=Math.sin(n*127.1+311.7)*43758.5453; return s-Math.floo
 function pad6(n){ n=Math.max(0,Math.floor(n)); return String(n).padStart(6,'0'); }
 
 const REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+/* ?crow=1 pulls the crow attack forward to the first few seconds and sends
+   them back to back, because otherwise every look at one costs half a minute
+   of run. It scales the unlock AND the gap and nothing else, so what you are
+   looking at is the real thing, sooner. */
+const CROW_GAP = /[?&]crow=1/.test(location.search) ? 0.10 : 1;
 
 /* ---------- palette ---------- */
 let C = {
@@ -517,7 +522,7 @@ function noise(dur, f0, f1, vol, q, at){
   s.connect(bp); bp.connect(g); g.connect(A.sfxGain); s.start(t0); s.stop(t0+dur+0.02);
   }catch(e){ A.err = e.message; }
 }
-let stepFoot = 0, whooshCool = 0;
+let stepFoot = 0;
 /* One cartoon voice for the whole game. Everything HE does is a short bright
    shape with a bend in it; everything the world does TO him is blunt and low.
    All of it kept deliberately quiet apart from the hit, so that the hit lands. */
@@ -568,6 +573,21 @@ const S = {
     tone(920, 0.075, 'square', 0.06, 920, null, 0.12);
   },
   whoosh(){ noise(0.17, 260, 1400, 0.045, 1.25); },
+  /* ---- the crow attack --------------------------------------------- */
+  /* The alert, and then the bird. Two different jobs: the alert has to be a
+     MACHINE -- a flat two-note siren that cannot be mistaken for anything the
+     farm does -- and the launch has to be an animal, so the moment the siren
+     stops you know what is coming. */
+  alert(locked){
+    const f = locked ? 1180 : 880;
+    tone(f, 0.055, 'square', 0.055, f);
+    tone(f*1.5, 0.055, 'square', 0.035, f*1.5, null, 0.075);
+  },
+  caw(){                                    // furious, and getting closer
+    wob(760, 300, 0.30, {type:'sawtooth', vol:0.14, depth:120, rate:19});
+    wob(980, 420, 0.24, {type:'square',   vol:0.07, depth:70,  rate:26, at:0.16});
+    noise(0.26, 1800, 500, 0.05, 1.6);      // the air off the wings
+  },
   egg(streak){                              // climbs as you keep collecting
     const k = Math.min(streak||1, 12);
     tone(880*Math.pow(1.055,k), 0.075, 'triangle', 0.10, 1320*Math.pow(1.055,k));
@@ -1123,7 +1143,7 @@ function cosmeticImage(id, slot, src, opt){
    swappable while frames are in use. If any image fails to load the
    procedural puppet draws instead - the character can never vanish.
    ============================================================ */
-const FRAME_DATA = {"cow":[{"f":"cow0.webp","w":89,"h":154,"ay":153.5},{"f":"cow1.webp","w":85,"h":146,"ay":152.0},{"f":"cow2.webp","w":84,"h":164,"ay":165.1},{"f":"cow3.webp","w":91,"h":163,"ay":164.0},{"f":"cow4.webp","w":92,"h":146,"ay":147.2},{"f":"cow5.webp","w":60,"h":146,"ay":147.2}],"cowrun":[{"f":"cowrun0.webp","w":118,"h":164,"ay":164.0},{"f":"cowrun1.webp","w":120,"h":164,"ay":165.8},{"f":"cowrun2.webp","w":128,"h":154,"ay":159.1},{"f":"cowrun3.webp","w":154,"h":152,"ay":156.6},{"f":"cowrun4.webp","w":157,"h":147,"ay":152.9},{"f":"cowrun5.webp","w":170,"h":158,"ay":164.0}],"pig":[{"f":"pig0.webp","w":98,"h":156,"ay":156.0},{"f":"pig1.webp","w":113,"h":155,"ay":156.0},{"f":"pig2.webp","w":90,"h":154,"ay":156.0},{"f":"pig3.webp","w":110,"h":156,"ay":156.0},{"f":"pig4.webp","w":89,"h":155,"ay":156.0},{"f":"pig5.webp","w":92,"h":155,"ay":156.0}],"pigrun":[{"f":"pigrun0.webp","w":105,"h":156,"ay":156.0},{"f":"pigrun1.webp","w":110,"h":150,"ay":152.3},{"f":"pigrun2.webp","w":91,"h":132,"ay":135.0},{"f":"pigrun3.webp","w":125,"h":133,"ay":133.1},{"f":"pigrun4.webp","w":96,"h":125,"ay":125.8},{"f":"pigrun5.webp","w":107,"h":137,"ay":136.8}],"goat":[{"f":"goat0.webp","w":92,"h":159,"ay":161.4},{"f":"goat1.webp","w":91,"h":159,"ay":161.4},{"f":"goat2.webp","w":81,"h":158,"ay":159.5},{"f":"goat3.webp","w":82,"h":160,"ay":160.0},{"f":"goat4.webp","w":89,"h":160,"ay":159.5},{"f":"goat5.webp","w":92,"h":158,"ay":161.0}],"goatrun":[{"f":"goatrun0.webp","w":94,"h":159,"ay":160.0},{"f":"goatrun1.webp","w":84,"h":160,"ay":160.0},{"f":"goatrun2.webp","w":118,"h":148,"ay":147.7},{"f":"goatrun3.webp","w":125,"h":145,"ay":149.3},{"f":"goatrun4.webp","w":132,"h":143,"ay":147.7},{"f":"goatrun5.webp","w":141,"h":144,"ay":147.7}],"run":[{"f":"run0.webp","w":206,"h":199,"ay":199},{"f":"run1.webp","w":138,"h":182,"ay":182},{"f":"run2.webp","w":136,"h":181,"ay":181},{"f":"run3.webp","w":187,"h":196,"ay":196},{"f":"run4.webp","w":140,"h":181,"ay":181},{"f":"run5.webp","w":179,"h":195,"ay":195}],"fly":[{"f":"fly0.webp","w":110,"h":161,"ay":162.3},{"f":"fly1.webp","w":112,"h":158,"ay":163.1},{"f":"fly2.webp","w":163,"h":210,"ay":191.6},{"f":"fly3.webp","w":147,"h":158,"ay":181.3},{"f":"fly4.webp","w":148,"h":186,"ay":187.3},{"f":"fly5.webp","w":130,"h":185,"ay":179.7}],"fall":[{"f":"fall0.webp","w":122,"h":187,"ay":184.0},{"f":"fall1.webp","w":145,"h":199,"ay":186.0},{"f":"fall2.webp","w":174,"h":210,"ay":179.8},{"f":"fall3.webp","w":143,"h":198,"ay":182.3}],"jump":[{"f":"jump0.webp","w":122,"h":148,"ay":171.0},{"f":"jump1.webp","w":140,"h":171,"ay":169.4},{"f":"jump2.webp","w":138,"h":221,"ay":193.2},{"f":"jump3.webp","w":183,"h":186,"ay":179.6},{"f":"jump4.webp","w":155,"h":186,"ay":180.3}],"land":[{"f":"land0.webp","w":145,"h":183,"ay":183},{"f":"land1.webp","w":157,"h":179,"ay":179},{"f":"land2.webp","w":122,"h":121,"ay":121},{"f":"land3.webp","w":165,"h":186,"ay":186}],"hit":[{"f":"hit0.webp","w":145,"h":164,"ay":172.9},{"f":"hit1.webp","w":163,"h":186,"ay":185.1},{"f":"hit2.webp","w":122,"h":154,"ay":173.6},{"f":"hit3.webp","w":106,"h":126,"ay":166.0},{"f":"hit4.webp","w":178,"h":81,"ay":140.5},{"f":"hit5.webp","w":128,"h":146,"ay":173.4}],"kick":[{"f":"kick0.webp","w":164,"h":239,"ay":239.0},{"f":"kick1.webp","w":162,"h":228,"ay":228.0},{"f":"kick2.webp","w":172,"h":172,"ay":179.4},{"f":"kick3.webp","w":132,"h":192,"ay":178.6},{"f":"kick4.webp","w":182,"h":194,"ay":194.0}],"boom":[{"f":"boom0.webp","w":121,"h":125},{"f":"boom1.webp","w":194,"h":215},{"f":"boom2.webp","w":260,"h":273},{"f":"boom3.webp","w":209,"h":215},{"f":"boom4.webp","w":170,"h":175}],"cricket":[{"f":"cricket0.webp","w":45,"h":136,"ay":136.0},{"f":"cricket1.webp","w":44,"h":143,"ay":143.0},{"f":"cricket2.webp","w":67,"h":127,"ay":127.0},{"f":"cricket3.webp","w":58,"h":129,"ay":129.0},{"f":"cricket4.webp","w":62,"h":121,"ay":121.0},{"f":"cricket5.webp","w":55,"h":107,"ay":107.0}],"egg":[{"f":"egg0.webp","w":48,"h":62,"ay":31.0},{"f":"egg1.webp","w":37,"h":62,"ay":31.0},{"f":"egg2.webp","w":28,"h":62,"ay":31.0},{"f":"egg3.webp","w":13,"h":62,"ay":31.0},{"f":"egg4.webp","w":27,"h":62,"ay":31.0},{"f":"egg5.webp","w":34,"h":62,"ay":31.0},{"f":"egg6.webp","w":46,"h":62,"ay":31.0}],"hensad":[{"f":"hensad0.webp","w":92,"h":98,"ay":98.0},{"f":"hensad1.webp","w":95,"h":98,"ay":98.0},{"f":"hensad2.webp","w":98,"h":98,"ay":98.0},{"f":"hensad3.webp","w":93,"h":98,"ay":98.0},{"f":"hensad4.webp","w":83,"h":98,"ay":98.0}],"henjoy":[{"f":"henjoy0.webp","w":94,"h":98,"ay":98.0},{"f":"henjoy1.webp","w":80,"h":98,"ay":98.0},{"f":"henjoy2.webp","w":80,"h":98,"ay":98.0},{"f":"henjoy3.webp","w":80,"h":98,"ay":98.0}],"farmer":[{"f":"farmer0.webp","w":94,"h":224,"ay":224.0},{"f":"farmer1.webp","w":102,"h":225,"ay":225.0},{"f":"farmer2.webp","w":141,"h":224,"ay":224.0},{"f":"farmer3.webp","w":155,"h":218,"ay":218.0},{"f":"farmer4.webp","w":129,"h":252,"ay":252.0},{"f":"farmer5.webp","w":122,"h":189,"ay":189.0}],"spy":[{"f":"spy0.webp","w":62,"h":86,"ay":86.0},{"f":"spy1.webp","w":62,"h":86,"ay":86.0},{"f":"spy2.webp","w":62,"h":86,"ay":86.0},{"f":"spy3.webp","w":85,"h":82,"ay":82.0},{"f":"spy4.webp","w":63,"h":86,"ay":86.0},{"f":"spy5.webp","w":76,"h":86,"ay":86.0}],"farmeridle":[{"f":"farmeridle0.webp","w":93,"h":224,"ay":224.0},{"f":"farmeridle1.webp","w":113,"h":224,"ay":224.0},{"f":"farmeridle2.webp","w":127,"h":222,"ay":222.0},{"f":"farmeridle3.webp","w":120,"h":224,"ay":224.0},{"f":"farmeridle4.webp","w":98,"h":222,"ay":222.0},{"f":"farmeridle5.webp","w":92,"h":224,"ay":224.0}],"spyalert":[{"f":"spyalert0.webp","w":62,"h":86,"ay":86.0},{"f":"spyalert1.webp","w":62,"h":86,"ay":86.0},{"f":"spyalert2.webp","w":62,"h":86,"ay":86.0},{"f":"spyalert3.webp","w":79,"h":86,"ay":86.0},{"f":"spyalert4.webp","w":63,"h":86,"ay":86.0},{"f":"spyalert5.webp","w":62,"h":85,"ay":85.0}],"farmerwalk":[{"f":"farmerwalk0.webp","w":113,"h":224,"ay":224.0},{"f":"farmerwalk1.webp","w":106,"h":220,"ay":220.0},{"f":"farmerwalk2.webp","w":109,"h":225,"ay":225.0},{"f":"farmerwalk3.webp","w":140,"h":234,"ay":234.0},{"f":"farmerwalk4.webp","w":127,"h":226,"ay":226.0},{"f":"farmerwalk5.webp","w":115,"h":221,"ay":221.0}]};
+const FRAME_DATA = {"cow":[{"f":"cow0.webp","w":89,"h":154,"ay":153.5},{"f":"cow1.webp","w":85,"h":146,"ay":152.0},{"f":"cow2.webp","w":84,"h":164,"ay":165.1},{"f":"cow3.webp","w":91,"h":163,"ay":164.0},{"f":"cow4.webp","w":92,"h":146,"ay":147.2},{"f":"cow5.webp","w":60,"h":146,"ay":147.2}],"cowrun":[{"f":"cowrun0.webp","w":118,"h":164,"ay":164.0},{"f":"cowrun1.webp","w":120,"h":164,"ay":165.8},{"f":"cowrun2.webp","w":128,"h":154,"ay":159.1},{"f":"cowrun3.webp","w":154,"h":152,"ay":156.6},{"f":"cowrun4.webp","w":157,"h":147,"ay":152.9},{"f":"cowrun5.webp","w":170,"h":158,"ay":164.0}],"pig":[{"f":"pig0.webp","w":98,"h":156,"ay":156.0},{"f":"pig1.webp","w":113,"h":155,"ay":156.0},{"f":"pig2.webp","w":90,"h":154,"ay":156.0},{"f":"pig3.webp","w":110,"h":156,"ay":156.0},{"f":"pig4.webp","w":89,"h":155,"ay":156.0},{"f":"pig5.webp","w":92,"h":155,"ay":156.0}],"pigrun":[{"f":"pigrun0.webp","w":105,"h":156,"ay":156.0},{"f":"pigrun1.webp","w":110,"h":150,"ay":152.3},{"f":"pigrun2.webp","w":91,"h":132,"ay":135.0},{"f":"pigrun3.webp","w":125,"h":133,"ay":133.1},{"f":"pigrun4.webp","w":96,"h":125,"ay":125.8},{"f":"pigrun5.webp","w":107,"h":137,"ay":136.8}],"goat":[{"f":"goat0.webp","w":92,"h":159,"ay":161.4},{"f":"goat1.webp","w":91,"h":159,"ay":161.4},{"f":"goat2.webp","w":81,"h":158,"ay":159.5},{"f":"goat3.webp","w":82,"h":160,"ay":160.0},{"f":"goat4.webp","w":89,"h":160,"ay":159.5},{"f":"goat5.webp","w":92,"h":158,"ay":161.0}],"goatrun":[{"f":"goatrun0.webp","w":94,"h":159,"ay":160.0},{"f":"goatrun1.webp","w":84,"h":160,"ay":160.0},{"f":"goatrun2.webp","w":118,"h":148,"ay":147.7},{"f":"goatrun3.webp","w":125,"h":145,"ay":149.3},{"f":"goatrun4.webp","w":132,"h":143,"ay":147.7},{"f":"goatrun5.webp","w":141,"h":144,"ay":147.7}],"run":[{"f":"run0.webp","w":206,"h":199,"ay":199},{"f":"run1.webp","w":138,"h":182,"ay":182},{"f":"run2.webp","w":136,"h":181,"ay":181},{"f":"run3.webp","w":187,"h":196,"ay":196},{"f":"run4.webp","w":140,"h":181,"ay":181},{"f":"run5.webp","w":179,"h":195,"ay":195}],"fly":[{"f":"fly0.webp","w":110,"h":161,"ay":162.3},{"f":"fly1.webp","w":112,"h":158,"ay":163.1},{"f":"fly2.webp","w":163,"h":210,"ay":191.6},{"f":"fly3.webp","w":147,"h":158,"ay":181.3},{"f":"fly4.webp","w":148,"h":186,"ay":187.3},{"f":"fly5.webp","w":130,"h":185,"ay":179.7}],"fall":[{"f":"fall0.webp","w":122,"h":187,"ay":184.0},{"f":"fall1.webp","w":145,"h":199,"ay":186.0},{"f":"fall2.webp","w":174,"h":210,"ay":179.8},{"f":"fall3.webp","w":143,"h":198,"ay":182.3}],"jump":[{"f":"jump0.webp","w":122,"h":148,"ay":171.0},{"f":"jump1.webp","w":140,"h":171,"ay":169.4},{"f":"jump2.webp","w":138,"h":221,"ay":193.2},{"f":"jump3.webp","w":183,"h":186,"ay":179.6},{"f":"jump4.webp","w":155,"h":186,"ay":180.3}],"land":[{"f":"land0.webp","w":145,"h":183,"ay":183},{"f":"land1.webp","w":157,"h":179,"ay":179},{"f":"land2.webp","w":122,"h":121,"ay":121},{"f":"land3.webp","w":165,"h":186,"ay":186}],"hit":[{"f":"hit0.webp","w":145,"h":164,"ay":172.9},{"f":"hit1.webp","w":163,"h":186,"ay":185.1},{"f":"hit2.webp","w":122,"h":154,"ay":173.6},{"f":"hit3.webp","w":106,"h":126,"ay":166.0},{"f":"hit4.webp","w":178,"h":81,"ay":140.5},{"f":"hit5.webp","w":128,"h":146,"ay":173.4}],"kick":[{"f":"kick0.webp","w":164,"h":239,"ay":239.0},{"f":"kick1.webp","w":162,"h":228,"ay":228.0},{"f":"kick2.webp","w":172,"h":172,"ay":179.4},{"f":"kick3.webp","w":132,"h":192,"ay":178.6},{"f":"kick4.webp","w":182,"h":194,"ay":194.0}],"boom":[{"f":"boom0.webp","w":121,"h":125},{"f":"boom1.webp","w":194,"h":215},{"f":"boom2.webp","w":260,"h":273},{"f":"boom3.webp","w":209,"h":215},{"f":"boom4.webp","w":170,"h":175}],"cricket":[{"f":"cricket0.webp","w":45,"h":136,"ay":136.0},{"f":"cricket1.webp","w":44,"h":143,"ay":143.0},{"f":"cricket2.webp","w":67,"h":127,"ay":127.0},{"f":"cricket3.webp","w":58,"h":129,"ay":129.0},{"f":"cricket4.webp","w":62,"h":121,"ay":121.0},{"f":"cricket5.webp","w":55,"h":107,"ay":107.0}],"egg":[{"f":"egg0.webp","w":48,"h":62,"ay":31.0},{"f":"egg1.webp","w":39,"h":62,"ay":31.0},{"f":"egg2.webp","w":15,"h":62,"ay":31.0},{"f":"egg3.webp","w":15,"h":62,"ay":31.0},{"f":"egg4.webp","w":38,"h":62,"ay":31.0},{"f":"egg5.webp","w":48,"h":62,"ay":31.0},{"f":"egg6.webp","w":38,"h":62,"ay":31.0},{"f":"egg7.webp","w":15,"h":62,"ay":31.0},{"f":"egg8.webp","w":15,"h":62,"ay":31.0},{"f":"egg9.webp","w":39,"h":62,"ay":31.0}],"hensad":[{"f":"hensad0.webp","w":92,"h":98,"ay":98.0},{"f":"hensad1.webp","w":95,"h":98,"ay":98.0},{"f":"hensad2.webp","w":98,"h":98,"ay":98.0},{"f":"hensad3.webp","w":93,"h":98,"ay":98.0},{"f":"hensad4.webp","w":83,"h":98,"ay":98.0}],"henjoy":[{"f":"henjoy0.webp","w":94,"h":98,"ay":98.0},{"f":"henjoy1.webp","w":80,"h":98,"ay":98.0},{"f":"henjoy2.webp","w":80,"h":98,"ay":98.0},{"f":"henjoy3.webp","w":80,"h":98,"ay":98.0}],"farmer":[{"f":"farmer0.webp","w":94,"h":224,"ay":224.0},{"f":"farmer1.webp","w":102,"h":225,"ay":225.0},{"f":"farmer2.webp","w":141,"h":224,"ay":224.0},{"f":"farmer3.webp","w":155,"h":218,"ay":218.0},{"f":"farmer4.webp","w":129,"h":252,"ay":252.0},{"f":"farmer5.webp","w":122,"h":189,"ay":189.0}],"spy":[{"f":"spy0.webp","w":62,"h":86,"ay":86.0},{"f":"spy1.webp","w":62,"h":86,"ay":86.0},{"f":"spy2.webp","w":62,"h":86,"ay":86.0},{"f":"spy3.webp","w":85,"h":82,"ay":82.0},{"f":"spy4.webp","w":63,"h":86,"ay":86.0},{"f":"spy5.webp","w":76,"h":86,"ay":86.0}],"farmeridle":[{"f":"farmeridle0.webp","w":93,"h":224,"ay":224.0},{"f":"farmeridle1.webp","w":113,"h":224,"ay":224.0},{"f":"farmeridle2.webp","w":127,"h":222,"ay":222.0},{"f":"farmeridle3.webp","w":120,"h":224,"ay":224.0},{"f":"farmeridle4.webp","w":98,"h":222,"ay":222.0},{"f":"farmeridle5.webp","w":92,"h":224,"ay":224.0}],"spyalert":[{"f":"spyalert0.webp","w":62,"h":86,"ay":86.0},{"f":"spyalert1.webp","w":62,"h":86,"ay":86.0},{"f":"spyalert2.webp","w":62,"h":86,"ay":86.0},{"f":"spyalert3.webp","w":79,"h":86,"ay":86.0},{"f":"spyalert4.webp","w":63,"h":86,"ay":86.0},{"f":"spyalert5.webp","w":62,"h":85,"ay":85.0}],"farmerwalk":[{"f":"farmerwalk0.webp","w":113,"h":224,"ay":224.0},{"f":"farmerwalk1.webp","w":106,"h":220,"ay":220.0},{"f":"farmerwalk2.webp","w":109,"h":225,"ay":225.0},{"f":"farmerwalk3.webp","w":140,"h":234,"ay":234.0},{"f":"farmerwalk4.webp","w":127,"h":226,"ay":226.0},{"f":"farmerwalk5.webp","w":115,"h":221,"ay":221.0}]};
 const FR = { ready:false, n:0, need:0, img:{} };
 const SPR = 175/190;                       // world units per frame pixel
 /* The roadside animals are scenery. They are loaded like everything else but
@@ -1911,80 +1931,26 @@ function shadowEllipse(w, alpha){
   ctx.beginPath(); ctx.ellipse(0, 4, w, w*0.20, 0, 0, TAU);
   ctx.fillStyle='rgba(21,8,39,'+(alpha||0.34)+')'; ctx.fill();
 }
-/* Both members fill their whole hitbox with drawn crates. Anything the box
-   covers must look solid, or you die on empty-looking sky. */
-const CAP_H = 118;
-function crateStack(y0, len, dir){
-  const n = Math.max(1, Math.round(len/62)), ch = len/n;
-  for(let i=0;i<n;i++){
-    const y = y0 + dir*i*ch, wob=(i%2?5:-5);
-    const top = dir>0 ? y : y-ch;
-    ctx.beginPath(); ctx.roundRect(-45+wob, top+2, 90, ch-4, 7);
-    paint(i%2?'#C79A5E':'#D9AC6E',5);
-    ctx.strokeStyle='#8E6534'; ctx.lineWidth=3.6;
-    ctx.beginPath(); ctx.moveTo(-45+wob, top+ch*0.5); ctx.lineTo(45+wob, top+ch*0.5); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(wob, top+3); ctx.lineTo(wob, top+ch-5); ctx.stroke();
-  }
-}
+/* Every obstacle in this game is electric. There is no jumping half any
+   more: the farmyard props, the crate columns and the crows are gone, and
+   what is left is wire -- strung between two posts, hung on its own in the
+   middle of the air, or run along the top of a row of corn.
 
-const OB = {
-/* ---- gate members: the flying game's real obstacle ---- */
-tower:{ kind:'ground', w:104, h:200, tier:0, draw(o,t){
-    const h=Math.max(30,o.h);
-    shadowEllipse(54);
-    const capH = Math.min(CAP_H, h);                  // the topper lives inside the hitbox
-    crateStack(0, h-capH, -1);
-    SHADOW_OFF=true;
-    ctx.save(); ctx.translate(0,-(h-capH));
-    const sc = capH/CAP_H; if(sc<1) ctx.scale(sc,sc);
-    (OB[o.cap]||OB.cone).draw(o,t);
-    ctx.restore(); SHADOW_OFF=false;
-  }},
-hanger:{ kind:'ground', w:104, h:200, tier:0, draw(o,t){
-    const h=Math.max(40,o.h);
-    ctx.save(); ctx.rotate(Math.sin(t*1.5+o.x*0.013)*0.04);   // the whole column swings a little
-    const capH = Math.min(CAP_H, h);
-    const rope = Math.min(24, Math.max(0, h-capH));
-    if(rope>2){
-      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,rope+4);
-      ctx.strokeStyle='#4A2A78'; ctx.lineWidth=10; ctx.lineCap='round'; ctx.stroke();
-      ctx.strokeStyle='#6B3EB0'; ctx.lineWidth=4.5; ctx.stroke();
-    }
-    crateStack(rope, Math.max(0, h-capH-rope), 1);
-    SHADOW_OFF=true;
-    ctx.save(); ctx.translate(0,h);
-    const sc = capH/CAP_H; if(sc<1) ctx.scale(sc,sc);
-    (OB[o.cap]||OB.sofa).draw(o,t);
-    ctx.restore(); SHADOW_OFF=false;
-    ctx.restore();
-  }},
-/* ---- ground: jump over these ---- */
-/* Crows. The same flock the city pigeons were, in farm colours. */
-crows:{ kind:'air', w:96, base:210, h:230, tier:1, roll:-90, draw(o,t){
-   for(let n=0;n<3;n++){
-    const flap = Math.sin(t*15 + n*1.9);
-    const b = Math.sin(t*4 + n)*7 - 16 - n*76;
-    ctx.save(); ctx.translate(n%2?10:-8, b);
-    ctx.beginPath(); ctx.moveTo(-40,-4); ctx.quadraticCurveTo(-20,-30-flap*22, 6,-8); ctx.quadraticCurveTo(-14,-2,-40,-4); ctx.closePath();
-    paint('#2E3340',4.6);
-    ctx.beginPath(); ctx.ellipse(0,0,42,26,0.05,0,TAU); paint('#414A5C',5);
-    ctx.beginPath(); ctx.moveTo(-40,-2); ctx.lineTo(-72,-12); ctx.lineTo(-70,6); ctx.closePath(); paint('#2E3340',4.4);
-    ctx.beginPath(); ctx.ellipse(34,-18,20,19,0,0,TAU); paint('#A8BBD8',5);
-    ctx.beginPath(); ctx.moveTo(52,-18); ctx.lineTo(74,-13); ctx.lineTo(52,-8); ctx.closePath(); paint('#FF8A3D',3.6);
-    ctx.beginPath(); ctx.arc(40,-24,6,0,TAU); paint('#FFFFFF',3);
-    ctx.beginPath(); ctx.arc(41.5,-24,3.2,0,TAU); ctx.fillStyle=C.ink; ctx.fill();
-    ctx.beginPath(); ctx.moveTo(-32,4); ctx.quadraticCurveTo(-10,26+flap*20, 14,6); ctx.quadraticCurveTo(-8,12,-32,4); ctx.closePath();
-    paint('#A8BBD8',4.6);
-    ctx.restore();
-   }
-  }},
-};
-/* ---------- the farm's own hazards ----------
-   Painted props cut off a Gemini Studio sheet and keyed off flat green, sized
-   so the SPRITE FILLS ITS HITBOX -- `w` and `h` are what spawnOne collides
-   with, so anything drawn outside them would be a hit you cannot see coming.
-   Every one falls back to a flat block if its image has not loaded, the same
-   bargain the character frames make: art can never make a hazard invisible. */
+   That puts the whole burden of variety on the wire, because the wire is all
+   there is. A fence at two heights is the same fence twice. A wire at two
+   ANGLES is two obstacles, and one you must go under is a different question
+   from one you must go over. Hence the zappers: their angle, length, height
+   and drift are rolled per spawn, not fixed per type. */
+const OB = {};
+/* The painted hardware the electric pieces are assembled from: posts,
+   insulators, the gate frame, the bar, and the corn. Cut off a Gemini Studio
+   sheet by tools/cut_obstacles.py and keyed off flat green.
+
+   Every piece falls back to a plain drawn shape when its image has not
+   arrived -- the same bargain the character frames make: art can never make a
+   hazard invisible. Art the set no longer uses is left in art/farm; nothing
+   requests it, so it costs nothing, and it is there if the farmyard props are
+   ever wanted back. */
 const PROPS = {};
 /* Through IMQ like everything else. The farm went from fourteen props to
    thirty-three when the electric set landed, and thirty-three more requests
@@ -1997,94 +1963,6 @@ function loadProp(n){
   PROPS[n] = im;
   imqLoad(im, 'art/farm/' + n + '.webp', ()=>{}, ()=>{ delete PROPS[n]; }, 'gp');
 }
-function farmProp(name, w, h, opt){
-  opt = opt || {};
-  loadProp(name);
-  const spec = { kind:opt.kind||'ground', w, h, tier:opt.tier||0,
-    draw(o, t){
-      const oh = Math.max(24, o.h || h), ow = w * (oh/h);
-      if(spec.kind === 'ground') shadowEllipse(ow*0.50, 0.40);
-      const im = PROPS[name];
-      ctx.save();
-      /* A rolling prop spins about its own centre, and that centre sits half
-         a height ABOVE the ground -- a wheel rests on the floor, it is not
-         buried to its axle in it. Rotating about the origin drew every roller
-         with its bottom half underground while its hitbox ran 0..h, so the top
-         half of the box was empty sky and you died on the air above a tyre.
-         Moving the origin up is the fix, and it is the tyre and the fuel drum
-         as much as the tractor wheel that made it obvious. */
-      if(opt.roll){ ctx.translate(0, -oh*0.5); ctx.rotate(o.rot||0); }
-      else if(opt.sway) ctx.rotate(Math.sin(t*1.6 + o.x*0.011)*opt.sway);
-      else if(opt.squash){                         // a puddle ripples, it does not lean
-        const k = 1 + Math.sin(t*2.3 + o.x*0.02)*opt.squash;
-        ctx.scale(1/k, k);
-      }
-      if(im && im.complete && im.naturalWidth){
-        const y = opt.roll ? -oh*0.5 : (spec.kind==='ground' ? -oh : -oh*0.5);
-        ctx.drawImage(im, -ow*0.5, y, ow, oh);
-      } else {
-        ctx.beginPath();
-        const y = opt.roll ? -oh*0.5 : (spec.kind==='ground' ? -oh : -oh*0.5);
-        if(ctx.roundRect) ctx.roundRect(-ow*0.5, y, ow, oh, 8); else ctx.rect(-ow*0.5, y, ow, oh);
-        paint(opt.col || '#C79A5E', 5);
-      }
-      ctx.restore();
-    } };
-  if(opt.roll) spec.roll = opt.roll;
-  if(opt.bounce) spec.bounce = true;
-  if(opt.base) spec.base = opt.base;
-  return spec;
-}
-Object.assign(OB, {
-  haybale:  farmProp('haybale',     162, 128, { tier:0 }),
-  woodkeg:  farmProp('barrel',      106, 143, { tier:0 }),
-  trough:   farmProp('trough',      190,  85, { tier:0 }),
-  milkcan:  farmProp('milkcan',      68, 134, { tier:0 }),
-  kennel:   farmProp('kennel',      130, 124, { tier:0 }),
-  drum_s:   farmProp('drum_s',       60, 120, { tier:0 }),
-  crates:   farmProp('crates',       94, 206, { tier:1 }),
-  barrow:   farmProp('wheelbarrow', 190, 112, { tier:1 }),
-  feedbin:  farmProp('feedbin',     196, 133, { tier:1 }),
-  pitchfork:farmProp('pitchfork',   102, 159, { tier:1 }),
-  fueldrum: farmProp('drum',         88, 146, { tier:1, roll:-130 }),
-  tyre:     farmProp('tyre',        116, 142, { tier:1, roll:-190, bounce:true }),
-  hopper:   farmProp('hopper',      154, 141, { tier:2 }),
-  scarecrow:farmProp('scarecrow',   152, 240, { tier:2, sway:0.05 }),
-  /* Things that fall out of the sky. The two the game had -- a sofa and a shop
-     sign -- went with the city, and without a replacement tiers 2 and 3 quietly
-     lost a whole category of hazard. */
-  fallbale: farmProp('haybale',     182, 144, { tier:2, kind:'fall' }),
-  fallcrate:farmProp('crates',      104, 228, { tier:3, kind:'fall' }),
-});
-/* The rest of the farmyard, off farm_props_c. Sizes are the art's own aspect
-   ratio at the height the hazard wants, so nothing is stretched -- take the
-   ratio from tools/cut_obstacles.py's output, don't guess it. */
-Object.assign(OB, {
-  fence:    farmProp('fence',       244, 132, { tier:0 }),
-  gate:     farmProp('gate',        210, 140, { tier:1 }),
-  cart:     farmProp('cart',        228, 124, { tier:1 }),
-  engine:   farmProp('engine',      140, 140, { tier:2 }),
-  haywagon: farmProp('haywagon',    237, 176, { tier:2 }),
-  /* A tractor wheel is the one farm prop that obviously rolls, so it does --
-     it is the fast-closing hazard of the ground set, and the whoosh in
-     updatePlay already keys off any roll over 100. */
-  tracwheel:farmProp('tractorwheel',122, 168, { tier:2, roll:-165 }),
-  /* Mud is deliberately the shortest thing in the game: a hop, not a climb.
-     It squashes rather than sways, because a puddle that rocked would read as
-     a solid object tipping over. */
-  mud:      farmProp('mud',         188,  52, { tier:0, squash:0.07 }),
-});
-/* Corn. It is a ground obstacle like any other -- you jump it -- but it comes
-   out of its own pool on its own cooldown (game.cornT), because a crop that
-   turns up in every third pattern stops being a crop and starts being a
-   fence. Three widths, so a corn beat can be a stalk, a clump or a whole row. */
-Object.assign(OB, {
-  corn1:    farmProp('corn1',       106, 196, { tier:0, sway:0.045 }),
-  corn3:    farmProp('corn3',       182, 206, { tier:1, sway:0.04 }),
-  cornrow:  farmProp('cornrow',     419, 190, { tier:2, sway:0.03 }),
-});
-const CORN_KEYS = ['corn1','corn3','cornrow'];
-
 /* ============================================================
    THE ELECTRIC FARM — the flying half of the obstacle set
    ============================================================
@@ -2176,6 +2054,12 @@ function drawWire(x0,y0,x1,y1, t, seed, thin){
     const x=x0+dx*u+nx*j, y=y0+dy*u+ny*j;
     if(i) ctx.lineTo(x,-y); else ctx.moveTo(x,-y);
   }
+  /* An ink rim under the core, because a zapper IS its wire and cyan on a
+     bright blue sky is the lowest-contrast pairing in the game. Everything
+     else here is drawn with the same dark outline, so this both reads at
+     speed and stops the wire looking like a different game's asset. The glow
+     is already down, so the rim goes over it and under the core. */
+  ctx.strokeStyle=C.ink; ctx.lineWidth=c1+4.5; ctx.stroke();
   ctx.strokeStyle='#4CCFFF'; ctx.lineWidth=c1; ctx.stroke();
   ctx.strokeStyle='#EDFCFF'; ctx.lineWidth=c2; ctx.stroke();
   // forks, on and off at the same 24Hz, so the wire looks like it is arcing
@@ -2224,7 +2108,8 @@ function elecSpec(def){
   (def.art||[]).forEach(loadProp);
   return {
     kind:'elec', elec:true, tier:def.tier, hw:def.hw, w:def.hw*2, h:def.h||200,
-    ladder:def.ladder||null, top:def.top||0, build:def.build, free:def.free,
+    ladder:def.ladder||null, zap:def.zap||null, top:def.top||0,
+    build:def.build, free:def.free,
     draw(o,t){ drawElec(o,t); },
     hit(o,l,r,b,t){ return elecDist(o,l,r,b,t) <= 0; },
     gapTo(o,l,r,b,t){ return elecDist(o,l,r,b,t); }
@@ -2245,6 +2130,7 @@ function elecDist(o, l, r, b, t){
 }
 function drawElec(o, t){
   const p = o.spec.build(o, t);
+  if(p.shadow) shadowEllipse(p.shadow, 0.40);   // only the pieces that stand on it
   for(const h of p.hw) drawHW(h.a, h.x, h.y, h.h, h.flip);
   /* `d` is the piece's length ALONG ITS OWN AXIS, and the other dimension
      follows from the art. Scaling d by the aspect ratio instead drew the
@@ -2284,63 +2170,102 @@ function drawElec(o, t){
 /* --- the pieces you go OVER ---------------------------------------------
    Solid from the floor up with a live wire across the top. The corridor is
    everything above them, so they are the ones that make you climb. */
+/* --- the zapper: a wire, and nothing else --------------------------------
+   Jetpack Joyride's one great obstacle, and the answer to a set that had
+   started to read as one fence at different heights. A length of live wire
+   with an insulator at each end, hung anywhere in the column at any angle,
+   with clear air on both sides of it.
+
+   Nothing about a zapper is fixed by its type. The angle, the length, the
+   height and the drift are rolled at spawn and then CHECKED: a roll that does
+   not leave a real corridor is thrown away and rolled again rather than
+   placed. "Anywhere in the column" and "always a way past" both have to be
+   true, and only one of them survives being assumed.
+
+   The check also refuses the in-between. A side is either a corridor you can
+   fly or it is plainly shut -- never the 200 units that look flyable and are
+   not, which is the shape of every unfair obstacle ever shipped. */
+function zapper(tier, z){
+  return elecSpec({ tier, hw:z.len[1]*0.5 + 26, h:0, art:['e_bar'], zap:z,
+    build(o, t){
+      const cy = o.cy + (o.amp ? Math.sin(t*o.spd + o.phase)*o.amp : 0);
+      const hx = Math.cos(o.ang)*o.len*0.5, hy = Math.sin(o.ang)*o.len*0.5;
+      return {
+        hw: [],
+        spin: [{ a:'e_bar', x:0, y:cy, rot:-o.ang, d:o.len }],
+        /* The insulators are drawn fat and drawn at the ends, so they are
+           lethal at the ends. A cap you can fly through is the same lie as a
+           post that does not kill. */
+        solids: [[-hx-15, cy-hy-15, -hx+15, cy-hy+15],
+                 [ hx-15, cy+hy-15,  hx+15, cy+hy+15]],
+        wires: [[-hx, cy-hy, hx, cy+hy]]
+      };
+    },
+    /* Measured at the ENDS of the drift, never the middle: a corridor that is
+       only open half the time is not a corridor. */
+    free(o, band){
+      const hy = Math.abs(Math.sin(o.ang))*o.len*0.5 + WIRE_R + 22;
+      const lo = o.cy - (o.amp||0) - hy, hi = o.cy + (o.amp||0) + hy;
+      return [[0, Math.max(0, lo)], [Math.min(band, hi), band]];
+    } });
+}
 Object.assign(OB, {
-  /* The teaching piece: short, one wire, and so much air over it that the
-     only thing it can teach is "the glowing bit is what kills you". */
-  e_fence: elecSpec({ tier:1, hw:116, top:148, h:148, art:['e_post'],
+  /* Flat and across your path: the one you go over, or under. */
+  zap_h: zapper(1, { ang:[0, 0.12],    len:[210, 360] }),
+  /* Stood on its end. The same wire asking a completely different question --
+     this one is about which side of the column you want to be on. */
+  zap_v: zapper(2, { ang:[1.45, 1.57], len:[190, 280] }),
+  /* On the diagonal, which reads as a trap and is not one. */
+  zap_d: zapper(3, { ang:[0.45, 1.05], len:[220, 340] }),
+  /* And one that will not hold still. Fixed rate through a fixed range, so it
+     is learnable on sight, and the corridor holds at both ends of the sweep. */
+  zap_m: zapper(4, { ang:[0, 0.10],    len:[200, 320], amp:[70, 120] }),
+});
+
+/* --- electric corn -------------------------------------------------------
+   The crop, wired. Stalks standing on the ground with the current run along
+   their tops and up their stems: the one hazard you meet at ground level, and
+   the one that says out loud what has happened to this farm.
+
+   Three widths, and the width is the whole of the difference. A single stalk
+   drops between two zappers without turning the pattern into a wall; the row
+   is 419 units of commitment, a hold rather than a flick. */
+function cornHazard(tier, art, w, h, stalks){
+  const top = h + 20, clear = top + 16;
+  return elecSpec({ tier, hw:w*0.5 + 14, top:clear, h:clear, art:[art],
+    build(){
+      const wires = [[-w*0.5 + 10, top, w*0.5 - 10, top]];
+      for(const x of stalks) wires.push(postWire(x, 0, h));
+      return { hw:[{ a:art, x:0, y:0, h:h }], shadow:w*0.5,
+               solids:[[-w*0.5, 0, w*0.5, h]], wires };
+    },
+    free(o, band){ return [[clear, band]]; } });
+}
+Object.assign(OB, {
+  corn_one:   cornHazard(0, 'corn1',   106, 196, [0]),
+  corn_clump: cornHazard(1, 'corn3',   182, 206, [-52, 6, 58]),
+  corn_row:   cornHazard(2, 'cornrow', 419, 190, [-162, -80, 2, 84, 164]),
+});
+
+/* --- the pieces you go OVER: posts on the ground, wire across the top --- */
+Object.assign(OB, {
+  /* The teaching piece, and now the whole of tier 0: short, one wire, and so
+     much air over it that the only thing it can teach is "the glowing bit is
+     what kills you". */
+  e_fence: elecSpec({ tier:0, hw:116, top:148, h:148, art:['e_post'],
     build(){ return {
       hw:[{a:'e_post',x:-78,y:0,h:140},{a:'e_post',x:78,y:0,h:140}],
-      solids:[[-107,0,-49,140],[49,0,107,140]],
+      solids:[[-107,0,-49,140],[49,0,107,140]], shadow:104,
       wires:[[-78,116, 78,116], postWire(-78,0,140), postWire(78,0,140)] }; },
     free(o,band){ return [[148, band]]; } }),
 
-  /* Suspended wire: the same idea strung high enough that it is a real climb
-     rather than a hop. */
-  e_wire: elecSpec({ tier:2, hw:150, top:352, h:352, art:['e_posttall'],
+  /* The same idea strung high enough to be a real climb rather than a hop. */
+  e_wire: elecSpec({ tier:1, hw:150, top:352, h:352, art:['e_posttall'],
     build(){ return {
       hw:[{a:'e_posttall',x:-126,y:0,h:344},{a:'e_posttall',x:126,y:0,h:344}],
-      solids:[[-143,0,-109,344],[109,0,143,344]],
+      solids:[[-143,0,-109,344],[109,0,143,344]], shadow:138,
       wires:[[-126,326, 126,326], postWire(-126,0,344), postWire(126,0,344)] }; },
     free(o,band){ return [[352, band]]; } }),
-
-  /* Two bales with the wire run straight over the top of them. The joke is
-     that the bales are the honest part. */
-  e_baletrap: elecSpec({ tier:2, hw:218, top:220, h:220, art:['haybale'],
-    build(){ return {
-      hw:[{a:'haybale',x:-132,y:0,h:124},{a:'haybale',x:132,y:0,h:124}],
-      solids:[[-211,0,-53,124],[53,0,211,124]],
-      wires:[[-132,140, 132,140],[-132,200, 132,200]] }; },
-    free(o,band){ return [[220, band]]; } }),
-
-  /* Rotating bar. One post, one electrified bar turning at a FIXED rate from
-     a phase seeded off its own x -- predictable is the whole point, so there
-     is no easing, no reversal and no speed-up. The bar can never reach past
-     its own radius, so the air above 336 is safe whatever the bar is doing:
-     the timing is a flourish, never the difference between passing and not. */
-  e_rotor: elecSpec({ tier:3, hw:134, top:336, h:336, art:['e_post','e_bar'],
-    build(o,t){
-      const a=(o.phase||0) + t*1.05, cy=206, R=122;
-      const ex=Math.cos(a)*R, ey=Math.sin(a)*R;
-      return {
-        hw:[{a:'e_post',x:0,y:0,h:206}],
-        spin:[{a:'e_bar',x:0,y:cy,rot:-a,d:2*R}],
-        solids:[[-42,0,42,206]],
-        wires:[[-ex,cy-ey, ex,cy+ey], postWire(0,0,206)] };
-    },
-    free(o,band){ return [[336, band]]; } }),
-
-  /* Electric windmill. The blades are collided as the DISC they sweep, not as
-     six thin blades: at 2.2 rad/s a blade crosses the bird's box between two
-     frames, so per-blade collision would be a coin toss dressed up as skill.
-     The ring drawn round it is there so the disc is what you see too. */
-  e_mill: elecSpec({ tier:4, hw:130, top:384, h:384, art:['e_mill','e_rotor'],
-    build(o,t){ return {
-      hw:[{a:'e_mill',x:0,y:0,h:250}],
-      spin:[{a:'e_rotor',x:0,y:266,rot:(o.phase||0)+t*2.2,d:228}],
-      solids:[[-64,0,64,250]],
-      discs:[[0,266,110]],
-      wires:[[-22,250, 22,250], postWire(0,0,250)] }; },
-    free(o,band){ return [[384, band]]; } }),
 });
 
 /* --- the pieces you go THROUGH -------------------------------------------
@@ -2392,10 +2317,11 @@ Object.assign(OB, {
   /* Ground-to-air: the lower half is a tower, and the lane is high. */
   e_g2a:    elecLadder(4, { hw:126, lo:[280,400], gap:[335,380], rung:70 }),
 });
-const ELEC_KEYS = ['e_fence','e_wire','e_baletrap','e_rotor','e_mill',
-                   'e_double','e_gate','e_multi','e_g2a'];
-
-const OB_KEYS = Object.keys(OB);
+/* Four families, and every one of them is wire. */
+const ZAP_KEYS   = ['zap_h','zap_v','zap_d','zap_m'];
+const CORN_KEYS  = ['corn_one','corn_clump','corn_row'];
+const FENCE_KEYS = ['e_fence','e_wire'];
+const LAD_KEYS   = ['e_double','e_gate','e_multi','e_g2a'];
 
 /* ============================================================
    PARALLAX LAYERS — baked once per resize
@@ -2496,8 +2422,8 @@ const game = {
                   catch(e){ return 0; } })(),
   speed:620, score:0, best:0,
   dist:0, near:0, combo:0, comboBest:0, comboT:0,
-  obstacles:[], parts:[], pops:[], ui:[],
-  spawnT:1.2, cornT:0, tier:0, lastGroundX:-1e9, lastAirX:-1e9,
+  obstacles:[], parts:[], pops:[], ui:[], crows:[], crowT:1e9,
+  spawnT:1.2, cornT:0, tier:0,
   freeze:0, timeScale:1, tsTarget:1,
   shake:0, flash:0, zoom:1, zoomT:1, camY:0, camYT:0,
   firstRun:true, hasJumped:false, tut:false
@@ -2595,34 +2521,21 @@ function tierNow(){
 }
 /* Difficulty is speed, spacing and how many hazards share a screen -- never
    withholding the art. */
-function poolFor(tier){
-  return OB_KEYS.filter(k => OB[k].tier <= tier);
-}
+/* Every hazard is a single kind now -- an electric piece standing on the
+   ground, describing its own geometry. The rolling props, the flock that
+   floated at a height of its own, and the things that fell out of the sky
+   were three more kinds, and each had a branch here, one in the update loop
+   and one in the draw. They went with the props. */
 function spawnOne(key, aheadTime){
   const spec = OB[key];
-  const roll = spec.roll||0;
-  const closure = game.speed + Math.abs(roll);
-  const minAhead = (VW - PX + 160)/closure;
-  const lead = Math.max(aheadTime||0, minAhead);
+  const closure = game.speed;
+  const lead = Math.max(aheadTime||0, (VW - PX + 160)/closure);
   const o = {
     key, spec, x: player.x + closure*lead,
-    kind: spec.kind, w: spec.w, h: spec.h,
-    base: spec.base||0, vx: roll, rot:0, bz:0, bvz:0,
-    y:0, vy:0, landed:true, warn:0, passed:false, minGap:1e9, counted:false
+    kind: spec.kind, w: spec.w, h: spec.h, base:0,
+    y:0, rot:0, passed:false, minGap:1e9, counted:false
   };
-  if(spec.bounce){ o.bz = 0; o.bvz = 900; }
-  if(spec.kind==='air'){
-    // now that he flies, the flock is a wall to thread past, not a ceiling
-    const band = GROUND - CEIL;
-    o.base = clamp(rnd(150, band-260), 140, Math.max(160, band-200));
-  }
-  if(spec.kind==='fall'){
-    o.landed=false; o.y = 720 + VH*0.1; o.vy = 0; o.warn = 1; S.warn();
-    // aim so it lands well before the player arrives
-    o.x = player.x + closure*(lead + 0.55);
-  }
   game.obstacles.push(o);
-  if(spec.kind==='air') game.lastAirX = o.x; else game.lastGroundX = o.x;
   return o;
 }
 
@@ -2645,49 +2558,59 @@ function spawnElec(key, aheadTime){
     o.lo = clamp(rnd(d.lo[0], d.lo[1]), 80, Math.max(80, band-gap-80));
     o.hi = o.lo + gap;
     o.h  = band;                     // eggs keep out of the whole column
+  } else if(spec.zap){
+    rollZap(o, spec.zap, band);
+    o.h = band;
   } else {
     o.h = spec.top;
   }
   return o;
 }
+/* Roll a zapper until it leaves somewhere to fly, then stop.
 
-const GATE_TOPS  = ['haybale','crates','milkcan','drum_s','kennel','woodkeg'];
-const GATE_HANGS = ['trough','feedbin','barrow','tyre','milkcan'];
-const gateTops  = () => GATE_TOPS;
-const gateHangs = () => GATE_HANGS;
-function spawnGate(moving){
-  const band = GROUND - CEIL;
-  const gap  = clamp(lerp(430, 250, game.diff) * rnd(0.92,1.08), 230, 470);
-  const amp  = moving ? rnd(50, 110) : 0;
-  const margin = 80 + amp;
-  const lo = gap/2 + margin, hi = band - gap/2 - margin;
-  const c  = hi>lo ? rnd(lo,hi) : band/2;
-  const g  = { c, gap, band, amp, spd:rnd(0.8,1.5), phase:rnd(0,TAU) };
-  const closure = game.speed;
-  const x = player.x + closure*Math.max(1.5, (VW - PX + 180)/closure + 0.2);
-  const mk = (spec, hang, h, cap) => {
-    if(h < 46) return;                                   // too short to bother drawing
-    game.obstacles.push({ key:hang?'hanger':'tower', spec, x, kind:'ground', hang,
-      w:spec.w, h, base:0, cap, vx:0, rot:0, bz:0, y:0, vy:0, landed:true,
-      warn:0, passed:false, minGap:1e9, counted:false, gate:g });
-  };
-  mk(OB.tower,  false, c - gap/2,            pick(gateTops()));
-  mk(OB.hanger, true,  band - (c + gap/2),   pick(gateHangs()));
-  return g;
+   Rejection sampling rather than arithmetic, because the constraint is not a
+   range you can solve for: the angle changes how much vertical room the wire
+   eats, the drift changes it again, and both are rolled. Twenty tries is far
+   more than enough -- most rolls pass first time -- and the last of them is a
+   guaranteed-legal flat wire low in the column, so this cannot fail to place
+   something even on a screen too short for the fun ones.
+
+   The rule it enforces is the one the whole set runs on: a side is either a
+   corridor of at least CLEAR, or it is under SHUT and reads as no way through
+   at all. In between is the gap that looks flyable and is not. */
+const SHUT = 150;
+function rollZap(o, z, band){
+  for(let n=0; n<20; n++){
+    const ang = rnd(z.ang[0], z.ang[1]) * (Math.random()<0.5 ? -1 : 1);
+    const len = rnd(z.len[0], z.len[1]);
+    const amp = z.amp ? rnd(z.amp[0], z.amp[1]) : 0;
+    const hy  = Math.abs(Math.sin(ang))*len*0.5 + WIRE_R + 22 + amp;
+    if(hy*2 + CLEAR + 40 > band) continue;             // no room for this one at all
+    const cy  = rnd(hy + 30, band - hy - 30);
+    const below = cy - hy, above = band - (cy + hy);
+    const big = Math.max(below, above), small = Math.min(below, above);
+    if(big < CLEAR || (small >= SHUT && small < CLEAR)) continue;
+    o.ang = ang; o.len = len; o.amp = amp; o.cy = cy;
+    o.spd = amp ? rnd(0.7, 1.15) : 0;
+    return o;
+  }
+  o.ang = 0; o.len = Math.min(z.len[0], 240); o.amp = 0; o.spd = 0;
+  o.cy = Math.min(150, band*0.22);
+  return o;
 }
+
 /* Eggs are laid out in runs you can follow with one held press: a flat line, a
    climb, or an arc. Each candidate is dropped if it lands inside a hazard --
    better a short run than a run that baits you into one. */
 const EGG_R = 26;
 function eggFree(x, y){
   for(const o of game.obstacles){
-    const ow = o.w*0.42 + 54;
+    const ow = (o.spec.hw!=null ? o.spec.hw : o.w*0.42) + 54;
     if(Math.abs(o.x - x) > ow) continue;
-    let obot, otop;
-    if(o.hang){ otop = (GROUND-CEIL); obot = otop - o.h; }
-    else if(o.kind === 'air'){ obot = o.base; otop = o.base + o.h; }
-    else { obot = o.y||0; otop = (o.y||0) + o.h; }
-    if(y > obot-54 && y < otop+54) return false;
+    /* An electric piece reports its full column height, so this keeps eggs
+       out of the whole width of one rather than trying to thread them through
+       an opening -- an egg that baits you into a wire is worse than no egg. */
+    if(y > -54 && y < o.h + 54) return false;
   }
   return true;
 }
@@ -2777,21 +2700,274 @@ function drawEggs(){
   }
 }
 
-/* Jetpack Joyride spacing. One hazard at a time, dropped anywhere in the
-   column with clear air all round it -- never a floor piece and a ceiling
-   piece stacked into a narrow slot. That stacking is Flappy Bird, and it is
-   what made this feel like threading a needle instead of flying. */
-function spawnStandalone(hang, lead){
-  const band = GROUND - CEIL;
-  const spec = hang ? OB.hanger : OB.tower;
-  const h = hang ? rnd(110, Math.min(300, band*0.40))
-                 : rnd(90,  Math.min(280, band*0.38));
-  const closure = game.speed;
-  const x = player.x + closure*Math.max(lead||1.6, (VW - PX + 200)/closure + 0.25);
-  game.obstacles.push({ key: hang?'hanger':'tower', spec, x, kind:'ground', hang,
-    w:spec.w, h, cap: pick(hang?gateHangs():gateTops()), base:0, vx:0, rot:0,
-    bz:0, y:0, vy:0, landed:true, warn:0, passed:false, minGap:1e9, counted:false });
+
+/* ============================================================
+   THE ANGRY CROWS — the game's one homing threat
+   ============================================================
+   Jetpack Joyride's missiles, in feathers. The point of them is the ALERT and
+   not the bird: a hazard that comes at you HORIZONTALLY, faster than the world
+   scrolls, is simply unfair unless you are told about it first. So every crow
+   spends CROW_WARN seconds as a badge pinned to the right edge of the screen,
+   at the height it is going to come in at.
+
+   The badge does two different jobs and looks different doing each:
+
+     TRACKING  amber, slow blink, soft beep -- it is still following your
+               altitude, so climbing now only takes the problem with you.
+     LOCKED    red, fast blink, a dashed sight-line down the lane and a red
+               wash on the right edge -- the height is settled, and the only
+               thing that saves you is getting out of that lane.
+
+   The lock is what turns it into a skill: CROW_LOCK seconds of "it is decided,
+   now MOVE". Without it the bird would follow you into the floor; with a much
+   longer one you would step out of the lane before it ever launched.
+
+   A crow is never in game.obstacles. Obstacles are placed ahead in world x and
+   stand still while the player runs onto them; a crow is the opposite of that
+   in every respect -- it launches off the right edge of the CAMERA, flies left
+   at CROW_SPEED on top of the world's own scroll, and dies off the left. */
+
+const CROW_T0    = 24;      // no crows in the first learning half-minute
+const CROW_WARN  = 1.30;    // badge on screen before it launches
+const CROW_LOCK  = 0.46;    // ...of which this much has the height already fixed
+const CROW_SPEED = 1080;    // leftward, ON TOP OF the world scroll
+const CROW_FPS   = 17;      // the four painted frames, as a flap
+const CROW_BOB   = 7;       // and the bob is inside the hitbox, so what you see
+                            // is exactly what kills you
+/* The art overhangs the hitbox on purpose. A wingtip and a tail feather are
+   not a hit -- the lethal part is the head and the body, which is the part of
+   the bird that reads as solid. CROW_AX/AY are where that lethal centre sits
+   inside the frame, measured off the registered sheet, so the box and the
+   painted bird cannot drift apart if the art is recut. */
+const CROW_DW = 240, CROW_AX = 0.31, CROW_AY = 0.59;
+const CROW_HW = 70, CROW_HH = 37;
+['crow1','crow2','crow3','crow4','crowhead'].forEach(loadProp);
+
+/* The alert is drawn in SCREEN space -- it is pinned to the edge of the
+   display, not to anything in the world -- but the height it points at is a
+   world altitude, so it has to go through the same camera the bird does. */
+function screenYOf(worldY){
+  const Z  = game.zoomOverride || game.zoom;
+  const zy = game.zoomOverride ? (GROUND - player.y - 70) : VH*0.55;
+  return (GROUND - worldY - zy)*Z + zy + cam.shakeY + game.camY;
 }
+const crowLane = () => [120, (GROUND-CEIL) - 120];   // the heights a crow may take
+
+/* A crow is only fair in clear air. It is the one horizontal hazard in a game
+   made of vertical ones, and overlapping the two asks for a dodge that may not
+   exist -- thread the wire AND leave the lane. So a volley waits for a gap in
+   the pattern spawner, and then pushes the next pattern out behind itself. */
+function crowCorridorClear(){
+  const horizon = player.x + game.speed*(CROW_WARN + 1.2) + 340;
+  for(const o of game.obstacles) if(o.x > player.x - 80 && o.x < horizon) return false;
+  return true;
+}
+function crowFlightTime(){ return (VW - PX + 260)/(CROW_SPEED + game.speed); }
+
+function launchCrows(){
+  /* One bird is a dodge. Two is a dodge you have to hold, because the second
+     badge locks onto wherever the first one chased you. */
+  const n = (game.diff > 0.82 && Math.random() < 0.20) ? 3
+          : (game.diff > 0.50 && Math.random() < 0.42) ? 2 : 1;
+  for(let i=0;i<n;i++){
+    game.crows.push({
+      state:'wait', wait: i*0.70, warnT: CROW_WARN, beepT: 0,
+      ty: clamp(player.y + 72, crowLane()[0], crowLane()[1]),
+      x: 0, y: 0, t: rnd(0,10), seed: (Math.random()*4)|0,
+      spec:{}, kind:'air', base:0, minGap:1e9, counted:false, hitBy:false
+    });
+  }
+  const span = (n-1)*0.70 + CROW_WARN + crowFlightTime();
+  game.spawnT = Math.max(game.spawnT, span + 0.30);
+  game.crowT  = span + rnd(6.5, 11.0) * lerp(1, 0.60, game.diff) * CROW_GAP;
+}
+
+function updateCrows(dt){
+  const p = player, lane = crowLane();
+  if(game.mode === 'play'){
+    game.crowT -= dt;
+    if(game.crowT <= 0){
+      if(game.runT >= CROW_T0*CROW_GAP && !game.crows.length &&
+         game.spawnT > 0.5 && crowCorridorClear()) launchCrows();
+      else game.crowT = 0.30;                  // not yet -- ask again in a moment
+    }
+  }
+  for(let i=game.crows.length-1;i>=0;i--){
+    const c = game.crows[i];
+    c.t += dt;
+    if(c.state === 'wait'){                    // its turn in the volley
+      c.wait -= dt;
+      if(c.wait <= 0) c.state = 'warn';
+      continue;
+    }
+    if(c.state === 'warn'){
+      c.warnT -= dt;
+      const locked = c.warnT <= CROW_LOCK;
+      if(!locked && game.mode === 'play')      // still following your altitude
+        c.ty = damp(c.ty, clamp(p.y + 72, lane[0], lane[1]), 5.5, dt);
+      c.beepT -= dt;
+      if(c.beepT <= 0){ S.alert(locked); c.beepT = locked ? 0.13 : 0.27; }
+      if(c.warnT <= 0){
+        c.state = 'fly';
+        c.x = cam.x + VW + 190;                // off the right edge of the CAMERA
+        c.y = c.ty;
+        S.caw();
+        if(navigator.vibrate) try{ navigator.vibrate(18); }catch(e){}
+      }
+      continue;
+    }
+    // ---- flying ----
+    c.x -= CROW_SPEED*dt;
+    if(c.hitBy){                               // it got him, and it is not sorry
+      c.spin = (c.spin||0) + dt*2.4;
+      c.y += Math.sin(c.t*9)*60*dt;
+    } else {
+      c.y = c.ty + Math.sin(c.t*13)*CROW_BOB;
+    }
+    c.base = c.y;                              // nearMiss reads this
+    if(Math.random() < dt*24)
+      featherBurst(c.x + 60, GROUND - c.y + rnd(-16,16), 1, 70);
+    // collision -- the same forgiving 8px the block hazards get
+    const pl=p.x-48, pr=p.x+48, pb=p.y+8, pt=p.y+150;
+    const overlapX = pr > c.x-CROW_HW && pl < c.x+CROW_HW;
+    if(overlapX && !c.hitBy && game.mode === 'play'
+       && pt > c.y-CROW_HH+8 && pb < c.y+CROW_HH-8) die(c);
+    if(overlapX){
+      const gap = (pb > c.y) ? (pb - (c.y+CROW_HH)) : ((c.y-CROW_HH) - pt);
+      if(gap > 0) c.minGap = Math.min(c.minGap, gap);
+    }
+    if(!c.counted && c.x < p.x-30){
+      c.counted = true;
+      if(c.minGap < 78 && c.minGap > 0 && game.mode === 'play') nearMiss(c);
+    }
+    if(c.x < cam.x - 340) game.crows.splice(i,1);
+  }
+}
+
+/* The bird. Four painted frames off the Gemini sheet, registered on the beak
+   so the head holds still and only the wings beat -- and a drawn one under it
+   in case the art has not landed yet, which is the bargain every hazard in
+   this game makes: art can never be the reason you did not see one coming. */
+function drawCrowBody(c){
+  const k  = (Math.floor(c.t*CROW_FPS) + c.seed) & 3;
+  const im = PROPS['crow'+(k+1)];
+  if(im && im.complete && im.naturalWidth){
+    const w = CROW_DW, h = w*im.naturalHeight/im.naturalWidth;
+    ctx.drawImage(im, -w*CROW_AX, -h*CROW_AY, w, h);
+    return;
+  }
+  const flap = Math.sin(c.t*CROW_FPS*1.6);
+  ctx.save(); ctx.scale(-1,1);               // the flock faces right; this one is inbound
+  ctx.beginPath(); ctx.moveTo(-42,-4); ctx.quadraticCurveTo(-20,-34-flap*26, 8,-8);
+  ctx.quadraticCurveTo(-14,-2,-42,-4); ctx.closePath(); paint('#2E3340',4.6);
+  ctx.beginPath(); ctx.moveTo(-42,-2); ctx.lineTo(-78,-14); ctx.lineTo(-76,8);
+  ctx.closePath(); paint('#2E3340',4.4);
+  ctx.beginPath(); ctx.ellipse(0,0,46,28,0.05,0,TAU); paint('#414A5C',5);
+  ctx.beginPath(); ctx.ellipse(36,-20,22,21,0,0,TAU); paint('#414A5C',5);
+  ctx.beginPath(); ctx.moveTo(54,-22); ctx.lineTo(84,-14); ctx.lineTo(54,-6);
+  ctx.closePath(); paint('#FF8A3D',3.6);                    // beak, open and shouting
+  ctx.beginPath(); ctx.arc(42,-26,6.5,0,TAU); paint('#FFFFFF',2.6);
+  ctx.beginPath(); ctx.arc(43.5,-26,3.4,0,TAU); ctx.fillStyle='#E01F3D'; ctx.fill();
+  ctx.beginPath(); ctx.moveTo(32,-36); ctx.lineTo(52,-30); ctx.lineTo(50,-25);
+  ctx.lineTo(31,-31); ctx.closePath(); paint(C.ink,0);      // the eyebrow does the anger
+  ctx.beginPath(); ctx.moveTo(-34,4); ctx.quadraticCurveTo(-10,30+flap*22, 16,6);
+  ctx.quadraticCurveTo(-8,12,-34,4); ctx.closePath(); paint('#A8BBD8',4.6);
+  ctx.restore();
+}
+function drawCrows(){
+  for(const c of game.crows){
+    if(c.state !== 'fly') continue;
+    const sx = c.x - cam.x;
+    if(sx < -320 || sx > VW+340) continue;
+    ctx.save();
+    ctx.translate(sx, GROUND - c.y);
+    // speed lines off the tail, so it reads as fast even in a screenshot
+    ctx.globalAlpha = 0.55;
+    ctx.strokeStyle = 'rgba(255,242,222,.85)'; ctx.lineWidth = 5; ctx.lineCap='round';
+    for(let n=0;n<3;n++){
+      const o = (n-1)*30, len = 90 + Math.sin(c.t*20+n)*34;
+      ctx.beginPath(); ctx.moveTo(180, o); ctx.lineTo(180+len, o); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    ctx.rotate(c.hitBy ? c.spin : Math.sin(c.t*13)*0.05);
+    drawCrowBody(c);
+    if(HITDBG){
+      ctx.strokeStyle='rgba(255,0,220,0.9)'; ctx.lineWidth=2.5;
+      ctx.strokeRect(-CROW_HW, -CROW_HH, CROW_HW*2, CROW_HH*2);
+    }
+    ctx.restore();
+  }
+}
+
+/* The alert, in screen space, so it sits on the true edge of the display
+   however the camera is zoomed, raised or shaken. */
+function drawCrowAlerts(){
+  /* R is the badge's half-height and everything else is measured off it, so
+     the alert can be retuned with one number. It is a share of VH rather than
+     a pixel size because VH is the one dimension the layout pins (~980 units
+     in any landscape window) while VW stretches from 1450 to well past 2100 --
+     a badge in raw pixels reads on a laptop and disappears on a phone. */
+  const R = VH*0.086;
+  for(const c of game.crows){
+    if(c.state !== 'warn') continue;
+    const locked = c.warnT <= CROW_LOCK;
+    const blink  = 0.55 + 0.45*Math.sin(game.t*(locked?30:15));
+    const col    = locked ? C.danger : '#FFB03A';
+    const y      = clamp(screenYOf(c.ty), R+16, VH-R-16);
+    const x      = VW - R*1.62;
+    ctx.save();
+    // the edge wash: the side it is coming from goes red
+    const w = locked ? VW*0.20 : VW*0.13;
+    const g = ctx.createLinearGradient(VW-w, 0, VW, 0);
+    g.addColorStop(0, 'rgba(255,69,110,0)');
+    g.addColorStop(1, locked ? 'rgba(255,69,110,'+(0.42*blink).toFixed(3)+')'
+                             : 'rgba(255,176,58,'+(0.20*blink).toFixed(3)+')');
+    ctx.fillStyle = g; ctx.fillRect(VW-w, 0, w, VH);
+    // the lane it owns, once the height has stopped moving
+    if(locked){
+      ctx.globalAlpha = 0.35 + 0.40*blink;
+      ctx.strokeStyle = col; ctx.lineWidth = 5; ctx.setLineDash([22,18]);
+      ctx.lineDashOffset = -game.t*300;
+      ctx.beginPath(); ctx.moveTo(x-R*1.5, y); ctx.lineTo(VW*0.26, y); ctx.stroke();
+      ctx.setLineDash([]); ctx.globalAlpha = 1;
+    }
+    // chevrons walking the way it will come
+    for(let n=0;n<3;n++){
+      const k  = ((game.t*1.7 + n*0.33) % 1);
+      const cx = x - R*1.6 - k*R*1.5;
+      ctx.globalAlpha = 0.8*(1-k);
+      ctx.strokeStyle = col; ctx.lineWidth = 8; ctx.lineJoin='round'; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(cx+R*0.36, y-R*0.36); ctx.lineTo(cx, y);
+      ctx.lineTo(cx+R*0.36, y+R*0.36); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    // the badge itself
+    ctx.translate(x, y);
+    const sc = locked ? 1 + 0.06*Math.sin(game.t*30) : 1;
+    ctx.scale(sc, sc);
+    ctx.beginPath(); ctx.moveTo(-R*0.92,-R); ctx.lineTo(R, -R); ctx.lineTo(R, R);
+    ctx.lineTo(-R*0.92, R); ctx.lineTo(-R*1.44, 0); ctx.closePath();  // a plate with a point
+    ctx.fillStyle = 'rgba(21,8,39,.86)'; ctx.fill();
+    ctx.strokeStyle = col; ctx.lineWidth = 7; ctx.lineJoin='round';
+    ctx.globalAlpha = blink; ctx.stroke(); ctx.globalAlpha = 1;
+    const head = PROPS.crowhead;
+    if(head && head.complete && head.naturalWidth){
+      const hw = R*2.05, hh = hw*head.naturalHeight/head.naturalWidth;
+      ctx.globalAlpha = 0.6 + 0.4*blink;
+      ctx.drawImage(head, -hw*0.48, -hh*0.5, hw, hh);
+      ctx.globalAlpha = 1;
+    } else {
+      ctx.globalAlpha = blink;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.font = '400 '+Math.round(R*1.25)+'px Bungee, sans-serif';
+      ctx.lineWidth = 9; ctx.strokeStyle = C.ink; ctx.lineJoin='round';
+      ctx.strokeText('!', 0, 2); ctx.fillStyle = col; ctx.fillText('!', 0, 2);
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+  }
+}
+
 /* ============================================================
    PATTERNS — sequences, not dice
    ============================================================
@@ -2806,25 +2982,12 @@ function spawnStandalone(hang, lead){
    hazard dropped closer than its sequence says -- so a run gets harder in a
    way you can learn rather than in a way you can only be surprised by.
 
-   Reading the table: a string is an obstacle key or a token, a number is the
-   seconds of clear air before the next one, and `tail` is the safe section
-   after the last one. The tokens are '#gnd' (any farmyard prop of this tier),
-   '#air' (the crows), '#col' (a crate column) and '#corn' -- the crop keeps
-   its own cooldown, so any pattern containing it is skipped entirely while
-   game.cornT is still running. Corn is a crop, not a fence: it turns up in
-   bursts and then leaves you alone.
-
-   The five combinations the farm was designed around are all in here:
-   fence into a wire, corn into bales into a wire, a bale into the gate,
-   corn into a fence into the turning bar, and one wire followed by the same
-   wire at another height. */
-const isCorn = k => CORN_KEYS.indexOf(k) >= 0;
-function groundPool(tier){
-  return poolFor(tier).filter(k => OB[k].kind==='ground' &&
-    k!=='tower' && k!=='hanger' && !isCorn(k));
-}
-function airPool(tier){ return poolFor(tier).filter(k => OB[k].kind==='air'); }
-function cornPool(tier){ return CORN_KEYS.filter(k => OB[k].tier <= tier); }
+   Reading the table: a string is a token, a number is the seconds of clear
+   air before the next one, and `tail` is the safe section after the last one.
+   Every pattern is written in tokens rather than keys, so it says what SHAPE
+   of hazard it wants and the tier decides which one that is -- which is why
+   the table did not have to be rewritten when the roster was. */
+const inTier = (keys, tier) => keys.filter(k => OB[k].tier <= tier);
 
 function mkPat(tier, tail, spec){
   const seq=[]; let dt=0;
@@ -2834,47 +2997,40 @@ function mkPat(tier, tail, spec){
   }
   return { tier, tail, seq, corn: spec.indexOf('#corn') >= 0 };
 }
+/* Tokens, not keys, so a pattern says what SHAPE of hazard it wants and the
+   tier decides which one that is. '#zap' a loose wire, '#corn' the crop,
+   '#fence' posts on the ground, '#lad' one of the pieces with an opening. */
 const PAT = [
-  /* tier 0 — one thing on the floor at a time, and a long look at it.
-     Both entries draw from the same pool on purpose: giving mud and the fence
-     a pattern each as well as their place in the pool put mud in front of the
-     player 42% of the time, which is not an introduction, it is a puddle
-     level. Two entries rather than one only so the pacing varies. */
-  mkPat(0, [1.55,1.95], ['#gnd']),
-  mkPat(0, [1.42,1.72], ['#gnd']),
+  /* tier 0 — one thing at a time, and a long look at it */
+  mkPat(0, [1.55,1.95], ['#fence']),
+  mkPat(0, [1.50,1.90], ['#corn']),
 
-  /* tier 1 — the first live wire, and the first combination */
-  mkPat(1, [1.35,1.70], ['#gnd']),
-  mkPat(1, [1.40,1.75], ['e_fence']),
+  /* tier 1 — the loose wire arrives, and the first pairing */
+  mkPat(1, [1.35,1.70], ['#zap']),
   mkPat(1, [1.35,1.70], ['#corn']),
-  mkPat(1, [1.30,1.60], ['#air']),
-  mkPat(1, [1.45,1.80], ['fence', 1.05, 'e_fence']),
+  mkPat(1, [1.40,1.75], ['#fence']),
+  mkPat(1, [1.45,1.80], ['#corn', 1.05, '#zap']),
 
-  /* tier 2 — the crop, the bales, and the first opening to aim at */
-  mkPat(2, [1.25,1.55], ['#gnd', 0.95, 'e_fence']),
-  mkPat(2, [1.30,1.60], ['e_wire']),
-  mkPat(2, [1.30,1.60], ['e_baletrap']),
-  mkPat(2, [1.35,1.65], ['e_double']),
-  mkPat(2, [1.20,1.50], ['#col']),
-  mkPat(2, [1.30,1.60], ['#corn', 0.95, 'haybale', 1.00, 'e_wire']),
-  mkPat(2, [1.55,1.90], ['haybale', 1.05, 'e_gate']),
-  mkPat(2, [1.20,1.50], ['#gnd', 0.90, '#air']),
+  /* tier 2 — wires at other angles, and the first opening to aim at */
+  mkPat(2, [1.25,1.55], ['#zap']),
+  mkPat(2, [1.30,1.60], ['#lad']),
+  mkPat(2, [1.30,1.60], ['#fence', 1.00, '#zap']),
+  mkPat(2, [1.25,1.55], ['#corn', 0.95, '#zap']),
+  mkPat(2, [1.35,1.65], ['#zap', 1.05, '#zap']),
 
-  /* tier 3 — the openings, and the bar that turns */
-  mkPat(3, [1.20,1.50], ['e_multi']),
-  mkPat(3, [1.25,1.55], ['e_gate']),
-  mkPat(3, [1.20,1.50], ['e_rotor']),
-  mkPat(3, [1.20,1.50], ['#corn', 0.90, 'fence', 1.00, 'e_rotor']),
-  mkPat(3, [1.45,1.80], ['e_fence', 0.95, 'e_wire']),
-  mkPat(3, [1.15,1.45], ['#gnd', 0.85, 'e_multi']),
-  mkPat(3, [1.15,1.45], ['#col', 0.90, 'e_fence']),
+  /* tier 3 — three beats, and the openings you have to aim at */
+  mkPat(3, [1.20,1.50], ['#lad']),
+  mkPat(3, [1.20,1.50], ['#zap', 0.95, '#zap']),
+  mkPat(3, [1.20,1.50], ['#zap', 0.90, '#corn', 1.00, '#zap']),
+  mkPat(3, [1.25,1.55], ['#zap', 0.90, '#lad']),
+  mkPat(3, [1.25,1.55], ['#corn', 0.95, '#lad']),
 
-  /* tier 4 — three beats, and the two big machines */
-  mkPat(4, [1.15,1.45], ['e_mill']),
-  mkPat(4, [1.15,1.45], ['e_g2a']),
-  mkPat(4, [1.10,1.40], ['e_fence', 0.88, 'e_multi', 1.10, '#gnd']),
-  mkPat(4, [1.10,1.40], ['#corn', 0.85, 'e_baletrap', 1.00, 'e_gate']),
-  mkPat(4, [1.10,1.40], ['haywagon', 0.88, 'e_rotor', 1.05, 'e_fence']),
+  /* tier 4 — everything, close together, still never closer than the table */
+  mkPat(4, [1.15,1.45], ['#zap', 0.85, '#zap', 0.95, '#zap']),
+  mkPat(4, [1.15,1.45], ['#lad', 1.00, '#zap']),
+  mkPat(4, [1.15,1.45], ['#corn', 0.88, '#zap', 1.00, '#lad']),
+  mkPat(4, [1.20,1.50], ['#fence', 0.88, '#zap', 0.95, '#corn']),
+  mkPat(4, [1.15,1.45], ['#zap', 0.90, '#lad', 1.05, '#corn']),
 ];
 
 function spawnPattern(){
@@ -2894,15 +3050,18 @@ function spawnPattern(){
   let lead = base;
   for(const st of p.seq){
     lead += st.dt;
-    if(st.k === '#col'){ spawnStandalone(Math.random()<0.55, lead); continue; }
-    const k = st.k==='#gnd'  ? pick(groundPool(tier))
-            : st.k==='#air'  ? pick(airPool(tier))
-            : st.k==='#corn' ? pick(cornPool(tier))
+    const k = st.k==='#zap'   ? pick(inTier(ZAP_KEYS, tier))
+            : st.k==='#corn'  ? pick(inTier(CORN_KEYS, tier))
+            : st.k==='#fence' ? pick(inTier(FENCE_KEYS, tier))
+            : st.k==='#lad'   ? pick(inTier(LAD_KEYS, tier))
             : st.k;
     if(!k) continue;                       // a token with nothing in its pool yet
-    if(OB[k].elec) spawnElec(k, lead); else spawnOne(k, lead);
+    spawnElec(k, lead);
   }
-  if(p.corn) game.cornT = rnd(9, 17);
+  /* Corn is a third of the roster now rather than one prop among twenty, so
+     the cooldown is short -- it is there to stop two corn beats running into
+     each other, not to make the crop rare. */
+  if(p.corn) game.cornT = rnd(5, 9);
   game.spawnT = (lead - base) + rnd(p.tail[0], p.tail[1]) * lerp(1, 0.78, game.diff);
 }
 
@@ -3046,6 +3205,7 @@ document.addEventListener('visibilitychange', ()=>{
 function toMenu(){
   applyTheme();
   game.mode='menu'; game.obstacles.length=0; game.parts.length=0; game.pops.length=0;
+  game.crows.length=0; game.crowT=1e9;
   game.cageX = -CAGE_RUNOUT;             // parked so the escape ends on the play mark
   game.door=null; game.doorGone=false; game.lockGone=false; game.doorBow=0;
   player.state='idle'; player.stateT=0; player.beat=''; player.beatT=1.2;
@@ -3063,6 +3223,7 @@ function startRun(){
   game.speed=340*PACE; game.diff=0; game.spawnT=2.6; game.cornT=0;
   game.obstacles.length=0; game.parts.length=0; game.pops.length=0; game.ui.length=0;
   game.eggs.length=0; game.eggT=1.6; game.runEggs=0; game.eggStreak=0;
+  game.crows.length=0; game.crowT=5;
   game.freeze=0; game.timeScale=1; game.tsTarget=1; game.shake=0; game.zoom=1; game.zoomT=1;
   game.camY=0; game.camYT=0; game.deadT=0; game.newBest=false;
   game.door=null; game.doorGone=false; game.lockGone=false; game.doorBow=0;
@@ -3080,18 +3241,6 @@ function startRun(){
   elCard.classList.remove('best');
   if(game.demo){ player.y = 430; player.onGround=false; player.state='fly';
     player.thrusting=true; player.flapT = (game.demoFlap!==undefined?game.demoFlap:0.2); }
-  if(game.stage){                                   // drop gates straight in front, for inspection
-    game.spawnT = 1e9;
-    const band = GROUND-CEIL;
-    [[0.34,470],[0.60,380],[0.44,320]].forEach(([f,gp],i)=>{
-      const g = spawnGate(i===2);
-      g.c = band*f; g.gap = gp; g.amp = i===2?90:0;
-      game.obstacles.filter(o=>o.gate===g).forEach(o=>{
-        o.x = player.x + 260 + i*430;
-        o.h = Math.max(0, o.hang ? g.band-(g.c+g.gap/2) : g.c-g.gap/2);
-      });
-    });
-  }
   game.tut = game.firstRun;
   elTut.classList.toggle('show', game.tut);
   musicScene('menu');            // the escape still plays over the menu theme
@@ -3166,6 +3315,7 @@ function update(dt, rawDt){
   else if(game.mode==='dying') updateDying(dt);
   else if(game.mode==='dead')  updateDead(dt, rawDt);
   if(game.door) updateDoor(dt);        // outside the chain: it flies on into play
+  updateCrows(dt);                     // same: a crow already launched keeps coming
 
   updateParticles(dt);
   musicTick(); trackTick(rawDt);
@@ -3357,7 +3507,6 @@ function updatePlay(dt){
   }
   p.nearCool = Math.max(0, p.nearCool-dt);
   p.kickT = Math.max(0, (p.kickT||0)-dt);
-  whooshCool = Math.max(0, whooshCool-dt);
   const ceilH = GROUND - CEIL;                       // usable altitude, in world units
 
   /* THE movement model. Gravity always pulls; holding adds constant upward
@@ -3428,54 +3577,22 @@ function updatePlay(dt){
   const pl = p.x-48, pr = p.x+48, pb = p.y+8, pt = p.y+150;
   for(let i=game.obstacles.length-1;i>=0;i--){
     const o = game.obstacles[i];
-    o.x += (o.vx||0)*dt;
-    if(o.gate){
-      const g=o.gate;
-      const c = g.c + (g.amp ? Math.sin(game.t*g.spd+g.phase)*g.amp : 0);
-      o.h = Math.max(0, o.hang ? g.band - (c + g.gap/2) : c - g.gap/2);
-    }
-    if(o.spec.roll) o.rot = (o.rot||0) + (o.vx - game.speed)*dt/ (o.w*0.5) * -1;
-    if(o.spec.bounce){
-      o.bvz -= 3000*dt; o.bz += o.bvz*dt;
-      if(o.bz<0){ o.bz=0; o.bvz=900; }
-    }
-    if(o.kind==='fall' && !o.landed){
-      o.vy += 2600*dt; o.y -= o.vy*dt;
-      if(o.y<=0){
-        o.y=0; o.landed=true; o.vy=0;
-        addShake(6); S.thud();
-        spark(o.x, GROUND, 14, {col:'rgba(255,242,222,.6)', a0:Math.PI,a1:TAU, s0:120,s1:340, l0:0.25,l1:0.6, r0:4,r1:11, g:600});
-      }
-    }
-    if(!o.wooshed && Math.abs((o.spec && o.spec.roll)||0) > 100 && o.x < p.x - 30){
-      o.wooshed = true;                    // one whoosh as a fast one goes past
-      if(whooshCool <= 0){ S.whoosh(); whooshCool = 0.4; }
-    }
     // collision
     /* An electric piece is a bundle of wires, boxes and discs rather than one
        block, so it answers for itself; everything else is the block it looks
        like. The 8px the box is shrunk by is the same forgiveness the block
        test gives, applied once here so both families are equally generous. */
-    const ow = o.spec.hw!=null ? o.spec.hw : o.w*0.42;
-    let obot, otop;
-    if(o.hang){ otop = (GROUND-CEIL); obot = otop - o.h; }
-    else if(o.kind==='air'){ obot=o.base; otop=o.base+o.h; }
-    else { obot=o.y||0; otop=(o.y||0)+o.h; }
-    const ol=o.x-ow, or=o.x+ow;
-    const overlapX = pr>ol && pl<or;
-    if(overlapX && !o.hitBy){
-      if(o.spec.elec){ if(o.spec.hit(o, pl+8, pr-8, pb+8, pt-8)) die(o); }
-      else if(pt>obot+8 && pb<otop-8){ die(o); }
-    }
-    // near-miss tracking
+    const ow = o.spec.hw;
+    const overlapX = pr > o.x-ow && pl < o.x+ow;
+    if(overlapX && !o.hitBy && o.spec.hit(o, pl+8, pr-8, pb+8, pt-8)) die(o);
+    // near-miss tracking: the true distance to the nearest lethal part
     if(overlapX){
-      const gap = o.spec.elec ? o.spec.gapTo(o, pl+8, pr-8, pb+8, pt-8)
-                : (o.kind==='air'||o.hang) ? (obot - pt) : (pb - otop);
+      const gap = o.spec.gapTo(o, pl+8, pr-8, pb+8, pt-8);
       if(gap>0) o.minGap = Math.min(o.minGap, gap);
     }
     if(!o.counted && o.x < p.x-30){
       o.counted = true;
-      const thr = o.spec.elec ? 66 : (o.kind==='air'||o.hang) ? 74 : 62;
+      const thr = 66;
       if(o.minGap < thr && o.minGap > 0 && game.mode==='play') nearMiss(o);
     }
     if(o.x < cam.x - 420) game.obstacles.splice(i,1);
@@ -3528,7 +3645,7 @@ function nearMiss(o){
   const y = GROUND - p.y - 150;
   pop(p.x+40, y, (game.combo>1? 'x'+game.combo+' ' : '')+pick(['PHEW!','CLOSE!','NICE!','WOW!']), C.mint, 34, -150);
   pop(p.x+40, y+46, '+'+bonus, C.gold, 24, -110);
-  spark(o.x, GROUND - (o.spec.elec ? p.y+70 : (o.kind==='air'? o.base : o.h)), 10,
+  spark(o.x, GROUND - (p.y+70), 10,
     {col:C.mint, s0:80,s1:300, l0:0.25,l1:0.6, r0:3,r1:8, g:200});
   elScore.classList.remove('pop'); void elScore.offsetWidth; elScore.classList.add('pop');
   if(game.combo>1){ elComboTxt.textContent='x'+game.combo; elCombo.classList.add('on');
@@ -4198,8 +4315,7 @@ function drawGround(){
 const HITDBG = /[?&]hit=1/.test(location.search);
 function drawHitbox(o){
   ctx.save();
-  const ow = o.spec.hw!=null ? o.spec.hw : o.w*0.42;
-  if(o.spec.elec){
+  {
     const p = o.spec.build(o, game.t);
     ctx.strokeStyle='rgba(255,0,220,0.9)'; ctx.lineWidth=2.5;
     for(const q of (p.solids||[])) ctx.strokeRect(q[0], -q[3], q[2]-q[0], q[3]-q[1]);
@@ -4207,9 +4323,6 @@ function drawHitbox(o){
     for(const w of p.wires){ ctx.beginPath(); ctx.moveTo(w[0],-w[1]); ctx.lineTo(w[2],-w[3]); ctx.stroke(); }
     ctx.strokeStyle='rgba(0,255,170,0.9)'; ctx.lineWidth=2.5;
     for(const c of (p.discs||[])){ ctx.beginPath(); ctx.arc(c[0],-c[1],c[2],0,TAU); ctx.stroke(); }
-  } else {
-    ctx.strokeStyle='rgba(255,0,220,0.9)'; ctx.lineWidth=2.5;
-    ctx.strokeRect(-ow, o.hang ? 0 : -o.h, ow*2, o.h);
   }
   ctx.restore();
 }
@@ -4217,21 +4330,9 @@ function drawHitbox(o){
 function drawObstacles(){
   for(const o of game.obstacles){
     const sx = o.x - cam.x;
-    if(sx < -300 || sx > VW+340) continue;
-    // falling telegraph
-    if(o.kind==='fall' && !o.landed){
-      const k = clamp(1 - o.y/700, 0, 1);
-      ctx.save(); ctx.translate(sx, GROUND);
-      ctx.globalAlpha=0.25+0.4*k;
-      ctx.beginPath(); ctx.ellipse(0,4, o.w*0.42*(0.5+0.5*k), o.w*0.42*0.18*(0.5+0.5*k), 0,0,TAU);
-      ctx.fillStyle=C.ink2; ctx.fill();
-      ctx.globalAlpha=0.5+0.5*Math.sin(game.t*16);
-      ctx.strokeStyle=C.danger; ctx.lineWidth=4;
-      ctx.beginPath(); ctx.ellipse(0,4, o.w*0.44, o.w*0.44*0.2, 0,0,TAU); ctx.stroke();
-      ctx.globalAlpha=1; ctx.restore();
-    }
+    if(sx < -340 || sx > VW+380) continue;
     ctx.save();
-    ctx.translate(sx, o.hang ? CEIL : GROUND - (o.kind==='air'? o.base : (o.y||0)));
+    ctx.translate(sx, GROUND - (o.y||0));
     if(o.hitBy) ctx.rotate(o.rot||0);
     o.spec.draw(o, game.t);
     if(HITDBG) drawHitbox(o);
@@ -4416,10 +4517,13 @@ function render(){
 
   if(inCage || cageSX > -VW*1.3) drawCageFront(cageSX);
   drawParticles();
+  drawCrows();                        // in front of him: it is the thing hitting him
   if(inCage || cageSX > -VW*1.3) drawBoom(cageSX);
   drawTitle();
   drawPops();
   ctx.restore();
+
+  drawCrowAlerts();                   // screen space: it belongs to the display edge
 
   // screen-space confetti
   for(const c of game.ui){
@@ -4468,7 +4572,6 @@ function boot(){
   if(/[?&]auto/.test(location.search)) setTimeout(startIntro, 60);
   if(/[?&]demo/.test(location.search)) game.demo = true;
   if(/[?&]dbg/.test(location.search)) game.dbg = true;
-  if(/[?&]stage/.test(location.search)) game.stage = true;
   const it=/[?&]introt=([0-9.]+)/.exec(location.search);
   if(it){ game.holdIntro = parseFloat(it[1]); }   // freeze the intro to look at a beat
   const sl=/[?&]slow=([0-9.]+)/.exec(location.search);
@@ -4536,6 +4639,38 @@ function boot(){
     window.__ob = show;
     setTimeout(()=>show(obm[1]), 90);
   }
+  /* The crow attack takes four seconds to play and half a minute to earn, so
+     ?crowshot=1 parks it at one named moment instead: window.__crow('track'),
+     'lock', 'fly' or 'close'. Same objects, same draw calls, clock frozen --
+     it is the real attack held still, not a mock-up of it. */
+  if(/[?&]crowshot/.test(location.search)){
+    const stage = (which)=>{
+      startRun();
+      game.tut = false; elTut.classList.remove('show');
+      game.obstacles.length=0; game.eggs.length=0;
+      game.parts.length=0; game.pops.length=0; game.crows.length=0;
+      game.spawnT = 1e9; game.eggT = 1e9; game.crowT = 1e9;
+      player.x = 2000; player.y = 320; player.vy = 0; player.thrusting = false;
+      cam.x = player.x - PX;
+      launchCrows();
+      game.crows.length = 1;                   // one bird, however the dice fell
+      const c = game.crows[0];
+      c.state = 'warn'; c.wait = 0; c.ty = 340; c.t = 0.4; c.seed = 0;
+      if(which === 'track') c.warnT = CROW_WARN*0.8;
+      else if(which === 'lock') c.warnT = CROW_LOCK*0.55;
+      else {
+        c.state = 'fly'; c.warnT = 0; c.y = c.ty;
+        c.x = which === 'close' ? player.x + 330 : cam.x + VW*0.74;
+      }
+      game.spawnT = 1e9; game.crowT = 1e9;     // launchCrows moved both of them
+      game.freeze = 9999;                      // 6% time: it holds still
+      return JSON.stringify({stage:which, state:c.state,
+        warnT:+(c.warnT).toFixed(2), ty:Math.round(c.ty),
+        sx:Math.round(c.x - cam.x)});
+    };
+    window.__crow = stage;
+    setTimeout(()=>stage('lock'), 90);
+  }
   if(/[?&]obtest/.test(location.search)){
     setTimeout(()=>{
       const out=[]; let bad=0;
@@ -4545,49 +4680,49 @@ function boot(){
         // They used to be [0,30,55,80,120], which lands on tiers 0,2,3,4,4 --
         // so tier 1 was never tested at all and tier 4 was tested twice.
         game.runT = [0,15,30,50,80][tier];
-        const kinds={}; let worst=1e9, pairs=0, tight=1e9;
+        const kinds={}; let worst=1e9, tight=1e9, shut=0;
         for(let n=0;n<240;n++){
           game.obstacles.length = 0;
+          /* The crop's cooldown is in seconds and this loop does not advance
+             the clock, so without this the corn appears once per tier and then
+             locks itself out of its own test. */
+          game.cornT = 0;
           try{ spawnPattern(); }catch(e){ out.push('tier'+tier+' THREW '+e.message); bad++; break; }
           const os = game.obstacles;
           for(const o of os) kinds[o.key]=(kinds[o.key]||0)+1;
-          // a floor piece and a ceiling piece at the same x is the thing we removed
-          for(const o of os) for(const q of os)
-            if(o!==q && o.hang!==q.hang && Math.abs(o.x-q.x)<160) pairs++;
           for(const o of os){
-            /* An electric piece answers for its own opening. Measuring it as
-               band-o.h would read every ladder as a solid wall, because a
-               ladder IS the full column height -- the gap is the point. */
-            if(o.spec.elec){
-              let best = 0;
-              for(const f of o.spec.free(o, band)) best = Math.max(best, f[1]-f[0]);
-              worst = Math.min(worst, best);
-              if(best < CLEAR-1){ bad++;
-                out.push('tier'+tier+' '+o.key+' opening only '+Math.round(best)); }
+            /* Every piece answers for its own opening. Measuring it as
+               band-o.h would read every one of them as a solid wall, because
+               a ladder IS the full column height -- the gap is the point, and
+               a zapper's two corridors are not its height at all. */
+            let best = 0;
+            for(const f of o.spec.free(o, band)) best = Math.max(best, f[1]-f[0]);
+            worst = Math.min(worst, best);
+            if(best < CLEAR-1){ bad++;
+              out.push('tier'+tier+' '+o.key+' opening only '+Math.round(best)); }
+            /* And no side may be in between. A corridor is either flyable or
+               plainly shut; the space that looks passable and is not is the
+               thing rollZap exists to refuse, so it is checked here too. */
+            for(const f of o.spec.free(o, band)){
+              const g = f[1]-f[0];
+              if(g >= SHUT && g < CLEAR){ shut++;
+                out.push('tier'+tier+' '+o.key+' half-gap '+Math.round(g)); }
             }
-            else if(o.hang){ worst=Math.min(worst, band-o.h); }
-            else if(o.kind!=='air' && o.kind!=='fall'){ worst=Math.min(worst, band-o.h); }
-            if(!isFinite(worst)){ out.push('tier'+tier+' BAD '+o.key+' kind='+o.kind+
+            if(!isFinite(worst)){ out.push('tier'+tier+' BAD '+o.key+
               ' h='+o.h+' cy='+o.cy+' len='+o.len); bad++; worst=1e9; }
           }
-          /* Spacing inside a pattern, measured in ARRIVAL TIME rather than in
-             x: a rolling prop is placed further away precisely so it arrives
-             with the rest, so comparing positions would call every pattern
-             holding one badly spaced. */
-          for(let a=0;a<os.length;a++) for(let b2=a+1;b2<os.length;b2++){
-            const ta = (os[a].x-player.x)/(game.speed+Math.abs(os[a].spec.roll||0));
-            const tb = (os[b2].x-player.x)/(game.speed+Math.abs(os[b2].spec.roll||0));
-            tight = Math.min(tight, Math.abs(ta-tb));
-          }
+          // spacing inside a pattern, in arrival time
+          for(let a=0;a<os.length;a++) for(let b2=a+1;b2<os.length;b2++)
+            tight = Math.min(tight, Math.abs(os[a].x-os[b2].x)/game.speed);
         }
-        if(pairs){ bad++; out.push('tier'+tier+' STACKED PAIRS: '+pairs); }
-        if(worst<170){ bad++; out.push('tier'+tier+' corridor only '+Math.round(worst)); }
+        if(shut){ bad++; out.push('tier'+tier+' HALF-GAPS: '+shut); }
+        if(worst<CLEAR-1){ bad++; out.push('tier'+tier+' corridor only '+Math.round(worst)); }
         if(tight<0.62){ bad++; out.push('tier'+tier+' spacing only '+tight.toFixed(2)+'s'); }
         out.push('tier'+tier+' corridor>='+Math.round(worst)+
           '  gap>='+(tight<1e8?tight.toFixed(2)+'s':'-')+'  '+
           Object.keys(kinds).sort().map(k=>k+':'+kinds[k]).join(' '));
       }
-      out.unshift(bad ? ('OBSTACLES: '+bad+' PROBLEMS') : 'OBSTACLES: ok, no stacked gates');
+      out.unshift(bad ? ('OBSTACLES: '+bad+' PROBLEMS') : 'OBSTACLES: ok, every opening flyable');
       const el=document.getElementById('selftest');
       el.style.display='block'; el.style.color = bad ? '#FF456E' : '#0f0';
       el.textContent = out.join(String.fromCharCode(10));

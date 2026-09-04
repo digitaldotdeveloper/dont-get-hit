@@ -656,32 +656,46 @@ has to hand over to the map's own panels.
 Joyride lays out coins - a flat line, an arc, or a climb - so a run of them can
 be followed with one held press. **`eggFree` rejects any egg that lands inside a
 hazard**, including zapper beams, so chasing them is a real choice and never
-bait. **The spin is PAINTED as one sheet** (`sheets/v2/egg_spin.png`) and
-`tools/cut_eggs.py` only cuts it up. Two earlier versions got this wrong and
-both are written up at the top of that file, because both are tempting:
+bait. **The SHADING is painted per angle; only the WIDTH is set in code**
+(`sheets/v2/egg_spin.png`, `tools/cut_eggs.py`). That split is the whole design:
+the part that has to be hand-drawn is the part a program cannot fake, and the
+part a program should own is the one number an artist cannot hold steady across
+ten drawings.
 
-- **Squashing one hero egg horizontally per frame.** The silhouette narrows but
-  the highlight stays welded to the surface, so the eye reads a picture being
-  scaled rather than an object turning. This is what "cheap" looks like.
-- **Re-projecting the painting as a texture wrapped round a solid of
-  revolution** -- a pixel at horizontal position u sits at surface angle
-  `asin(u)`, so after turning by t it is seen at `sin(asin(u) + t)`. That model
-  is *correct* and it looked terrible: the mapping crushes the whole texture
-  into a few columns at the silhouette, so a handful of source pixels smear
-  across the edge and the egg comes out striped. Doing it properly needs real
-  area sampling, and an artist can just draw the seven views.
+What has to be drawn, and what the prompt asks for in these words, is what gives
+it a third dimension:
 
-What the sheet has to contain, and what the prompt asks for in these words:
-square on, narrowing, **a thin bright polished RIM at the edge**, then the far
-side coming round **DARKER because it faces away from the light**, widening and
-brightening back. The rim and the dark reverse are the entire difference between
-a spin and a squash -- without them any amount of narrowing still reads flat.
+- **shading bands that CURVE round the form** like lines of longitude -- bowed
+  ellipses, tight near the silhouette and spread in the middle, never straight
+  vertical stripes. Flat stripes are what made the first sheet read as a decal;
+- **a warm bounce light hugging the dark limb**, a thin band of lit bronze
+  between the outline and the core shadow, so the form turns away instead of
+  just going dark;
+- **a bright polished RIM** on the edge-on frame, and a reverse face that comes
+  round **darker because it faces away from the light**. Those two are the
+  entire difference between a spin and a squash.
 
-The egg carries **no marking**. A stamped one was tried and reads as a token
-rather than treasure. `art/egg_icon.webp` puts the same painting in the HUD so
-the counter and the thing you collected are obviously one object. Alternates sit
-next to the hero: `egg_alt_soft.png`, `egg_alt_cool.png`, `egg_alt_band.png`,
-`egg_alt_plain.png`. Taken eggs fly to the counter; the pickup pings up a
+The sheet comes back in whatever order the model felt like, so frames are chosen
+by MEASUREMENT: width says how far round it is, mean brightness says whether it
+is the lit face or the reverse. They are then laid on a cosine, and the second
+half of the turn reuses the first half's art MIRRORED -- what a symmetric object
+actually does, and it stops the loop reading as a repeat.
+
+**`LIFT` brightens the reverse frames by a third.** The painted reverse is
+genuinely dark, which is right for a lit object and wrong for a pickup: half a
+cycle of dark brown reads as the egg flickering out of existence rather than
+turning.
+
+Two dead ends are written up at the top of the tool because both are tempting.
+Squashing one hero per frame leaves the highlight welded to the surface, so the
+eye reads a picture being scaled. Re-projecting the painting as a texture around
+a solid of revolution is the *correct* model and comes out striped, because the
+mapping crushes the texture into a few columns at the silhouette.
+
+The egg carries no marking -- a stamped one reads as a token rather than
+treasure. `art/egg_icon.webp` is the widest frame off the same sheet, so the HUD
+counter and the pickup are one object. Alternates: `egg_alt_soft.png`,
+`egg_alt_cool.png`, `egg_alt_band.png`, `egg_alt_plain.png`. Taken eggs fly to the counter; the pickup pings up a
 semitone per egg in a streak. `game.eggBank` persists in `localStorage` under
 `dgh_eggs`.
 

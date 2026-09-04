@@ -1,27 +1,31 @@
 # -*- coding: utf-8 -*-
-"""Slice the golden egg's spin out of one painted sheet.
+"""Assemble the golden egg's spin from a painted turnaround sheet.
 
-Two earlier versions of this got it wrong and both are worth remembering.
+Three approaches were tried and the first two are written up here because both
+are tempting and both are wrong:
 
-The first squashed a single hero egg horizontally per frame. That is what a
-cheap game does: the silhouette narrows but the highlight stays welded to the
-surface, so the eye reads a picture being scaled rather than an object turning.
+  1. Squash one hero egg horizontally per frame. The silhouette narrows but the
+     highlight stays welded to the surface, so the eye reads a picture being
+     scaled rather than an object turning. This is what "cheap" looks like.
+  2. Wrap the painting round a solid of revolution and re-project it -- a pixel
+     at horizontal position u sits at surface angle asin(u), so after turning by
+     t it is seen at sin(asin(u) + t). The model is correct and the output was
+     striped: the mapping crushes the whole texture into a few columns at the
+     silhouette, so a handful of source pixels smear across the edge. Doing it
+     properly wants real area sampling.
 
-The second tried to fix that honestly, by treating the painting as a texture
-wrapped round a solid of revolution and re-projecting it per frame -- a pixel at
-horizontal position u sits at surface angle asin(u), so after turning by t it is
-seen at sin(asin(u) + t). That is the correct model, and it looked terrible: the
-mapping compresses the whole texture into a few columns near the silhouette, so
-a handful of source pixels smear across the edge and the egg comes out striped.
-Fixing it properly needs real area sampling, and it is not worth it when an
-artist can simply draw the seven views.
+So the SHADING is painted, per angle, and only the WIDTH is set here. That
+split is the point: the thing that has to be hand-drawn is the thing a program
+cannot fake -- bands that curve round the form like lines of longitude, a warm
+bounce light hugging the dark limb, a bright polished rim at the edge -- and the
+thing a program should own is the one number the artist cannot hold steady
+across ten drawings, the silhouette width.
 
-So the spin is PAINTED, one sheet, and this only cuts it up. What the sheet has
-to contain, and what the prompt asks for in these words, is the part that makes
-it read: square on, narrowing, a thin bright polished RIM at the edge, then the
-far side coming round DARKER because it faces away from the light, widening and
-brightening back. The rim and the dark reverse are the whole difference between
-a spin and a squash.
+The sheet comes back in whatever order the model felt like, so frames are picked
+by MEASUREMENT: width says how far round it is, mean brightness says whether it
+is the lit face or the reverse. `CYCLE` then lays them out on a cosine, and the
+second half of the turn reuses the first half's art MIRRORED, which is what a
+symmetric object actually does and stops the loop reading as a repeat.
 
     python cut_eggs.py          # sheets/v2/egg_spin.png -> anim/egg*.webp
 """
@@ -30,52 +34,75 @@ import numpy as np
 from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from imglib import key_green, despill, bbox
+from imglib import key_green, despill, bbox, label
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SH   = os.path.join(ROOT, "sheets", "v2")
 ANIM = os.path.join(ROOT, "anim")
 
 TALL = 62        # frame height in sprite pixels
+N    = 10        # frames in the cycle
+MINW = 0.15      # the edge-on frame keeps this much width; 0 would vanish
+MAXF = 16        # tidy up frames left by a longer previous cycle
+# The painted reverse is genuinely dark, which is right for a lit object and
+# wrong for a pickup: half a cycle of dark brown reads as the egg flickering out
+# of existence rather than turning. Lifted to about four fifths of the lit face,
+# which keeps it obviously the shadow side while keeping it obviously gold.
+LIFT = 1.34
+
+
+def read_sheet(path):
+    """Every egg on the sheet, with the two measurements that place it."""
+    rgba = despill(key_green(Image.open(path)))
+    lab, n = label(rgba[..., 3] > 0)
+    out = []
+    for i in range(1, n + 1):
+        m = lab == i
+        if int(m.sum()) < 2500: continue
+        bb = bbox(m)
+        sub = rgba[bb[1]:bb[3], bb[0]:bb[2]].copy()
+        sub[..., 3] = np.where(m[bb[1]:bb[3], bb[0]:bb[2]], sub[..., 3], 0)
+        px = sub[..., :3][sub[..., 3] > 60]
+        out.append({"img": sub, "w": bb[2] - bb[0], "lum": float(px.mean())})
+    return out
 
 
 def main():
-    rgba = despill(key_green(Image.open(os.path.join(SH, "egg_spin.png"))))
-    al = rgba[..., 3]
+    fr = read_sheet(os.path.join(SH, "egg_spin.png"))
+    wide = max(f["w"] for f in fr)
+    lit = np.median([f["lum"] for f in fr])
+    front = sorted([f for f in fr if f["lum"] >= lit], key=lambda f: -f["w"])
+    back  = sorted([f for f in fr if f["lum"] <  lit], key=lambda f: -f["w"])
+    if not back: back = front[-2:]
+    print("  %d on the sheet: %d lit, %d reverse" % (len(fr), len(front), len(back)))
 
-    # Split on empty columns and keep runs BY POSITION, not by width: the
-    # edge-on frame is a sliver, and "keep the widest N" throws away the one
-    # frame that proves the egg is turning.
-    cols = al.sum(0) > 0
-    runs, s = [], None
-    for x, v in enumerate(cols):
-        if v and s is None: s = x
-        elif not v and s is not None:
-            runs.append((s, x)); s = None
-    if s is not None: runs.append((s, len(cols)))
-    runs = [r for r in runs if (r[1] - r[0]) >= 4]
-    tallest = max((al[:, a:b] > 0).sum(0).max() for a, b in runs)
-    runs = [r for r in runs if (al[:, r[0]:r[1]] > 0).sum(0).max() > tallest * 0.55]
-    print("  %d frames on the sheet" % len(runs))
+    def pick(pool, frac):
+        """the drawing whose own width is closest to the angle we want"""
+        return min(pool, key=lambda f: abs(f["w"]/wide - frac))
 
-    # one scale for the whole sheet, off the tallest frame, so the egg does not
-    # change size as it turns
-    scale = TALL / float(tallest)
     meta = []
-    for i, (x0, x1) in enumerate(runs):
-        sub = rgba[:, x0:x1]
-        bb = bbox(sub[..., 3])
-        im = Image.fromarray(sub[bb[1]:bb[3], bb[0]:bb[2]], "RGBA")
-        w = max(1, round(im.width * scale))
-        h = max(1, round(im.height * scale))
+    for i in range(N):
+        t = i * 2 * np.pi / N
+        c = np.cos(t)
+        frac = max(MINW, abs(c))
+        src = pick(front if c >= 0 else back, frac)
+        art = src["img"]
+        if c < 0:
+            art = art.copy()
+            art[..., :3] = np.clip(art[..., :3].astype(np.float32) * LIFT, 0, 255).astype(np.uint8)
+        im = Image.fromarray(art, "RGBA")
+        # the back half of the turn is the front half seen from the other side
+        if i > N // 2: im = im.transpose(Image.FLIP_LEFT_RIGHT)
+        h = TALL
+        w = max(1, round(wide * frac * (TALL / im.height)))
         im = im.resize((w, h), Image.LANCZOS)
         f = "egg%d.webp" % i
         im.save(os.path.join(ANIM, f), "WEBP", quality=92, method=6)
         # eggs hang on their CENTRE, not their feet: they float, spin and fly to
         # the counter, and every one of those wants the middle of the sprite
         meta.append({"f": f, "w": w, "h": h, "ay": h / 2.0})
-        print("   %s %dx%d" % (f, w, h))
-    for old in range(len(runs), 16):                     # a shorter cycle than before
+        print("   %s %2dx%d  %s" % (f, w, h, "lit" if c >= 0 else "reverse"))
+    for old in range(N, MAXF):
         p = os.path.join(ANIM, "egg%d.webp" % old)
         if os.path.exists(p): os.remove(p); print("   removed %s" % os.path.basename(p))
     print(json.dumps(meta, separators=(",", ":")))
