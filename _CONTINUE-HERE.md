@@ -870,6 +870,34 @@ whipping. `drawSpectators` plays the loop only while a chicken is going past at
 speed and holds frame 0 otherwise. `drawLilChicken` is the flat fallback if the
 frames have not loaded.
 
+## Finding runtime errors
+
+`sh check.sh` is a SYNTAX check and nothing more. It passes happily on code that
+throws on every frame, which is how `pb is not defined` shipped: `updateCrows`
+kept the obstacle loop's `pb`/`pt` names after its box became `rbox`, so the
+near-miss line threw the first time a crow lined up with him -- and because it
+threw from inside `updateCrows`, it took the rest of that frame's update with it.
+
+`tools/shot.py` now installs an error collector **before** the page's own script
+runs and prints anything it catches. That matters because the game's own
+`window.onerror` keeps only the FIRST error and only in a DOM panel, so an
+exception repeating every frame never reaches a screenshot.
+
+**Two traps when hunting these:**
+
+- **`game` in the devtools console is the CANVAS, not the game.** `<canvas
+  id="game">` puts a `window.game` there, and the real `const game` is in the
+  script's lexical scope where `Runtime.evaluate` cannot see it. Probing
+  `game.crows.length` therefore reads a property of a canvas element and returns
+  undefined, which looks exactly like the bug you are chasing. Use the debug
+  flags and the `window.__*` harnesses instead -- they are deliberately on
+  `window` for this reason.
+- **A clean sweep proves nothing unless the path actually ran.** Five long
+  sessions came back with no errors on the build that definitely had this bug,
+  because no crow happened to cross him. `?crowshot=1` + `window.__crow('live')`
+  reproduces it in five seconds. When a sweep is clean, check that the code you
+  care about was reached.
+
 ## Before shipping any edit
 
     sh check.sh        # or: node --check on the extracted <script>

@@ -45,12 +45,34 @@ def shot(url, out, w=420, h=900, dpr=2, wait=3.0, full=False):
         cmd('Emulation.setDeviceMetricsOverride', width=w, height=h,
             deviceScaleFactor=dpr, mobile=True)
         cmd('Page.enable')
+        # Collect every distinct error the page throws, installed BEFORE the
+        # game's own script runs. Worth having by default: the game's
+        # window.onerror keeps only the FIRST error and only in a DOM panel, and
+        # an exception thrown from inside an update fires every frame without
+        # ever showing up in a screenshot. Read window.__errs afterwards.
+        cmd('Page.addScriptToEvaluateOnNewDocument', source="""
+            window.__errs = [];
+            addEventListener('error', e => {
+              const k = (e.message||'') + '@' + (e.lineno||0) + ':' + (e.colno||0);
+              if(!window.__errs.some(x => x.k === k))
+                window.__errs.push({k, m:e.message, l:e.lineno, c:e.colno});
+            });
+            addEventListener('unhandledrejection', e => {
+              const m = 'PROMISE ' + (e.reason && e.reason.message || e.reason);
+              if(!window.__errs.some(x => x.k === m)) window.__errs.push({k:m, m});
+            });
+        """)
         cmd('Page.navigate', url=url)
         time.sleep(wait)
         args = {'format': 'png'}
         if full: args['captureBeyondViewport'] = True
         res = cmd('Page.captureScreenshot', **args)
         open(out, 'wb').write(base64.b64decode(res['data']))
+        errs = cmd('Runtime.evaluate',
+                   expression='JSON.stringify((window.__errs||[]).map('
+                              'e=>e.m+" @"+e.l+":"+e.c))',
+                   returnByValue=True)['result'].get('value')
+        if errs and errs != '[]': print('ERRORS:', errs[:600])
         m = cmd('Runtime.evaluate', expression=
             "innerWidth+'x'+innerHeight+' scroll='+document.documentElement.scrollWidth"
             "+'x'+document.documentElement.scrollHeight", returnByValue=True)
