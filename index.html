@@ -4569,60 +4569,64 @@ function npcPose(list, height, phase){
   const cycles = npcWalk() / Math.max(40, height * NPC_STRIDE);
   return Math.floor((cycles + phase) * list.length) % list.length;
 }
-/* They walk in the field, at the field's speed: their own parallax, their own
-   scale, and their feet on the painted ground line rather than on the road.
-   Distances that used to be world distances have to become screen distances
-   once a thing rides a parallax -- its world x is no longer where it looks. */
+/* The field parallax, still used by anything that stands out there. */
 const NPC_F = 0.44, NPC_SCALE = 0.58, NPC_BASE = -128;
+
+/* The livestock walk the ROAD, in the lane the chicken runs in, at his scale,
+   with their feet on the same ground his are on.
+
+   That is the entire point of them. A player who has just been taught that
+   everything glowing kills him needs to meet something that does not, and the
+   only way he learns that is by running straight through one and coming out
+   the other side. Out in the field at 0.58 scale they were scenery he never
+   touched, so the lesson had nothing to land on -- and a cow he cannot reach
+   teaches him nothing about a cow.
+
+   Which makes DENSITY the thing that has to be right, because on the road
+   they are the only objects sharing his lane and a crowd of them reads as a
+   wall of obstacles. The spacing is half a screen or more, so two on screen at
+   once is the ceiling and one is the common case -- the layout guarantees it
+   rather than a draw-time cap, which would pop a third one in the moment the
+   first left. */
+const NPC_SPACING = 780;      // >= VW/2, so two on screen at once is the most
+const NPC_TEACH_M = 400;      // ...and for the opening 400m there is always one
 function drawSpectators(){
-  /* Closer together than they were on the road. Out in the field they are
-     scenery rather than encounters -- one every 1750 units left the place
-     looking abandoned about half the time. */
-  const spacing = 900, walk = npcWalk();
-  const par = bgReady() ? NPC_F : 1;
-  const scale = bgReady() ? NPC_SCALE : 1;
-  const base = bgReady() ? NPC_BASE : -8;
-  /* Index by the LAYER's camera, not the road's. Laying them out along one
-     axis and looking for them along another puts every one of them off the
-     right-hand edge, by a gap that grows with the run -- which is exactly as
-     invisible as not drawing them at all. */
-  const first = Math.floor((cam.x*par - 300 + walk)/spacing);
+  const spacing = NPC_SPACING, walk = npcWalk();
+  /* The opening stretch is never empty: the lesson only works if he meets one
+     of these BEFORE he meets anything that kills him, and leaving that to a
+     hash means the run that teaches it is the run that happens not to. */
+  const teach = game.mode === 'play' && game.dist < NPC_TEACH_M*10;
+  const first = Math.floor((cam.x - 300 + walk)/spacing);
   for(let i=first; i<first+Math.ceil(VW/spacing)+3; i++){
-    if(hash(i*9.3) > 0.58) continue;                    // most stops are empty
-    const gx = i*spacing + 300 - walk;                  // they are going somewhere
-    const sx = gx - cam.x*par;
-    if(sx < -220 || sx > VW+220) continue;
-    const n = 1;                                        // one animal, on its own
+    if(!teach && hash(i*9.3) > 0.58) continue;         // some stops are empty
+    const gx = i*spacing + 300 - walk;                 // they are going somewhere
+    const sx = gx - cam.x;
+    if(sx < -260 || sx > VW+260) continue;
     /* Panic starts shortly before he arrives and carries on well after: they
-       are still going when he is most of a screen down the road, which sells it
-       as a reaction to him rather than a state of the scenery. Kept tight on
-       the approach side on purpose -- the whole point of the walk cycles is
-       that you get to see them being unimpressed first. */
-    const dx = (player.x - cam.x) - sx;                 // on screen, not in the world
+       are still going when he is most of a screen down the road, which sells
+       it as a reaction to him rather than a state of the scenery. */
+    const dx = player.x - gx;
     const near = NPC_REACT && game.mode === 'play' && dx > -430 && dx < 900;
-    for(let k=0;k<n;k++){
-      const ox = (k-(n-1)/2) * 74 + hash(i*7.7+k)*12;
-      const ph = hash(i*2.3+k*1.7)*TAU;
-      const bob = near ? -Math.abs(Math.sin(game.t*9 + ph))*13
-                       :  Math.sin(game.t*1.8 + ph)*2.2;
-      const kind = NPC_KIND[(hash(i*5.7+k*2.9)*2.999)|0];
-      const set = near ? kind+'run' : kind;
-      const list = FRAME_DATA[set] || [];
-      const fr0 = list[0];
-      const pose = near
-        ? (list.length ? Math.floor(game.t*13 + ph*2) % list.length : 0)
-        : npcPose(list, fr0 ? fr0.h*SPR : 140, hash(i*2.3+k*1.7));
-      const lift = near ? bob*0.35 : Math.sin(game.t*1.6 + ph)*1.6;
-      if(drawNPC(set, pose, sx+ox, GROUND+base+lift, scale, !near)) continue;
-      ctx.save();
-      ctx.translate(sx + ox, GROUND + base - 2);
-      ctx.scale(0.82*scale, 0.82*scale);
-      drawLilChicken(near, bob);
-      ctx.restore();
-    }
+    const ph = hash(i*2.3)*TAU;
+    const bob = near ? -Math.abs(Math.sin(game.t*9 + ph))*13
+                     :  Math.sin(game.t*1.8 + ph)*2.2;
+    const kind = NPC_KIND[(hash(i*5.7)*2.999)|0];
+    const set = near ? kind+'run' : kind;
+    const list = FRAME_DATA[set] || [];
+    const fr0 = list[0];
+    const pose = near
+      ? (list.length ? Math.floor(game.t*13 + ph*2) % list.length : 0)
+      : npcPose(list, fr0 ? fr0.h*SPR : 140, hash(i*2.3));
+    const lift = near ? bob*0.35 : Math.sin(game.t*1.6 + ph)*1.6;
+    if(drawNPC(set, pose, sx, GROUND - 6 + lift, 1, !near)) continue;
+    ctx.save();
+    ctx.translate(sx, GROUND - 8);
+    ctx.scale(0.82, 0.82);
+    drawLilChicken(near, bob);
+    ctx.restore();
   }
 }
-/* THE FARMER. He owns the place, and Nugget has just left it. Six frames of
+/* THE FARMER./* THE FARMER. He owns the place, and Nugget has just left it. Six frames of
    escalating rage -- noticing, fists up, pointing, hat off, doubled over --
    played only while a chicken is going past, and standing about the rest of the
    time.
@@ -4665,15 +4669,19 @@ function drawFarmer(){
   }
 }
 function drawProps(){
-  /* The order IS the depth. Hills, then the farm, then the neighbours walking
-     about in the field, then the fence in front of them -- which is what puts
-     them in the background instead of on the road, and what lets the fence
-     pass in front of a cow without anybody having to sort anything. */
-  if(!bgReady()){ drawFarmProps(); drawSpectators(); drawFarmer(); return; }
+  /* The order IS the depth, and the livestock changed sides.
+
+     Hills, then the farm, then the farmer out in his field, then the fence in
+     front of him -- that fence is what puts anything drawn before it into the
+     background, and it is still what keeps the farmer there. The animals come
+     AFTER it, because they walk the road on the near side now: drawn with the
+     farmer, the fence crossed them and they read as being in the field no
+     matter what scale they were given. */
+  if(!bgReady()){ drawFarmProps(); drawFarmer(); drawSpectators(); return; }
   drawBgLayers(['far', 'mid']);
-  drawSpectators();
   drawFarmer();
   drawBgLayers(['near']);
+  drawSpectators();
 }
 function drawGround(){
   const y = GROUND;
