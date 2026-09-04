@@ -51,9 +51,11 @@
   #eggWrap{position:absolute;top:calc(env(safe-area-inset-top,0px) + 14px);left:14px;
     display:flex;align-items:center;gap:7px;opacity:0;transition:opacity .3s}
   #hud.on #eggWrap{opacity:1}
-  #eggIcon{width:17px;height:22px;border-radius:50% 50% 50% 50%/60% 60% 40% 40%;
-    background:linear-gradient(150deg,#FFE9A8,#FFD54A 45%,#E09A22);
-    box-shadow:0 0 0 2.5px #241043, 0 0 12px rgba(255,213,74,.45)}
+  /* the same painted egg the pickups are, so the counter and the thing you
+     collected are obviously the same object */
+  #eggIcon{width:18px;height:23px;
+    background:url(art/egg_icon.webp) center/contain no-repeat;
+    filter:drop-shadow(0 0 8px rgba(255,213,74,.5))}
   #eggCount{font-family:'Bungee',cursive;font-size:19px;color:#FFD54A;
     text-shadow:0 2px 0 #241043;font-variant-numeric:tabular-nums}
   #eggCount.pop{animation:pop .2s ease-out}
@@ -1114,7 +1116,7 @@ function cosmeticImage(id, slot, src, opt){
    swappable while frames are in use. If any image fails to load the
    procedural puppet draws instead - the character can never vanish.
    ============================================================ */
-const FRAME_DATA = {"cow":[{"f":"cow0.webp","w":89,"h":154,"ay":153.5},{"f":"cow1.webp","w":85,"h":146,"ay":152.0},{"f":"cow2.webp","w":84,"h":164,"ay":165.1},{"f":"cow3.webp","w":91,"h":163,"ay":164.0},{"f":"cow4.webp","w":92,"h":146,"ay":147.2},{"f":"cow5.webp","w":60,"h":146,"ay":147.2}],"cowrun":[{"f":"cowrun0.webp","w":118,"h":164,"ay":164.0},{"f":"cowrun1.webp","w":120,"h":164,"ay":165.8},{"f":"cowrun2.webp","w":128,"h":154,"ay":159.1},{"f":"cowrun3.webp","w":154,"h":152,"ay":156.6},{"f":"cowrun4.webp","w":157,"h":147,"ay":152.9},{"f":"cowrun5.webp","w":170,"h":158,"ay":164.0}],"pig":[{"f":"pig0.webp","w":98,"h":156,"ay":156.0},{"f":"pig1.webp","w":113,"h":155,"ay":156.0},{"f":"pig2.webp","w":90,"h":154,"ay":156.0},{"f":"pig3.webp","w":110,"h":156,"ay":156.0},{"f":"pig4.webp","w":89,"h":155,"ay":156.0},{"f":"pig5.webp","w":92,"h":155,"ay":156.0}],"pigrun":[{"f":"pigrun0.webp","w":105,"h":156,"ay":156.0},{"f":"pigrun1.webp","w":110,"h":150,"ay":152.3},{"f":"pigrun2.webp","w":91,"h":132,"ay":135.0},{"f":"pigrun3.webp","w":125,"h":133,"ay":133.1},{"f":"pigrun4.webp","w":96,"h":125,"ay":125.8},{"f":"pigrun5.webp","w":107,"h":137,"ay":136.8}],"goat":[{"f":"goat0.webp","w":92,"h":159,"ay":161.4},{"f":"goat1.webp","w":91,"h":159,"ay":161.4},{"f":"goat2.webp","w":81,"h":158,"ay":159.5},{"f":"goat3.webp","w":82,"h":160,"ay":160.0},{"f":"goat4.webp","w":89,"h":160,"ay":159.5},{"f":"goat5.webp","w":92,"h":158,"ay":161.0}],"goatrun":[{"f":"goatrun0.webp","w":94,"h":159,"ay":160.0},{"f":"goatrun1.webp","w":84,"h":160,"ay":160.0},{"f":"goatrun2.webp","w":118,"h":148,"ay":147.7},{"f":"goatrun3.webp","w":125,"h":145,"ay":149.3},{"f":"goatrun4.webp","w":132,"h":143,"ay":147.7},{"f":"goatrun5.webp","w":141,"h":144,"ay":147.7}],"run":[{"f":"run0.webp","w":206,"h":199,"ay":199},{"f":"run1.webp","w":138,"h":182,"ay":182},{"f":"run2.webp","w":136,"h":181,"ay":181},{"f":"run3.webp","w":187,"h":196,"ay":196},{"f":"run4.webp","w":140,"h":181,"ay":181},{"f":"run5.webp","w":179,"h":195,"ay":195}],"fly":[{"f":"fly0.webp","w":110,"h":161,"ay":162.3},{"f":"fly1.webp","w":112,"h":158,"ay":163.1},{"f":"fly2.webp","w":163,"h":210,"ay":191.6},{"f":"fly3.webp","w":147,"h":158,"ay":181.3},{"f":"fly4.webp","w":148,"h":186,"ay":187.3},{"f":"fly5.webp","w":130,"h":185,"ay":179.7}],"fall":[{"f":"fall0.webp","w":122,"h":187,"ay":184.0},{"f":"fall1.webp","w":145,"h":199,"ay":186.0},{"f":"fall2.webp","w":174,"h":210,"ay":179.8},{"f":"fall3.webp","w":143,"h":198,"ay":182.3}],"jump":[{"f":"jump0.webp","w":122,"h":148,"ay":171.0},{"f":"jump1.webp","w":140,"h":171,"ay":169.4},{"f":"jump2.webp","w":138,"h":221,"ay":193.2},{"f":"jump3.webp","w":183,"h":186,"ay":179.6},{"f":"jump4.webp","w":155,"h":186,"ay":180.3}],"land":[{"f":"land0.webp","w":145,"h":183,"ay":183},{"f":"land1.webp","w":157,"h":179,"ay":179},{"f":"land2.webp","w":122,"h":121,"ay":121},{"f":"land3.webp","w":165,"h":186,"ay":186}],"hit":[{"f":"hit0.webp","w":145,"h":164,"ay":172.9},{"f":"hit1.webp","w":163,"h":186,"ay":185.1},{"f":"hit2.webp","w":122,"h":154,"ay":173.6},{"f":"hit3.webp","w":106,"h":126,"ay":166.0},{"f":"hit4.webp","w":178,"h":81,"ay":140.5},{"f":"hit5.webp","w":128,"h":146,"ay":173.4}],"kick":[{"f":"kick0.webp","w":164,"h":239,"ay":239.0},{"f":"kick1.webp","w":162,"h":228,"ay":228.0},{"f":"kick2.webp","w":172,"h":172,"ay":179.4},{"f":"kick3.webp","w":132,"h":192,"ay":178.6},{"f":"kick4.webp","w":182,"h":194,"ay":194.0}],"boom":[{"f":"boom0.webp","w":121,"h":125},{"f":"boom1.webp","w":194,"h":215},{"f":"boom2.webp","w":260,"h":273},{"f":"boom3.webp","w":209,"h":215},{"f":"boom4.webp","w":170,"h":175}],"cricket":[{"f":"cricket0.webp","w":45,"h":136,"ay":136.0},{"f":"cricket1.webp","w":44,"h":143,"ay":143.0},{"f":"cricket2.webp","w":67,"h":127,"ay":127.0},{"f":"cricket3.webp","w":58,"h":129,"ay":129.0},{"f":"cricket4.webp","w":62,"h":121,"ay":121.0},{"f":"cricket5.webp","w":55,"h":107,"ay":107.0}],"egg":[{"f":"egg0.webp","w":47,"h":58,"ay":29.0},{"f":"egg1.webp","w":45,"h":58,"ay":29.0},{"f":"egg2.webp","w":43,"h":58,"ay":29.0},{"f":"egg3.webp","w":39,"h":58,"ay":29.0},{"f":"egg4.webp","w":22,"h":58,"ay":29.0},{"f":"egg5.webp","w":15,"h":55,"ay":27.5},{"f":"egg6.webp","w":39,"h":55,"ay":27.5},{"f":"egg7.webp","w":41,"h":55,"ay":27.5},{"f":"egg8.webp","w":42,"h":55,"ay":27.5},{"f":"egg9.webp","w":43,"h":55,"ay":27.5}],"hensad":[{"f":"hensad0.webp","w":92,"h":98,"ay":98.0},{"f":"hensad1.webp","w":95,"h":98,"ay":98.0},{"f":"hensad2.webp","w":98,"h":98,"ay":98.0},{"f":"hensad3.webp","w":93,"h":98,"ay":98.0},{"f":"hensad4.webp","w":83,"h":98,"ay":98.0}],"henjoy":[{"f":"henjoy0.webp","w":94,"h":98,"ay":98.0},{"f":"henjoy1.webp","w":80,"h":98,"ay":98.0},{"f":"henjoy2.webp","w":80,"h":98,"ay":98.0},{"f":"henjoy3.webp","w":80,"h":98,"ay":98.0}],"farmer":[{"f":"farmer0.webp","w":94,"h":224,"ay":224.0},{"f":"farmer1.webp","w":102,"h":225,"ay":225.0},{"f":"farmer2.webp","w":141,"h":224,"ay":224.0},{"f":"farmer3.webp","w":155,"h":218,"ay":218.0},{"f":"farmer4.webp","w":129,"h":252,"ay":252.0},{"f":"farmer5.webp","w":122,"h":189,"ay":189.0}],"spy":[{"f":"spy0.webp","w":62,"h":86,"ay":86.0},{"f":"spy1.webp","w":62,"h":86,"ay":86.0},{"f":"spy2.webp","w":62,"h":86,"ay":86.0},{"f":"spy3.webp","w":85,"h":82,"ay":82.0},{"f":"spy4.webp","w":63,"h":86,"ay":86.0},{"f":"spy5.webp","w":76,"h":86,"ay":86.0}],"farmeridle":[{"f":"farmeridle0.webp","w":93,"h":224,"ay":224.0},{"f":"farmeridle1.webp","w":113,"h":224,"ay":224.0},{"f":"farmeridle2.webp","w":127,"h":222,"ay":222.0},{"f":"farmeridle3.webp","w":120,"h":224,"ay":224.0},{"f":"farmeridle4.webp","w":98,"h":222,"ay":222.0},{"f":"farmeridle5.webp","w":92,"h":224,"ay":224.0}],"spyalert":[{"f":"spyalert0.webp","w":62,"h":86,"ay":86.0},{"f":"spyalert1.webp","w":62,"h":86,"ay":86.0},{"f":"spyalert2.webp","w":62,"h":86,"ay":86.0},{"f":"spyalert3.webp","w":79,"h":86,"ay":86.0},{"f":"spyalert4.webp","w":63,"h":86,"ay":86.0},{"f":"spyalert5.webp","w":62,"h":85,"ay":85.0}],"farmerwalk":[{"f":"farmerwalk0.webp","w":113,"h":224,"ay":224.0},{"f":"farmerwalk1.webp","w":106,"h":220,"ay":220.0},{"f":"farmerwalk2.webp","w":109,"h":225,"ay":225.0},{"f":"farmerwalk3.webp","w":140,"h":234,"ay":234.0},{"f":"farmerwalk4.webp","w":127,"h":226,"ay":226.0},{"f":"farmerwalk5.webp","w":115,"h":221,"ay":221.0}]};
+const FRAME_DATA = {"cow":[{"f":"cow0.webp","w":89,"h":154,"ay":153.5},{"f":"cow1.webp","w":85,"h":146,"ay":152.0},{"f":"cow2.webp","w":84,"h":164,"ay":165.1},{"f":"cow3.webp","w":91,"h":163,"ay":164.0},{"f":"cow4.webp","w":92,"h":146,"ay":147.2},{"f":"cow5.webp","w":60,"h":146,"ay":147.2}],"cowrun":[{"f":"cowrun0.webp","w":118,"h":164,"ay":164.0},{"f":"cowrun1.webp","w":120,"h":164,"ay":165.8},{"f":"cowrun2.webp","w":128,"h":154,"ay":159.1},{"f":"cowrun3.webp","w":154,"h":152,"ay":156.6},{"f":"cowrun4.webp","w":157,"h":147,"ay":152.9},{"f":"cowrun5.webp","w":170,"h":158,"ay":164.0}],"pig":[{"f":"pig0.webp","w":98,"h":156,"ay":156.0},{"f":"pig1.webp","w":113,"h":155,"ay":156.0},{"f":"pig2.webp","w":90,"h":154,"ay":156.0},{"f":"pig3.webp","w":110,"h":156,"ay":156.0},{"f":"pig4.webp","w":89,"h":155,"ay":156.0},{"f":"pig5.webp","w":92,"h":155,"ay":156.0}],"pigrun":[{"f":"pigrun0.webp","w":105,"h":156,"ay":156.0},{"f":"pigrun1.webp","w":110,"h":150,"ay":152.3},{"f":"pigrun2.webp","w":91,"h":132,"ay":135.0},{"f":"pigrun3.webp","w":125,"h":133,"ay":133.1},{"f":"pigrun4.webp","w":96,"h":125,"ay":125.8},{"f":"pigrun5.webp","w":107,"h":137,"ay":136.8}],"goat":[{"f":"goat0.webp","w":92,"h":159,"ay":161.4},{"f":"goat1.webp","w":91,"h":159,"ay":161.4},{"f":"goat2.webp","w":81,"h":158,"ay":159.5},{"f":"goat3.webp","w":82,"h":160,"ay":160.0},{"f":"goat4.webp","w":89,"h":160,"ay":159.5},{"f":"goat5.webp","w":92,"h":158,"ay":161.0}],"goatrun":[{"f":"goatrun0.webp","w":94,"h":159,"ay":160.0},{"f":"goatrun1.webp","w":84,"h":160,"ay":160.0},{"f":"goatrun2.webp","w":118,"h":148,"ay":147.7},{"f":"goatrun3.webp","w":125,"h":145,"ay":149.3},{"f":"goatrun4.webp","w":132,"h":143,"ay":147.7},{"f":"goatrun5.webp","w":141,"h":144,"ay":147.7}],"run":[{"f":"run0.webp","w":206,"h":199,"ay":199},{"f":"run1.webp","w":138,"h":182,"ay":182},{"f":"run2.webp","w":136,"h":181,"ay":181},{"f":"run3.webp","w":187,"h":196,"ay":196},{"f":"run4.webp","w":140,"h":181,"ay":181},{"f":"run5.webp","w":179,"h":195,"ay":195}],"fly":[{"f":"fly0.webp","w":110,"h":161,"ay":162.3},{"f":"fly1.webp","w":112,"h":158,"ay":163.1},{"f":"fly2.webp","w":163,"h":210,"ay":191.6},{"f":"fly3.webp","w":147,"h":158,"ay":181.3},{"f":"fly4.webp","w":148,"h":186,"ay":187.3},{"f":"fly5.webp","w":130,"h":185,"ay":179.7}],"fall":[{"f":"fall0.webp","w":122,"h":187,"ay":184.0},{"f":"fall1.webp","w":145,"h":199,"ay":186.0},{"f":"fall2.webp","w":174,"h":210,"ay":179.8},{"f":"fall3.webp","w":143,"h":198,"ay":182.3}],"jump":[{"f":"jump0.webp","w":122,"h":148,"ay":171.0},{"f":"jump1.webp","w":140,"h":171,"ay":169.4},{"f":"jump2.webp","w":138,"h":221,"ay":193.2},{"f":"jump3.webp","w":183,"h":186,"ay":179.6},{"f":"jump4.webp","w":155,"h":186,"ay":180.3}],"land":[{"f":"land0.webp","w":145,"h":183,"ay":183},{"f":"land1.webp","w":157,"h":179,"ay":179},{"f":"land2.webp","w":122,"h":121,"ay":121},{"f":"land3.webp","w":165,"h":186,"ay":186}],"hit":[{"f":"hit0.webp","w":145,"h":164,"ay":172.9},{"f":"hit1.webp","w":163,"h":186,"ay":185.1},{"f":"hit2.webp","w":122,"h":154,"ay":173.6},{"f":"hit3.webp","w":106,"h":126,"ay":166.0},{"f":"hit4.webp","w":178,"h":81,"ay":140.5},{"f":"hit5.webp","w":128,"h":146,"ay":173.4}],"kick":[{"f":"kick0.webp","w":164,"h":239,"ay":239.0},{"f":"kick1.webp","w":162,"h":228,"ay":228.0},{"f":"kick2.webp","w":172,"h":172,"ay":179.4},{"f":"kick3.webp","w":132,"h":192,"ay":178.6},{"f":"kick4.webp","w":182,"h":194,"ay":194.0}],"boom":[{"f":"boom0.webp","w":121,"h":125},{"f":"boom1.webp","w":194,"h":215},{"f":"boom2.webp","w":260,"h":273},{"f":"boom3.webp","w":209,"h":215},{"f":"boom4.webp","w":170,"h":175}],"cricket":[{"f":"cricket0.webp","w":45,"h":136,"ay":136.0},{"f":"cricket1.webp","w":44,"h":143,"ay":143.0},{"f":"cricket2.webp","w":67,"h":127,"ay":127.0},{"f":"cricket3.webp","w":58,"h":129,"ay":129.0},{"f":"cricket4.webp","w":62,"h":121,"ay":121.0},{"f":"cricket5.webp","w":55,"h":107,"ay":107.0}],"egg":[{"f":"egg0.webp","w":45,"h":58,"ay":29.0},{"f":"egg1.webp","w":43,"h":58,"ay":29.0},{"f":"egg2.webp","w":41,"h":58,"ay":29.0},{"f":"egg3.webp","w":37,"h":58,"ay":29.0},{"f":"egg4.webp","w":21,"h":58,"ay":29.0},{"f":"egg5.webp","w":14,"h":58,"ay":29.0},{"f":"egg6.webp","w":37,"h":58,"ay":29.0},{"f":"egg7.webp","w":39,"h":58,"ay":29.0},{"f":"egg8.webp","w":40,"h":58,"ay":29.0},{"f":"egg9.webp","w":41,"h":58,"ay":29.0}],"hensad":[{"f":"hensad0.webp","w":92,"h":98,"ay":98.0},{"f":"hensad1.webp","w":95,"h":98,"ay":98.0},{"f":"hensad2.webp","w":98,"h":98,"ay":98.0},{"f":"hensad3.webp","w":93,"h":98,"ay":98.0},{"f":"hensad4.webp","w":83,"h":98,"ay":98.0}],"henjoy":[{"f":"henjoy0.webp","w":94,"h":98,"ay":98.0},{"f":"henjoy1.webp","w":80,"h":98,"ay":98.0},{"f":"henjoy2.webp","w":80,"h":98,"ay":98.0},{"f":"henjoy3.webp","w":80,"h":98,"ay":98.0}],"farmer":[{"f":"farmer0.webp","w":94,"h":224,"ay":224.0},{"f":"farmer1.webp","w":102,"h":225,"ay":225.0},{"f":"farmer2.webp","w":141,"h":224,"ay":224.0},{"f":"farmer3.webp","w":155,"h":218,"ay":218.0},{"f":"farmer4.webp","w":129,"h":252,"ay":252.0},{"f":"farmer5.webp","w":122,"h":189,"ay":189.0}],"spy":[{"f":"spy0.webp","w":62,"h":86,"ay":86.0},{"f":"spy1.webp","w":62,"h":86,"ay":86.0},{"f":"spy2.webp","w":62,"h":86,"ay":86.0},{"f":"spy3.webp","w":85,"h":82,"ay":82.0},{"f":"spy4.webp","w":63,"h":86,"ay":86.0},{"f":"spy5.webp","w":76,"h":86,"ay":86.0}],"farmeridle":[{"f":"farmeridle0.webp","w":93,"h":224,"ay":224.0},{"f":"farmeridle1.webp","w":113,"h":224,"ay":224.0},{"f":"farmeridle2.webp","w":127,"h":222,"ay":222.0},{"f":"farmeridle3.webp","w":120,"h":224,"ay":224.0},{"f":"farmeridle4.webp","w":98,"h":222,"ay":222.0},{"f":"farmeridle5.webp","w":92,"h":224,"ay":224.0}],"spyalert":[{"f":"spyalert0.webp","w":62,"h":86,"ay":86.0},{"f":"spyalert1.webp","w":62,"h":86,"ay":86.0},{"f":"spyalert2.webp","w":62,"h":86,"ay":86.0},{"f":"spyalert3.webp","w":79,"h":86,"ay":86.0},{"f":"spyalert4.webp","w":63,"h":86,"ay":86.0},{"f":"spyalert5.webp","w":62,"h":85,"ay":85.0}],"farmerwalk":[{"f":"farmerwalk0.webp","w":113,"h":224,"ay":224.0},{"f":"farmerwalk1.webp","w":106,"h":220,"ay":220.0},{"f":"farmerwalk2.webp","w":109,"h":225,"ay":225.0},{"f":"farmerwalk3.webp","w":140,"h":234,"ay":234.0},{"f":"farmerwalk4.webp","w":127,"h":226,"ay":226.0},{"f":"farmerwalk5.webp","w":115,"h":221,"ay":221.0}]};
 const FR = { ready:false, n:0, need:0, img:{} };
 const SPR = 175/190;                       // world units per frame pixel
 /* The roadside animals are scenery. They are loaded like everything else but
@@ -1124,19 +1126,49 @@ const SPR = 175/190;                       // world units per frame pixel
    checks each image itself, so one that has not arrived costs a frame of
    scenery and nothing else. */
 const NPC_SETS = ['cow','cowrun','pig','pigrun','goat','goatrun'];
+
+/* A queue, because a browser will not do this for you.
+
+   The frame sets come to 130-odd images and they used to be requested the
+   moment the script ran, all of them, alongside the background art and the
+   props: about 170 requests in flight at once. A local server does not care.
+   A CDN does: some of those requests come back having transferred nothing at
+   all, and the ones that survive can take twenty seconds. That is how the live
+   site ended up drawing the vector fallback -- not one file missing, every
+   file serving perfectly to anything that asked for it on its own, and the
+   190KB background among the requests that got dropped.
+
+   Six at a time. The image objects are created up front so everything that
+   looks one up still finds it -- an Image with no src reports naturalWidth 0,
+   which is exactly the 'not ready yet' the draw calls already test for. */
+const IMQ = { q: [], live: 0, max: 6 };
+function imqPump(){
+  while(IMQ.live < IMQ.max && IMQ.q.length){
+    const job = IMQ.q.shift();
+    IMQ.live++;
+    job.im.onload  = () => { IMQ.live--; job.ok();  imqPump(); };
+    job.im.onerror = () => { IMQ.live--; job.err(); imqPump(); };
+    job.im.src = job.src;
+  }
+}
+function imqLoad(im, src, ok, err){ IMQ.q.push({ im, src, ok, err }); imqPump(); }
 (function loadFrames(){
   for(const set in FRAME_DATA){
     if(NPC_SETS.indexOf(set) < 0) FR.need += FRAME_DATA[set].length;
   }
-  for(const set in FRAME_DATA){
+  /* Scenery goes to the back of the queue: the chicken and the cage are what
+     the first second of the game is made of, and the verge can arrive later. */
+  const order = Object.keys(FRAME_DATA).sort(
+    (a, b) => (NPC_SETS.indexOf(a) >= 0) - (NPC_SETS.indexOf(b) >= 0));
+  for(const set of order){
     const scenery = NPC_SETS.indexOf(set) >= 0;
     FRAME_DATA[set].forEach(fr=>{
       const im = new Image();
-      im.onload = ()=>{ if(scenery) return;
-                        FR.n++; if(FR.n >= FR.need) FR.ready = true; };
-      im.onerror = ()=>{ if(!scenery) FR.need--; };   // missing: stay on the puppet
-      im.src = 'anim/' + fr.f;
       FR.img[fr.f] = im;
+      imqLoad(im, 'anim/' + fr.f,
+        ()=>{ if(scenery) return;
+              FR.n++; if(FR.n >= FR.need) FR.ready = true; },
+        ()=>{ if(!scenery){ FR.need--; if(FR.n >= FR.need) FR.ready = true; } });
     });
   }
 })();
@@ -1803,6 +1835,41 @@ function segDist(px,py, x0,y0,x1,y1){
   const qx=x0+dx*u, qy=y0+dy*u;
   return Math.hypot(px-qx, py-qy);
 }
+/* Do two segments cross? Only the sign of the two parameters matters, so this
+   is the cheap form: no intersection point is ever wanted. */
+function segSeg(ax,ay,bx,by, cx,cy,dx,dy){
+  const rx=bx-ax, ry=by-ay, sx=dx-cx, sy=dy-cy;
+  const den = rx*sy - ry*sx;
+  if(!den) return false;                       // parallel; the endpoint tests catch it
+  const u = ((cx-ax)*sy - (cy-ay)*sx)/den;
+  const v = ((cx-ax)*ry - (cy-ay)*rx)/den;
+  return u>=0 && u<=1 && v>=0 && v<=1;
+}
+/* Gap between a segment and an axis-aligned box, 0 when they touch.
+
+   One function rather than a boolean and a separate metric, because the
+   collision wants the sign and the near-miss meter wants the number, and two
+   implementations of the same geometry is how a hitbox drifts away from what
+   is drawn. The closest pair is a box corner against the segment OR a segment
+   end against the box -- a vertical wire above the middle of the box is the
+   case that needs the second test, and it is the common one here. */
+function segBoxDist(x0,y0,x1,y1, l,b,r,t){
+  const inside = (x,y)=> x>=l && x<=r && y>=b && y<=t;
+  if(inside(x0,y0) || inside(x1,y1)) return 0;
+  if(segSeg(x0,y0,x1,y1, l,b,r,b) || segSeg(x0,y0,x1,y1, r,b,r,t) ||
+     segSeg(x0,y0,x1,y1, r,t,l,t) || segSeg(x0,y0,x1,y1, l,t,l,b)) return 0;
+  const ptBox = (x,y)=> Math.hypot(Math.max(l-x, 0, x-r), Math.max(b-y, 0, y-t));
+  return Math.min(segDist(l,b,x0,y0,x1,y1), segDist(r,b,x0,y0,x1,y1),
+                  segDist(r,t,x0,y0,x1,y1), segDist(l,t,x0,y0,x1,y1),
+                  ptBox(x0,y0), ptBox(x1,y1));
+}
+function boxBoxDist(x0,y0,x1,y1, l,b,r,t){
+  return Math.hypot(Math.max(x0-r, 0, l-x1), Math.max(y0-t, 0, b-y1));
+}
+function discBoxDist(cx,cy,rad, l,b,r,t){
+  return Math.max(0, Math.hypot(Math.max(l-cx, 0, cx-r),
+                                Math.max(b-cy, 0, cy-t)) - rad);
+}
 
 /* ============================================================
    OBSTACLES — all cartoon, all readable in silhouette
@@ -1905,6 +1972,10 @@ function farmProp(name, w, h, opt){
       ctx.save();
       if(opt.roll) ctx.rotate(o.rot||0);          // rolling props spin on the spot
       else if(opt.sway) ctx.rotate(Math.sin(t*1.6 + o.x*0.011)*opt.sway);
+      else if(opt.squash){                         // a puddle ripples, it does not lean
+        const k = 1 + Math.sin(t*2.3 + o.x*0.02)*opt.squash;
+        ctx.scale(1/k, k);
+      }
       if(im && im.complete && im.naturalWidth){
         const y = opt.roll ? -oh*0.5 : (spec.kind==='ground' ? -oh : -oh*0.5);
         ctx.drawImage(im, -ow*0.5, y, ow, oh);
@@ -1942,6 +2013,286 @@ Object.assign(OB, {
   fallbale: farmProp('haybale',     182, 144, { tier:2, kind:'fall' }),
   fallcrate:farmProp('crates',      104, 228, { tier:3, kind:'fall' }),
 });
+/* The rest of the farmyard, off farm_props_c. Sizes are the art's own aspect
+   ratio at the height the hazard wants, so nothing is stretched -- take the
+   ratio from tools/cut_obstacles.py's output, don't guess it. */
+Object.assign(OB, {
+  fence:    farmProp('fence',       244, 132, { tier:0 }),
+  gate:     farmProp('gate',        210, 140, { tier:1 }),
+  cart:     farmProp('cart',        228, 124, { tier:1 }),
+  engine:   farmProp('engine',      140, 140, { tier:2 }),
+  haywagon: farmProp('haywagon',    237, 176, { tier:2 }),
+  /* A tractor wheel is the one farm prop that obviously rolls, so it does --
+     it is the fast-closing hazard of the ground set, and the whoosh in
+     updatePlay already keys off any roll over 100. */
+  tracwheel:farmProp('tractorwheel',122, 168, { tier:2, roll:-165, bounce:true }),
+  /* Mud is deliberately the shortest thing in the game: a hop, not a climb.
+     It squashes rather than sways, because a puddle that rocked would read as
+     a solid object tipping over. */
+  mud:      farmProp('mud',         188,  52, { tier:0, squash:0.07 }),
+});
+/* Corn. It is a ground obstacle like any other -- you jump it -- but it comes
+   out of its own pool on its own cooldown (game.cornT), because a crop that
+   turns up in every third pattern stops being a crop and starts being a
+   fence. Three widths, so a corn beat can be a stalk, a clump or a whole row. */
+Object.assign(OB, {
+  corn1:    farmProp('corn1',       106, 196, { tier:0, sway:0.045 }),
+  corn3:    farmProp('corn3',       182, 206, { tier:1, sway:0.04 }),
+  cornrow:  farmProp('cornrow',     419, 190, { tier:2, sway:0.03 }),
+});
+const CORN_KEYS = ['corn1','corn3','cornrow'];
+
+/* ============================================================
+   THE ELECTRIC FARM — the flying half of the obstacle set
+   ============================================================
+   Somebody has wired the place up out of insulators, warning signs and a car
+   battery, and the wire is the hazard. These are the pieces you fly at; the
+   painted farmyard props above are the pieces you jump.
+
+   ONE rule holds the whole family together and every piece below obeys it:
+
+       AN ELECTRIC PIECE IS LETHAL EVERYWHERE IT IS SOLID,
+       AND ITS OPENING IS EMPTY AIR.
+
+   There is no safe-looking post you are meant to fly through. In a side view
+   a lethal upright is a wall for its whole height, so a hazard with a gap in
+   the middle CANNOT be one tall frame -- it has to be a piece standing off the
+   floor and a piece hanging off the roof with nothing whatever between them.
+   That is what elecLadder builds, and it is why nothing here ever draws a
+   post across its own opening. Get that wrong and you have a hazard whose
+   safe passage is blocked by the thing framing it, which is the definition of
+   randomly unavoidable.
+
+   Geometry is in world units with y measured UP from the ground -- the frame
+   the collision code already uses. The flip into screen coordinates happens
+   once, inside drawElec. So the wire you can see and the segment you die on
+   are literally the same two numbers.
+
+   Every piece also declares free(o, band): the clear spans it leaves.
+   spawnElec will not place one that leaves less than CLEAR, and ?obtest=1
+   re-checks it a few hundred times per tier -- "always leave a clear path" is
+   not something to leave to eyeballing. */
+
+const WIRE_R = 9;     // lethal half-thickness of a wire: the drawn core, no more
+const CLEAR  = 250;   // narrowest opening any electric piece is allowed to leave
+const RUNG   = 66;    // wire spacing in a ladder. Well under the bird's 142 of
+                      // height, so a rung gap can never read as a way through.
+
+/* --- a live wire ---------------------------------------------------------
+   A glow, a core that will not hold still, and a charge running along it.
+   The jitter is hashed off (seed, quantised t) rather than random, so it
+   flickers at a fixed 24Hz instead of shimmering at whatever the frame rate
+   is -- which is the difference between reading as electricity and reading as
+   noise. Endpoints are pinned so the wire never leaves its insulators. */
+function drawWire(x0,y0,x1,y1, t, seed){
+  const dx=x1-x0, dy=y1-y0, L=Math.hypot(dx,dy)||1;
+  const nx=-dy/L, ny=dx/L, ux=dx/L, uy=dy/L;
+  const n = Math.max(3, Math.min(20, Math.round(L/28)));
+  const k = Math.floor(t*24);
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  ctx.beginPath(); ctx.moveTo(x0,-y0); ctx.lineTo(x1,-y1);
+  ctx.strokeStyle='rgba(110,222,255,0.13)'; ctx.lineWidth=26; ctx.stroke();
+  ctx.strokeStyle='rgba(150,240,255,0.28)'; ctx.lineWidth=13; ctx.stroke();
+  ctx.beginPath();
+  for(let i=0;i<=n;i++){
+    const u=i/n, live=(i===0||i===n)?0:1;
+    const j=(hash(seed + i*7.13 + k*3.71)-0.5)*7.5*live;
+    const x=x0+dx*u+nx*j, y=y0+dy*u+ny*j;
+    if(i) ctx.lineTo(x,-y); else ctx.moveTo(x,-y);
+  }
+  ctx.strokeStyle='#4CCFFF'; ctx.lineWidth=7; ctx.stroke();
+  ctx.strokeStyle='#EDFCFF'; ctx.lineWidth=3; ctx.stroke();
+  // two forks, on and off at the same 24Hz, so the wire looks like it is arcing
+  for(let f=0; f<2; f++){
+    if(hash(seed + f*31.7 + k*1.93) > 0.42) continue;
+    const u=hash(seed + f*11.3 + k*5.11), side=hash(seed + f*17.9 + k*2.31)<0.5?-1:1;
+    const bx=x0+dx*u, by=y0+dy*u, a=side*(10+hash(seed+f*3.3+k)*13);
+    ctx.beginPath(); ctx.moveTo(bx,-by);
+    ctx.lineTo(bx+nx*a*0.55-ux*6, -(by+ny*a*0.55));
+    ctx.lineTo(bx+nx*a+ux*9,      -(by+ny*a));
+    ctx.strokeStyle='#EDFCFF'; ctx.lineWidth=2.6; ctx.stroke();
+  }
+  // the charge itself, so the wire is obviously live even standing still
+  const u=(t*0.55 + hash(seed)) % 1, bx=x0+dx*u, by=y0+dy*u;
+  ctx.beginPath(); ctx.arc(bx,-by,12,0,TAU); ctx.fillStyle='rgba(160,244,255,.30)'; ctx.fill();
+  ctx.beginPath(); ctx.arc(bx,-by,5,0,TAU);  ctx.fillStyle='#FFFFFF'; ctx.fill();
+}
+
+/* Painted hardware. y is the foot and h the height; the width comes from the
+   art's own aspect so a post is never stretched to fit. flip hangs the piece
+   downward from y instead, which is how the gate frame ends up over the
+   opening. Missing art falls back to a plain post -- an electric piece with no
+   image still has to show where it stands. */
+function drawHW(name, x, y, h, flip){
+  const im = PROPS[name];
+  ctx.save(); ctx.translate(x, -y);
+  if(flip) ctx.scale(1,-1);
+  if(im && im.complete && im.naturalWidth){
+    const w = h*(im.naturalWidth/im.naturalHeight);
+    ctx.drawImage(im, -w/2, -h, w, h);
+  } else {
+    ctx.beginPath(); ctx.rect(-13,-h,26,h); paint('#8E6534',5);
+  }
+  ctx.restore();
+}
+
+/* An electric piece describes itself once, in build(), and everything else
+   reads that: the drawing, the collision and the near-miss meter. Three kinds
+   of lethal thing come out of it --
+     wires   [x0,y0,x1,y1]   the glowing segments
+     solids  [x0,y0,x1,y1]   the painted hardware's own boxes
+     discs   [cx,cy,r]       a rotor, collided as the circle it sweeps
+   -- and hw is the painted hardware to draw, which is decoration only: it is
+   listed in solids when it is meant to kill, and never otherwise. */
+function elecSpec(def){
+  (def.art||[]).forEach(loadProp);
+  return {
+    kind:'elec', elec:true, tier:def.tier, hw:def.hw, w:def.hw*2, h:def.h||200,
+    ladder:def.ladder||null, top:def.top||0, build:def.build, free:def.free,
+    draw(o,t){ drawElec(o,t); },
+    hit(o,l,r,b,t){ return elecDist(o,l,r,b,t) <= 0; },
+    gapTo(o,l,r,b,t){ return elecDist(o,l,r,b,t); }
+  };
+}
+/* Distance from the bird's box to the nearest lethal part, negative on a hit.
+   The box arrives in world coordinates; everything a piece builds is relative
+   to o.x, so the box is what moves into the piece's frame, not the other way
+   round -- one subtraction instead of one per segment. */
+function elecDist(o, l, r, b, t){
+  const p = o.spec.build(o, game.t);
+  const L=l-o.x, R=r-o.x;
+  let d = 1e9;
+  for(const w of p.wires)  d = Math.min(d, segBoxDist(w[0],w[1],w[2],w[3], L,b,R,t) - WIRE_R);
+  if(p.solids) for(const q of p.solids) d = Math.min(d, boxBoxDist(q[0],q[1],q[2],q[3], L,b,R,t));
+  if(p.discs)  for(const c of p.discs)  d = Math.min(d, discBoxDist(c[0],c[1],c[2], L,b,R,t));
+  return d;
+}
+function drawElec(o, t){
+  const p = o.spec.build(o, t);
+  for(const h of p.hw) drawHW(h.a, h.x, h.y, h.h, h.flip);
+  if(p.spin) for(const sp of p.spin){
+    ctx.save(); ctx.translate(sp.x, -sp.y); ctx.rotate(sp.rot);
+    const im = PROPS[sp.a];
+    if(im && im.complete && im.naturalWidth){
+      const w = sp.d*(im.naturalWidth/im.naturalHeight);
+      ctx.drawImage(im, -w/2, -sp.d/2, w, sp.d);
+    } else { ctx.beginPath(); ctx.rect(-sp.d/2,-9,sp.d,18); paint('#B9C4CE',5); }
+    ctx.restore();
+  }
+  for(let i=0;i<p.wires.length;i++){
+    const w = p.wires[i];
+    drawWire(w[0],w[1],w[2],w[3], t, (o.seed||0) + i*13.7);
+  }
+  if(p.discs) for(const c of p.discs){          // the ring the blades sweep
+    ctx.beginPath(); ctx.arc(c[0],-c[1],c[2],0,TAU);
+    ctx.strokeStyle='rgba(150,240,255,0.30)'; ctx.lineWidth=6; ctx.stroke();
+  }
+}
+
+/* --- the pieces you go OVER ---------------------------------------------
+   Solid from the floor up with a live wire across the top. The corridor is
+   everything above them, so they are the ones that make you climb. */
+Object.assign(OB, {
+  /* The teaching piece: short, one wire, and so much air over it that the
+     only thing it can teach is "the glowing bit is what kills you". */
+  e_fence: elecSpec({ tier:1, hw:116, top:148, h:148, art:['e_post'],
+    build(){ return {
+      hw:[{a:'e_post',x:-78,y:0,h:140},{a:'e_post',x:78,y:0,h:140}],
+      solids:[[-107,0,-49,140],[49,0,107,140]],
+      wires:[[-78,116, 78,116]] }; },
+    free(o,band){ return [[148, band]]; } }),
+
+  /* Suspended wire: the same idea strung high enough that it is a real climb
+     rather than a hop. */
+  e_wire: elecSpec({ tier:2, hw:150, top:352, h:352, art:['e_posttall'],
+    build(){ return {
+      hw:[{a:'e_posttall',x:-126,y:0,h:344},{a:'e_posttall',x:126,y:0,h:344}],
+      solids:[[-143,0,-109,344],[109,0,143,344]],
+      wires:[[-126,326, 126,326]] }; },
+    free(o,band){ return [[352, band]]; } }),
+
+  /* Two bales with the wire run straight over the top of them. The joke is
+     that the bales are the honest part. */
+  e_baletrap: elecSpec({ tier:2, hw:218, top:220, h:220, art:['haybale'],
+    build(){ return {
+      hw:[{a:'haybale',x:-132,y:0,h:124},{a:'haybale',x:132,y:0,h:124}],
+      solids:[[-211,0,-53,124],[53,0,211,124]],
+      wires:[[-132,140, 132,140],[-132,200, 132,200]] }; },
+    free(o,band){ return [[220, band]]; } }),
+
+  /* Rotating bar. One post, one electrified bar turning at a FIXED rate from
+     a phase seeded off its own x -- predictable is the whole point, so there
+     is no easing, no reversal and no speed-up. The bar can never reach past
+     its own radius, so the air above 336 is safe whatever the bar is doing:
+     the timing is a flourish, never the difference between passing and not. */
+  e_rotor: elecSpec({ tier:3, hw:134, top:336, h:336, art:['e_post','e_bar'],
+    build(o,t){
+      const a=(o.phase||0) + t*1.05, cy=206, R=122;
+      const ex=Math.cos(a)*R, ey=Math.sin(a)*R;
+      return {
+        hw:[{a:'e_post',x:0,y:0,h:206}],
+        spin:[{a:'e_bar',x:0,y:cy,rot:-a,d:2*R}],
+        solids:[[-42,0,42,206]],
+        wires:[[-ex,cy-ey, ex,cy+ey]] };
+    },
+    free(o,band){ return [[336, band]]; } }),
+
+  /* Electric windmill. The blades are collided as the DISC they sweep, not as
+     six thin blades: at 2.2 rad/s a blade crosses the bird's box between two
+     frames, so per-blade collision would be a coin toss dressed up as skill.
+     The ring drawn round it is there so the disc is what you see too. */
+  e_mill: elecSpec({ tier:4, hw:130, top:384, h:384, art:['e_mill','e_rotor'],
+    build(o,t){ return {
+      hw:[{a:'e_mill',x:0,y:0,h:250}],
+      spin:[{a:'e_rotor',x:0,y:266,rot:(o.phase||0)+t*2.2,d:228}],
+      solids:[[-64,0,64,250]],
+      discs:[[0,266,110]],
+      wires:[[-22,250, 22,250]] }; },
+    free(o,band){ return [[384, band]]; } }),
+});
+
+/* --- the pieces you go THROUGH -------------------------------------------
+   A ladder of wires up from the floor to o.lo, a ladder of wires down from
+   the roof to o.hi, and one clear opening between them. The rungs are 66
+   apart -- far too tight for a 142-tall bird -- so the one gap that IS big
+   enough is the only thing on the piece that looks like a way through, and it
+   is. spawnElec picks lo and the gap, and refuses anything under CLEAR.
+
+   This is the one shape the farm had lost. The crate gates that used to be
+   here were two independent objects that randomly landed at the same x and
+   left whatever slot they happened to leave, which is Flappy Bird; a ladder
+   is one object that owns both halves and therefore owns the gap as well. */
+function elecLadder(tier, o){
+  return elecSpec({ tier, hw:o.hw,
+    ladder:{ lo:o.lo, gap:o.gap, rung:o.rung||RUNG, cap:o.cap||null },
+    build(ob){
+      const px=o.hw-26, lo=ob.lo||160, hi=ob.hi||(lo+CLEAR), band=ob.band||700;
+      const rung=o.rung||RUNG, wires=[], solids=[], parts=[];
+      parts.push({a:'e_posttall',x:-px,y:0,h:lo},{a:'e_posttall',x:px,y:0,h:lo});
+      solids.push([-px-17,0,-px+17,lo],[px-17,0,px+17,lo]);
+      for(let y=lo-16; y>14; y-=rung) wires.push([-px,y, px,y]);
+      const uh = band-hi;
+      if(o.cap) parts.push({a:o.cap,x:0,y:band,h:Math.min(uh,214),flip:true});
+      parts.push({a:'e_posttall',x:-px,y:band,h:uh,flip:true},
+                 {a:'e_posttall',x:px,y:band,h:uh,flip:true});
+      solids.push([-px-17,hi,-px+17,band],[px-17,hi,px+17,band]);
+      for(let y=hi+16; y<band-14; y+=rung) wires.push([-px,y, px,y]);
+      return { hw:parts, wires, solids };
+    },
+    free(ob,band){ return [[ob.lo||0, ob.hi||band]]; } });
+}
+Object.assign(OB, {
+  /* Two wires, one low one high, and a wide safe lane between them. */
+  e_double: elecLadder(2, { hw:126, lo:[120,300], gap:[300,360], rung:900 }),
+  /* The gate: the painted frame hung over the opening, wires filling the rest. */
+  e_gate:   elecLadder(3, { hw:132, lo:[140,330], gap:[262,312], cap:'e_gateframe' }),
+  /* Multi-level: every rung filled, so the one gap is the only read. */
+  e_multi:  elecLadder(3, { hw:126, lo:[150,360], gap:[252,292], rung:62 }),
+  /* Ground-to-air: the lower half is a tower, and the lane is high. */
+  e_g2a:    elecLadder(4, { hw:126, lo:[300,430], gap:[250,286], rung:70 }),
+});
+const ELEC_KEYS = ['e_fence','e_wire','e_baletrap','e_rotor','e_mill',
+                   'e_double','e_gate','e_multi','e_g2a'];
 
 const OB_KEYS = Object.keys(OB);
 

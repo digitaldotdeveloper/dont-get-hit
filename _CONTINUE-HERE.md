@@ -940,6 +940,30 @@ neighbours, and the sky ends up in horizontal stripes.
 
 Costs nothing: 28.4ms a frame before, 28.9 after, at a 4x CPU throttle.
 
+## Loading: six at a time, not all at once
+
+`IMQ` in `loadFrames` is a queue, and it exists because a browser will not do
+this for you. The frame sets come to 130-odd images and they used to be
+requested the instant the script ran -- all of them, alongside the background
+art, the cage and the props, about **170 requests in flight**. A local server
+does not care. A CDN does: some of those requests come back having transferred
+nothing at all (`decodedBodySize` 0 after a couple of seconds), and survivors
+can take twenty seconds.
+
+That is how the live site drew the vector fallback for a full minute while
+every file it needed was sitting there serving perfectly to anything that asked
+for one on its own -- the 190KB background was simply one of the requests that
+got dropped. Three panels hid it: losing one of three still left a background.
+One strip does not.
+
+Six at a time now, scenery last, and the image objects are created up front so
+anything looking one up still finds it -- an `Image` with no `src` reports
+`naturalWidth` 0, which is the "not ready" the draw calls already test for.
+
+**Test a change like this against the deployed site, not localhost.** Nothing
+about this was visible locally; every asset loaded instantly and the game
+looked right.
+
 ## Next
 
 - Nothing spends the eggs yet.
