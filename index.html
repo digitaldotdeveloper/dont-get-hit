@@ -3446,11 +3446,38 @@ function drawNPC(set, i, sx, gy, scale, flip){
    loaded and still sliced; only the switch is off. */
 const NPC_REACT = false;
 const NPC_KIND = ['cow', 'pig', 'goat'];
+
+/* They TRAVEL. Every background NPC used to sit at a fixed world position and
+   play a walk cycle on the spot -- which is a moonwalk: the legs say one speed
+   and the body says nothing, and the eye reads it as the animation being wrong
+   rather than the position.
+
+   Two rules keep it honest:
+
+   1. `npcWalk()` is how far they have actually gone, in world units. It is
+      subtracted from their position, so they head back down the road, the way
+      they are already facing.
+   2. The animation phase comes from that DISTANCE, never from the clock. Frame
+      = (distance / stride) * frames. Drive it from time instead and the feet
+      skate the moment either number is retuned; drive it from distance and the
+      stride length is the only thing that can be wrong, and it is measurable.
+
+   `NPC_STRIDE` is world units covered per full six-frame cycle, and it scales
+   with how tall the figure is drawn -- a farmer's pace is not a goat's. */
+const NPC_WALK = 155;                   // world units a second
+const NPC_STRIDE = 0.92;                // ... per cycle, as a fraction of height
+const npcWalk = () => game.t * NPC_WALK;
+function npcPose(list, height, phase){
+  if(!list || !list.length) return 0;
+  const cycles = npcWalk() / Math.max(40, height * NPC_STRIDE);
+  return Math.floor((cycles + phase) * list.length) % list.length;
+}
 function drawSpectators(){
-  const spacing = 232, first = Math.floor((cam.x-300)/spacing);
+  const spacing = 232, walk = npcWalk();
+  const first = Math.floor((cam.x - 300 + walk)/spacing);
   for(let i=first; i<first+Math.ceil(VW/spacing)+3; i++){
     if(hash(i*9.3) > 0.82) continue;                    // nearly every stop
-    const gx = i*spacing + 300;
+    const gx = i*spacing + 300 - walk;                  // they are going somewhere
     const sx = gx - cam.x;
     if(sx < -220 || sx > VW+220) continue;
     const n = 1 + (hash(i*4.1)*1.99 | 0);               // ones and twos, not crowds
@@ -3469,8 +3496,10 @@ function drawSpectators(){
       const kind = NPC_KIND[(hash(i*5.7+k*2.9)*2.999)|0];
       const set = near ? kind+'run' : kind;
       const list = FRAME_DATA[set] || [];
-      const rate = near ? 13 : 6.5;                   // a scramble, or a stroll
-      const pose = list.length ? Math.floor(game.t*rate + ph*2) % list.length : 0;
+      const fr0 = list[0];
+      const pose = near
+        ? (list.length ? Math.floor(game.t*13 + ph*2) % list.length : 0)
+        : npcPose(list, fr0 ? fr0.h*SPR : 140, hash(i*2.3+k*1.7));
       const lift = near ? bob*0.35 : Math.sin(game.t*1.6 + ph)*1.6;
       if(drawNPC(set, pose, sx+ox, GROUND-8+lift, 1, !near)) continue;
       ctx.save();
@@ -3491,10 +3520,11 @@ function drawSpectators(){
    want to come in groups. */
 function drawFarmer(){
   const list = FRAME_DATA.farmer; if(!list || !list.length) return;
-  const spacing = 470, first = Math.floor((cam.x-300)/spacing);
+  const spacing = 470, travelled = npcWalk();
+  const first = Math.floor((cam.x - 300 + travelled)/spacing);
   for(let i=first; i<first+Math.ceil(VW/spacing)+3; i++){
     if(hash(i*3.9) > 0.55) continue;                   // rarer than the animals
-    const gx = i*spacing + 640;
+    const gx = i*spacing + 640 - travelled;
     const sx = gx - cam.x;
     if(sx < -260 || sx > VW+260) continue;
     // same window the livestock use: he starts before Nugget arrives and is
@@ -3510,8 +3540,9 @@ function drawFarmer(){
                  ? 'farmerwalk' : 'farmeridle';
     const set = near ? 'farmer' : walk;
     const list = FRAME_DATA[set] || FRAME_DATA.farmer;
+    const fr0 = list[0];
     const pose = near ? 2 + (Math.floor(game.t*8 + i) % 4)
-                      : Math.floor(game.t*6.5 + ph*2) % list.length;
+                      : npcPose(list, (fr0 ? fr0.h*SPR : 220) * 0.60, hash(i*2.7));
     // behind the fence and a good head taller than the bird, so he is drawn
     // smaller than his own art and stood a little back from the road
     drawNPC(set, pose, sx, GROUND-30+bob, 0.60, false);

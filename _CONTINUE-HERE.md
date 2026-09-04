@@ -674,6 +674,21 @@ Spacing goes with it. The animals stand every **232** units with 82% of stops
 populated, ones and twos rather than crowds, and the farmer every 470. That is
 roughly ten figures on screen at all times.
 
+### They TRAVEL, and the phase comes from distance
+
+They used to sit at fixed world positions playing a walk cycle on the spot,
+which is a moonwalk: the legs say one speed and the body says nothing, and the
+eye reads it as the animation being broken rather than the position. `npcWalk()`
+is how far they have actually gone in world units, subtracted from their
+position so they head back down the road the way they already face.
+
+**The animation phase comes from that DISTANCE, never from the clock**:
+frame = `(distance / stride) * frames`. Drive it from time and the feet skate
+the moment either number is retuned; drive it from distance and the stride
+length is the only thing that can be wrong -- and a stride is measurable.
+`NPC_STRIDE` is world units per full six-frame cycle as a fraction of the
+figure's drawn height, because a farmer's pace is not a goat's.
+
 **Every background NPC has TWO six-frame loops**, a walk and a reaction, the
 way the livestock do -- a background character that holds one pose reads as a
 sticker, not a character.
