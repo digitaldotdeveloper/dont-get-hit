@@ -662,11 +662,24 @@ semitone per egg in a streak. `game.eggBank` persists in `localStorage` under
 
 ## NPCs
 
-**Every background NPC has TWO six-frame loops**, an idle and a reaction, the
+**`NPC_REACT` is FALSE: they walk and do nothing else.** Jetpack Joyride's
+scientists are a continuous band of movement across the bottom of the screen,
+not a set of encounters -- you never notice an individual one, you notice that
+the world is busy. Reactions turned that into encounters: a gap, a thing
+happening, another gap. Setting the flag to `true` restores every reaction at
+once -- the livestock panic run, the farmer's rage, the pigeons' alert. All the
+frame sets are still loaded and still sliced; only the switch is off.
+
+Spacing goes with it. The animals stand every **232** units with 82% of stops
+populated, ones and twos rather than crowds, and the farmer every 470. That is
+roughly ten figures on screen at all times.
+
+**Every background NPC has TWO six-frame loops**, a walk and a reaction, the
 way the livestock do -- a background character that holds one pose reads as a
 sticker, not a character.
 
 **The farmer** (`drawFarmer`) owns the place and Nugget has just left it.
+`farmerwalk` is his stroll and is what he does with `NPC_REACT` off;
 `farmeridle` is him wiping his brow and settling; `farmer` is six frames of
 escalating rage -- noticing, fists up, pointing, hat off, doubled over -- run
 only while a chicken is going past. The rage loop starts at frame **2**, because
