@@ -3746,7 +3746,7 @@ function startRide(){
    the table is a fence, and a fence is for jumping. */
 const SMASHABLE = ['corn_one', 'corn_clump', 'corn_row'];
 function smash(o){
-  o.hitBy = true; o.spin = rnd(-7, 7); o.vy = -260 - Math.random()*220;
+  o.hitBy = true;                      // smashed: it stops colliding, it does not fly
   addShake(7); S.step();
   const gy = GROUND - player.y;
   spark(o.x - cam.x, gy - 60, 16,
@@ -3761,7 +3761,7 @@ function loseRide(o){
   featherBurst(player.x, gy - 120, 8, 240);
   spark(player.x, gy - 150, 20, {col:C.coral, s0:200,s1:520, l0:0.3,l1:0.8, r0:4,r1:10});
   pop(player.x, gy - 230, 'POP!', C.coral, 48, -60);
-  if(o){ o.hitBy = true; o.spin = rnd(-5,5); o.vy = -320; }
+  if(o) o.hitBy = true;                // the hazard stays put; the basket is what left
 }
 /* WHAT THE TRUCK DOES TO THE NEIGHBOURS.
 
@@ -3881,7 +3881,7 @@ function die(o){
   layEgg(player.x - 30, gy - player.y - 40, -240);          // hit hard enough to lay an egg
   const lifted = 300 + Math.random()*180;
   rag.build(player.pose, player.x, gy - player.y, -430 - Math.random()*220, -lifted, rnd(-10,10));
-  if(o){ o.hitBy = true; o.spin = rnd(-6,6); o.vy = -420; }
+  if(o) o.hitBy = true;                // stops it re-triggering; it does not move
   musicScene('duck');
 }
 /* Nugget's name, on the screen the player reads after every single run.
@@ -4428,11 +4428,15 @@ function updateDying(dt){
   // world keeps sliding, then stops
   game.speed = damp(game.speed, 0, 2.4, dt);
   player.x += game.speed*dt;
-  for(const o of game.obstacles){
-    o.x += (o.vx||0)*dt;
-    if(o.hitBy){ o.vy += 2200*dt; o.y = (o.y||0) - o.vy*dt; o.rot=(o.rot||0)+(o.spin||0)*dt;
-      if(o.y<0){ o.y=0; o.vy*=-0.4; if(Math.abs(o.vy)<80) o.vy=0; } }
-  }
+  /* The obstacles do NOT move. The thing that killed him used to be launched
+     into an arc and spun, which is a fine gag when the hazard is a crate and a
+     bad one when it is a fence bolted to the ground -- and worse when it is an
+     electric ladder, because its wires are geometry rather than a sprite and
+     they tumbled with it, leaving live wire lying diagonally across the road.
+
+     It also told the wrong story. The player wants to see WHAT HIT THEM, still
+     standing where it was, while the ragdoll leaves. Knocking it away hides
+     the evidence at the exact moment they are looking for it. */
   rag.step(dt, GROUND);
   if(game.dyingT<0.35 && Math.random()<dt*14) featherBurst(rag.x, rag.y, 1, 150);
 
@@ -5107,7 +5111,6 @@ function drawObstacles(){
     if(sx < -340 || sx > VW+380) continue;
     ctx.save();
     ctx.translate(sx, GROUND - (o.y||0));
-    if(o.hitBy) ctx.rotate(o.rot||0);
     o.spec.draw(o, game.t);
     if(HITDBG) drawHitbox(o);
     ctx.restore();
