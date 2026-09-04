@@ -2422,7 +2422,7 @@ const game = {
                   catch(e){ return 0; } })(),
   speed:620, score:0, best:0,
   dist:0, near:0, combo:0, comboBest:0, comboT:0,
-  obstacles:[], parts:[], pops:[], ui:[], crows:[], crowT:1e9,
+  obstacles:[], parts:[], pops:[], ui:[], crows:[], crowT:1e9, crowN:0,
   spawnT:1.2, cornT:0, tier:0,
   freeze:0, timeScale:1, tsTarget:1,
   shake:0, flash:0, zoom:1, zoomT:1, camY:0, camYT:0,
@@ -2730,7 +2730,9 @@ function drawEggs(){
 const CROW_T0    = 24;      // no crows in the first learning half-minute
 const CROW_WARN  = 1.30;    // badge on screen before it launches
 const CROW_LOCK  = 0.46;    // ...of which this much has the height already fixed
-const CROW_SPEED = 1080;    // leftward, ON TOP OF the world scroll
+const CROW_SPEED = 1080*PACE;  // leftward, ON TOP OF the world scroll -- and it
+                            // scales with PACE, or ?pace=1.4 makes it the one
+                            // slow thing on a fast screen
 const CROW_FPS   = 17;      // the four painted frames, as a flap
 const CROW_BOB   = 7;       // and the bob is inside the hitbox, so what you see
                             // is exactly what kills you
@@ -2751,24 +2753,44 @@ function screenYOf(worldY){
   const zy = game.zoomOverride ? (GROUND - player.y - 70) : VH*0.55;
   return (GROUND - worldY - zy)*Z + zy + cam.shakeY + game.camY;
 }
-const crowLane = () => [120, (GROUND-CEIL) - 120];   // the heights a crow may take
+/* The heights a crow may take. Both ends are deliberately past where the
+   player can actually get to: a lane that stopped 120 short of the ceiling
+   meant a bird aiming at a ceiling-hugging chicken got clamped to a height
+   that missed him by a body, so camping the roof was a free pass through
+   every volley -- and the volley suppresses the pattern spawner, so the sky
+   he was camping in was empty too. Clamped to these, the crow's box still
+   overlaps his at either extreme, which is the property that matters. */
+const crowLane = () => [40, (GROUND-CEIL) - 10];
 
 /* A crow is only fair in clear air. It is the one horizontal hazard in a game
    made of vertical ones, and overlapping the two asks for a dodge that may not
-   exist -- thread the wire AND leave the lane. So a volley waits for a gap in
-   the pattern spawner, and then pushes the next pattern out behind itself. */
-function crowCorridorClear(){
-  const horizon = player.x + game.speed*(CROW_WARN + 1.2) + 340;
-  for(const o of game.obstacles) if(o.x > player.x - 80 && o.x < horizon) return false;
-  return true;
-}
-function crowFlightTime(){ return (VW - PX + 260)/(CROW_SPEED + game.speed); }
+   exist -- thread the wire AND leave the lane at the same instant.
 
-function launchCrows(){
+   But "clear air" is NOT the field ahead. The first version of this asked for
+   an empty horizon and so the crows never flew once: the pattern spawner
+   always has something out there, by design. What has to be clear is the
+   stretch of field the player will be standing in when the birds ARRIVE,
+   which is two and a half seconds away and moving away at game.speed. That is
+   a window of about a second and a half, it opens and closes as the run goes
+   on, and looking for it every 0.3s finds one within a few seconds. */
+function crowFlightTime(){ return (VW - PX + 260)/(CROW_SPEED + game.speed); }
+function crowSpan(){ return CROW_WARN + crowFlightTime(); }
+function crowVolleySize(){
   /* One bird is a dodge. Two is a dodge you have to hold, because the second
      badge locks onto wherever the first one chased you. */
-  const n = (game.diff > 0.82 && Math.random() < 0.20) ? 3
-          : (game.diff > 0.50 && Math.random() < 0.42) ? 2 : 1;
+  return (game.diff > 0.82 && Math.random() < 0.20) ? 3
+       : (game.diff > 0.50 && Math.random() < 0.42) ? 2 : 1;
+}
+function crowWindowClear(n){
+  const span = crowSpan();
+  const lo = player.x + game.speed*(span - 0.75);
+  const hi = player.x + game.speed*(span + (n-1)*0.70 + 0.60);
+  for(const o of game.obstacles) if(o.x > lo && o.x < hi) return false;
+  return true;
+}
+
+function launchCrows(n){
+  n = n || crowVolleySize();
   for(let i=0;i<n;i++){
     game.crows.push({
       state:'wait', wait: i*0.70, warnT: CROW_WARN, beepT: 0,
@@ -2777,7 +2799,9 @@ function launchCrows(){
       spec:{}, kind:'air', base:0, minGap:1e9, counted:false, hitBy:false
     });
   }
-  const span = (n-1)*0.70 + CROW_WARN + crowFlightTime();
+  /* And hold the pattern spawner off long enough that it cannot drop a new
+     hazard into the window that was just measured as clear. */
+  const span = (n-1)*0.70 + crowSpan();
   game.spawnT = Math.max(game.spawnT, span + 0.30);
   game.crowT  = span + rnd(6.5, 11.0) * lerp(1, 0.60, game.diff) * CROW_GAP;
 }
@@ -2787,8 +2811,12 @@ function updateCrows(dt){
   if(game.mode === 'play'){
     game.crowT -= dt;
     if(game.crowT <= 0){
+      /* The size is chosen ONCE and then kept until it can be flown, because
+         re-rolling it every retry quietly selects for whichever size happens
+         to fit -- and a three-bird volley needs the widest window of all. */
+      if(!game.crowN) game.crowN = crowVolleySize();
       if(game.runT >= CROW_T0*CROW_GAP && !game.crows.length &&
-         game.spawnT > 0.5 && crowCorridorClear()) launchCrows();
+         crowWindowClear(game.crowN)){ launchCrows(game.crowN); game.crowN = 0; }
       else game.crowT = 0.30;                  // not yet -- ask again in a moment
     }
   }
@@ -2801,6 +2829,10 @@ function updateCrows(dt){
       continue;
     }
     if(c.state === 'warn'){
+      /* A bird that has launched flies on through the death animation, but one
+         still winding up is dropped: a siren counting down over the score card
+         is a promise the run cannot keep. */
+      if(game.mode !== 'play'){ game.crows.splice(i,1); continue; }
       c.warnT -= dt;
       const locked = c.warnT <= CROW_LOCK;
       if(!locked && game.mode === 'play')      // still following your altitude
@@ -3205,7 +3237,7 @@ document.addEventListener('visibilitychange', ()=>{
 function toMenu(){
   applyTheme();
   game.mode='menu'; game.obstacles.length=0; game.parts.length=0; game.pops.length=0;
-  game.crows.length=0; game.crowT=1e9;
+  game.crows.length=0; game.crowT=1e9; game.crowN=0;
   game.cageX = -CAGE_RUNOUT;             // parked so the escape ends on the play mark
   game.door=null; game.doorGone=false; game.lockGone=false; game.doorBow=0;
   player.state='idle'; player.stateT=0; player.beat=''; player.beatT=1.2;
@@ -3223,7 +3255,7 @@ function startRun(){
   game.speed=340*PACE; game.diff=0; game.spawnT=2.6; game.cornT=0;
   game.obstacles.length=0; game.parts.length=0; game.pops.length=0; game.ui.length=0;
   game.eggs.length=0; game.eggT=1.6; game.runEggs=0; game.eggStreak=0;
-  game.crows.length=0; game.crowT=5;
+  game.crows.length=0; game.crowT=5*CROW_GAP; game.crowN=0;
   game.freeze=0; game.timeScale=1; game.tsTarget=1; game.shake=0; game.zoom=1; game.zoomT=1;
   game.camY=0; game.camYT=0; game.deadT=0; game.newBest=false;
   game.door=null; game.doorGone=false; game.lockGone=false; game.doorBow=0;
@@ -4663,13 +4695,71 @@ function boot(){
         c.x = which === 'close' ? player.x + 330 : cam.x + VW*0.74;
       }
       game.spawnT = 1e9; game.crowT = 1e9;     // launchCrows moved both of them
-      game.freeze = 9999;                      // 6% time: it holds still
+      /* 'live' is the same setup running at full speed with nothing else on
+         the field -- the attack as it actually plays, for a clip. */
+      game.freeze = which === 'live' ? 0 : 9999;   // otherwise 6% time: it holds still
+      if(which === 'live'){ c.state='warn'; c.warnT=CROW_WARN; c.ty=player.y+72;
+                            game.crowT = 4.2; }   // and another one behind it
       return JSON.stringify({stage:which, state:c.state,
         warnT:+(c.warnT).toFixed(2), ty:Math.round(c.ty),
         sx:Math.round(c.x - cam.x)});
     };
     window.__crow = stage;
     setTimeout(()=>stage('lock'), 90);
+  }
+  /* "Wait for clear air" is the kind of rule that reads as obviously fine and
+     then never fires once, so it is measured rather than trusted. This runs
+     the REAL spawner and the REAL updateCrows against a moving player for two
+     minutes per tier, and reports how long a volley had to wait for a window.
+     A tier where the longest wait runs away is a tier where the crows have
+     quietly been switched off. */
+  if(/[?&]crowtest/.test(location.search)){
+    setTimeout(()=>{
+      const out = [], dt = 1/60;
+      for(const rt of [26, 45, 70, 100]){
+        startRun();
+        game.runT = rt; game.diff = clamp(rt/95, 0, 1);
+        game.speed = (340 + 400*game.diff)*PACE;
+        game.obstacles.length = 0; game.spawnT = 0;
+        game.crows.length = 0; game.crowT = 0; game.crowN = 0;
+        player.x = 0; player.y = 300; cam.x = -PX;
+        const waits = []; let wait = 0, sizes = [0,0,0,0];
+        for(let T=0; T<120; T+=dt){
+          player.x += game.speed*dt; cam.x = player.x - PX;
+          game.spawnT -= dt;
+          if(game.spawnT <= 0) spawnPattern();
+          for(let i=game.obstacles.length-1;i>=0;i--)
+            if(game.obstacles[i].x < player.x-500) game.obstacles.splice(i,1);
+          wait += dt;
+          updateCrows(dt);
+          if(game.crows.length){                 // a volley got its window
+            sizes[game.crows.length]++;
+            waits.push(wait); wait = 0;
+            game.crows.length = 0;               // no camera here to fly it across
+          }
+        }
+        const mx = waits.length ? Math.max.apply(null, waits) : 999;
+        const av = waits.length ? waits.reduce((a,b)=>a+b,0)/waits.length : 999;
+        out.push('runT='+rt+'  volleys='+waits.length+
+                 '  every '+av.toFixed(1)+'s  worst '+mx.toFixed(1)+'s'+
+                 '  sizes 1/2/3='+sizes[1]+'/'+sizes[2]+'/'+sizes[3]);
+      }
+      /* And the other half of "fair": a locked bird has to be able to reach
+         him wherever he is, including pinned to the floor and pinned to the
+         roof, where the lane clamp is the only thing deciding the height. */
+      startRun();
+      const ceilH = GROUND-CEIL, lane = crowLane();
+      for(const py of [0, 60, ceilH*0.5, ceilH-40, ceilH]){
+        const ty = clamp(py+72, lane[0], lane[1]);
+        const pb = py+8, pt = py+150;
+        out.push('lock py='+Math.round(py)+' -> ty='+Math.round(ty)+
+                 '  reaches him: '+(pt > ty-CROW_HH+8 && pb < ty+CROW_HH-8));
+      }
+      const el = document.getElementById('selftest');
+      if(el){ el.style.display='block'; el.textContent = out.join(String.fromCharCode(10)); }
+      window.__crowtest = out.join(' | ');
+      console.log(out.join(String.fromCharCode(10)));
+    }, 400);
   }
   if(/[?&]obtest/.test(location.search)){
     setTimeout(()=>{

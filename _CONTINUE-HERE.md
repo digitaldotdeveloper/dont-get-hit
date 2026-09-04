@@ -140,6 +140,7 @@ rules that keep them consistent.
 | Gate members fill their hitbox | `crateStack`, `CAP_H` |
 | Obstacles (9 code-drawn, 16 painted) | `const OB = {`, `farmProp` |
 | Difficulty tiers | `function tierNow`, `function spawnPattern` |
+| The angry crows | `THE ANGRY CROWS`, `updateCrows`, `drawCrowAlerts` |
 
 ## Flight model — one system, do not add a second
 
@@ -217,7 +218,10 @@ point in the cycle · `?hold=0` glide · `?zoom=1.7` zoom on the bird ·
 `?stage=1` drop three gates in front · `?solo=1` character only,
 no world or HUD · `?run=0.3` freeze a stride frame · `?pose=land:1` freeze any state ·
 `?sz=2` zoom the solo view · `?rig=1` draw the pivot crosshairs (use this before tuning parts) ·
-`?wear=head:hat_bucket,face:shades_art,neck:scarf_art` set a loadout.
+`?wear=head:hat_bucket,face:shades_art,neck:scarf_art` set a loadout ·
+`?crow=1` crows from the third second instead of the twenty-fourth, back to back ·
+`?crowshot=1` park one moment of the attack (`window.__crow('track'|'lock'|'fly'|'close'|'live')`) ·
+`?crowtest=1` measure how often a volley actually gets to fly.
 
 ## Animation
 
@@ -1099,9 +1103,80 @@ test.
 Art the set no longer uses is still in `art/farm` -- nothing requests it, so it
 costs nothing, and it is there if the farmyard props are ever wanted back.
 
+## The angry crows — the one hazard that comes at you
+
+Jetpack Joyride's missiles, in feathers, and the only hazard in the game that
+moves horizontally. **The alert is the feature; the bird is the payoff.** A
+hazard closing faster than the world scrolls is unfair unless it is announced,
+so every crow spends `CROW_WARN` (1.30s) as a badge pinned to the right edge of
+the screen at the height it will come in at.
+
+The badge has two states and they look nothing alike, on purpose:
+
+| | Colour | Blink | Extra | Meaning |
+|---|---|---|---|---|
+| tracking | amber | slow, soft beep | chevrons | it is still following your altitude |
+| locked | red | fast, sharp beep | dashed lane line + red edge wash | the height is fixed — MOVE |
+
+`CROW_LOCK` (0.46s) is how long the locked state lasts before launch. That is
+the skill in the whole thing. Without a lock the bird just follows you into the
+floor; with a much longer one you step out of the lane before it fires.
+
+Then it launches off the right edge of the **camera** and flies left at
+`CROW_SPEED` (1080 · PACE) **on top of** the world scroll, so it closes at about
+1700/s and crosses in ~0.65s. Four painted frames off a Gemini Studio sheet,
+cycled at 17Hz, with feathers and speed lines off the tail.
+
+Things that are the way they are for a reason:
+
+- **A crow is never in `game.obstacles`.** Obstacles are placed ahead in world x
+  and stand still while the player runs onto them. A crow is the opposite in
+  every respect. It lives in `game.crows` and is updated OUTSIDE the mode chain,
+  next to `updateDoor`, so a bird already launched flies on through the death
+  animation. One still winding up is dropped instead — a siren counting down
+  over the score card is a promise the run cannot keep.
+- **"Clear air" is not the horizon, it is the arrival window.** The first
+  version asked for an empty field ahead and so the crows never flew once: the
+  pattern spawner always has something out there, by design. `crowWindowClear`
+  checks only the stretch the player will be standing in when the birds arrive
+  (`crowSpan()` away, about 1.35s wide), and `launchCrows` then pushes
+  `game.spawnT` out so nothing new can land in it. Measured, not assumed —
+  `?crowtest=1` runs the real spawner against a moving player for two minutes a
+  tier and reports the wait: **a volley every 7–10s, worst case ~12s.**
+- **The lane runs 40 to `ceilH-10`, past where he can get to.** A lane that
+  stopped short of the roof clamped the lock to a height that missed a
+  ceiling-hugging chicken by a body — and since a volley suppresses the pattern
+  spawner, the sky he was camping in was empty too. `?crowtest=1` checks the
+  lock reaches him at both extremes.
+- **The art overhangs the hitbox.** The box (`CROW_HW/HH`, 140×74) is the head
+  and body only; wingtips and tail feathers are not a hit. `CROW_AX/AY` are
+  where that lethal centre sits inside the frame, measured off the registered
+  sheet, so recutting the art cannot drift the box off the bird. `?hit=1`.
+- **Volley size is chosen once and kept** until a window opens. Re-rolling it
+  each retry quietly selects for whichever size fits, and the three-bird volley
+  needs the widest window of all. 1 bird early, 2 from diff>0.50, 3 from >0.82,
+  0.70s apart — the second badge locks onto wherever the first one chased you.
+
+### The art
+
+`tools/gen_crow.py` → `sheets/v4/crow_raw_*.png` → `tools/cut_crow.py` →
+`art/farm/crow1..4.webp` + `crowhead.webp` (the badge icon). Loaded through
+`loadProp`, like every other painted hazard, with a drawn fallback under it.
+
+A flap CYCLE needs one thing a set of props does not: **registration.** Cutting
+each frame to its own bounding box and centring them makes the bird lurch,
+because the box is mostly wing and the wing is what moves — and Gemini draws one
+cell of a 2×2 smaller than the rest. Both are fixed off the one feature that is
+identical in every frame, the open orange beak: each frame is scaled so its beak
+matches the median beak width, then hung off the beak TIP. After that the head
+holds still and only the wings beat. `python tools/cut_crow.py --preview` writes
+a strip and a GIF to check that by eye.
+
 ## Next
 
 - Nothing spends the eggs yet.
+- The crows have no music cue. A stab under the lock, ducking the track for
+  half a second, is the obvious next thing — `musicScene` already ducks.
 - The electric set has no sound of its own beyond `S.zap()` on a death. A hum
   that rises as you close on a live wire is the obvious next thing, and the
   near-miss meter already knows the distance.
