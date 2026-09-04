@@ -293,6 +293,27 @@ under the player mid-run.
 The farm is **painted panels**, not coloured rectangles. See **The painted
 farm** under **Themes**.
 
+## The sound of flying
+
+**A wing beat must not contain a sub.** The flap used to lead with a 74Hz sine
+under 180ms of broadband noise, and that sine carried more gain than anything
+else in it -- measured, **85% of the sound's energy sat below 300Hz, with a
+spectral centroid of 288Hz**. That is a bellows, and no amount of hiss on top
+disguises it. There is nothing below about 300Hz in it now and the whole beat is
+over in a tenth of a second: centroid 3982Hz, 0.2% below 300. A flick, not a
+gust. The weight of a flap is the physics' job -- `FLAP_KICK` and `LIFT` -- and
+the sound only has to say "feathers".
+
+**The air bed sat too low as well.** `WIND` is a looping bandpass whose level and
+cutoff are pushed every frame, and it ran 260-1760Hz at Q 0.55. A band that broad
+that low has skirts down in the rumble, so the constant layer under everything
+was a fan rather than speed. It runs 640-3140Hz at Q 0.85 now, and quieter.
+
+When retuning any of this, measuring beats guessing: sum the parts offline and
+look at the spectral centroid and the fraction of energy below 300Hz. Filtered
+noise is hard to model faithfully at low Q, but pure tones are exact -- and a
+tone is usually what is making a sound heavy.
+
 ## Music
 
 **`musicScene('menu'|'play'|'duck')` is the only thing that sets music volume.**

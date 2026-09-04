@@ -549,7 +549,10 @@ function windStart(){
     const c = A.ctx;
     WIND.src = c.createBufferSource(); WIND.src.buffer = noiseBuffer(c); WIND.src.loop = true;
     WIND.bp  = c.createBiquadFilter(); WIND.bp.type = 'bandpass';
-    WIND.bp.Q.value = 0.55; WIND.bp.frequency.value = 400;
+    /* Q was 0.55 at 400Hz, and a band that broad that low has skirts reaching
+       into the rumble -- which is most of why flying sounded like blowing
+       rather than like speed. Higher and a little tighter is thinner air. */
+    WIND.bp.Q.value = 0.85; WIND.bp.frequency.value = 900;
     WIND.g   = c.createGain(); WIND.g.gain.value = 0;
     WIND.src.connect(WIND.bp); WIND.bp.connect(WIND.g); WIND.g.connect(A.sfxGain);
     WIND.src.start();
@@ -599,20 +602,27 @@ const S = {
   /* A wingbeat is a PUSH, not a swish: the air over the feathers is the top
      of it, but the part you feel is the low thump of the downstroke shoving
      against the air. Without that body it sounds like a page turning. */
+  /* LIGHT. This used to lead with a 74Hz sine under 180ms of broadband noise,
+     and that is a bellows, not a chicken: the sub carried the most energy of
+     anything in the sound, so what you actually heard was a low blow with some
+     hiss on top. Nothing in here goes below about 300Hz now, the noise sits up
+     where feathers live, and the whole beat is over in a tenth of a second --
+     a flick, not a gust. The weight of the flap is the PHYSICS' job; the sound
+     only has to say "feathers". */
   flap(){
-    const j = 1 + (Math.random()-0.5)*0.17;
-    noise(0.18*j, 330, 1450, 0.058, 1.5);                  // air over the feathers
-    noise(0.09, 880, 175, 0.045, 1.1);                     // the closing swish
-    tone(148*j, 0.10, 'sine', 0.038, 95);
-    tone(74*j,  0.13, 'sine', 0.055, 44, null, 0.012);     // the shove underneath it
-    if(Math.random() < 0.35)                               // primaries clattering
-      noise(0.05, 3400*j, 1800, 0.016, 4.0, 0.02);
+    const j = 1 + (Math.random()-0.5)*0.14;
+    noise(0.055*j, 2100, 3600, 0.030, 3.4);                // the feathers catching
+    noise(0.085*j, 2900, 1150, 0.024, 2.4, 0.010);         // air spilling off the tip
+    tone(340*j, 0.05, 'sine', 0.013, 240);                 // a hint of body, no sub
+    noise(0.045, 3300, 1700, 0.015, 4.0, 0.048);           // the recovery stroke
+    if(Math.random() < 0.45)                               // primaries clattering
+      noise(0.035, 4600*j, 2800, 0.011, 5.5, 0.026);
   },
   /* Wings out, not beating. Played on a cooldown while he falls, so a long
      drop is not silence between flaps. */
   glide(){
-    noise(0.42, 620, 300, 0.075, 0.5);
-    noise(0.22, 2600, 1400, 0.030, 1.6, 0.10);
+    noise(0.34, 1500, 800, 0.034, 1.4);                    // was 620->300 at 0.075:
+    noise(0.20, 3200, 1900, 0.020, 2.2, 0.08);             // a draught, not a wind tunnel
   },
   /* The sky is a ceiling and he can hit it. Soft, feathery, no impact. */
   ceiling(){
@@ -1797,6 +1807,16 @@ function basketGeom(){
   return { bw, bh, lw, lh, lift: bh*0.62 };
 }
 const riding = () => game.ride > 0;
+/* ONE definition of what can be hit, because two of them drift. The obstacle
+   loop and the crows both ask this, and a crow that kills what a fence only
+   dismounts is worse than either rule on its own. */
+function rideBox(){
+  const p = player;
+  if(!riding()) return { l: p.x-48, r: p.x+48, b: p.y+8, t: p.y+150 };
+  const g = basketGeom();
+  return { l: p.x - g.bw*0.42, r: p.x + g.bw*0.42,
+           b: p.y - g.bh*0.12,  t: p.y + g.lift + g.lh*0.45 };
+}
 
 const CAGE = {
   ready:false, img:null, door:null,
@@ -2909,7 +2929,10 @@ function drawEggs(){
    in every respect -- it launches off the right edge of the CAMERA, flies left
    at CROW_SPEED on top of the world's own scroll, and dies off the left. */
 
-const CROW_T0    = 24;      // no crows in the first learning half-minute
+const CROW_T0    = 40;      /* no crows for the first forty seconds. The run has
+                               a vehicle, a livestock lesson and four hazard
+                               families to introduce before it needs a homing
+                               one as well. */
 const CROW_WARN  = 1.30;    // badge on screen before it launches
 const CROW_LOCK  = 0.46;    // ...of which this much has the height already fixed
 const CROW_SPEED = 1080*PACE;  // leftward, ON TOP OF the world scroll -- and it
@@ -2968,15 +2991,19 @@ function crowSpan(){ return CROW_WARN + crowFlightTime(); }
    right shape for the one hazard that is meant to eventually outnumber you.
    It is also the number on the score card, so a player can see the threshold
    coming rather than just feeling the game get worse. */
-const CROW_FLOCK_M = 1500;
+/* Volleys start at 3000m rather than 1500. At the old figure a run was into
+   pairs of crows before it had finished meeting the hazards that stand still,
+   and a screen with two locked badges on it is a different game from the one
+   the first minute teaches. */
+const CROW_FLOCK_M = 3000;
 const crowFloor = () => game.dist >= CROW_FLOCK_M*10 ? 2 : 1;
 function crowVolleySize(){
   /* One bird is a dodge. Two is a dodge you have to hold, because the second
      badge locks onto wherever the first one chased you. Three is the same
      trick again with nowhere left to have gone. */
   if(game.dist >= CROW_FLOCK_M*10) return Math.random() < 0.40 ? 3 : 2;
-  return (game.diff > 0.82 && Math.random() < 0.20) ? 3
-       : (game.diff > 0.50 && Math.random() < 0.42) ? 2 : 1;
+  return (game.diff > 0.90 && Math.random() < 0.12) ? 3
+       : (game.diff > 0.70 && Math.random() < 0.22) ? 2 : 1;
 }
 function crowWindowClear(n){
   const span = crowSpan();
@@ -3001,7 +3028,10 @@ function launchCrows(n){
      hazard into the window that was just measured as clear. */
   const span = (n-1)*0.70 + crowSpan();
   game.spawnT = Math.max(game.spawnT, span + 0.30);
-  game.crowT  = span + rnd(6.5, 11.0) * lerp(1, 0.60, game.diff) * CROW_GAP;
+  /* Longer between volleys, and the gap closes less as the run goes on: at
+     2000m the old numbers had one every five seconds or so, which is a rhythm
+     rather than an event. */
+  game.crowT  = span + rnd(11.0, 17.0) * lerp(1, 0.75, game.diff) * CROW_GAP;
 }
 
 function updateCrows(dt){
@@ -3076,11 +3106,19 @@ function updateCrows(dt){
     c.base = c.y;                              // nearMiss reads this
     if(Math.random() < dt*24)
       featherBurst(c.x + 60, GROUND - c.y + rnd(-16,16), 1, 70);
-    // collision -- the same forgiving 8px the block hazards get
-    const pl=p.x-48, pr=p.x+48, pb=p.y+8, pt=p.y+150;
-    const overlapX = pr > c.x-CROW_HW && pl < c.x+CROW_HW;
+    /* Collision -- the same forgiving 8px the block hazards get, and the same
+       vehicle rule. A crow is a hazard, and a hazard takes the vehicle rather
+       than the run while there is a vehicle to take: being killed outright by
+       one thing and merely dismounted by another is the kind of inconsistency
+       a player reads as a bug in their own understanding. */
+    const rbox = rideBox();
+    const overlapX = rbox.r > c.x-CROW_HW && rbox.l < c.x+CROW_HW;
     if(overlapX && !c.hitBy && game.mode === 'play'
-       && pt > c.y-CROW_HH+8 && pb < c.y+CROW_HH-8) die(c);
+       && rbox.t > c.y-CROW_HH+8 && rbox.b < c.y+CROW_HH-8){
+      if(game.rideGrace > 0){ /* just lost it -- let him get clear */ }
+      else if(riding()) loseRide(c);
+      else die(c);
+    }
     if(overlapX){
       const gap = (pb > c.y) ? (pb - (c.y+CROW_HH)) : ((c.y-CROW_HH) - pt);
       if(gap > 0) c.minGap = Math.min(c.minGap, gap);
@@ -3158,7 +3196,10 @@ function drawCrowAlerts(){
      a pixel size because VH is the one dimension the layout pins (~980 units
      in any landscape window) while VW stretches from 1450 to well past 2100 --
      a badge in raw pixels reads on a laptop and disappears on a phone. */
-  const R = VH*0.086;
+  /* Was 0.086, which put a badge the size of the chicken on the edge of the
+     screen for something that is one dodge. It has to be readable at a glance,
+     not the loudest thing in the frame. */
+  const R = VH*0.058;
   for(const c of game.crows){
     if(c.state !== 'warn') continue;
     const locked = c.warnT <= CROW_LOCK;
@@ -3672,7 +3713,7 @@ function update(dt, rawDt){
   else if(game.mode==='play')  updatePlay(dt);
   else if(game.mode==='dying') updateDying(dt);
   else if(game.mode==='dead')  updateDead(dt, rawDt);
-  if(game.mode !== 'play') windSet(0, 300);   // no run, no air
+  if(game.mode !== 'play') windSet(0, 700);   // no run, no air
   if(game.door) updateDoor(dt);        // outside the chain: it flies on into play
   updateCrows(dt);                     // same: a crow already launched keeps coming
 
@@ -3964,13 +4005,8 @@ function updatePlay(dt){
   // ---- obstacles ----
   /* The basket is a much bigger thing to fly through a gap than the bird, and
      pretending otherwise would let it clip through wires it visibly touches. */
-  const bg = basketGeom();
-  const pl = p.x - (riding() ? bg.bw*0.42 : 48), pr = p.x + (riding() ? bg.bw*0.42 : 48);
-  const pb = p.y + (riding() ? -bg.bh*0.12 : 8);
-  /* Only the lower half of the balloons is solid. They are the tallest part of
-     the rig and the least believable thing to lose it to -- clipping the top of
-     a balloon on a wire you were never near reads as a bug, not a mistake. */
-  const pt = p.y + (riding() ? bg.lift + bg.lh*0.45 : 150);
+  const rb = rideBox();
+  const pl = rb.l, pr = rb.r, pb = rb.b, pt = rb.t;
   for(let i=game.obstacles.length-1;i>=0;i--){
     const o = game.obstacles[i];
     // collision
@@ -4025,7 +4061,9 @@ function updatePlay(dt){
      slow air is not. Pushed every frame rather than triggered, because this is
      the one sound in the game that is a state and not an event. */
   const air = clamp(speedT*0.5 + (p.onGround ? 0 : 0.25 + Math.abs(p.vy)/1100), 0, 1);
-  windSet(0.004 + air*0.055, 260 + air*1500);
+  // 260->1760Hz at up to 0.059 was a low roar under everything. Lifted clear of
+  // the rumble and quieter, so it reads as air going past rather than a fan.
+  windSet(0.003 + air*0.038, 640 + air*2500);
 
   // HUD
   elScore.textContent = pad6(game.score);
@@ -5200,7 +5238,7 @@ function boot(){
         if(name === 'wind'){                 // a state, not an event: sweep it
           WIND.src = WIND.bp = WIND.g = null;
           windStart();
-          windSet(0.006, 280);
+          windSet(0.006, 700);
           for(let i=1;i<=10;i++){
             const k = i/10, t = k*(secs||1.2)*0.92;
             WIND.g.gain.setTargetAtTime(0.004 + k*0.055, t, 0.10);
