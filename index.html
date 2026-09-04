@@ -191,6 +191,11 @@
           box-shadow:0 5px 0 #B8681B;transform:rotate(-2deg)}
   .card.best .ribbon{display:block;animation:ribbonIn .45s .1s cubic-bezier(.2,1.7,.4,1) both}
   @keyframes ribbonIn{from{transform:rotate(-2deg) scale(.4);opacity:0}to{transform:rotate(-2deg) scale(1);opacity:1}}
+  /* His name, once, at the top of the card -- the one place a joke can land
+     without getting in the way of the number the player came to read. */
+  .overTitle{font-family:'Bungee',cursive;font-size:clamp(15px,4.4vw,19px);
+             letter-spacing:.04em;color:var(--coral);margin:0 0 10px;line-height:1.15;
+             text-shadow:0 3px 0 rgba(21,8,39,.55)}
   .cardLabel{font-size:11px;font-weight:900;letter-spacing:.28em;color:rgba(255,242,222,.55)}
   .cardScore{font-size:clamp(46px,13vw,66px);font-weight:900;line-height:1;
              font-variant-numeric:tabular-nums;color:var(--gold);
@@ -260,6 +265,7 @@
   <div id="over" class="screen">
     <div class="card" id="card">
       <div class="ribbon">NEW BEST!</div>
+      <div class="overTitle" id="overTitle">NUGGET DOWN!</div>
       <div class="cardLabel">SCORE</div>
       <div class="cardScore" id="finalScore">000000</div>
       <div class="cardBest" id="finalBest">BEST 000000</div>
@@ -2685,6 +2691,7 @@ const elHud=$('#hud'), elScore=$('#score'), elBestLine=$('#bestLine'),
       elMenu=$('#menu'), elOver=$('#over'), elCard=$('#card'),
       elFinal=$('#finalScore'), elFinalBest=$('#finalBest'),
       elNear=$('#stNear'), elCmb=$('#stCombo'), elDist=$('#stDist'),
+      elOverTitle=$('#overTitle'),
       elTut=$('#tut'), elFlash=$('#flash'), elMute=$('#mute');
 elBestLine.textContent = 'BEST '+pad6(game.best);
 
@@ -2941,6 +2948,21 @@ function drawEggs(){
    stand still while the player runs onto them; a crow is the opposite of that
    in every respect -- it launches off the right edge of the CAMERA, flies left
    at CROW_SPEED on top of the world's own scroll, and dies off the left. */
+
+/* The start beat, and it is only for RETRIES.
+
+   A first run opens with the barn escape, which is two seconds long, is the
+   game's whole introduction to itself, and nobody should lose it. But it ran
+   again on every retry, so dying cost up to 2.2s of ragdoll plus 2.0s of cage
+   before the player was flying again -- over four seconds to get back to the
+   thing they were enjoying, on a game whose entire loop is "again".
+
+   So a retry skips the cage and gets this instead: READY, then GO, under a
+   second, with the spawner held off for exactly as long as it lasts. Input is
+   live throughout -- it is a beat to read the screen, not a gate to wait
+   behind, and taking the controls away for even half a second would undo the
+   responsiveness the rest of this work is about. */
+const GO_TIME = 0.85;
 
 const CROW_T0    = 40;      /* no crows for the first forty seconds. The run has
                                a vehicle, a livestock lesson and four hazard
@@ -3203,6 +3225,35 @@ function drawCrows(){
 
 /* The alert, in screen space, so it sits on the true edge of the display
    however the camera is zoomed, raised or shaken. */
+/* READY, then GO. Drawn AFTER the camera is restored, so a countdown cannot
+   shake or zoom with the world -- it is on the glass, not in the farm. Canvas
+   rather than DOM: it is one text draw for under a second, on frames where the
+   player is already flying, and a DOM show/hide there is the kind of thing
+   that costs a frame on a mid-range Android for no reason.
+
+   Both words pop in on the same curve the score uses and fade at the end of
+   their own slice, so GO lands on its own beat instead of cross-fading. */
+function drawGo(){
+  const t = game.goT || 0;
+  if(t <= 0 || game.mode !== 'play') return;
+  const isReady = t > GO_TIME*0.45;
+  const span = isReady ? GO_TIME*0.55 : GO_TIME*0.45;
+  const a = clamp((isReady ? GO_TIME - t : GO_TIME*0.45 - t)/span, 0, 1);
+  const pop = 1 + Math.exp(-a*7)*0.42;
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, a*7) * (a > 0.82 ? (1-a)/0.18 : 1);
+  ctx.translate(VW*0.5, VH*0.33);
+  ctx.scale(pop, pop);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = '900 ' + Math.round(VH*0.105) + "px Bungee, Archivo, sans-serif";
+  ctx.lineJoin = 'round'; ctx.lineWidth = 11; ctx.strokeStyle = C.ink;
+  const txt = isReady ? 'READY' : 'GO!';
+  ctx.strokeText(txt, 0, 0);
+  ctx.fillStyle = isReady ? C.cream : C.gold;
+  ctx.fillText(txt, 0, 0);
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
 function drawCrowAlerts(){
   /* R is the badge's half-height and everything else is measured off it, so
      the alert can be retuned with one number. It is a share of VH rather than
@@ -3409,7 +3460,7 @@ function thrustOn(){
     return;
   }
   if(game.mode==='dead'){
-    if(game.deadT>0.35) startIntro(); return;
+    if(game.deadT>0.35) startQuick(); return;
   }
   if(game.mode!=='play') return;
   /* In the truck the press is a JUMP, not lift: one off the ground and one
@@ -3535,7 +3586,7 @@ document.addEventListener('contextmenu', e=> e.preventDefault());
 $('#play').addEventListener('click', ()=>{
   audioInit(); S.click(); if(game.mode==='menu') startIntro(); });
 $('#retry').addEventListener('click', ()=>{
-  S.click(); if(game.mode!=='intro') startIntro(); });
+  S.click(); if(game.mode!=='intro') startQuick(); });
 $('#tomenu').addEventListener('click', ()=>{ S.click(); toMenu(); });
 elMute.addEventListener('click', ()=>{
   audioInit(); A.on = !A.on;
@@ -3570,7 +3621,7 @@ function startRun(){
   game.mode='play'; game.runT=game.presetRunT||0; game.score=0;
   game.dist=(game.presetDist||0)*10;           // ?dist=N starts the odometer there
   game.near=0; game.combo=0; game.comboBest=0; game.comboT=0;
-  game.speed=340*PACE; game.diff=0; game.spawnT=2.6; game.cornT=0;
+  game.speed=340*PACE; game.diff=0; game.spawnT=2.6; game.cornT=0; game.goT=0;
   game.obstacles.length=0; game.parts.length=0; game.pops.length=0; game.ui.length=0;
   game.eggs.length=0; game.eggT=1.6; game.runEggs=0; game.eggStreak=0;
   game.ride=game.forceRide?RIDE_TIME:0; game.rideGrace=0; game.drop=null; game.npcHit={};
@@ -3754,9 +3805,32 @@ function die(o){
   if(o){ o.hitBy = true; o.spin = rnd(-6,6); o.vy = -420; }
   musicScene('duck');
 }
+/* Nugget's name, on the screen the player reads after every single run.
+
+   Two lists, because "THAT WAS CLOSE" is not a death message -- it is what you
+   say to somebody who nearly beat their best, and firing it after a five-second
+   run reads as the game not paying attention. So the near-best lines are only
+   reachable by getting near the best. Everything else is the ordinary set.
+
+   One line, at the top, and nowhere else: the card still exists to show a
+   number, and a joke in every slot is a joke nobody reads twice. */
+const OVER_LINES = ['NUGGET GOT COOKED', 'NUGGET DOWN!', 'CRISPY.',
+                    'NOT THE NUGGET!', 'NUGGET HAS LEFT THE CHAT',
+                    'POOR NUGGET', 'NUGGET NEEDS ANOTHER TRY'];
+const OVER_CLOSE = ['THAT WAS CLOSE', 'ALMOST CRISPY'];
+function overLine(){
+  if(game.newBest) return 'NUGGET IS THE BEST NUGGET';
+  const best = game.best || 0;
+  if(best > 0 && game.score >= best*0.9) return pick(OVER_CLOSE);
+  return pick(OVER_LINES);
+}
 function finish(){
   game.mode='dead'; game.deadT=0;
   game.newBest = game.score > game.best;
+  /* Chosen here, because finish() is about to overwrite game.best -- pick the
+     line afterwards and "you came within 10% of your best" is comparing the
+     score against itself, which is true every time. */
+  const overTxt = overLine();
   if(game.newBest){
     game.best = Math.floor(game.score);
     try{ localStorage.setItem(BEST_KEY, String(game.best)); }catch(e){}
@@ -3768,6 +3842,7 @@ function finish(){
   elNear.textContent = game.near;
   elCmb.textContent = 'x'+Math.max(1,game.comboBest);
   elDist.textContent = Math.floor(game.dist/10)+'m';
+  elOverTitle.textContent = overTxt;
   elCard.classList.toggle('best', game.newBest);
   elOver.classList.add('show');
   elHud.classList.remove('on');
@@ -4091,6 +4166,7 @@ function updatePlay(dt){
   updateEggs(dt);
 
   // ---- spawn ----
+  game.goT = Math.max(0, (game.goT||0) - dt);
   game.spawnT -= dt;
   game.cornT = Math.max(0, (game.cornT||0) - dt);
   if(game.spawnT<=0) spawnPattern();
@@ -4274,7 +4350,19 @@ function updateDying(dt){
   game.zoom = damp(game.zoom, 1.06, 2.4, dt);
 
   if(game.dyingT>0.95 && (rag.energy||0) < 40){ startRecovery(); }
-  else if(game.dyingT>2.2) startRecovery();
+  /* The settled-ragdoll test usually fires at 0.95s; this is the cap for the
+     times it does not, and at 2.2 it was the slowest part of the retry loop.
+     The tumble is still the whole gag, it just cannot outstay it. */
+  else if(game.dyingT>1.5) startRecovery();
+}
+/* A retry: straight back into the run, with a short beat to read the screen.
+   The spawner and the crows are pushed out by exactly the length of the beat,
+   so nothing can arrive while the word GO is still on screen. */
+function startQuick(){
+  startRun();
+  game.goT = GO_TIME;
+  game.spawnT = Math.max(game.spawnT, GO_TIME + 0.35);
+  game.crowT  = Math.max(game.crowT,  GO_TIME + 1.2);
 }
 function startRecovery(){
   game.mode='dead'; game.deadT=0; game.recover=0;
@@ -5139,6 +5227,7 @@ function render(){
   ctx.restore();
 
   drawCrowAlerts();                   // screen space: it belongs to the display edge
+  drawGo();                           // ...and so does the start beat
 
   // screen-space confetti
   for(const c of game.ui){
@@ -5407,7 +5496,13 @@ function boot(){
   if(/[?&]crowtest/.test(location.search)){
     setTimeout(()=>{
       const out = [], dt = 1/60;
-      for(const rt of [26, 45, 70, 100]){
+      /* Derived from the gate, not written next to it. These were [26,45,70,
+         100] while crows started at runT 24; the start moved to 40 and the
+         first row has been reporting volleys=0 and a 999s wait ever since --
+         a red line that means "this tier cannot have crows", which is not what
+         a red line should mean. Tied to CROW_T0 it cannot go stale again. */
+      const T0 = CROW_T0*CROW_GAP;
+      for(const rt of [T0+6, T0+25, T0+50, T0+80]){
         startRun();
         game.runT = rt; game.diff = clamp(rt/95, 0, 1);
         game.speed = (340 + 400*game.diff)*PACE;
