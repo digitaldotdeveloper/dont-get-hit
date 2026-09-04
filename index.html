@@ -779,6 +779,20 @@ const S = {
   near(){ noise(0.24,2000,320,0.095,1.8); tone(1040,0.08,'sine',0.045,1560); },
   /* Electrocution, played UNDER hit() rather than instead of it: a hard AC
      buzz, so dying on a wire never sounds like dying on a hay bale. */
+  /* THE GRID GOING DOWN: a substation tripping, in four parts that arrive in
+     the order the real thing does. The buzz falls out of the wire first, then
+     the relay lets go with a clunk, and the mains hum underneath it sags away
+     over half a second -- the hum is the part that sells it, because it is the
+     sound you did not know was there until it stopped. Nothing in it is
+     bright: this is the opposite event to zap(), and it has to be the opposite
+     noise or the pickup reads as another hazard. */
+  powerdown(){
+    tone(1180, 0.15, 'square', 0.050, 130);
+    wob(330, 48, 0.52, {type:'sawtooth', vol:0.080, depth:34, rate:18});
+    noise(0.085, 1900, 240, 0.070, 1.7, 0.02);
+    tone(74, 0.34, 'sine', 0.115, 38, null, 0.05);
+    tone(52, 0.50, 'sine', 0.065, 30, null, 0.17);
+  },
   zap(){
     wob(92, 60, 0.42, {type:'square', vol:0.15, depth:46, rate:34});
     noise(0.26, 3200, 900, 0.10, 2.4);
@@ -1861,23 +1875,110 @@ const RIDE_TIME = 22, RIDE_GRACE = 0.85, RIDE_EVERY = [17, 26];
    jump is the whole feel of a ground vehicle and drag is what turns a jump
    into a float. There is no thrust at all -- holding does nothing, the press
    is a jump, and that is the difference between this and the bird. */
-const RIDE_G = 1.0, RIDE_D = 0.22;
-/* The launch, and the one in the air. 3000 clears about 520 units, which is
-   measured against the two things it has to clear: a fence at 148 and the tall
-   wire at 352. Under that and the wire is not jumpable, which would make the
-   vehicle's own level unfair; far over it and the jump stops being a decision. */
-const RIDE_JUMP = 3250, RIDE_JUMP2 = 2600;
-const RIDE_BOOST = 1.22;                     // it is faster than running, too
+/* A TRUCK JUMP HANGS, and it has to here for a reason that is arithmetic
+   rather than taste. The obstacle and the vehicle are both wide, so they
+   overlap for six or seven hundred units of road, and the only thing that gets
+   the truck across that is TIME IN THE AIR -- at full gravity the whole arc
+   covers about five hundred units at the slowest speed in the game, which
+   makes the low tiers of the ride strictly impossible while the fast ones are
+   fine. Lighter gravity buys the hang without touching the top of the arc,
+   which is separately capped by the ceiling anyway.
+
+   It is also just the right cartoon. A monster truck leaving a dirt ramp is
+   the one thing in this game that is allowed to float. */
+const RIDE_G = 0.27, RIDE_D = 0.22;
+/* The launch, and the one in the air.
+
+   These are not the number they look like. The movement model clamps velocity
+   to a rail every frame, and for a long time the rail was the bird's -- so the
+   truck was launched at 3250, clamped to 2325 on the very next frame, and
+   raising the impulse moved the apex by four units. The impulse and the rail
+   have to go up TOGETHER or neither of them does anything, which is why
+   RIDE_VUP is here and not buried in the physics.
+
+   With both raised the jump clears about twice what it did, and it needs to:
+   the ride's own roster tops out at a 296-tall hay wagon that is also 392
+   wide, and a jump you can only just make over a thing you cannot see the far
+   side of is not a jump, it is a coin flip. There is real air over everything
+   now, and the double jump is headroom rather than a rescue. */
+const RIDE_JUMP = 1700, RIDE_JUMP2 = 1300;
+const RIDE_VUP  = 2.35;                      // the truck's own ceiling on velocity
+const RIDE_BOOST = 1.12;                     // faster than running, but it has calmed down
 const CLEAR_RIDE = 560;
-const TRUCK = { img: new Image(), ready:false };
-TRUCK.img.onload = () => { TRUCK.ready = true; };
-TRUCK.img.src = 'art/truck.webp';
+/* FOUR FRAMES, AND NUGGET IS PAINTED INTO ALL OF THEM.
+
+   He used to be drawn separately and lifted half a truck up so his head
+   cleared the rim, which is a trick that works for exactly one pose: the
+   moment the rig tilts, a bird floating at a fixed offset above a tilted cart
+   is a bird standing on nothing. Riding is one picture of one thing, so it is
+   one sprite -- and the render skips drawChicken entirely while it is up.
+
+   The set is a jump, told in four: hands on the wheel; the launch, nose up,
+   cap already leaving; over the top, braced and shouting; and the landing,
+   nose down and compressed. `ex/ey/fl` are where each frame's exhaust pipes
+   ended up when it was drawn and how hard they are burning, because the flame
+   is drawn rather than painted and it has to stay in the pipes.
+
+   ONE scale for the sheet, off the driving frame's width, so the truck is the
+   same truck in every pose. Normalising each frame to a common box instead is
+   what makes a sprite breathe as it animates. */
+/* `px`/`py` are WHERE THE PIPES ARE, as fractions of each frame's own picture,
+   read off the art rather than guessed at. They have to be per frame and they
+   have to be fractions: the rig is drawn at four tilts, so the exhaust stack
+   that sits at 56% of the way down the driving frame has swung to 72% of the
+   way down the launch frame, and a single offset applied to all four put the
+   flame on the grass behind the truck with nothing attached to it. `fl` is how
+   hard that frame is burning -- hardest on the launch, nearly out on the
+   landing, which is most of what makes four stills read as one jump. */
+const TRUCK_FR = [
+  { n:'truck_drive',  w:815, h:860, px:0.010, py:0.560, fl:1.00 },
+  { n:'truck_launch', w:854, h:963, px:0.050, py:0.715, fl:1.55 },
+  { n:'truck_air',    w:754, h:911, px:0.010, py:0.610, fl:1.20 },
+  { n:'truck_land',   w:764, h:793, px:0.030, py:0.580, fl:0.65 },
+];
+const TRUCK = { ready:false, n:0 };
+TRUCK_FR.forEach(f => {
+  const im = new Image();
+  im.onload = () => { if(++TRUCK.n >= TRUCK_FR.length) TRUCK.ready = true; };
+  im.src = 'art/' + f.n + '.webp';
+  f.img = im;
+});
+const MEGG = { img:new Image(), ready:false };
+MEGG.img.onload = () => { MEGG.ready = true; };
+MEGG.img.src = 'art/mystery_egg.webp';
 /* Sized off GROUND so the rig scales with the play area, and anchored on the
    axle line rather than the sprite's bottom: the tyres are what sit on the
    road, and they are a good fraction of the picture. */
 function truckGeom(){
-  const tw = GROUND*0.46, th = tw*(546/815);
-  return { tw, th, sink: th*0.06 };
+  /* 0.46 of the play height was 379 units on a 1280 screen -- a third of the
+     width of the world -- and it was measured back when the sprite was the
+     cart on its own. The frames now have Nugget painted in, so the same number
+     drew a rig 400 units TALL as well, and the two together made a jump
+     impossible to land in any useful place: a piece 300 wide and a truck 379
+     wide overlap for 680 units of road, and the whole airtime of a jump at the
+     slowest speed in the game covers about 500. It was not a tuning problem,
+     it was a scale problem, and it is fixed here rather than by shaving the
+     hitbox until the art lies.
+
+     `th` stays the height of the CART, because that is what the collision box
+     is measured off; the sprite is taller than th and is drawn from its own
+     aspect. */
+  const tw = GROUND*0.335, th = tw*(546/815);
+  /* `sh` is the SPRITE's height, which is not `th`: the frames have Nugget
+     standing in the cart, so the picture is a good half again as tall as the
+     thing being collided with. Anything that needs to keep the rig inside the
+     screen wants this number, and anything that needs to hit it wants th. */
+  return { tw, th, sh: tw*(860/815), sink: th*0.06 };
+}
+/* How high the truck is allowed to get. CEIL is 40 units of headroom, measured
+   for a bird 142 tall; the rig is nearly 300 including its driver, so the same
+   rail threw it three quarters of the way out of the picture and the jump read
+   as a glitch -- you pressed, the truck vanished off the top, and it came back
+   down. A vehicle you cannot see is not a vehicle you can drive, so it gets a
+   rail of its own that keeps the whole sprite in frame, and the arc above is
+   tuned to sit just under it. */
+function rideCeil(){
+  return Math.max(160, GROUND - truckGeom().sh - 12);
 }
 const riding = () => game.ride > 0;
 /* ONE definition of what can be hit, because two of them drift. The obstacle
@@ -2299,20 +2400,30 @@ function postWire(x, y0, y1){ return [x, y0+6, x, y1-6, 1]; }
    thread with the same colour, the same flicker and the same arcs, at about a
    third the weight. */
 function drawWire(x0,y0,x1,y1, t, seed, thin){
+  /* `game.gridT` is 1 with the power on and 0 with it off, and BETWEEN the two
+     it is not a fade -- each wire independently stutters on and off against
+     the level, so the half second after the pickup reads as a substation
+     tripping rather than a crossfade. Dead, the wire is a slack grey cable
+     with the same ink rim as everything else: still a rope strung between two
+     posts, plainly not carrying anything. */
+  let lv = (game.gridT === undefined) ? 1 : game.gridT;
+  if(lv > 0.02 && lv < 0.98 && hash(seed*0.7 + Math.floor(t*22)*4.31) > lv) lv *= 0.10;
   const dx=x1-x0, dy=y1-y0, L=Math.hypot(dx,dy)||1;
   const nx=-dy/L, ny=dx/L, ux=dx/L, uy=dy/L;
   const n = Math.max(3, Math.min(20, Math.round(L/28)));
   const k = Math.floor(t*24);
   const g1 = thin ? 11 : 26, g2 = thin ? 5.5 : 13;
-  const c1 = thin ? 3.4 : 7, c2 = thin ? 1.5 : 3, amp = thin ? 3.0 : 7.5;
+  const c1 = thin ? 3.4 : 7, c2 = thin ? 1.5 : 3, amp = (thin ? 3.0 : 7.5)*lv;
   ctx.lineCap='round'; ctx.lineJoin='round';
-  ctx.beginPath(); ctx.moveTo(x0,-y0); ctx.lineTo(x1,-y1);
-  ctx.strokeStyle='rgba(110,222,255,0.13)'; ctx.lineWidth=g1; ctx.stroke();
-  ctx.strokeStyle='rgba(150,240,255,0.28)'; ctx.lineWidth=g2; ctx.stroke();
+  if(lv > 0.02){
+    ctx.beginPath(); ctx.moveTo(x0,-y0); ctx.lineTo(x1,-y1);
+    ctx.strokeStyle='rgba(110,222,255,'+(0.13*lv).toFixed(3)+')'; ctx.lineWidth=g1; ctx.stroke();
+    ctx.strokeStyle='rgba(150,240,255,'+(0.28*lv).toFixed(3)+')'; ctx.lineWidth=g2; ctx.stroke();
+  }
   ctx.beginPath();
   for(let i=0;i<=n;i++){
     const u=i/n, live=(i===0||i===n)?0:1;
-    const j=(hash(seed + i*7.13 + k*3.71)-0.5)*amp*live;
+    const j=(hash(seed + i*7.13 + k*3.71)-0.5)*amp*live;   // dead, it hangs straight
     const x=x0+dx*u+nx*j, y=y0+dy*u+ny*j;
     if(i) ctx.lineTo(x,-y); else ctx.moveTo(x,-y);
   }
@@ -2322,8 +2433,13 @@ function drawWire(x0,y0,x1,y1, t, seed, thin){
      speed and stops the wire looking like a different game's asset. The glow
      is already down, so the rim goes over it and under the core. */
   ctx.strokeStyle=C.ink; ctx.lineWidth=c1+4.5; ctx.stroke();
-  ctx.strokeStyle='#4CCFFF'; ctx.lineWidth=c1; ctx.stroke();
-  ctx.strokeStyle='#EDFCFF'; ctx.lineWidth=c2; ctx.stroke();
+  ctx.strokeStyle = lv > 0.5 ? '#4CCFFF' : '#61707F'; ctx.lineWidth=c1; ctx.stroke();
+  if(lv > 0.02){
+    ctx.globalAlpha = lv;
+    ctx.strokeStyle='#EDFCFF'; ctx.lineWidth=c2; ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+  if(lv <= 0.02) return;              // nothing arcs off a cable with no power in it
   // forks, on and off at the same 24Hz, so the wire looks like it is arcing
   for(let f=0; f<(thin?1:2); f++){
     if(hash(seed + f*31.7 + k*1.93) > (thin?0.30:0.42)) continue;
@@ -2381,18 +2497,64 @@ function elecSpec(def){
    The box arrives in world coordinates; everything a piece builds is relative
    to o.x, so the box is what moves into the piece's frame, not the other way
    round -- one subtraction instead of one per segment. */
+/* THE GRID HAS A SWITCH, and the truck is the switch.
+
+   Taking the vehicle cuts the farm's power: every live wire on the board stops
+   killing, this instant, and stays dead until the ride ends. That is the whole
+   Jetpack Joyride move -- the run does not merely get easier, the thing that
+   was about to kill you visibly TURNS OFF -- and it is worth more than any
+   number of extra hit points because the player can SEE it.
+
+   Lethality flips on a boolean and the picture eases (see drawWire), which is
+   the right way round: the only frames where the two disagree are frames where
+   the wire looks live and is already harmless, and being unexpectedly safe has
+   never ruined anybody's run. The reverse would.
+
+   Only the WIRES go. Posts, bales and a parked hay wagon are still solid, so a
+   dead grid is not an empty screen -- it is a different obstacle set made of
+   the same board, which is exactly what the ride's own roster is built to be. */
+const wireHot = () => !riding();
 function elecDist(o, l, r, b, t){
   const p = o.spec.build(o, game.t);
   const L=l-o.x, R=r-o.x;
   let d = 1e9;
-  for(const w of p.wires)  d = Math.min(d, segBoxDist(w[0],w[1],w[2],w[3], L,b,R,t) - WIRE_R);
+  if(wireHot()) for(const w of p.wires)  d = Math.min(d, segBoxDist(w[0],w[1],w[2],w[3], L,b,R,t) - WIRE_R);
   if(p.solids) for(const q of p.solids) d = Math.min(d, boxBoxDist(q[0],q[1],q[2],q[3], L,b,R,t));
   if(p.discs)  for(const c of p.discs)  d = Math.min(d, discBoxDist(c[0],c[1],c[2], L,b,R,t));
   return d;
 }
+/* WHY A ROADBLOCK WEARS STRIPES.
+
+   This farm's background is painted full of hay bales and stacked crates,
+   because it is a farm. Standing one more bale on the road and calling it an
+   obstacle asks the player to tell a hazard from the scenery by its X POSITION,
+   and at nine hundred units a second nobody can: the first run of these pieces
+   ended with a bale stack that read as part of the fence line right up until it
+   was hit. The electric set never had this problem, because it glows.
+
+   So the roadblocks get the other universal sign for `this one hurts`. A
+   hazard-striped plate under the piece is not farmyard dressing, nothing in the
+   background has one, and it says obstacle at a glance and at speed. It is
+   drawn under the props so their feet stand on it. */
+function drawHazardBase(hw){
+  const H = 20, W = hw*2;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(-hw, -H, W, H); ctx.clip();
+  ctx.fillStyle = '#241C14'; ctx.fillRect(-hw, -H, W, H);
+  ctx.fillStyle = '#F3C61C';
+  for(let x = -hw - H*2; x < hw + H*2; x += 27){
+    ctx.beginPath();
+    ctx.moveTo(x, 0); ctx.lineTo(x+13, 0); ctx.lineTo(x+13+H, -H); ctx.lineTo(x+H, -H);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+  ctx.beginPath(); ctx.rect(-hw, -H, W, H);
+  ctx.lineWidth = 3.5; ctx.strokeStyle = C.ink; ctx.stroke();
+}
 function drawElec(o, t){
   const p = o.spec.build(o, t);
   if(p.shadow) shadowEllipse(p.shadow, 0.40);   // only the pieces that stand on it
+  if(p.hazard) drawHazardBase(p.hazard);
   for(const h of p.hw) drawHW(h.a, h.x, h.y, h.h, h.flip);
   /* `d` is the piece's length ALONG ITS OWN AXIS, and the other dimension
      follows from the art. Scaling d by the aspect ratio instead drew the
@@ -2513,6 +2675,11 @@ Object.assign(OB, {
   corn_clump: cornHazard(1, 'corn3',   182, 206, [-52, 6, 58]),
   corn_row:   cornHazard(2, 'cornrow', 419, 190, [-162, -80, 2, 84, 164]),
 });
+/* What the truck drives through, declared ON THE PIECES. This used to be a
+   list of keys kept next to the collision test, half the game away from the
+   things it named -- so adding a smashable obstacle meant editing two places
+   and finding out you had missed one by driving into it. */
+['corn_one','corn_clump','corn_row'].forEach(k => { OB[k].smash = true; });
 
 /* --- the pieces you go OVER: posts on the ground, wire across the top --- */
 Object.assign(OB, {
@@ -2533,6 +2700,68 @@ Object.assign(OB, {
       solids:[[-143,0,-109,344],[109,0,143,344]], shadow:138,
       wires:[[-126,326, 126,326], postWire(-126,0,344), postWire(126,0,344)] }; },
     free(o,band){ return [[352, band]]; } }),
+});
+
+/* --- THE ROADBLOCKS: the truck's own roster ------------------------------
+   With the grid down there is nothing electric left to dodge, and a vehicle
+   whose whole level is empty sky is not a reward, it is a pause. So the ride
+   brings its own obstacles, and they are the opposite of the flying set in
+   every way that matters:
+
+     THEY STAND ON THE GROUND AND THEY ARE MADE OF STUFF.
+
+   No wire, no glow, nothing overhead -- a fence strung across the top of a
+   monster truck's lane is a flying game's obstacle wearing a hat, and the
+   whole point of the vehicle is that you have stopped flying. These are things
+   somebody left in a farmyard: tyres, a trough, crates, bales, oil drums, a
+   hay wagon. You jump them, or where they are light enough you go through
+   them, and which one it is you can tell by looking.
+
+   They are built on elecSpec because that is where the collision lives -- a
+   piece that answers `hit` and `gapTo` for its own parts -- and they simply
+   hand it an empty wire list. `wired:false` is what keeps the electrocution
+   sound and the white flash off a stack of hay. */
+function roadblock(o){
+  const spec = elecSpec({
+    tier:o.tier, hw:o.w*0.5 + 12, top:o.h, h:o.h, art:o.art,
+    build(){ return { hw:o.parts, solids:o.solids, shadow:o.w*0.46,
+                      hazard:o.w*0.5, wires:[] }; },
+    free(ob, band){ return [[o.h + 40, band]]; } });
+  spec.wired = false;                  // wood and rubber: no zap, no flash
+  spec.smash = !!o.smash;              // and some of it comes apart
+  return spec;
+}
+Object.assign(OB, {
+  /* Two tractor tyres. The lowest thing on the board and the one that teaches
+     the jump, the way e_fence teaches the wire. */
+  r_tyres: roadblock({ tier:0, w:214, h:164, art:['tractorwheel'],
+    parts:[{a:'tractorwheel',x:-50,y:0,h:164},{a:'tractorwheel',x:50,y:0,h:164}],
+    solids:[[-104,0,104,160]] }),
+  /* Long and low: nothing much to clear, but a lot of ground to be off. */
+  r_trough: roadblock({ tier:0, w:240, h:126, art:['trough','milkcan'],
+    parts:[{a:'trough',x:0,y:0,h:104},{a:'milkcan',x:56,y:102,h:64}],
+    solids:[[-116,0,116,102],[30,102,82,124]] }),
+  /* Crates go THROUGH. Light, wooden, stacked by somebody in a hurry -- the
+     thing the key art promises a monster truck does to a pile of boxes. */
+  r_crates: roadblock({ tier:1, w:230, h:250, art:['crates'], smash:true,
+    parts:[{a:'crates',x:-52,y:0,h:250},{a:'crates',x:52,y:0,h:190}],
+    solids:[[-110,0,110,244]] }),
+  /* Three bales, two down one up. Tall enough to want the jump early. */
+  r_bales: roadblock({ tier:1, w:274, h:238, art:['haybale'],
+    parts:[{a:'haybale',x:-58,y:0,h:120},{a:'haybale',x:58,y:0,h:120},
+           {a:'haybale',x:0,y:118,h:118}],
+    solids:[[-136,0,136,118],[-76,118,76,234]] }),
+  /* Empty drums, so they go through too -- and they are the smashable one you
+     meet at speed, where the crates are the one you meet standing still. */
+  r_drums: roadblock({ tier:2, w:248, h:176, art:['drum'], smash:true,
+    parts:[{a:'drum',x:-62,y:0,h:168},{a:'drum',x:0,y:0,h:176},{a:'drum',x:62,y:0,h:168}],
+    solids:[[-122,0,122,172]] }),
+  /* The wagon: high AND wide, which is a different question from high. It is
+     the only piece that needs the jump started before you can see the far
+     side of it. */
+  r_wagon: roadblock({ tier:2, w:302, h:230, art:['haywagon'],
+    parts:[{a:'haywagon',x:0,y:0,h:224}],
+    solids:[[-150,0,150,220]] }),
 });
 
 /* --- the pieces you go THROUGH -------------------------------------------
@@ -2783,6 +3012,28 @@ function setScore(n){
 setScore(0);
 
 /* ---------- particles ---------- */
+/* DUST. Sparks are wrong for a truck: they are small, bright, fast and they
+   fall, and everything a two-tonne vehicle does to a dirt road is the exact
+   opposite -- big, dull, slow and rising. So this is its own kind: it starts
+   fat, GROWS as it goes (`grow`, in units a second), drifts upward against a
+   negative gravity, and drags down to nothing rather than arcing. Six of them
+   read as a cloud where sixty sparks read as a firework. */
+function smoke(x, y, n, opt){
+  opt = opt || {};
+  for(let i=0;i<n;i++){
+    const a  = rnd(opt.a0===undefined ? Math.PI*0.88 : opt.a0,
+                   opt.a1===undefined ? Math.PI*2.12 : opt.a1);
+    const sp = rnd(opt.s0||70, opt.s1||240);
+    game.parts.push({
+      x: x + rnd(-20,20), y: y + rnd(-8,8),
+      vx: Math.cos(a)*sp + (opt.vx||0), vy: Math.sin(a)*sp*0.55 - rnd(20,80),
+      life: rnd(opt.l0||0.34, opt.l1||0.78), t:0,
+      r: rnd(opt.r0||15, opt.r1||31), col: opt.col || 'rgba(211,196,172,0.62)',
+      g: -70, kind:'smoke', rot:rnd(0,TAU), vr:rnd(-1.6,1.6),
+      drag: opt.drag || 0.80, grow: rnd(70,150)
+    });
+  }
+}
 function spark(x,y,n,opt){
   opt=opt||{};
   for(let i=0;i<n;i++){
@@ -3153,7 +3404,12 @@ function launchCrows(n){
   /* Longer between volleys, and the gap closes less as the run goes on: at
      2000m the old numbers had one every five seconds or so, which is a rhythm
      rather than an event. */
-  game.crowT  = span + rnd(11.0, 17.0) * lerp(1, 0.75, game.diff) * CROW_GAP;
+  /* And they thin out in the truck. The vehicle is the run's breathing space
+     -- the grid is off, the roster is ground pieces with air over them -- so
+     leaving the crows at their normal rate would put the busiest thing in the
+     game inside the calmest stretch of it. */
+  game.crowT  = span + rnd(11.0, 17.0) * lerp(1, 0.75, game.diff) * CROW_GAP
+              * (riding() ? 1.8 : 1);
 }
 
 function updateCrows(dt){
@@ -3497,27 +3753,35 @@ const PAT = [
 /* Built around the jump rather than borrowed from the run.
 
    There are only two verbs in the truck -- jump it or drive through it -- so
-   the table is written in those terms. `e_fence` (148 tall) is the easy one,
-   `e_wire` (352) is the one that needs a real jump, and corn is what he goes
-   through. The rhythm alternates deliberately: a thing to smash right after a
-   thing to jump is a landing you can take at speed, and two tall wires in a
-   row is the double jump being asked for by name.
+   the table is written in those terms.
 
-   Wider tails than the equivalent tier on foot, because a jump commits: once
-   he is in the air the only thing he can do about the next fence is have left
-   earlier. */
+   ONLY GROUND PIECES. The truck's table used to be the fence pieces at two
+   heights, which meant the reward for taking a monster truck was the same
+   obstacle you had just been flying over, with a wire on top of it. The grid
+   is off while you are in it -- there is no wire to put on top of anything --
+   so the roster is the roadblocks and the corn: things standing in the road.
+
+   The rhythm alternates deliberately: a thing to smash right after a thing to
+   jump is a landing you can take at speed, and two bale stacks in a row is the
+   double jump being asked for by name.
+
+   Wider tails than the pieces on foot, and wider than this table had, because
+   a jump commits -- once he is in the air the only thing he can do about the
+   next one is have left earlier -- and because the vehicle is meant to be the
+   part of the run where the game breathes out. */
 const RIDE_PAT = [
-  mkPat(0, [1.75,2.15], ['e_fence']),
-  mkPat(0, [1.70,2.10], ['#corn']),
-  mkPat(0, [1.70,2.05], ['e_fence', 1.25, '#corn']),
-  mkPat(1, [1.65,2.00], ['#corn', 1.20, 'e_fence']),
-  mkPat(1, [1.70,2.05], ['e_wire']),
-  mkPat(1, [1.65,2.00], ['e_fence', 1.30, 'e_fence']),
-  mkPat(2, [1.60,1.95], ['e_wire', 1.35, '#corn']),
-  mkPat(2, [1.60,1.95], ['#corn', 1.15, 'e_fence', 1.30, '#corn']),
-  mkPat(2, [1.65,2.00], ['e_fence', 1.25, 'e_wire']),
-  mkPat(3, [1.55,1.90], ['e_wire', 1.40, 'e_wire']),
-  mkPat(3, [1.55,1.90], ['#corn', 1.15, 'e_wire', 1.35, 'e_fence']),
+  mkPat(0, [2.10,2.60], ['r_tyres']),
+  mkPat(0, [2.05,2.55], ['#corn']),
+  mkPat(0, [2.05,2.50], ['r_trough']),
+  mkPat(0, [2.00,2.45], ['r_tyres', 1.45, '#corn']),
+  mkPat(1, [2.00,2.45], ['r_crates']),
+  mkPat(1, [1.95,2.40], ['r_bales']),
+  mkPat(1, [1.95,2.40], ['#corn', 1.40, 'r_tyres']),
+  mkPat(2, [1.90,2.35], ['r_drums', 1.35, 'r_bales']),
+  mkPat(2, [1.95,2.40], ['r_wagon']),
+  mkPat(2, [1.90,2.35], ['r_tyres', 1.35, 'r_wagon']),
+  mkPat(3, [1.90,2.35], ['r_bales', 1.50, 'r_bales']),
+  mkPat(3, [1.85,2.30], ['#corn', 1.30, 'r_wagon', 1.55, 'r_crates']),
 ];
 function spawnPattern(){
   const tier = tierNow();
@@ -3579,12 +3843,23 @@ function thrustOn(){
     player.thrusting = true;
     if(player.onGround){
       player.vy = -RIDE_JUMP; player.onGround = false;
-      player.rideJumps = 1; S.takeoff();
+      player.rideJumps = 1; S.takeoff(); addShake(5);
+      /* A WALL OF DUST off the back tyres, thrown backwards and up. Sparks
+         alone read as a spell being cast; what leaves the ground when two
+         tonnes of tractor tyre launches off a dirt road is dirt. */
+      smoke(player.x - 44, GROUND - 6, 10,
+            {a0:Math.PI*0.92, a1:Math.PI*1.80, s0:150, s1:410, r0:17, r1:34, l0:0.4, l1:0.9});
       spark(player.x-40, GROUND-player.y, 10,
             {col:'rgba(210,180,140,.9)', a0:Math.PI*0.9, a1:Math.PI*1.4,
              s0:120, s1:340, l0:0.2, l1:0.5, r0:4, r1:10, g:900});
     } else if((player.rideJumps||0) < 2){
       player.vy = -RIDE_JUMP2; player.rideJumps = 2; S.takeoff();
+      /* The second jump has no ground to kick off, so it brings its own: a
+         ring of exhaust punched out sideways under the truck. That puff is the
+         only thing telling the player the second press did something, since
+         there is no contact to feel. */
+      smoke(player.x, GROUND-player.y-16, 8,
+            {s0:130, s1:320, r0:12, r1:25, l0:0.3, l1:0.6, col:'rgba(196,186,176,0.55)'});
       spark(player.x, GROUND-player.y-30, 8,
             {col:'rgba(255,190,80,.9)', a0:Math.PI*0.7, a1:Math.PI*1.3,
              s0:100, s1:260, l0:0.2, l1:0.45, r0:3, r1:8, g:700});
@@ -3732,6 +4007,7 @@ function startRun(){
   game.obstacles.length=0; game.parts.length=0; game.pops.length=0; game.ui.length=0;
   game.eggs.length=0; game.eggT=1.6; game.runEggs=0; game.eggStreak=0;
   game.ride=game.forceRide?RIDE_TIME:0; game.rideGrace=0; game.drop=null; game.npcHit={};
+  game.gridT=1; game.rideTeach=0;        // the power is on again at the top of a run
   game.dropT=game.forceRide?1e9:rnd(9, 14);
   game.crows.length=0; game.crowT=5*CROW_GAP; game.crowN=0; game.crowWait=0;
   game.freeze=0; game.timeScale=1; game.tsTarget=1; game.shake=0; game.zoom=1; game.zoomT=1;
@@ -3742,6 +4018,7 @@ function startRun(){
   player.flapT=0; player.flapBeat=-1; player.flapLag=0;
   player.thrusting=false;                                   // never start a run mid-thrust
   player.state='run'; player.stateT=0; player.landT=0; player.stumbleT=0;
+  player.rideLand=0; player.rideJumps=0;
   player.near=0; player.nearT=0; player.nearCool=0;
   player.beat=''; player.beatT=0;
   cam.x = -PX;
@@ -3759,15 +4036,37 @@ function startRun(){
      way back. trackTick reads game.mode and settles it either way, one frame
      later and without a blip. */
 }
-/* One pickup at a time, floating where a hazard is not. It is placed by the
-   same rule the eggs are -- `eggFree` already answers "is this bit of sky
-   safe" -- because a reward you cannot reach without dying is a punishment. */
+/* WHERE THE PICKUP MAY STAND, and it is nowhere near a hazard.
+
+   This used to roll twenty heights at ONE x and accept the first that missed a
+   wire, which is a much weaker rule than it looks: threading the egg between
+   two rungs of a ladder passes it, and what the player then sees is the
+   reward hung inside the obstacle, reachable only by flying through the thing
+   the whole game is about not touching. Going for it is punished and ignoring
+   it is punished, so it is not a choice, it is a trick.
+
+   So the column is the unit now, not the point: a piece anywhere within
+   DROP_CLEAR of the x is a refusal whatever height the egg is at, and the x
+   walks forward until it finds clear road. And once it is placed the next
+   pattern is held off until it is behind him -- otherwise the spawner cheerfully
+   drops a wagon on top of a pickup that was clear when it was chosen. */
+const DROP_CLEAR = 320;
+function dropClearAt(x){
+  for(const o of game.obstacles){
+    const ow = (o.spec.hw != null ? o.spec.hw : o.w*0.42) + DROP_CLEAR;
+    if(Math.abs(o.x - x) < ow) return false;
+  }
+  return true;
+}
 function spawnBasketDrop(){
   const band = GROUND - CEIL;
-  const x = player.x + game.speed*Math.max(1.9, (VW - PX + 260)/game.speed + 0.3);
-  for(let tryN = 0; tryN < 20; tryN++){
-    const y = rnd(band*0.30, band*0.78);
-    if(eggFree(x, y)){ game.drop = { x, y, t:0 }; return true; }
+  const lead = Math.max(1.9, (VW - PX + 260)/game.speed + 0.3);
+  for(let n = 0; n < 40; n++){
+    const x = player.x + game.speed*(lead + (n >> 2)*0.5);
+    if(!dropClearAt(x)) continue;
+    game.drop = { x, y: rnd(band*0.32, band*0.74), t:0 };
+    game.spawnT = Math.max(game.spawnT, (x - player.x + DROP_CLEAR)/game.speed);
+    return true;
   }
   return false;
 }
@@ -3778,10 +4077,94 @@ function startRide(){
      in mid-air with no way to fly it is a worse surprise than the drop. */
   player.vy = Math.max(player.vy, 260);
   player.rideJumps = 0;
-  S.egg && S.egg();
+  /* THE MOMENT.  Everything here is one beat and it is the beat the whole
+     pickup exists for: the lights go out across the farm, the truck lands, and
+     the board you were threading a second ago is a road. The wires are already
+     harmless by the time this returns -- `wireHot` reads `riding()` -- so all
+     that is left is to say so, loudly, in every channel at once. */
+  game.gridT = 1;                       // full brightness, so it has somewhere to fall from
+  game.flash = 0.55;
+  addShake(13);
+  S.powerdown();
+  pop(player.x, GROUND - player.y - 300, 'POWER DOWN', '#8FE9FF', 46, -46);
   pop(player.x, GROUND - player.y - 210, 'FLOOR IT!', C.gold, 56, -70);
   spark(player.x, GROUND - player.y - 120, 16,
         {col:C.gold, s0:120,s1:380, l0:0.3,l1:0.7, r0:3,r1:9});
+  smoke(player.x - 30, GROUND, 10, {s0:130, s1:340, r0:18, r1:34});
+  layRideCourse();
+}
+/* HOW HIGH IT GOES, solved rather than measured.
+
+   `dv/dt = a - k*v` has a closed form and so does the height it reaches:
+   with an upward launch speed u and terminal speed vT = a/k, the apex is
+   `(u - vT*ln(1 + u/vT)) / k`. That is worth having as a function rather than
+   a comment because the teaching course below is laid out of it -- change the
+   jump and the lesson moves with it, instead of quietly becoming a lie.
+
+   `u` is clamped to the rail first, because the rail is the real launch speed
+   whatever the impulse says. */
+function rideApex(impulse){
+  const a = GRAV*RIDE_G, k = DRAG*RIDE_D, vT = a/k;
+  const u = Math.min(Math.abs(impulse), Math.abs(VY_UP*RIDE_VUP));
+  return (u - vT*Math.log(1 + u/vT)) / k;
+}
+function rideRise(impulse){                       // and how long the way up takes
+  const a = GRAV*RIDE_G, k = DRAG*RIDE_D, vT = a/k;
+  const u = Math.min(Math.abs(impulse), Math.abs(VY_UP*RIDE_VUP));
+  return Math.log(1 + u/vT) / k;
+}
+/* THE LESSON.
+
+   A vehicle whose controls are different from the game's controls has to teach
+   them, and the only honest way to teach a jump is to put something you want
+   in the shape of the jump. So the first thing that happens after the pickup
+   is not an obstacle -- it is two arcs of eggs, and following them IS the
+   tutorial:
+
+     ONE   an arc that peaks well inside a single jump. Press, collect, land.
+     TWO   an arc that peaks above anything one jump reaches. Halfway up it
+           stops being reachable, and the only thing left to try is pressing
+           again -- at the top of the first jump, which is exactly where the
+           second one is worth the most.
+
+   Both are laid out of `rideApex` and the actual scroll speed, so they are the
+   real jump at the real pace rather than two numbers that were true once. And
+   nothing else is allowed on screen while they run: obstacles and crows are
+   both pushed past the end of the course, because a lesson you have to dodge
+   during is not a lesson. */
+function layRideCourse(){
+  const a1 = rideApex(RIDE_JUMP), a2 = rideApex(RIDE_JUMP2);
+  const t1 = rideRise(RIDE_JUMP);
+  const span1 = game.speed * t1 * 2.05;             // up and down, near enough
+  /* The second arc is LONGER, not higher, and that is the honest lesson here:
+     the play area is barely taller than one jump, so a double jump mostly buys
+     HANG rather than altitude -- press again near the top and you stay up a
+     good deal further down the road. Teaching it as extra height would be
+     teaching a thing the ceiling immediately takes away. */
+  const span2 = span1 * 1.62;
+  const y0 = 74;                                    // the height eggs are collected at
+  let x = player.x + game.speed*1.25;
+  const put = (n, w, peak) => {
+    for(let i=0;i<n;i++){
+      const u = i/(n-1);
+      game.eggs.push({ x: x + u*w, y: y0 + Math.sin(u*Math.PI)*peak, t:rnd(0,TAU), got:0 });
+    }
+    x += w;
+  };
+  /* Both arcs are clamped into the play area. A double jump can reach higher
+     than the ceiling -- that is fine, he bonks it -- but an EGG above the
+     ceiling is a promise the game will not keep, and the one place that must
+     not happen is the screen that is teaching the controls. */
+  const roof = rideCeil() - 90;
+  put(7, span1, Math.min(a1*0.68, roof));
+  x += game.speed*0.55;                             // land, breathe, and go again
+  put(11, span2, Math.min(a1*0.94, roof));
+  const clear = (x - player.x)/game.speed + 0.7;    // when the course is behind him
+  game.spawnT = Math.max(game.spawnT, clear);
+  game.crowT  = Math.max(game.crowT,  clear + 0.8);
+  game.eggT   = Math.max(game.eggT,   clear);
+  game.rideTeach = clear;
+  return clear;
 }
 /* Losing it is not dying. The balloons go, the basket drops away behind him,
    and for RIDE_GRACE seconds nothing can touch him -- without that he is
@@ -3791,7 +4174,6 @@ function startRide(){
    that is stopped by a plant reads as a bug -- the key art promises it smashes
    through things, and this is the thing it smashes through. Everything else in
    the table is a fence, and a fence is for jumping. */
-const SMASHABLE = ['corn_one', 'corn_clump', 'corn_row'];
 function smash(o){
   o.hitBy = true;                      // smashed: it stops colliding, it does not fly
   addShake(7); S.step();
@@ -3852,6 +4234,15 @@ function updateNpcHits(dt){
 }
 function updateRide(dt){
   updateNpcHits(dt);
+  /* The picture of the grid, chasing the fact of it. Down fast, because a
+     power cut is not a dimmer; back up slower, and well inside RIDE_GRACE, so
+     the wires are visibly live again before they can touch him. */
+  const tgt = riding() ? 0 : 1;
+  const now = (game.gridT === undefined) ? 1 : game.gridT;
+  const step = dt / (tgt ? 0.42 : 0.22);
+  game.gridT = tgt > now ? Math.min(tgt, now + step) : Math.max(tgt, now - step);
+  game.rideTeach = Math.max(0, (game.rideTeach||0) - dt);
+  player.rideLand = Math.max(0, (player.rideLand||0) - dt);
   game.rideGrace = Math.max(0, (game.rideGrace||0) - dt);
   if(riding()){
     game.ride -= dt;
@@ -3877,16 +4268,31 @@ function updateRide(dt){
     spawnBasketDrop();
   }
 }
+/* Which of the four. The whole state is already in the physics -- on the
+   ground or not, and going up or coming down -- so this reads it rather than
+   running a timer of its own, and the animation cannot drift out of step with
+   what the truck is actually doing. `rideLand` is the only clock, and it is
+   there because the compressed landing frame has to hold for a beat after the
+   tyres are down or nobody sees it. */
+function truckFrame(){
+  const p = player;
+  if(p.onGround) return (p.rideLand||0) > 0 ? 3 : 0;
+  return p.vy < -240 ? 1 : 2;
+}
 function drawTruck(){
   const g = truckGeom();
   const x = player.x - cam.x, y = GROUND - player.y;
+  const f = TRUCK_FR[truckFrame()];
+  const k = g.tw / TRUCK_FR[0].w;      // ONE scale, off the driving frame's width
+  const w = f.w*k, h = f.h*k;
+  const L = x - w*0.5, T = y + g.sink - h;      // where this frame's picture sits
   /* The exhaust fire is drawn rather than painted, because it has to flicker
      and because it is the part that reaches back to whatever he is passing --
      the same flame the livestock react to, so its length is a number the rest
-     of the game can read. */
-  /* The pipes sit at the back, a bit under half way up the picture. */
-  drawExhaust(x - g.tw*0.46, y - g.th*0.42, g.tw*0.55*flameLen());
-  if(TRUCK.ready) ctx.drawImage(TRUCK.img, x - g.tw*0.5, y - g.th + g.sink, g.tw, g.th);
+     of the game can read. It comes out of the pipes THIS frame drew, which is
+     the only way it stays in them through a tilt. */
+  drawExhaust(L + f.px*w, T + f.py*h, g.tw*0.42*flameLen()*f.fl);
+  if(TRUCK.ready) ctx.drawImage(f.img, L, T, w, h);
 }
 /* 0..1 of a truck length, pulsing, and longer for the moment after a jump --
    the whole point of a monster truck is that the noise comes out of the back. */
@@ -3894,34 +4300,69 @@ function flameLen(){
   const kick = clamp((player.rideJumps ? 1 : 0) * (player.vy < -200 ? 1 : 0), 0, 1);
   return 0.55 + 0.16*Math.sin(game.t*38) + 0.10*Math.sin(game.t*23) + kick*0.35;
 }
+/* THREE JETS, one per pipe, each a red body with an orange and then a yellow
+   core inside it. It used to be three flames of three different colours at
+   three different heights, which is a picture of one flame fraying rather than
+   of a three-pipe exhaust -- and the brightest of them was drawn first, so the
+   yellow ended up UNDER the red.
+
+   Everything scales off `len`. The old thickness was a flat 15 pixels, decided
+   when the rig was a different size, and since the truck is sized off the play
+   area that made the flame a thread on a tall screen and a slab on a short
+   one. */
 function drawExhaust(x, y, len){
   if(len <= 0) return;
-  for(let k = 0; k < 3; k++){
-    const t = k/2, w = len*(1 - t*0.40), h = 15*(1 - t*0.28);
-    ctx.beginPath();
-    ctx.moveTo(x, y - h*0.5 - k*13);
-    ctx.quadraticCurveTo(x - w*0.55, y - h*1.2 - k*13, x - w, y - k*13);
-    ctx.quadraticCurveTo(x - w*0.55, y + h*1.2 - k*13, x, y + h*0.5 - k*13);
-    ctx.closePath();
-    ctx.fillStyle = k === 0 ? 'rgba(255,238,140,.95)'
-                  : k === 1 ? 'rgba(255,150,40,.85)'
-                            : 'rgba(226,74,32,.55)';
-    ctx.fill();
+  const gap = Math.max(5, len*0.15), h = Math.max(5, len*0.17);
+  for(let k = -1; k <= 1; k++){
+    const w = len*(1 - Math.abs(k)*0.22), yy = y + k*gap;
+    const tongue = (ww, hh, col) => {
+      ctx.beginPath();
+      ctx.moveTo(x, yy - hh*0.5);
+      ctx.quadraticCurveTo(x - ww*0.55, yy - hh*1.15, x - ww, yy);
+      ctx.quadraticCurveTo(x - ww*0.55, yy + hh*1.15, x, yy + hh*0.5);
+      ctx.closePath(); ctx.fillStyle = col; ctx.fill();
+    };
+    tongue(w,      h,      'rgba(226,74,32,.55)');
+    tongue(w*0.72, h*0.74, 'rgba(255,150,40,.88)');
+    tongue(w*0.40, h*0.50, 'rgba(255,240,150,.95)');
   }
 }
-/* The pickup: the truck, small, bobbing, with the glow the eggs use so it
-   reads as something to go and get rather than something to avoid. */
-function drawTruckDrop(){
-  const d = game.drop; if(!d || !TRUCK.ready) return;
+/* THE PICKUP IS A MYSTERY EGG, not a picture of the truck.
+
+   A tiny truck floating in the sky is a screenshot of the reward, and a
+   screenshot of the reward is the least interesting thing you can put in front
+   of somebody: it answers the question before they have gone and got it. An
+   egg with a question mark on it is the same promise with the answer left in,
+   and it belongs to this game twice over -- eggs are already the currency, and
+   the joke is that a chicken's mystery box is an egg.
+
+   It is drawn as the object it is: bobbing, tilting, with a halo that breathes
+   and four sparkles going round it, so it reads as a thing worth crossing the
+   screen for at any size. */
+function drawDrop(){
+  const d = game.drop; if(!d || !MEGG.ready) return;
   const sx = d.x - cam.x;
-  if(sx < -200 || sx > VW + 200) return;
-  const w = GROUND*0.22, h = w*(546/815);
-  const yy = GROUND - d.y + Math.sin(game.t*2.6)*7;
+  if(sx < -240 || sx > VW + 240) return;
+  const h  = GROUND*0.26, w = h*(MEGG.img.naturalWidth/MEGG.img.naturalHeight);
+  const yy = GROUND - d.y + Math.sin(game.t*2.4)*9;
+  const pulse = 0.5 + 0.5*Math.sin(game.t*3.1);
   ctx.save();
-  ctx.globalAlpha = 0.30; ctx.fillStyle = C.gold;
-  ctx.beginPath(); ctx.ellipse(sx, yy - h*0.4, w*0.62, h*0.72, 0, 0, TAU); ctx.fill();
+  ctx.globalAlpha = 0.20 + 0.14*pulse; ctx.fillStyle = C.gold;
+  ctx.beginPath(); ctx.ellipse(sx, yy, w*(0.78+0.10*pulse), h*(0.72+0.09*pulse), 0, 0, TAU);
+  ctx.fill();
   ctx.restore();
-  ctx.drawImage(TRUCK.img, sx - w*0.5, yy - h, w, h);
+  ctx.save();
+  ctx.translate(sx, yy); ctx.rotate(Math.sin(game.t*1.7)*0.13);
+  ctx.drawImage(MEGG.img, -w*0.5, -h*0.5, w, h);
+  ctx.restore();
+  for(let i=0;i<4;i++){
+    const a = game.t*1.5 + i*TAU/4;
+    const r = w*0.62, px = sx + Math.cos(a)*r, py = yy + Math.sin(a)*r*0.85;
+    const tw = 0.35 + 0.65*Math.abs(Math.sin(game.t*4 + i*1.9));
+    ctx.globalAlpha = tw; ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath(); ctx.arc(px, py, 3.2*tw + 1.4, 0, TAU); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
 }
 function die(o){
   if(game.mode!=='play') return;
@@ -3930,7 +4371,7 @@ function die(o){
   game.freeze = 0.11; addShake(30); game.flash=0.75;
   slowmo(0.32, 0.55);
   S.hit();
-  if(o && o.spec && o.spec.elec){ S.zap(); game.flash = 1; }
+  if(o && o.spec && o.spec.elec && o.spec.wired !== false){ S.zap(); game.flash = 1; }
   if(o && o.crow) S.crowhit();         // feathers and a beak, not wood
   if(navigator.vibrate) try{ navigator.vibrate([26,40,60]); }catch(e){}
   const gy = GROUND;
@@ -4223,7 +4664,7 @@ function updatePlay(dt){
   }
   p.nearCool = Math.max(0, p.nearCool-dt);
   p.kickT = Math.max(0, (p.kickT||0)-dt);
-  const ceilH = GROUND - CEIL;                       // usable altitude, in world units
+  const ceilH = riding() ? rideCeil() : GROUND - CEIL;   // usable altitude, in world units
 
   /* THE movement model. Gravity always pulls; holding adds constant upward
      thrust; releasing removes it that same frame. Drag makes velocity ease
@@ -4259,7 +4700,7 @@ function updatePlay(dt){
      ceiling on the truck's jump. VY_UP is -2775 at this pace, so raising the
      jump impulse from 3000 to 3250 changed the apex by four units: both were
      being clipped on the frame they were applied. The truck gets its own rail. */
-  const vUp = riding() ? VY_UP*1.55 : VY_UP;
+  const vUp = riding() ? VY_UP*RIDE_VUP : VY_UP;
   p.vy = clamp(vT + (v0 - vT)*e, vUp, VY_DOWN);
   p.y -= vT*dt + (v0 - vT)*(1 - e)/k;                // exact ∫v dt over the step
 
@@ -4290,11 +4731,31 @@ function updatePlay(dt){
     if(!p.onGround){
       p.onGround = true; p.state='land'; p.stateT=0;
       p.landT = clamp(impact/(1200*PACE), 0.35, 1);
-      S.land(); addShake(clamp(impact/(220*PACE), 2, 9)); game.camYT = 14;
-      // and at speed he does not just land, he runs it off
-      if(impact > 420*PACE) S.scuff(clamp(impact/(1400*PACE), 0, 1));
-      spark(p.x-6, GROUND, 14, {col:'rgba(255,242,222,.7)', a0:Math.PI*1.05,a1:Math.PI*1.95, s0:110,s1:330, l0:0.22,l1:0.55, r0:3,r1:9, g:520});
-      if(impact>700*PACE) featherBurst(p.x, GROUND-24, 3, 190);
+      if(riding()){
+        /* THE SLAM. A monster truck coming down is the loudest thing in the
+           run and it was landing like a bird: a small puff and a two-unit
+           shake. Twice the camera kick, a wide skirt of dust off both axles,
+           and the compressed frame held for a quarter second.
+
+           This is also where the double jump is charged again. It never was --
+           `rideJumps` was set to 0 once, in startRide, so the second press
+           worked exactly one time per pickup and every landing after that left
+           you with a single jump and no way to know why. */
+        p.rideLand = 0.26;
+        p.rideJumps = 0;
+        S.land(); addShake(clamp(impact/(150*PACE), 5, 16)); game.camYT = 22;
+        smoke(p.x - 26, GROUND - 4, 13,
+              {s0:170, s1:440, r0:18, r1:37, l0:0.42, l1:0.95});
+        smoke(p.x + 130, GROUND - 4, 5, {s0:110, s1:290, r0:14, r1:28});
+        spark(p.x, GROUND, 10, {col:'rgba(198,176,146,.85)', a0:Math.PI*1.05,a1:Math.PI*1.95,
+              s0:150,s1:430, l0:0.2,l1:0.5, r0:3,r1:8, g:700});
+      } else {
+        S.land(); addShake(clamp(impact/(220*PACE), 2, 9)); game.camYT = 14;
+        // and at speed he does not just land, he runs it off
+        if(impact > 420*PACE) S.scuff(clamp(impact/(1400*PACE), 0, 1));
+        spark(p.x-6, GROUND, 14, {col:'rgba(255,242,222,.7)', a0:Math.PI*1.05,a1:Math.PI*1.95, s0:110,s1:330, l0:0.22,l1:0.55, r0:3,r1:9, g:520});
+        if(impact>700*PACE) featherBurst(p.x, GROUND-24, 3, 190);
+      }
     }
   } else if(p.y > 2){
     if(p.onGround){ p.onGround=false; p.state='fly'; p.stateT=0; S.takeoff(); }
@@ -4341,7 +4802,7 @@ function updatePlay(dt){
     const overlapX = pr > o.x-ow && pl < o.x+ow;
     if(overlapX && !o.hitBy && o.spec.hit(o, pl+8, pr-8, pb+8, pt-8)){
       if(game.rideGrace > 0){ /* just lost it; let him get clear */ }
-      else if(riding() && SMASHABLE.indexOf(o.key) >= 0) smash(o);
+      else if(riding() && o.spec.smash) smash(o);
       else if(riding()) loseRide(o);
       else die(o);
     }
@@ -5247,6 +5708,16 @@ function drawParticles(){
       ctx.fillStyle=q.col; ctx.fill();
       ctx.lineWidth=2.5; ctx.strokeStyle='rgba(21,8,39,.55)'; ctx.stroke();
       ctx.restore();
+    } else if(q.kind==='smoke'){
+      /* Two soft discs, the outer one wider and fainter, so the edge of a puff
+         is a gradient rather than a circle. It fades on a square rather than
+         straight, because dust thins fastest at the end. */
+      const R = q.r + q.grow*q.t;
+      ctx.globalAlpha = a*a*0.9;
+      ctx.fillStyle = q.col;
+      ctx.beginPath(); ctx.arc(q.x-cam.x, q.y, R, 0, TAU); ctx.fill();
+      ctx.globalAlpha = a*a*0.45;
+      ctx.beginPath(); ctx.arc(q.x-cam.x - R*0.22, q.y - R*0.18, R*1.34, 0, TAU); ctx.fill();
     } else if(q.kind==='egg'){
       ctx.save(); ctx.translate(q.x-cam.x, q.y-q.r); ctx.rotate(q.rot);
       ctx.beginPath(); ctx.ellipse(0,0,q.r*0.78,q.r,0,0,TAU);
@@ -5326,7 +5797,7 @@ function render(){
   drawGround();
   drawObstacles();
   drawEggs();
-  drawTruckDrop();
+  drawDrop();
 
   // character
   let px = (game.mode==='menu') ? PX : player.x - cam.x;
@@ -5349,12 +5820,14 @@ function render(){
     drawChicken(x, GROUND, player.pose);
   } else {
     drawPlayerShadow(px, py);
-    /* Riding, he is lifted to the rim of the basket and the truck is drawn
-       after him, so the wire front crosses his legs and his head and shoulders
-       clear the top. Drawn at his feet he simply vanishes inside it -- the
-       basket is taller than he is. */
-    drawChicken(px, GROUND - py - (riding() ? truckGeom().th*0.50 : 0), player.pose);
+    /* Nugget is PAINTED INTO the truck frames, so while he is riding the rig
+       is the character and there is nothing to compose. He used to be drawn
+       separately and lifted half a truck up so his head cleared the rim, which
+       works for exactly one pose: the moment the rig tilts for a jump, a bird
+       hovering at a fixed offset over a tilted cart is a bird standing on
+       nothing. */
     if(riding()) drawTruck();
+    else drawChicken(px, GROUND - py, player.pose);
     /* ?hit=1 shows NUGGET'S box over Nugget, next to the hazards' own. The
        question this answers is the only one that matters about a hitbox --
        does it look like the thing it is standing in for -- and it cannot be
@@ -5429,6 +5902,22 @@ function boot(){
   if(/[?&]auto/.test(location.search)) setTimeout(startIntro, 60);
   if(/[?&]demo/.test(location.search)) game.demo = true;
   if(/[?&]dbg/.test(location.search)) game.dbg = true;
+  /* WITH ?dbg THE INSIDES COME OUT.
+
+     Everything in this file lives inside one IIFE, which is exactly right for
+     a page that ships as a single HTML file and exactly wrong for measuring
+     it: no console, screenshot harness or test runner can reach a single
+     number in here. The cost of that shows up as the pile of ?xxxtest blocks
+     below -- each one exists because a question could only be answered by
+     code written INSIDE the closure and printed into a DOM panel.
+
+     This is the hook that makes the next one of those unnecessary. It is
+     behind the debug flag, so a shipped page still exposes nothing at all. */
+  if(game.dbg) window.DGH = { game, player, cam, rag, OB, S, A, PROPS,
+    startRun, startQuick, startIntro, toMenu, updatePlay, thrustOn, thrustOff,
+    startRide, loseRide, spawnBasketDrop, spawnElec, spawnPattern, spawnEggs,
+    layRideCourse, rideApex, rideRise, rideCeil, truckGeom, truckFrame,
+    elecDist, riding, wireHot, smoke, spark, pop, updateParticles, render };
   const it=/[?&]introt=([0-9.]+)/.exec(location.search);
   if(it){ game.holdIntro = parseFloat(it[1]); }   // freeze the intro to look at a beat
   const sl=/[?&]slow=([0-9.]+)/.exec(location.search);
@@ -5758,6 +6247,149 @@ function boot(){
           Object.keys(kinds).sort().map(k=>k+':'+kinds[k]).join(' '));
       }
       out.unshift(bad ? ('OBSTACLES: '+bad+' PROBLEMS') : 'OBSTACLES: ok, every opening flyable');
+      const el=document.getElementById('selftest');
+      el.style.display='block'; el.style.color = bad ? '#FF456E' : '#0f0';
+      el.textContent = out.join(String.fromCharCode(10));
+    }, 60);
+  }
+  /* CAN THE TRUCK ACTUALLY CLEAR ITS OWN ROSTER, and by how much.
+
+     ?obtest asks whether every flying piece leaves a corridor. This asks the
+     driving question, which is not the same shape at all: a roadblock has no
+     corridor, it has a jump, and a jump is only fair if there is a WINDOW of
+     moments in which starting it works. One frame of tolerance and one second
+     of tolerance both "clear" -- and only one of them is a game.
+
+     So it does not reason about the arc. It drives: pins the ride on, puts one
+     piece on an empty road, presses at a given distance, and runs the real
+     update loop until the piece is behind. Sweeping the press distance gives
+     the window in pixels, and the window is the number that matters. Anything
+     under about a truck's length is a piece nobody can read in time.
+
+     It checks the power-down the same way -- by asking a live zapper whether
+     it would kill something standing inside it, with the truck on and off --
+     because "the wires turn off" is a claim about elecDist, not about paint.  */
+  if(/[?&]ridetest/.test(location.search)){
+    setTimeout(()=>{
+      const out=[]; let bad=0;
+      const ROSTER = ['r_tyres','r_trough','r_crates','r_bales','r_drums','r_wagon'];
+      const dt = 1/120;
+      /* One attempt: press at `lead` pixels of separation, optionally press a
+         second time at the top, and report whether the ride survived. A
+         smashable piece survives by going through it, which is clearing it. */
+      /* A piece is only ever met at or above the pace its tier unlocks at, and
+         the pace is what decides whether a jump crosses it -- the arc is a
+         fixed number of SECONDS, so slow running covers less road than fast.
+         Testing everything at a standing start therefore fails the wide tier-2
+         pieces for a speed at which the player will never see them. These are
+         the runT values tierNow() turns into each tier. */
+      const TIER_T = [0, 9, 22, 40, 64];
+      function attempt(key, lead, dbl){
+        startQuick();
+        game.runT = TIER_T[OB[key].tier || 0];
+        game.obstacles.length = 0; game.eggs.length = 0; game.crows.length = 0;
+        game.ride = 1e9; game.rideGrace = 0; game.diff = 0.3;
+        player.y = 0; player.vy = 0; player.onGround = true; player.rideJumps = 0;
+        const o = spawnElec(key, 5.0);
+        let press = 0;
+        for(let i=0;i<1400;i++){
+          const d = o.x - player.x;
+          if(press===0 && d <= lead){ thrustOn(); thrustOff(); press = 1; }
+          else if(dbl && press===1 && !player.onGround && player.vy > -90){
+            thrustOn(); thrustOff(); press = 2; }
+          updatePlay(dt);
+          game.spawnT = 1e9; game.eggT = 1e9; game.crowT = 1e9;   // nothing else joins in
+          if(game.ride < 1e8) return false;                        // knocked off
+          game.ride = 1e9;
+          if(o.x < player.x - 420) break;
+        }
+        return true;
+      }
+      /* The widest run of consecutive press distances that all work. A piece
+         that clears at 300 and at 900 but not between is not a 600 window. */
+      function window(key, dbl){
+        let best = 0, bestAt = null, run = 0, from = 0;
+        for(let lead = 60; lead <= 1500; lead += 30){
+          let ok; try{ ok = attempt(key, lead, dbl); }
+          catch(e){ out.push(key+' THREW '+e.message); bad++; return [0,null]; }
+          if(ok){ if(!run) from = lead; run += 30;
+                  if(run > best){ best = run; bestAt = [from, lead]; } }
+          else run = 0;
+        }
+        return [best, bestAt];
+      }
+      const MIN_WIN = 240;                     // about a truck length of tolerance
+      out.push('GROUND '+Math.round(GROUND)+'  CEIL '+Math.round(CEIL)+
+               '  band '+Math.round(GROUND-CEIL)+'  PACE '+PACE+
+               '  truck '+Math.round(truckGeom().tw)+'x'+Math.round(truckGeom().th));
+      for(const key of ROSTER){
+        const [w1, at1] = window(key, false);
+        const [w2] = w1 >= MIN_WIN ? [w1] : window(key, true);
+        const spec = OB[key];
+        const line = key + '  top ' + spec.top + (spec.smash ? ' (smash)' : '') +
+                     '  window ' + w1 + 'px' + (at1 ? ' @'+at1[0]+'-'+at1[1] : '') +
+                     (w1 >= MIN_WIN ? '' : '  double:' + w2 + 'px');
+        if(Math.max(w1, w2) < MIN_WIN){ bad++; out.push('TIGHT  ' + line); }
+        else out.push('ok     ' + line);
+        if(spec.wired !== false){ bad++; out.push(key + ' IS WIRED -- roadblocks must not be'); }
+      }
+      /* Two pieces in one pattern are a different question from one piece.
+         Each is jumpable on its own; what decides whether the PAIR is fair is
+         whether there is time to land between them and leave the ground again,
+         and that is a property of the table rather than of the pieces. */
+      const air = rideRise(RIDE_JUMP) * 2.1;
+      let tightest = 1e9, worstPat = '';
+      for(const pat of RIDE_PAT){
+        let t = 0, last = null;
+        for(const st of pat.seq){
+          t += st.dt;
+          if(last !== null && t - last < tightest){
+            tightest = t - last; worstPat = pat.seq.map(q => q.k).join(' + ');
+          }
+          last = t;
+        }
+      }
+      out.push((tightest >= air ? 'ok     ' : 'TIGHT  ') + 'closest pair in a pattern ' +
+               tightest.toFixed(2) + 's, a jump takes ' + air.toFixed(2) + 's  (' + worstPat + ')');
+      if(tightest < air) bad++;
+      /* The power-down, asked of the collision rather than the paint: stand a
+         box on top of a live wire and see whether it dies. */
+      try{
+        startQuick(); game.obstacles.length = 0;
+        const z = spawnElec('zap_h', 5.0);
+        const b = z.spec.build(z, game.t);
+        const w = b.wires[0];
+        const cx = z.x + (w[0]+w[2])/2, cy = (w[1]+w[3])/2;
+        game.ride = 0;
+        const onLive = elecDist(z, cx-20, cx+20, cy-20, cy+20) <= 0;
+        game.ride = 1e9;
+        const onDead = elecDist(z, cx-20, cx+20, cy-20, cy+20) <= 0;
+        game.ride = 0;
+        if(!onLive){ bad++; out.push('WIRE NOT LETHAL with the power on'); }
+        if(onDead){ bad++; out.push('WIRE STILL LETHAL in the truck'); }
+        if(onLive && !onDead) out.push('ok     the grid goes down in the truck');
+      }catch(e){ bad++; out.push('grid test THREW ' + e.message); }
+      /* And the lesson: two arcs, the first inside one jump and the second
+         plainly not, laid out of the jump itself. */
+      try{
+        startQuick(); game.eggs.length = 0; game.ride = 1e9;
+        layRideCourse();
+        const a1 = rideApex(RIDE_JUMP), a2 = rideApex(RIDE_JUMP2);
+        const roof = rideCeil() - 90;
+        const xs = game.eggs.map(e => e.x), ys = game.eggs.map(e => e.y - 74);
+        const p1 = Math.max(...ys.slice(0, 7)), p2 = Math.max(...ys.slice(7));
+        const s1 = xs[6] - xs[0], s2 = xs[xs.length-1] - xs[7];
+        out.push('jump ' + Math.round(a1) + ' + ' + Math.round(a2) +
+                 ';  arc 1 peak ' + Math.round(p1) + ' over ' + Math.round(s1) +
+                 ';  arc 2 peak ' + Math.round(p2) + ' over ' + Math.round(s2) +
+                 ';  roof ' + Math.round(roof));
+        if(p1 > a1*0.90){ bad++; out.push('first arc needs a perfect jump'); }
+        if(p1 > roof || p2 > roof){ bad++; out.push('an arc goes through the ceiling'); }
+        if(s2 < s1*1.35){ bad++; out.push('second arc fits inside one jump'); }
+        game.ride = 0;
+      }catch(e){ bad++; out.push('course test THREW ' + e.message); }
+      toMenu();
+      out.unshift(bad ? ('TRUCK: '+bad+' PROBLEMS') : 'TRUCK: ok, every roadblock has room');
       const el=document.getElementById('selftest');
       el.style.display='block'; el.style.color = bad ? '#FF456E' : '#0f0';
       el.textContent = out.join(String.fromCharCode(10));
