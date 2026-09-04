@@ -3872,11 +3872,29 @@ function updatePlay(dt){
   /* The same three lines run the basket; only the constants change. A second
      movement model would be a second thing to keep in step with this one. */
   const rG = riding() ? RIDE_G : 1, rT = riding() ? RIDE_T : 1, rD = riding() ? RIDE_D : 1;
-  p.vy += GRAV*rG*dt;
-  if(p.thrusting) p.vy -= THRUST*rT*dt;
-  p.vy -= p.vy * DRAG*rD * dt;
-  p.vy = clamp(p.vy, VY_UP, VY_DOWN);                // safety rails only
-  p.y -= p.vy*dt;
+  /* Solved, not stepped.
+
+     `dv/dt = a - k*v` is the whole movement model, and it has a closed form:
+     the velocity eases toward a/k on an exponential. Integrating it as
+     `v -= v*k*dt` is the Euler approximation of that exponential, and its
+     error grows with the step -- so the same half-second hold reached a
+     different altitude on a 60Hz phone than on a 144Hz one. Measured before
+     this change: 4.13% spread across 60/90/120/144Hz, about 28 units of
+     altitude, against corridors that are 330 wide. Nobody reports that as a
+     bug; they just say the game feels wrong on their device.
+
+     The closed form has no step error at all, so every refresh rate lands on
+     the same number, and the position integral is exact for the same reason
+     -- moving by `v*dt` after solving for v would put the step error straight
+     back into y. Two exp() calls a frame and no accumulator, which keeps the
+     one loop this game has. */
+  const acc = GRAV*rG - (p.thrusting ? THRUST*rT : 0);
+  const k   = DRAG*rD;
+  const vT  = acc/k;                                 // terminal speed, this input
+  const e   = Math.exp(-k*dt);
+  const v0  = p.vy;
+  p.vy = clamp(vT + (v0 - vT)*e, VY_UP, VY_DOWN);    // rails are a safety net only
+  p.y -= vT*dt + (v0 - vT)*(1 - e)/k;                // exact ∫v dt over the step
 
   if(p.thrusting){                                   // wingbeat is animation only
     p.flapT += dt*FLAP_HZ;
@@ -4922,6 +4940,20 @@ function render(){
     /* After him, so the rim of the basket crosses his legs and the balloons
        ride over his head -- he is IN it rather than next to it. */
     if(riding()) drawBasket();
+    /* ?hit=1 shows NUGGET'S box over Nugget, next to the hazards' own. The
+       question this answers is the only one that matters about a hitbox --
+       does it look like the thing it is standing in for -- and it cannot be
+       answered by reading two numbers in different files. Solid is the box
+       the broad phase uses; dashed is what actually kills, 8 units in on
+       every side, which is the forgiveness. */
+    if(HITDBG){
+      ctx.save();
+      ctx.strokeStyle='rgba(64,226,255,0.95)'; ctx.lineWidth=2.5;
+      ctx.strokeRect(px-48, GROUND-py-150, 96, 142);
+      ctx.setLineDash([7,5]); ctx.strokeStyle='rgba(255,255,255,0.75)'; ctx.lineWidth=2;
+      ctx.strokeRect(px-40, GROUND-py-142, 80, 126);
+      ctx.restore();
+    }
   }
 
   if(inCage || cageSX > -VW*1.3) drawCageFront(cageSX);
@@ -4998,7 +5030,9 @@ function boot(){
     setTimeout(()=>{
       const dt=1/60, out=[];
       function run(name, script, n){
-        releaseJump(); startRun(); const log=[];
+        releaseJump(); startRun();
+        game.spawnT=1e9; game.eggT=1e9; game.crowT=1e9;   // physics only
+        const log=[];
         for(let i=0;i<n;i++){
           script(i);
           updatePlay(dt);
@@ -5013,7 +5047,50 @@ function boot(){
       run('MEDIUM ', i=>{ if(i===2) thrustOn(); if(i===32) thrustOff(); }, 120);
       run('LONG   ', i=>{ if(i===2) thrustOn(); if(i===70) thrustOff(); }, 120);
       run('PULSED ', i=>{ if(i%16===2) thrustOn(); if(i%16===8) thrustOff(); }, 120);
-      document.getElementById('selftest').textContent = out.join(String.fromCharCode(10));
+
+      /* ---- frame-rate independence -------------------------------------
+         The same hold, in SECONDS, replayed at four refresh rates. If the
+         integrator is honest these land on the same altitude; if it is not,
+         the game is a different game on a 144Hz phone -- and that is the kind
+         of bug nobody reports, they just say it feels wrong on their device.
+         Scripted by time rather than by frame index, or each rate would be
+         holding for a different length and the test would prove nothing. */
+      /* The hold is counted in FRAMES, and the durations below are whole
+         frames at all four rates (1/6, 1/3, 1/2 and 1s are integers at 60, 90,
+         120 and 144). Scripted against a wall clock instead, 0.20s is 12
+         frames at 60Hz and 28.8 at 144 -- the rates then hold for different
+         lengths and the test reports its own sampling as a physics fault,
+         which it did on the first run of this. */
+      function apexAt(hz, hold){
+        const h = 1/hz, n = Math.round(1.9*hz), on = Math.round(hold*hz);
+        releaseJump(); startRun();
+        game.spawnT=1e9; game.eggT=1e9; game.crowT=1e9;
+        let apex = 0;
+        for(let i=0;i<n;i++){
+          if(i < on) thrustOn(); else thrustOff();
+          updatePlay(h);
+          if(player.y > apex) apex = player.y;
+        }
+        return apex;
+      }
+      const RATES = [60, 90, 120, 144];
+      let worst = 0;
+      for(const hold of [1/6, 1/3, 0.5]){
+        const a = RATES.map(hz=>apexAt(hz, hold));
+        const lo = Math.min.apply(null,a), hi = Math.max.apply(null,a);
+        const spread = hi ? (hi-lo)/hi*100 : 0;
+        worst = Math.max(worst, spread);
+        out.push('hold '+hold.toFixed(2)+'s  apex '+
+          a.map((v,i)=>RATES[i]+'Hz:'+Math.round(v)).join('  ')+
+          '   spread '+spread.toFixed(2)+'%');
+      }
+      out.push(worst < 1 ? 'PHYSICS: frame-rate independent (worst '+worst.toFixed(2)+'%)'
+                         : 'PHYSICS: FRAME-RATE DEPENDENT, worst '+worst.toFixed(2)+'%');
+      const el = document.getElementById('selftest');
+      el.style.display='block';
+      el.style.color = worst < 1 ? '#0f0' : '#FF456E';
+      el.textContent = out.join(String.fromCharCode(10));
+      window.__selftest = out.join(' | ');
     }, 40);
   }
   /* Every sound, actually played. A throwing WebAudio call used to abort
