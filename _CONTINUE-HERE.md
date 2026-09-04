@@ -1042,6 +1042,15 @@ dropped frame every 26s, for tens of MB of canvas held on a phone.
     python tools/cage_art.py                # recut the intro barn and its door
     python tools/farm_strip.py              # the old one-image background
     python tools/build_apex.py              # rebuild the barn's roof from sheets/v2/barn_raw.png
+    python tools/opt_audio.py --write       # re-encode the music small, both formats
+    python tools/loop_menu.py [--write]     # cut the menu track to one loop of itself
+    python tools/audio_report.py            # bitrate, channels and tag weight, no ffmpeg needed
+
+There is an ffmpeg on this machine even though `ffmpeg` is not on PATH: the
+`imageio_ffmpeg` package bundles one, and `imageio_ffmpeg.get_ffmpeg_exe()`
+hands back the path. Every audio tool here goes through that. Do not conclude
+there is no encoder available -- that was the assumption `audio_report.py` was
+written under, and it is wrong.
 
 `clip.py` uses `Page.startScreencast`, which timestamps frames, so the GIF keeps
 the game's real timing. Screenshot-per-frame does not -- each capture stalls the
@@ -1360,6 +1369,28 @@ matches the median beak width, then hung off the beak TIP. After that the head
 holds still and only the wings beat. `python tools/cut_crow.py --preview` writes
 a strip and a GIF to check that by eye.
 
+### How many, and how soon
+
+Tuned down hard after the first play with them in, and the numbers are all in
+one place at the top of the section:
+
+| | was | now | why |
+|---|---|---|---|
+| `CROW_T0` | 24s | **40s** | the run has a vehicle, a livestock lesson and four hazard families to teach before it needs a homing one as well |
+| `CROW_FLOCK_M` | 1500m | **3000m** | a screen with two locked badges on it is a different game from the one the first minute teaches |
+| gap between volleys | 6.5-11s | **11-17s** | at 2000m the old numbers were one every five seconds, which is a rhythm rather than an event |
+| how much the gap closes | to 0.60 | **to 0.75** | same reason, at the far end of a run |
+| badge radius | `VH*0.086` | **`VH*0.058`** | it was the size of the chicken, for something that is one dodge |
+
+**A crow takes the vehicle, not the run.** It is a hazard, and while there is a
+vehicle to take, a hazard takes it -- being killed outright by one thing and
+merely dismounted by another is the kind of inconsistency a player reads as a
+bug in their own understanding. Both the obstacle loop and the crow loop ask
+`rideBox()` for what can be hit, because two definitions of that drift apart:
+the first version of this had the crow loop keeping the obstacle loop's `pb`
+and `pt` names after its own box was renamed, which threw `pb is not defined`
+every frame a crow lined up with him.
+
 ## The intro barn, and the neighbours in the field
 
 The barn is `sheets/v2/cage_scene.webp` and its door is `art/cage_door.webp`,
@@ -1464,6 +1495,39 @@ by one thing and merely dismounted by another is the kind of inconsistency a
 player reads as a bug in their own understanding. Both the obstacle loop and
 the crow loop ask `rideBox()`, because two definitions of what can be hit
 drift.
+
+## The music, and how small it got
+
+Three passes, in this order, and the order is the point -- each one was only
+worth doing because the one before it had been done properly.
+
+1. **Format and bitrate** (`tools/opt_audio.py`). The masters were 192 kbps
+   joint-stereo for music that plays under sound effects on a phone speaker.
+   Opus 64k for Android and every current browser, MP3 96k as the fallback for
+   Safari older than 17.4, picked by `MUS_EXT`. The 192k originals live in
+   `audio/src/` -- they are the only masters there are, and re-encoding a 96k
+   file later to chase another 20% would be a third generation of the same
+   artefacts.
+2. **Length** (`tools/loop_menu.py`). The menu track was a three-minute piece
+   playing behind a screen nobody looks at for more than a few seconds, on a
+   loop. Cutting it to one loop took it from 2127 KB to 188 KB (MP3) and 1610
+   to 159 (Opus) -- about 22x smaller than the master it started as.
+3. **Channels.** Mono, for the one place in the game where the music is the
+   only thing playing.
+
+**Where to cut is measured, and the measurement has two halves.** The track is
+decoded to a coarse energy envelope and autocorrelated: music that repeats
+every N seconds peaks at N. That alone is not enough, and the way it fails is
+worth remembering -- the longest well-correlating period here was 48s, and the
+cut it produced measured **8661 RMS at the head against 2357 at the tail**, an
+audible drop every time round. Correlating well across a whole track says
+nothing about whether the particular cut point can be come back to. So the seam
+is scored as well, and 24s wins: it correlates best AND matches its own start
+to within 4%.
+
+The trade is that the tune goes round more often. For menu music behind a
+static screen that is the right way round; re-cut at another period with the
+tool if it ever stops being.
 
 ## Next
 
