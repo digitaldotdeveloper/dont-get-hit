@@ -10,9 +10,10 @@ A.ctx/master/sfxGain for an OfflineAudioContext and calls the REAL function, so
 what comes out is the synthesis that ships -- and written next to a peak level.
 
 It also joins the runs that only make sense as runs: eight footsteps at a walk
-and at a sprint, a wingbeat cycle, the alert tracking then locking, and a
-twelve-egg streak, which is the only way to hear whether the pentatonic ladder
-actually lands anywhere.
+and at a sprint, the alert tracking then locking, and a twelve-egg streak, which
+is the only way to hear whether the pentatonic ladder actually lands anywhere.
+There is no wingbeat here -- the flap is silent by design, so the flight montage
+is the wind bed, the glide, and the two ends of it.
 """
 import base64, io, json, os, socket, struct, subprocess, sys, time, urllib.request
 import websocket
@@ -23,7 +24,7 @@ SR = 44100
 # name, argument, seconds
 ONE = [
     ("step",     0.0,  0.35), ("step",  1.0, 0.35),
-    ("scuff",    0.8,  0.60), ("flap",  None, 0.60),
+    ("scuff",    0.8,  0.60),
     ("glide",    None, 0.80), ("ceiling", None, 0.50),
     ("takeoff",  None, 0.60), ("land",  None, 0.55),
     ("alert",    False, 0.35), ("alert", True, 0.35),
@@ -37,7 +38,6 @@ ONE = [
 RUNS = [
     ("run_slow",  "step",  [0.05]*8,          0.30, 0.35),
     ("run_fast",  "step",  [0.95]*8,          0.17, 0.35),
-    ("flying",    "flap",  [None]*6,          0.26, 0.60),
     ("egg_streak","egg",   list(range(1,13)), 0.17, 0.35),
 ]
 
@@ -49,9 +49,10 @@ MONTAGE = [
     ("montage_running", 6.0, [(0.15 + i*0.30, "step", 0.05, 0.35) for i in range(8)] +
                              [(3.2 + i*0.17, "step", 0.95, 0.35) for i in range(9)] +
                              [(5.1, "scuff", 0.8, 0.6)]),
-    ("montage_flying",  7.5, [(0.0, "wind", None, 7.5), (0.30, "takeoff", None, 0.6)] +
-                             [(0.9 + i*0.26, "flap", None, 0.6) for i in range(7)] +
-                             [(3.1, "glide", None, 0.8), (4.0, "glide", None, 0.8),
+    # no flap: the wingbeat is silent by design, so the flight is the bed, the
+    # glide and the two ends of it
+    ("montage_flying",  7.5, [(0.0, "wind", None, 7.5), (0.30, "takeoff", None, 0.6),
+                              (3.1, "glide", None, 0.8), (4.0, "glide", None, 0.8),
                               (5.0, "ceiling", None, 0.5), (6.2, "land", None, 0.6)]),
     ("montage_crow",    7.0, [(0.0 + i*0.27, "alert", False, 0.35) for i in range(7)] +
                              [(1.95 + i*0.13, "alert", True, 0.35) for i in range(4)] +

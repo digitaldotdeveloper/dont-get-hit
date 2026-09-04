@@ -537,7 +537,7 @@ function noise(dur, f0, f1, vol, q, at){
   s.connect(bp); bp.connect(g); g.connect(A.sfxGain); s.start(t0); s.stop(t0+dur+0.02);
   }catch(e){ A.err = e.message; }
 }
-let stepFoot = 0, flapSide = 0;   // which foot, and which way the wing is going
+let stepFoot = 0;                 // which foot
 /* Everything else in here is a one-shot. Flying needs the opposite, and it is
    the single biggest thing missing from the flight: the sound of speed is not
    an event, it is a LAYER that is always there and only changes level. Wing
@@ -622,18 +622,12 @@ const S = {
      as a fan. Chickens also cannot really fly, which is the joke, so one beat
      in six gets a rubbery squeak and one in thirty a strangled cluck: rare
      enough at this rate to land about once a second and once every three. */
-  flap(){
-    const j = 1 + (Math.random()-0.5)*0.16;
-    const down = (flapSide ^= 1);
-    const v = down ? 1 : 0.60;                             // recovery is lighter
-    noise(0.042*j, down?1500:2500, down?3000:4300, 0.019*v, 3.0);   // feathers biting
-    noise(0.052*j, 3000, 1400, 0.013*v, 2.6, 0.008);                // air off the tip
-    if(down) tone(300*j, 0.032, 'sine', 0.007, 205);                // a scrap of body
-    if(Math.random() < 0.17)                                        // rubbery and daft
-      wob(780*j, 430, 0.055, {type:'triangle', vol:0.009, depth:70, rate:26});
-    if(Math.random() < 0.033)                                       // not enjoying it
-      wob(700*j, 400, 0.07, {type:'square', vol:0.016, depth:40, rate:26});
-  },
+  /* The wingbeat is SILENT, deliberately. It was cut on 2026-09-05: at the
+     rate he beats, any sound at all becomes a texture you cannot stop hearing,
+     and the wind bed already carries the flight. The stub stays so that a call
+     from anywhere -- including a caller added later -- is a no-op rather than a
+     crash; the two flight call sites are gone, so nothing routine reaches it. */
+  flap(){},
   /* Wings out, not beating. Played on a cooldown while he falls, so a long
      drop is not silence between flaps. */
   glide(){
@@ -3543,7 +3537,7 @@ function thrustOn(){
             {col:'rgba(210,180,140,.9)', a0:Math.PI*0.9, a1:Math.PI*1.4,
              s0:120, s1:340, l0:0.2, l1:0.5, r0:4, r1:10, g:900});
     } else if((player.rideJumps||0) < 2){
-      player.vy = -RIDE_JUMP2; player.rideJumps = 2; S.flap();
+      player.vy = -RIDE_JUMP2; player.rideJumps = 2; S.takeoff();
       spark(player.x, GROUND-player.y-30, 8,
             {col:'rgba(255,190,80,.9)', a0:Math.PI*0.7, a1:Math.PI*1.3,
              s0:100, s1:260, l0:0.2, l1:0.45, r0:3, r1:8, g:700});
@@ -3557,7 +3551,6 @@ function thrustOn(){
     player.powerT = 1;
     try{
       if(!player.onGround) featherBurst(player.x-24, GROUND-player.y-30, 3, 180);
-      S.flap();
     }catch(e){ game.fxErr = e.message; }
   }
   if(game.tut){ game.tut=false; elTut.classList.remove('show'); }
@@ -4210,8 +4203,7 @@ function updatePlay(dt){
     p.flapT += dt*FLAP_HZ;
     const beat = Math.floor(p.flapT);
     if(beat !== p.flapBeat){
-      p.flapBeat = beat;
-      S.flap();
+      p.flapBeat = beat;                             // feathers and sparks, no sound
       if(!p.onGround) featherBurst(p.x-30, GROUND-p.y-40, 1, 90);
       spark(p.x-34, GROUND-p.y-30, 3, {col:'rgba(255,242,222,.5)', a0:Math.PI*0.85,a1:Math.PI*1.25,
         s0:70,s1:190, l0:0.18,l1:0.45, r0:3,r1:7, g:120});
