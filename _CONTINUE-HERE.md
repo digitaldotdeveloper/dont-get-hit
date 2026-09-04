@@ -295,6 +295,28 @@ farm** under **Themes**.
 
 ## The sound of flying
 
+**The wingbeat is SILENT, and that is the current state.** Cut on 2026-09-05 on
+request. At eight and a half beats a second, anything there at all becomes a
+texture you cannot stop hearing -- which is the same wall the two retunes below
+kept running into -- and the wind bed already carries the flight. `S.flap()` is
+a documented no-op, `flapSide` is gone, and the two flight call sites are gone
+with it. The stub stays because two sessions write this file and a call added
+later should be silent, not a crash.
+
+**The truck's double jump was the third caller** and would have gone quiet along
+with it, which nobody asked for. Its first jump already used `takeoff()`, so the
+second one does now too.
+
+**Open: the air bed still ducks to 22% while he is holding** (`const duck` in
+`updatePlay`), and it does that solely to make room for a wingbeat that is no
+longer there. As it stands, holding -- the game's whole control -- makes the
+mix quieter. Either drop the duck or keep it deliberately as "flight is calm";
+it should not stay by accident.
+
+Everything below is the history of how the beat got short and thin before it was
+cut. It is kept because the measurements still govern anything short and
+percussive added here later, not because the flap still makes a sound.
+
 **A wing beat must not contain a sub.** The flap used to lead with a 74Hz sine
 under 180ms of broadband noise, and that sine carried more gain than anything
 else in it -- measured, **85% of the sound's energy sat below 300Hz, with a
@@ -315,20 +337,20 @@ beat, overlapping beats of filtered noise are a texture, and a texture is
 indistinguishable from wind however feathery its spectrum. Length was as much of
 the problem as pitch.
 
-Each beat is short now, and the strokes **alternate** -- a fuller down-stroke and
-a thinner recovery -- because a rhythm reads as wings where an even hiss at 8Hz
-reads as a fan. One beat in six gets a rubbery squeak and one in thirty a
-strangled cluck, which at this rate lands about once a second and once every
-three: he cannot really fly, and that is the joke.
+The last version before the cut had short alternating strokes -- a fuller
+down-stroke, a thinner recovery -- plus a rubbery squeak one beat in six and a
+strangled cluck one in thirty. It was the best the beat ever sounded and it was
+still a texture at eight a second, which is what settled the argument.
 
-**The air bed DUCKS to 22% while he is holding.** The wing beats are the thing to
-hear when you are flying, and they were competing with a layer that rises at
-exactly the moment they start. `windSet` smooths over 0.10s, so it is a swell
-rather than a switch.
+**The air bed DUCKS to 22% while he is holding** (`windSet` smooths over 0.10s,
+so it is a swell rather than a switch). It was put there to stop the bed
+competing with the wing beats. There are no wing beats now -- see the open
+question at the top of this section.
 
-`flapSide` lives beside `stepFoot` at module level and **not** on `S`:
-`?audiotest=1` walks every key of `S` and calls it, so a number parked in there
-is a crash. The test caught exactly that.
+**Nothing but functions may live on `S`.** `stepFoot` sits beside it at module
+level rather than on it, because `?audiotest=1` walks every key of `S` and calls
+it, so a number parked in there is a crash. The test caught exactly that when
+`flapSide` was added.
 
 When retuning any of this, measuring beats guessing: sum the parts offline and
 look at the spectral centroid and the fraction of energy below 300Hz. Filtered
@@ -1529,6 +1551,137 @@ The trade is that the tune goes round more often. For menu music behind a
 static screen that is the right way round; re-cut at another period with the
 tool if it ever stops being.
 
+## Flight is solved, not stepped
+
+`dv/dt = a - k*v` is the entire movement model -- gravity, thrust while held,
+drag -- and it has a closed form. It used to be integrated as `v -= v*k*dt`,
+which is the Euler approximation of that exponential, and **the error grows
+with the step**. Measured across 60/90/120/144Hz before the fix: a 4.13%
+spread on the same half-second hold, about 28 units of altitude against
+corridors 330 wide. Nobody reports that as a bug. They say the game feels
+wrong on their phone.
+
+`updatePlay` now uses the solution:
+
+```
+vT = acc/k;  e = exp(-k*dt);
+vy = vT + (vy - vT)*e;
+y -= vT*dt + (vy0 - vT)*(1-e)/k;      // the exact integral, not vy*dt
+```
+
+The position integral matters as much as the velocity one -- moving by `v*dt`
+after solving for `v` puts the step error straight back into `y`. Two `exp()`
+calls a frame, no accumulator, and the game keeps the single loop it has.
+Spread is now 0.04%, which is float noise.
+
+**The feel moved slightly and on purpose.** A half-second hold tops out at 707
+rather than 659 at 60Hz, because 659 was the approximation undershooting and
+707 is what the constants were always asking for -- high-refresh displays were
+already near it. If that ever reads floaty, `THRUST` is one number.
+
+`?selftest` measures this rather than asserting it, replaying one hold at four
+rates. **The hold is counted in FRAMES**, because 1/6, 1/3 and 1/2 of a second
+are whole frames at all four and 0.20s is not: scripted against a wall clock,
+144Hz holds for 0.194s and the test reports its own sampling as a physics
+fault. It did exactly that on the first run.
+
+`?hit=1` draws Nugget's box as well as the hazards' -- solid is the broad
+phase, dashed is the 8-unit inset that actually kills. The audit it makes
+possible: the box is fair and asymmetric in the right direction. His wing
+sweeps outside it behind him and his comb pokes over the top, neither of which
+kills, while the beak and feet sit on the edge. The world scrolls left, so the
+forgiving side is the trailing side.
+
+## Nothing gets knocked flying
+
+Obstacles, smashed corn, the hazard that takes the basket, and the livestock
+all hold their ground on contact. They did not used to: the thing that hit you
+was launched into an arc and spun off.
+
+That is a fine gag when the hazard is a loose crate and a bad one when it is a
+fence bolted to the ground -- and worse for the electric ladders, whose wires
+are **geometry rather than a sprite**, so they tumbled with the frame and left
+live wire lying diagonally across the road while the ragdoll bounced past it.
+
+It also told the wrong story. At the moment a player dies they are looking for
+WHAT HIT THEM, and the answer should still be standing where it was.
+
+`hitBy` stays -- it is what stops one obstacle firing the collision twice --
+but the spin and launch velocity are gone from every caller. Two of the three
+were already dead: **nothing integrates a hit obstacle during PLAY**, only
+during dying, so `smash()` and `loseRide()` had been setting numbers that never
+moved anything. A bowled animal bolts on the spot in its panic frames instead;
+its entry is still dropped after two seconds because it is keyed by the stop's
+index and would otherwise grow for as long as the player survived.
+
+## The retry loop, and Nugget's name
+
+Dying cost up to 2.2s of ragdoll and then the full 2.0s barn escape again,
+because retry called `startIntro` like a first run did. Over four seconds to
+get back to the thing the player was enjoying, on a game whose entire loop is
+"again".
+
+A **first** run still opens with the escape; it is the game's introduction to
+itself. A **retry** gets `startQuick`: no cage, straight into the run, with
+READY then GO inside `GO_TIME` (0.85s) while the spawner and the crows are
+held off by exactly the length of the beat. **Input is live throughout** -- it
+is a beat to read the screen, not a gate to wait behind, and taking the
+controls away for even half a second would undo the responsiveness everything
+else here is for. The ragdoll's cap came down 2.2s -> 1.5s as well; the
+settled-ragdoll test usually fires at 0.95 and that was only the fallback.
+
+`drawGo` runs **after the camera is restored**, so a countdown cannot shake or
+zoom with the world, and on canvas rather than the DOM -- one text draw for
+under a second, on frames where the player is already flying.
+
+`overLine()` puts his name on the card. One line, at the top, above the number,
+and nowhere else: the card exists to show a score and a joke in every slot is a
+joke nobody reads twice. **Two lists**, because "THAT WAS CLOSE" is not a death
+message, it is what you say to somebody who nearly beat their best -- it is
+only reachable within 10% of it, and the line is picked **before** `finish()`
+overwrites `game.best` or that comparison is the score against itself and true
+every time.
+
+## Assets: what ships, and how big
+
+**2.79 MB** on a cold load, 173 requests, measured with the cache disabled --
+not summed off disk. `art` 1090 KB, `anim` 1085 KB, `index.html` 286 KB,
+`art/farm` 173 KB, `art/bg` 112 KB, the background strip 63 KB, fonts 50 KB.
+
+**Images are all WebP and all lossless.** `tools/to_webp.py` did the last
+fourteen (2336 KB -> 1315 KB) and **refuses to delete a PNG whose WebP does not
+decode back to the same pixels**. That check caught its own first version:
+comparing the whole RGBA buffer failed ten of fourteen with a 255-channel
+delta, because a PNG may store any colour it likes *underneath* a fully
+transparent pixel and WebP normalises that away. It compares alpha exactly
+everywhere and colour exactly where alpha is non-zero, which is what lossless
+means for a sprite. Lossless and not q90 because these are cut-out art: flat
+cel shading, hard ink outlines, an alpha edge -- the three things lossy rings
+on. Half the saving was there anyway.
+
+**Music ships twice and downloads once** -- see *The music, and how small it
+got* above for the encode chain. `MUS_EXT` asks `canPlayType` at load and takes
+Opus where it exists, MP3 96k where it does not. The Opus set is 5.5 MB, the
+MP3 set 7.4 MB, and no player ever fetches both.
+
+Two things that section does not cover, and both matter for a bundle:
+
+**The game plays 3 of the 8 tracks.** `MOVEMENTS` is `spy_long` and
+`spy_long_b`, plus `music_menu`. The other five are never fetched on the web
+but *would* be bundled into an APK. The three that play are **2.8 MB** in Opus;
+the five that do not are another 2.7 MB of nothing.
+
+**`tools/audio_report.py`** reads bitrate, channel mode and duration straight
+off the ID3 header and the first MPEG frame, so it works on a machine with no
+audio tooling installed at all -- which is how the 192k masters were diagnosed
+in the first place, before there was an ffmpeg on the box to ask.
+
+**Android estimate:** ~4.7 MB images and code, ~2.8 MB music, ~50 KB fonts if
+bundled locally = **~7.6 MB of assets**, plus ~3 MB for a Capacitor/WebView
+wrapper, so **an APK around 10-11 MB** and an AAB nearer 8-9. At bundle time
+drop `audio/*.mp3` (Android has Opus natively), `audio/src/`, and the five
+tracks nothing plays.
+
 ## Next
 
 - Nothing spends the eggs yet.
@@ -1539,5 +1692,6 @@ tool if it ever stops being.
   near-miss meter already knows the distance.
 - There is one map on purpose. A second one is a `THEME` plus a builder plus a
   deliberate way in, never a timer that swaps the world out mid-run.
-- The three wall panels are ~345 KB each, so first load pulls about 1 MB of
-  background. Re-encoding to WebP would take it under 300 KB total.
+- Every image is already lossless WebP and the music is already Opus. The
+  next real size win is the five music tracks the game never plays, and
+  that is a bundle-time exclusion rather than a code change.
