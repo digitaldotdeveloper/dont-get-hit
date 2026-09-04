@@ -656,23 +656,32 @@ has to hand over to the map's own panels.
 Joyride lays out coins - a flat line, an arc, or a climb - so a run of them can
 be followed with one held press. **`eggFree` rejects any egg that lands inside a
 hazard**, including zapper beams, so chasing them is a real choice and never
-bait. **The ten-frame spin is DERIVED from one painted egg**, not drawn ten times
-(`tools/cut_eggs.py`, `sheets/v2/egg_hero.png`). Ten separate drawings drift --
-the silhouette wobbles and the highlight jumps between frames -- so instead the
-hero is turned on its vertical axis: width scaled per frame, the far half drawn
-mirrored and knocked back so it reads as the reverse face. The loop is exact by
-construction and the egg cannot wobble.
+bait. **The spin is PAINTED as one sheet** (`sheets/v2/egg_spin.png`) and
+`tools/cut_eggs.py` only cuts it up. Two earlier versions got this wrong and
+both are written up at the top of that file, because both are tempting:
 
-The width profile is **not** `|cos t|`. A true cosine spends a third of the cycle
-edge-on, and a pickup you cannot see is a pickup the player cannot read; `SPIN`
-holds the proportions the old hand-made set used -- mostly facing you, one quick
-flick through the edge -- measured off it and kept.
+- **Squashing one hero egg horizontally per frame.** The silhouette narrows but
+  the highlight stays welded to the surface, so the eye reads a picture being
+  scaled rather than an object turning. This is what "cheap" looks like.
+- **Re-projecting the painting as a texture wrapped round a solid of
+  revolution** -- a pixel at horizontal position u sits at surface angle
+  `asin(u)`, so after turning by t it is seen at `sin(asin(u) + t)`. That model
+  is *correct* and it looked terrible: the mapping crushes the whole texture
+  into a few columns at the silhouette, so a handful of source pixels smear
+  across the edge and the egg comes out striped. Doing it properly needs real
+  area sampling, and an artist can just draw the seven views.
 
-The egg carries a stamped chicken, which is what makes it read as minted
-currency rather than an Easter egg, and `art/egg_icon.webp` puts the same
-painting in the HUD so the counter and the thing you collected are obviously the
-same object. Two alternates are kept next to the hero: `egg_alt_band.png` and
-`egg_alt_plain.png`. Swapping is one file plus a re-run of the tool. Taken eggs fly to the counter; the pickup pings up a
+What the sheet has to contain, and what the prompt asks for in these words:
+square on, narrowing, **a thin bright polished RIM at the edge**, then the far
+side coming round **DARKER because it faces away from the light**, widening and
+brightening back. The rim and the dark reverse are the entire difference between
+a spin and a squash -- without them any amount of narrowing still reads flat.
+
+The egg carries **no marking**. A stamped one was tried and reads as a token
+rather than treasure. `art/egg_icon.webp` puts the same painting in the HUD so
+the counter and the thing you collected are obviously one object. Alternates sit
+next to the hero: `egg_alt_soft.png`, `egg_alt_cool.png`, `egg_alt_band.png`,
+`egg_alt_plain.png`. Taken eggs fly to the counter; the pickup pings up a
 semitone per egg in a streak. `game.eggBank` persists in `localStorage` under
 `dgh_eggs`.
 
