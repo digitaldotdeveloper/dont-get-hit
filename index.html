@@ -1628,11 +1628,14 @@ const rag = {
    ============================================================ */
 const CAGE = {
   ready:false, img:null, door:null,
-  floorFrac:0.9058,                    // where the outdoor ground line sits
-  dx0:0.3613, dx1:0.7129,              // the doorway, as fractions of the image
-  dy0:0.4377, dy1:0.8726,              // its floor is the straw he stands on
-  roof:[0.5637, 0.0443],               // the roof apex, where the neighbours are
-  doorH:325,                           // the doorway's height in WORLD units
+  floorFrac:0.985,                     // where the barn meets the ground
+  dx0:0.250, dx1:0.755,                // the doorway, as fractions of the image
+  dy0:0.455, dy1:0.930,                // its floor is the straw he stands on
+  roof:[0.500, 0.000],                 // the roof apex, where the neighbours are
+  doorH:250,                           /* the doorway's height in WORLD units, and
+                                          the one number that sizes the barn: the
+                                          chicken is a fixed 175 tall, so this is
+                                          really "how big is he next to it". */
   w:0, h:0, x:0, y:0                   // filled in by cageGeom, in world units
 };
 (function loadCage(){
@@ -1642,19 +1645,11 @@ const CAGE = {
     c.width = im.naturalWidth; c.height = im.naturalHeight;
     const g = c.getContext('2d');
     g.drawImage(im, 0, 0);
-    /* Fade the RIGHT edge only, where the painted farm behind the barn has to
-       hand over to the map's own panels. The LEFT edge is the barn wall, and
-       fading that turned the planks half transparent with a field showing
-       through them -- a ghost, not a blend. drawCageBack extends the wall to
-       the screen edge instead.
-       One pass over the whole canvas: destination-in clears everything the
-       source does not cover, so masking a strip at a time wipes the rest. */
-    g.globalCompositeOperation = 'destination-in';
-    const f = 0.10, grad = g.createLinearGradient(0, 0, c.width, 0);
-    grad.addColorStop(0, 'rgba(0,0,0,1)');
-    grad.addColorStop(1-f, 'rgba(0,0,0,1)');
-    grad.addColorStop(1, 'rgba(0,0,0,0)');
-    g.fillStyle = grad; g.fillRect(0, 0, c.width, c.height);
+    /* No fade any more, in either direction. The old barn was painted with its
+       own farm behind it -- a windmill, a fence, a line of hills -- so its right
+       edge had to dissolve into the map's, and that hand-over ghosted one
+       picture through the other. This barn is cut out of its sky, so the
+       parallax layers simply show behind it and there is nothing to blend. */
     CAGE.img = c; CAGE.ready = true;
   };
   im.onerror = ()=>{ CAGE.ready = false; };
@@ -1721,11 +1716,10 @@ function drawCageBack(sx){
   // carry on underneath, so the two can never disagree about where the floor is
   const sh = im.height * CAGE.floorFrac;
   const x0 = sx + g.x + rnd(-j,j), y0 = g.y + rnd(-j,j)*0.5, dh = CAGE.floorFrac*g.h;
-  /* The barn continues past the left of the screen. Its leftmost couple of
-     source columns are a vertical run of plank colour, so stretching them out
-     to the edge reads as more wall -- which is what a wall does. The picture
-     simply ending, or fading out, is what made it look half deleted. */
-  if(x0 > 0) ctx.drawImage(im, 0, 0, 2, sh, 0, y0, x0 + 1, dh);
+  /* No wall stretched out to the screen edge either. That existed because the
+     old barn ended in a hard vertical cut with nothing behind it; this one is a
+     whole barn standing in a field, and the field is drawn. Stretching its
+     leftmost columns now would smear the roof's diagonal across the sky. */
   ctx.drawImage(im, 0, 0, im.width, sh, x0, y0, g.w, dh);
   drawRoofHens(sx);
 }
@@ -4068,9 +4062,15 @@ function drawField(){
     g.fillStyle = gd; g.fillRect(0, 0, VW, h);
   }), 0, top, VW, h);
 }
-function drawBgLayers(upTo){
+/* Draws the named layers and only those. It used to take the layer to stop
+   AFTER, which meant the second call -- the one for the fence -- started at the
+   beginning again and redrew the hills and the farm over the top of the
+   neighbours who had just been drawn between them. They were on screen the
+   whole time, painted over a frame later, which looks exactly like not being
+   drawn at all. It also paid for the two big layers twice a frame. */
+function drawBgLayers(keys){
   for(const L of BG){
-    if(!L.ready) continue;
+    if(!L.ready || keys.indexOf(L.key) < 0) continue;
     if(L.key === 'mid') drawField();        // the buildings need somewhere to stand
     const g = bgGeom(L);
     const off = ((cam.x*L.f) % g.W + g.W) % g.W;
@@ -4078,7 +4078,6 @@ function drawBgLayers(upTo){
       ctx.drawImage(L.img, x, g.y, g.W, g.H);
       if(L.key === 'mid') drawSpyPigeons(x, g.y, g.W, g.H);
     }
-    if(L.key === upTo) return;
   }
 }
 /* The code-drawn fallback, for the moment before the panels load. */
@@ -4215,7 +4214,10 @@ function npcPose(list, height, phase){
    once a thing rides a parallax -- its world x is no longer where it looks. */
 const NPC_F = 0.44, NPC_SCALE = 0.58, NPC_BASE = -128;
 function drawSpectators(){
-  const spacing = 1750, walk = npcWalk();
+  /* Closer together than they were on the road. Out in the field they are
+     scenery rather than encounters -- one every 1750 units left the place
+     looking abandoned about half the time. */
+  const spacing = 900, walk = npcWalk();
   const par = bgReady() ? NPC_F : 1;
   const scale = bgReady() ? NPC_SCALE : 1;
   const base = bgReady() ? NPC_BASE : -8;
@@ -4269,7 +4271,7 @@ function drawSpectators(){
    want to come in groups. */
 function drawFarmer(){
   const list = FRAME_DATA.farmer; if(!list || !list.length) return;
-  const spacing = 3200, travelled = npcWalk();
+  const spacing = 2200, travelled = npcWalk();
   const par = bgReady() ? NPC_F : 1;                   // out in the field with the rest
   const first = Math.floor((cam.x*par - 300 + travelled)/spacing);
   for(let i=first; i<first+Math.ceil(VW/spacing)+3; i++){
@@ -4277,14 +4279,16 @@ function drawFarmer(){
     const gx = i*spacing + 640 - travelled;
     const sx = gx - cam.x*par;
     if(sx < -260 || sx > VW+260) continue;
-    // same window the livestock use: he starts before Nugget arrives and is
-    // still going when he is most of a screen away
+    /* The farmer is the ONE exception to NPC_REACT. The animals were calmed
+       down because a field of livestock all panicking at once is noise; he is
+       the man whose chicken has just left, so him standing in his own field
+       yelling about it is the joke, not the noise. A wide window on purpose --
+       he starts before Nugget reaches him and is still going a screen later. */
     const dx = (player.x - cam.x) - sx;                 // on screen, not in the world
-    const near = NPC_REACT && game.mode === 'play' && dx > -430 && dx < 900;
+    const near = game.mode === 'play' && dx > -900 && dx < 1400;
     const ph = hash(i*2.7)*TAU;
     const bob = near ? -Math.abs(Math.sin(game.t*7 + ph))*8 : Math.sin(game.t*1.4 + ph)*2;
-    /* Walking is the default and, with NPC_REACT off, the only thing he does.
-       The rage set's first two frames are the calm and the double-take, so that
+    /* The rage set's first two frames are the calm and the double-take, so the
        loop starts at 2 -- otherwise he resets to placid mid-tantrum. */
     const walk = (FRAME_DATA.farmerwalk && FRAME_DATA.farmerwalk.length)
                  ? 'farmerwalk' : 'farmeridle';
@@ -4305,10 +4309,10 @@ function drawProps(){
      them in the background instead of on the road, and what lets the fence
      pass in front of a cow without anybody having to sort anything. */
   if(!bgReady()){ drawFarmProps(); drawSpectators(); drawFarmer(); return; }
-  drawBgLayers('mid');
+  drawBgLayers(['far', 'mid']);
   drawSpectators();
   drawFarmer();
-  drawBgLayers();
+  drawBgLayers(['near']);
 }
 function drawGround(){
   const y = GROUND;
