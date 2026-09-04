@@ -454,6 +454,7 @@ const A = {
 };
 function audioInit(){
   lockLandscape();          // first gesture: ask the phone to stay landscape
+  setTimeout(windStart, 0); // the flight's air layer, once A.ctx exists
   initTrack();
   if(A.started) return;
   const AC = window.AudioContext||window.webkitAudioContext; if(!AC) return;
@@ -463,7 +464,9 @@ function audioInit(){
   A.musicGain = A.ctx.createGain(); A.musicGain.gain.value = 0.0; A.musicGain.connect(A.master);
   A.started = true; A.nextNote = A.ctx.currentTime + 0.1;
 }
-function actx(){ if(A.ctx && A.ctx.state==='suspended') A.ctx.resume(); return A.ctx; }
+function actx(){ try{ if(A.ctx && A.ctx.state==='suspended') A.ctx.resume(); }
+                 catch(e){}                       // an offline context refuses, and that is fine
+                 return A.ctx; }
 function tone(freq, dur, type, vol, slide, dest, at){
   if(!A.started||!A.on) return; const c = actx(); if(!c) return;
   try{
@@ -502,16 +505,19 @@ function wob(f0, f1, dur, opt){
   }catch(e){ A.err = e.message; }
 }
 let noiseBuf=null;
-function noise(dur, f0, f1, vol, q, at){
-  if(!A.started||!A.on) return; const c = actx(); if(!c) return;
-  try{
-  const t0 = c.currentTime + (at||0);
+function noiseBuffer(c){                  // one second of hiss, shared by everything
   if(!noiseBuf){
     noiseBuf = c.createBuffer(1, c.sampleRate*1.2, c.sampleRate);
     const d = noiseBuf.getChannelData(0);
     for(let i=0;i<d.length;i++) d[i] = Math.random()*2-1;
   }
-  const s=c.createBufferSource(); s.buffer=noiseBuf; s.loop=true;
+  return noiseBuf;
+}
+function noise(dur, f0, f1, vol, q, at){
+  if(!A.started||!A.on) return; const c = actx(); if(!c) return;
+  try{
+  const t0 = c.currentTime + (at||0);
+  const s=c.createBufferSource(); s.buffer=noiseBuffer(c); s.loop=true;
   const bp=c.createBiquadFilter(); bp.type='bandpass'; bp.Q.value=q||1.1;
   bp.frequency.setValueAtTime(f0, t0);
   bp.frequency.exponentialRampToValueAtTime(Math.max(40,f1||f0), t0+dur);
@@ -523,19 +529,63 @@ function noise(dur, f0, f1, vol, q, at){
   }catch(e){ A.err = e.message; }
 }
 let stepFoot = 0;
+/* Everything else in here is a one-shot. Flying needs the opposite, and it is
+   the single biggest thing missing from the flight: the sound of speed is not
+   an event, it is a LAYER that is always there and only changes level. Wing
+   beats on their own read as a bird flapping in a quiet room -- the wind is
+   what says the room is moving past at 700 a second.
+
+   One looping noise source through a bandpass, built once and never rebuilt.
+   Level and brightness are pushed from updatePlay every frame, both through
+   setTargetAtTime so nothing ever steps. Mute still works for free: it lives
+   under A.sfxGain -> A.master, and mute takes A.master to zero. */
+const WIND = { src:null, bp:null, g:null };
+function windStart(){
+  if(WIND.src || !A.started || !A.ctx) return;
+  try{
+    const c = A.ctx;
+    WIND.src = c.createBufferSource(); WIND.src.buffer = noiseBuffer(c); WIND.src.loop = true;
+    WIND.bp  = c.createBiquadFilter(); WIND.bp.type = 'bandpass';
+    WIND.bp.Q.value = 0.55; WIND.bp.frequency.value = 400;
+    WIND.g   = c.createGain(); WIND.g.gain.value = 0;
+    WIND.src.connect(WIND.bp); WIND.bp.connect(WIND.g); WIND.g.connect(A.sfxGain);
+    WIND.src.start();
+  }catch(e){ A.err = e.message; }
+}
+function windSet(level, bright){
+  if(!WIND.g || !A.ctx) return;
+  const t = A.ctx.currentTime;
+  try{
+    WIND.g.gain.setTargetAtTime(A.on ? level : 0, t, 0.10);
+    WIND.bp.frequency.setTargetAtTime(bright, t, 0.16);
+  }catch(e){}
+}
 /* One cartoon voice for the whole game. Everything HE does is a short bright
    shape with a bend in it; everything the world does TO him is blunt and low.
    All of it kept deliberately quiet apart from the hit, so that the hit lands. */
 const S = {
   /* ---- the chicken ------------------------------------------------- */
-  step(){
-    // light, quick, and never twice the same: the pitch alternates foot to
-    // foot and jitters, which is what stops a footstep loop becoming a rattle
+  /* A footstep is three things that all have to move, or a run at 45 steps a
+     minute turns into a rattle: which foot it is, how hard it lands, and what
+     it lands ON. k is 0..1 of the run's speed, so the whole set tightens and
+     brightens as he winds up rather than looping one sound faster. */
+  step(k){
+    k = k === undefined ? 0.4 : k;
     stepFoot ^= 1;
     const j = 1 + (Math.random()-0.5)*0.13;
-    noise(0.032, 2400*j, 900, 0.036, 3.0);                 // rubber on the ground
-    tone((stepFoot ? 342 : 288)*j, 0.045, 'triangle', 0.048, 208*j);
-    if(Math.random() < 0.12) tone(1560*j, 0.028, 'square', 0.018, 2200*j);  // a claw tick
+    const bright = 1 + k*0.55;                             // faster = higher and thinner
+    noise(0.030 - k*0.008, 2400*j*bright, 900, 0.032 + k*0.020, 3.0);
+    tone((stepFoot ? 342 : 288)*j*bright, 0.045 - k*0.010, 'triangle',
+         0.044 + k*0.018, 208*j);
+    // and one step in six lands somewhere looser -- dust, a dry clod, grit
+    const r = Math.random();
+    if(r < 0.17) noise(0.075, 1500*j, 380, 0.030 + k*0.012, 1.1, 0.012);
+    else if(r < 0.29) tone(1560*j, 0.028, 'square', 0.016, 2200*j);   // a claw tick
+  },
+  /* Touching down at speed and running it off, as opposed to land()'s bounce. */
+  scuff(k){
+    noise(0.20*(0.6+k), 900, 190, 0.05 + k*0.05, 0.8);
+    tone(210, 0.09, 'triangle', 0.05, 130);
   },
   takeoff(){
     // leaving the ground: goofy, and RISING -- the opposite shape to land()
@@ -543,11 +593,29 @@ const S = {
     noise(0.16, 480, 1700, 0.06, 1.3);
     tone(180, 0.10, 'sine', 0.06, 300);
   },
+  /* A wingbeat is a PUSH, not a swish: the air over the feathers is the top
+     of it, but the part you feel is the low thump of the downstroke shoving
+     against the air. Without that body it sounds like a page turning. */
   flap(){
     const j = 1 + (Math.random()-0.5)*0.17;
     noise(0.18*j, 330, 1450, 0.058, 1.5);                  // air over the feathers
-    noise(0.09, 880, 175, 0.045, 1.1);
+    noise(0.09, 880, 175, 0.045, 1.1);                     // the closing swish
     tone(148*j, 0.10, 'sine', 0.038, 95);
+    tone(74*j,  0.13, 'sine', 0.055, 44, null, 0.012);     // the shove underneath it
+    if(Math.random() < 0.35)                               // primaries clattering
+      noise(0.05, 3400*j, 1800, 0.016, 4.0, 0.02);
+  },
+  /* Wings out, not beating. Played on a cooldown while he falls, so a long
+     drop is not silence between flaps. */
+  glide(){
+    noise(0.42, 620, 300, 0.022, 1.0);
+    noise(0.20, 2600, 1500, 0.010, 3.0, 0.10);
+  },
+  /* The sky is a ceiling and he can hit it. Soft, feathery, no impact. */
+  ceiling(){
+    noise(0.16, 700, 240, 0.05, 1.0);
+    tone(200, 0.10, 'triangle', 0.05, 120);
+    noise(0.10, 3000, 1600, 0.020, 3.4, 0.03);
   },
   land(){
     // bouncy and comedic, and FALLING in pitch where takeoff rose
@@ -575,23 +643,78 @@ const S = {
   whoosh(){ noise(0.17, 260, 1400, 0.045, 1.25); },
   /* ---- the crow attack --------------------------------------------- */
   /* The alert, and then the bird. Two different jobs: the alert has to be a
-     MACHINE -- a flat two-note siren that cannot be mistaken for anything the
-     farm does -- and the launch has to be an animal, so the moment the siren
-     stops you know what is coming. */
+     MACHINE -- nothing on a farm makes this noise -- and the launch has to be
+     an animal, so the instant the machine stops you know what is coming.
+
+     The two states of the badge get two different machines rather than the
+     same beep at two pitches, which is what it was and which reads as one
+     sound speeding up. Tracking is a rounded radar bip: a fifth, in tune,
+     unbothered. Locked is a klaxon: a semitone apart so it BEATS against
+     itself, square, with a tick of noise on the front. Dissonance is doing
+     the work -- you do not have to be told the second one is worse. */
   alert(locked){
-    const f = locked ? 1180 : 880;
-    tone(f, 0.055, 'square', 0.055, f);
-    tone(f*1.5, 0.055, 'square', 0.035, f*1.5, null, 0.075);
+    if(!locked){
+      tone(760, 0.06, 'triangle', 0.050, 760);
+      tone(1140, 0.05, 'sine', 0.028, 1140, null, 0.070);
+      return;
+    }
+    noise(0.03, 3000, 1400, 0.030, 3.0);                  // the contact tick
+    tone(1050, 0.085, 'square', 0.060, 1050);
+    tone(1113, 0.085, 'square', 0.045, 1113);             // a semitone up: it beats
+    tone(525,  0.10,  'square', 0.030, 525, null, 0.010); // an octave under, for weight
   },
-  caw(){                                    // furious, and getting closer
+  /* The launch. A dive, and the moment the siren stops. */
+  caw(){
     wob(760, 300, 0.30, {type:'sawtooth', vol:0.14, depth:120, rate:19});
     wob(980, 420, 0.24, {type:'square',   vol:0.07, depth:70,  rate:26, at:0.16});
-    noise(0.26, 1800, 500, 0.05, 1.6);      // the air off the wings
+    noise(0.26, 1800, 500, 0.05, 1.6);                    // the air off the wings
+    tone(300, 0.34, 'sawtooth', 0.05, 120, null, 0.02);   // and the drop into the dive
   },
-  egg(streak){                              // climbs as you keep collecting
-    const k = Math.min(streak||1, 12);
-    tone(880*Math.pow(1.055,k), 0.075, 'triangle', 0.10, 1320*Math.pow(1.055,k));
-    tone(1760*Math.pow(1.055,k), 0.05, 'sine', 0.045, 2200);
+  /* It goes past. Doppler is the whole gag: the pitch falls THROUGH the
+     player, so a bird that missed sounds different from one still coming.
+     Cheap version -- one rising swish into one falling one -- but the ear
+     only wants the turn, not the physics. */
+  crowpass(near){
+    const v = near ? 0.075 : 0.045;
+    noise(0.13, 500, 2200, v, 1.1);
+    noise(0.20, 2200, 380, v, 1.0, 0.11);
+    tone(520, 0.22, 'triangle', v*0.5, 210, null, 0.08);
+    if(near) tone(1300, 0.10, 'sine', 0.030, 700, null, 0.10);
+  },
+  /* Hit BY a crow, played under hit(). Everything else in the game that kills
+     him is wood or wire and sounds like it -- this one has to sound like an
+     animal winning: feathers, a beak, and the thing screaming as it goes. */
+  crowhit(){
+    noise(0.34, 1900, 420, 0.16, 1.2);                     // the collision, all feather
+    tone(940, 0.07, 'square', 0.13, 380);                  // beak
+    wob(880, 240, 0.40, {type:'sawtooth', vol:0.15, depth:150, rate:17, at:0.04});
+    wob(1150, 300, 0.34, {type:'square', vol:0.08, depth:90, rate:24, at:0.20});
+    noise(0.30, 900, 2600, 0.05, 1.4, 0.16);               // and off it goes
+  },
+  /* Picking one up, and a run of them going somewhere. The old version drifted
+     the pitch by a fixed 5.5% a step, which is a quarter-tone ladder -- it goes
+     UP but it never lands anywhere, so a streak sounded like a slide whistle
+     rather than a tune. This walks a MAJOR PENTATONIC instead: five notes that
+     cannot form a bad interval, so any run of them is musical and the twelfth
+     egg is an octave and a half above the first by arriving there, not by
+     sliding. The shell tick on the front is what makes it an egg and not a
+     coin -- a hard little transient, then the body. */
+  egg(streak){
+    const PENT = [0,2,4,7,9], k = Math.min((streak||1)-1, 11);
+    const semi = PENT[k % 5] + 12*Math.floor(k/5);
+    const f = 784 * Math.pow(2, semi/12);                  // G5 up
+    noise(0.022, 5200, 2600, 0.030, 5.0);                  // the shell, tapped
+    tone(f,     0.085, 'triangle', 0.085, f*1.01);
+    tone(f*2,   0.055, 'sine',     0.038, f*2);            // the ring on top
+    tone(f*3,   0.035, 'sine',     0.014, f*3, null, 0.012);
+    if(k >= 4)                                             // it is a run now
+      tone(f*1.5, 0.06, 'sine', 0.028, f*1.5, null, 0.055);
+  },
+  /* Five, ten: a little flourish so a streak has somewhere to arrive. */
+  eggrun(n){
+    const root = 784 * Math.pow(2, (n>=10?7:4)/12);
+    [0,4,7,12].forEach((sm,i)=>
+      tone(root*Math.pow(2,sm/12), 0.13, 'triangle', 0.055, null, null, i*0.055));
   },
   cagerattle(){ noise(0.06, 1800, 900, 0.05, 4.0); tone(300,0.05,'square',0.035,240); },
   bedcreak(){ wob(420, 180, 0.22, {type:'sawtooth', vol:0.055, depth:22, rate:9});
@@ -2648,6 +2771,7 @@ function updateEggs(dt){
       game.runEggs++; game.eggBank++;
       game.eggStreak = Math.min(12, game.eggStreak+1); game.eggStreakT = 0.9;
       S.egg(game.eggStreak);
+      if(game.eggStreak === 5 || game.eggStreak === 10) S.eggrun(game.eggStreak);
       elEggCount.textContent = game.eggBank;
       elEggCount.classList.remove('pop'); void elEggCount.offsetWidth;
       elEggCount.classList.add('pop');
@@ -2811,7 +2935,8 @@ function launchCrows(n){
       state:'wait', wait: i*0.70, warnT: CROW_WARN, beepT: 0,
       ty: clamp(player.y + 72, crowLane()[0], crowLane()[1]),
       x: 0, y: 0, t: rnd(0,10), seed: (Math.random()*4)|0,
-      spec:{}, kind:'air', base:0, minGap:1e9, counted:false, hitBy:false
+      spec:{}, kind:'air', base:0, minGap:1e9, counted:false, hitBy:false,
+      crow:true                        // die() plays a different death for these
     });
   }
   /* And hold the pattern spawner off long enough that it cannot drop a new
@@ -2904,7 +3029,9 @@ function updateCrows(dt){
     }
     if(!c.counted && c.x < p.x-30){
       c.counted = true;
-      if(c.minGap < 78 && c.minGap > 0 && game.mode === 'play') nearMiss(c);
+      const near = c.minGap < 78 && c.minGap > 0;
+      S.crowpass(near);                // doppler: it sounds different once it is past
+      if(near && game.mode === 'play') nearMiss(c);
     }
     if(c.x < cam.x - 340) game.crows.splice(i,1);
   }
@@ -3320,6 +3447,7 @@ function die(o){
   slowmo(0.32, 0.55);
   S.hit();
   if(o && o.spec && o.spec.elec){ S.zap(); game.flash = 1; }
+  if(o && o.crow) S.crowhit();         // feathers and a beak, not wood
   if(navigator.vibrate) try{ navigator.vibrate([26,40,60]); }catch(e){}
   const gy = GROUND;
   spark(player.x, gy - player.y - 90, 26, {col:C.gold, s0:180,s1:620, l0:0.4,l1:0.9, r0:4,r1:11});
@@ -3381,6 +3509,7 @@ function update(dt, rawDt){
   else if(game.mode==='play')  updatePlay(dt);
   else if(game.mode==='dying') updateDying(dt);
   else if(game.mode==='dead')  updateDead(dt, rawDt);
+  if(game.mode !== 'play') windSet(0, 300);   // no run, no air
   if(game.door) updateDoor(dt);        // outside the chain: it flies on into play
   updateCrows(dt);                     // same: a crow already launched keeps coming
 
@@ -3598,10 +3727,15 @@ function updatePlay(dt){
     }
   } else {
     p.flapT += dt*1.4;                               // wings glide, barely moving
+    /* ...but it is not silent. A long drop used to be a hole in the mix
+       between one wingbeat and the next; this fills it with the sound of the
+       wings being OUT, on a cooldown so it never stacks. */
+    p.glideT = (p.glideT||0) - dt;
+    if(!p.onGround && p.vy < -60 && p.glideT <= 0){ S.glide(); p.glideT = 0.42; }
   }
 
   if(p.y >= ceilH){ p.y = ceilH; if(p.vy<0){ p.vy *= -0.25; addShake(3);
-    featherBurst(p.x, GROUND-p.y+10, 3, 150); } }
+    S.ceiling(); featherBurst(p.x, GROUND-p.y+10, 3, 150); } }
 
   if(p.y <= 0){
     const impact = p.vy;
@@ -3610,6 +3744,8 @@ function updatePlay(dt){
       p.onGround = true; p.state='land'; p.stateT=0;
       p.landT = clamp(impact/(1200*PACE), 0.35, 1);
       S.land(); addShake(clamp(impact/(220*PACE), 2, 9)); game.camYT = 14;
+      // and at speed he does not just land, he runs it off
+      if(impact > 420*PACE) S.scuff(clamp(impact/(1400*PACE), 0, 1));
       spark(p.x-6, GROUND, 14, {col:'rgba(255,242,222,.7)', a0:Math.PI*1.05,a1:Math.PI*1.95, s0:110,s1:330, l0:0.22,l1:0.55, r0:3,r1:9, g:520});
       if(impact>700*PACE) featherBurst(p.x, GROUND-24, 3, 190);
     }
@@ -3628,7 +3764,7 @@ function updatePlay(dt){
     const a = prev - Math.floor(prev), b = p.phase - Math.floor(p.phase);
     const crossed = (x)=> (a < x && (b > x || b < a));
     if(crossed(0.0) || crossed(0.5)){
-      S.step();
+      S.step(speedT);
       spark(p.x-24, GROUND, 3, {col:'rgba(255,242,222,.45)', a0:Math.PI*1.1,a1:Math.PI*1.85, s0:50,s1:150, l0:0.18,l1:0.4, r0:2,r1:5, g:420});
     }
   }
@@ -3686,6 +3822,14 @@ function updatePlay(dt){
     game.parts.push({ x: cam.x+VW+40, y: GROUND - rnd(30, VH*0.55), vx:-game.speed*1.6, vy:0,
       life:0.45, t:0, r:rnd(20,70), col:'rgba(255,242,222,.24)', g:0, kind:'line', rot:0, vr:0, drag:1 });
   }
+  /* The air. Level follows how fast the air is actually moving past him --
+     the run's own speed on the ground, plus what he is doing vertically once
+     he is off it -- and the cutoff rises with it, because fast air is thin and
+     slow air is not. Pushed every frame rather than triggered, because this is
+     the one sound in the game that is a state and not an event. */
+  const air = clamp(speedT*0.5 + (p.onGround ? 0 : 0.25 + Math.abs(p.vy)/1100), 0, 1);
+  windSet(0.004 + air*0.055, 260 + air*1500);
+
   // HUD
   elScore.textContent = pad6(game.score);
   if(game.dbg){
@@ -4760,6 +4904,64 @@ function boot(){
      minutes per tier, and reports how long a volley had to wait for a window.
      A tier where the longest wait runs away is a tier where the crows have
      quietly been switched off. */
+  /* Sound cannot be screenshotted, so it gets rendered instead. ?sfx=1 hangs
+     __sfx on window: it swaps A.ctx/master/sfxGain for an OfflineAudioContext,
+     calls the REAL entry in S, renders, and hands back a WAV. Swapping the
+     three fields rather than reimplementing anything is the point -- what
+     comes out is the synthesis the game actually plays, not a copy of it that
+     can drift. tools/sfx.py drives it and writes the files. */
+  if(/[?&]sfx/.test(location.search)){
+    window.__sfx = (name, arg, secs) => new Promise((res, rej)=>{
+      const sr = 44100, n = Math.ceil(sr*(secs||1.2));
+      const OC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+      const keep = { ctx:A.ctx, master:A.master, sfxGain:A.sfxGain,
+                     started:A.started, on:A.on, nb:noiseBuf,
+                     w:{src:WIND.src, bp:WIND.bp, g:WIND.g} };
+      const oc = new OC(1, n, sr);
+      A.ctx = oc;
+      A.master  = oc.createGain(); A.master.gain.value = 0.9;
+      A.master.connect(oc.destination);
+      A.sfxGain = oc.createGain(); A.sfxGain.gain.value = 0.85;
+      A.sfxGain.connect(A.master);
+      A.started = true; A.on = true;
+      noiseBuf = null;                       // the old buffer belongs to the old context
+      try{
+        if(name === 'wind'){                 // a state, not an event: sweep it
+          WIND.src = WIND.bp = WIND.g = null;
+          windStart();
+          windSet(0.006, 280);
+          for(let i=1;i<=10;i++){
+            const k = i/10, t = k*(secs||1.2)*0.92;
+            WIND.g.gain.setTargetAtTime(0.004 + k*0.055, t, 0.10);
+            WIND.bp.frequency.setTargetAtTime(260 + k*1500, t, 0.16);
+          }
+        } else S[name](arg);                 // one sound; runs are joined outside
+      }catch(e){ rej(e.message); return; }
+      oc.startRendering().then(buf=>{
+        const d = buf.getChannelData(0);
+        let peak = 0;
+        for(let i=0;i<d.length;i++) peak = Math.max(peak, Math.abs(d[i]));
+        const ab = new ArrayBuffer(44 + d.length*2), v = new DataView(ab);
+        const str = (o,t)=>{ for(let i=0;i<t.length;i++) v.setUint8(o+i, t.charCodeAt(i)); };
+        str(0,'RIFF'); v.setUint32(4, 36+d.length*2, true); str(8,'WAVEfmt ');
+        v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+        v.setUint32(24,sr,true); v.setUint32(28,sr*2,true);
+        v.setUint16(32,2,true); v.setUint16(34,16,true);
+        str(36,'data'); v.setUint32(40, d.length*2, true);
+        for(let i=0;i<d.length;i++){
+          const x = Math.max(-1, Math.min(1, d[i]));
+          v.setInt16(44+i*2, x<0 ? x*0x8000 : x*0x7FFF, true);
+        }
+        const b = new Uint8Array(ab); let bin = '';
+        for(let i=0;i<b.length;i+=8192)
+          bin += String.fromCharCode.apply(null, b.subarray(i, i+8192));
+        A.ctx=keep.ctx; A.master=keep.master; A.sfxGain=keep.sfxGain;
+        A.started=keep.started; A.on=keep.on; noiseBuf=keep.nb;
+        WIND.src=keep.w.src; WIND.bp=keep.w.bp; WIND.g=keep.w.g;
+        res(JSON.stringify({ name, peak:+peak.toFixed(4), wav: btoa(bin) }));
+      }, e => rej(String(e)));
+    });
+  }
   if(/[?&]crowtest/.test(location.search)){
     setTimeout(()=>{
       const out = [], dt = 1/60;

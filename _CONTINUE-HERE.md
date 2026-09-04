@@ -570,6 +570,12 @@ with, so anything drawn outside them is a hit you cannot see coming — and ever
 one falls back to a flat block if its image is missing, the same bargain the
 character frames make. Art can never make a hazard invisible.
 
+**Electrified corn is live STALKS and nothing else.** There used to be a
+horizontal wire strung across the top of every corn hazard as well, which gave
+it the one silhouette it must not have: a fence with corn planted behind it.
+The fence pieces are a different hazard with a different rule, and two hazards
+that look alike teach the player nothing. The crop is the hazard here.
+
 `spawnPattern` places ONE hazard at a time anywhere in the column. There are no
 gates any more -- a floor piece and a ceiling piece at the same x is Flappy
 Bird, and it is what made everything look stacked. `tower` and `hanger` are
@@ -690,6 +696,20 @@ three and a half seconds -- which meant an egg crossed the whole screen having
 barely left the frame it entered on, and none of the painted rotation was ever
 seen. The procedural fallback is tied to the same constant so the two cannot
 drift apart.
+
+**Twelve frames, and the width is eased.** At ten frames the step is 36
+degrees, so nothing lands on 90: there is no true edge-on view, and the two
+nearest it are a third of full width -- which put FOUR of ten frames into a
+sliver and turned a run of eggs into a row of splinters. Twelve hits the edge
+exactly, twice and only twice, and `EASE` fattens the rest so the egg reads as a
+solid object turning with one quick flick through the edge.
+
+**Classify the EDGES before splitting lit from reverse.** Sorting the whole
+sheet on median brightness put the edge-on views -- mid-toned by nature, being
+mostly rim -- into the reverse pool, where `LIFT` then brightened them into pale
+slivers. Width says which frames are edges; only the wide ones are sorted by
+brightness, and at their biggest GAP rather than at a median, because a median
+splits a group in half whether or not there are two groups to split.
 
 **`LIFT` brightens the reverse frames by a third.** The painted reverse is
 genuinely dark, which is right for a lit object and wrong for a pickup: half a

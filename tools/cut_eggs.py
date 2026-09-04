@@ -41,8 +41,16 @@ SH   = os.path.join(ROOT, "sheets", "v2")
 ANIM = os.path.join(ROOT, "anim")
 
 TALL = 62        # frame height in sprite pixels
-N    = 10        # frames in the cycle
-MINW = 0.15      # the edge-on frame keeps this much width; 0 would vanish
+# TWELVE, not ten. At 36 degrees a step no frame lands on 90, so there is no
+# true edge-on view and the nearest two are a third of full width -- which put
+# FOUR of ten frames into a sliver and turned a run of eggs into a row of
+# splinters. At 30 degrees a step the edge is hit exactly, twice, and only twice.
+N    = 12
+# And the width is eased. A raw |cos t| crowds the cycle toward the edge; the
+# exponent fattens the middle so the egg reads as a solid object turning, with
+# one quick flick through the edge, which is what the hand-made set did.
+EASE = 0.70
+MINW = 0.22      # the edge-on frame keeps this much width; 0 would vanish
 MAXF = 16        # tidy up frames left by a longer previous cycle
 # The painted reverse is genuinely dark, which is right for a lit object and
 # wrong for a pickup: half a cycle of dark brown reads as the egg flickering out
@@ -70,11 +78,24 @@ def read_sheet(path):
 def main():
     fr = read_sheet(os.path.join(SH, "egg_spin.png"))
     wide = max(f["w"] for f in fr)
-    lit = np.median([f["lum"] for f in fr])
-    front = sorted([f for f in fr if f["lum"] >= lit], key=lambda f: -f["w"])
-    back  = sorted([f for f in fr if f["lum"] <  lit], key=lambda f: -f["w"])
+    # EDGES FIRST, then lit vs reverse. Splitting the whole sheet on median
+    # brightness put the edge-on views -- which are mid-toned by nature, being
+    # mostly rim -- into the reverse pool, where LIFT then brightened them into
+    # pale slivers. Width says which frames are edges; only the WIDE ones get
+    # sorted by brightness, and the split is taken at their biggest GAP rather
+    # than at a median, because a median splits a group in half whether or not
+    # there are two groups to split.
+    edges = [f for f in fr if f["w"] < wide * 0.60]
+    body  = sorted([f for f in fr if f["w"] >= wide * 0.60], key=lambda f: f["lum"])
+    gaps  = [(body[i+1]["lum"] - body[i]["lum"], i) for i in range(len(body)-1)]
+    cut   = max(gaps)[1] if gaps else 0
+    back  = sorted(body[:cut+1], key=lambda f: -f["w"])
+    front = sorted(body[cut+1:], key=lambda f: -f["w"])
+    if not front: front, back = back, front
     if not back: back = front[-2:]
-    print("  %d on the sheet: %d lit, %d reverse" % (len(fr), len(front), len(back)))
+    if not edges: edges = front[-1:]
+    print("  %d on the sheet: %d lit, %d reverse, %d edge"
+          % (len(fr), len(front), len(back), len(edges)))
 
     def pick(pool, frac):
         """the drawing whose own width is closest to the angle we want"""
@@ -84,10 +105,11 @@ def main():
     for i in range(N):
         t = i * 2 * np.pi / N
         c = np.cos(t)
-        frac = max(MINW, abs(c))
-        src = pick(front if c >= 0 else back, frac)
+        frac = max(MINW, abs(c) ** EASE)
+        edge = abs(c) < 0.2
+        src = pick(edges if edge else (front if c >= 0 else back), frac)
         art = src["img"]
-        if c < 0:
+        if c < 0 and not edge:
             art = art.copy()
             art[..., :3] = np.clip(art[..., :3].astype(np.float32) * LIFT, 0, 255).astype(np.uint8)
         im = Image.fromarray(art, "RGBA")
@@ -101,7 +123,7 @@ def main():
         # eggs hang on their CENTRE, not their feet: they float, spin and fly to
         # the counter, and every one of those wants the middle of the sprite
         meta.append({"f": f, "w": w, "h": h, "ay": h / 2.0})
-        print("   %s %2dx%d  %s" % (f, w, h, "lit" if c >= 0 else "reverse"))
+        print("   %s %2dx%d  %s" % (f, w, h, "edge" if edge else ("lit" if c >= 0 else "reverse")))
     for old in range(N, MAXF):
         p = os.path.join(ANIM, "egg%d.webp" % old)
         if os.path.exists(p): os.remove(p); print("   removed %s" % os.path.basename(p))
