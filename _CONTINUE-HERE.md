@@ -806,6 +806,8 @@ dropped frame every 26s, for tens of MB of canvas held on a phone.
     python tools/shot.py URL out.png        # one screenshot, real device metrics
     python tools/title_art.py               # rebuild the title poster from ref/
     python tools/npc_frames.py              # recut the cow, pig and goat frames
+    python tools/farm_seams.py              # where the farm panels should be cut
+    python tools/farm_strip.py              # rebuild the one-image background
     python tools/build_apex.py              # rebuild the barn's roof from sheets/v2/barn_raw.png
 
 `clip.py` uses `Page.startScreencast`, which timestamps frames, so the GIF keeps
@@ -903,6 +905,40 @@ frame with none on screen, which looks exactly like a wiring bug and cost a
 long chase through save/restore depth, clip regions and canvas identity before
 a six-frame strip showed them walking about quite happily. Grab a clip with
 `tools/clip.py`, not a screenshot.
+
+## The background is one painting
+
+`sheets/v2/farm_strip.webp` is the whole farm: one image, one scale, tiled.
+`tools/farm_strip.py` builds it from the three painted panels, and it exists
+because drawing them as three was the source of every complaint about this
+background.
+
+What was wrong, and what replaced it:
+
+- **They overlapped and cross-faded.** A 46-unit overlap with an alpha ramp
+  down each panel's left edge meant one painting showed through another -- a
+  silo ghosting behind a windmill. The strip is cut, not blended: the seam is
+  *searched for* (`tools/farm_seams.py` scores every pair of columns near the
+  facing edges and keeps the pair that meets best), so the join lands where the
+  fence, the horizon and the grass already agree.
+- **Each panel was scaled differently** so its own two landmarks would land
+  where the game wanted them -- up to 17% apart, which is why the fence changed
+  size halfway across the field. The ground lines are levelled by *sliding*
+  each panel now, which keeps every fence post the size it was painted.
+- **The painted sky is thrown away.** The three skies are not variations of one
+  sky: (27,157,252), (56,182,253) and (1,117,216) at the same height. No
+  correction reconciles that -- row-matching them left a step and flattened the
+  art -- so the sky is keyed out and the game's own gradient shows through the
+  whole strip. One sky by construction. The clouds survive: they are white and
+  enclosed by sky, so the flood that clears it never reaches them.
+
+The remaining tone differences are in the fields, and those are matched row by
+row and then feathered across each seam. **Smooth the corrections before
+applying them**: measured per row and used raw, a row that happens to be mostly
+cloud has almost no sky left to average, the delta jumps against its
+neighbours, and the sky ends up in horizontal stripes.
+
+Costs nothing: 28.4ms a frame before, 28.9 after, at a 4x CPU throttle.
 
 ## Next
 

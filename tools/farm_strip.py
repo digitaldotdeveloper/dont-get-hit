@@ -18,12 +18,18 @@
       panel to reconcile that is what made the scenery change size; sliding each
       one down instead keeps every fence post the size it was painted, and the
       sky it exposes at the top is the panel's own top row.
-   3. **Tone is matched row by row.** Each panel's sky is nudged towards the
-      mean of the three skies and its field towards the mean of the three
-      fields, one row at a time and additively. The measurement only looks at
-      pixels that are actually sky or actually grass, so a red barn cannot drag
-      a row with it, and the dirt band below the ground line is skipped -- the
-      game crops it and draws the road there instead.
+   3. **The painted sky is thrown away.** The three skies are not variations of
+      one sky, they are different skies: (27,157,252), (56,182,253) and
+      (1,117,216) at the same height. Nothing short of repainting reconciles
+      that, and matching them flattens the art while still leaving a step. So
+      the sky is keyed out and the game's own gradient shows through the whole
+      strip -- one sky by construction, and one less thing to keep in step. The
+      painted clouds stay: they are enclosed by sky, so the flood never reaches
+      them.
+   4. **The fields are tone-matched** row by row, additively, measuring only
+      pixels that are actually grass so a red barn cannot drag a row with it,
+      and the seams get a local correction on top. The dirt band below the
+      ground line is skipped -- the game crops it and draws the road there.
 
      python tools/farm_strip.py          # -> sheets/v2/farm_strip.webp
 """
@@ -84,8 +90,9 @@ def match_rows(ims, spans, ground_f):
     span_n = [max(1, (sp[1]-sp[0])//3) for sp in spans]
 
     deltas = [[None]*gline for _ in ims]          # per panel, per row, per channel
-    for y in range(gline):
-        pick = is_sky if y < horizon else is_grass
+    # rows above the horizon are sky and are about to be keyed away entirely
+    for y in range(horizon, gline):                # the sky is keyed out, not matched
+        pick = is_grass
         means, counts = [], []
         for im, sp in zip(ims, spans):
             m, n = band_mean(im, sp, y, pick)
@@ -153,8 +160,8 @@ def feather_seams(strip, seams, ground_f, reach=260):
                     if pick(c):
                         tot[0] += c[0]; tot[1] += c[1]; tot[2] += c[2]; n += 1
             return ([t/n for t in tot], n) if n > 40 else (None, n)
-        band = []
-        for pick, y0, y1 in ((is_sky, 0, horizon), (is_grass, horizon, gline)):
+        band = [[0.0, 0.0, 0.0]]                   # the sky is keyed out; nothing to match
+        for pick, y0, y1 in ((is_grass, horizon, gline),):
             L, nl = side_mean(sx-1, -1, pick, y0, y1)
             R, nr = side_mean(sx,    +1, pick, y0, y1)
             if L is None or R is None: band.append([0.0, 0.0, 0.0]); continue
@@ -179,6 +186,50 @@ def feather_seams(strip, seams, ground_f, reach=260):
     return strip
 
 
+def key_sky(strip, ground_f):
+    """Flood the sky away from the top edge, so the game's gradient shows.
+
+       A flood, not a colour key: the clouds are white and enclosed by sky, so
+       the flood cannot reach them and they survive as painted clouds over the
+       game's sky. Nothing else in the picture is this blue, and the windmill's
+       lattice and the gaps under the water tower open onto the sky, so they
+       clear too."""
+    strip = strip.convert('RGBA')
+    w, h = strip.size
+    px = strip.load()
+    gline = int(h*ground_f)
+
+    def skyish(c):
+        return c[3] and c[2] > c[0] + 40 and c[2] > 150 and c[1] > c[0] + 20
+
+    from collections import deque
+    seen = bytearray(w*h)
+    q = deque()
+    for x in range(w):
+        if skyish(px[x, 0]): seen[x] = 1; q.append((x, 0))
+    while q:
+        x, y = q.popleft()
+        px[x, y] = (0, 0, 0, 0)
+        for dx, dy in ((1,0),(-1,0),(0,1),(0,-1)):
+            nx, ny = x+dx, y+dy
+            if 0 <= nx < w and 0 <= ny < gline and not seen[ny*w+nx] and skyish(px[nx, ny]):
+                seen[ny*w+nx] = 1; q.append((nx, ny))
+
+    # one pass of feathering, so the hard pixel edge does not fizz against a
+    # gradient it was never painted over
+    edge = []
+    for y in range(1, gline-1):
+        for x in range(1, w-1):
+            if px[x, y][3] == 0: continue
+            if (px[x-1, y][3] == 0 or px[x+1, y][3] == 0 or
+                px[x, y-1][3] == 0 or px[x, y+1][3] == 0):
+                edge.append((x, y))
+    for x, y in edge:
+        c = px[x, y]
+        px[x, y] = (c[0], c[1], c[2], 170)
+    return strip
+
+
 def build():
     ims = [Image.open(s).convert('RGB') for s in SRCS]
     target = max(GROUND_F)
@@ -199,15 +250,17 @@ def build():
         x += sp[1]-sp[0]; seams.append(x)
     seams.append(0)                                # the loop point is a seam too
     strip = feather_seams(strip, seams, target)
-    strip.save(OUT, 'WEBP', quality=90, method=6)
+    strip = key_sky(strip, target)
+    strip.save(OUT, 'WEBP', quality=90, method=6, lossless=False, exact=True)
 
     rail = sum(RAIL_F)/3.0 + (target - sum(GROUND_F)/3.0)   # the rail slides too
     print('%s  %dx%d  %d KB' % (OUT, strip.width, strip.height, os.path.getsize(OUT)//1024))
     print('ground %.4f   rail %.4f   (both fractions of the image height)' % (target, rail))
 
-    two = Image.new('RGB', (int(total*1.4), strip.height))
-    two.paste(strip, (0, 0))
-    two.paste(strip.crop((0, 0, int(total*0.4), strip.height)), (total, 0))
+    two = Image.new('RGB', (int(total*1.4), strip.height), (34, 120, 214))
+    two.paste(strip, (0, 0), strip)
+    cut = strip.crop((0, 0, int(total*0.4), strip.height))
+    two.paste(cut, (total, 0), cut)
     two.resize((two.width//2, two.height//2), Image.LANCZOS).save('_farm_strip.png')
     return strip
 

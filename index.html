@@ -3242,17 +3242,16 @@ function loadPanels(SET){
   });
   return SET;
 }
-/* `marks` is TWO landmarks per panel, measured off each image by
-   tools/cut_farm.py: the painted ground line, and the top of the fence's top
-   rail, both as fractions of that image's height. Two landmarks give two
-   equations, and a panel has two unknowns -- its scale and where its top sits
-   -- so both can be solved instead of guessed. That is what makes the grass
-   line AND the fence line run continuously across a seam.
+/* `marks` is TWO landmarks: the painted ground line, and the top of the
+   fence's top rail, both as fractions of the image's height. Two landmarks
+   give two equations, and the image has two unknowns -- its scale and where
+   its top sits -- so both are solved rather than guessed, which is what puts
+   the grass line on GROUND and the fence rail where the game expects it.
 
-   One shared floorFrac was the bug: the three panels were painted with ground
-   lines at 0.785, 0.802 and 0.820, so anchoring all of them on 0.806 stepped
-   the grass by up to 13px at every join and left the fence rails meeting at
-   different heights, which is what read as fences that do not attach. */
+   They used to be three panels with three pairs of marks, and the three ground
+   lines really were painted at 0.785, 0.802 and 0.820. tools/farm_strip.py
+   levels that offline now, by sliding each panel rather than scaling it, so
+   there is one pair of marks left. */
 /* ONE painting. The three panels used to be drawn as three: overlapped by 46
    units, cross-faded into each other through an alpha ramp, and each scaled by
    a different amount so its own two landmarks would land where the game wanted
@@ -3261,14 +3260,17 @@ function loadPanels(SET){
    and the per-panel scale made the fence change size halfway across the field,
    which is what read as fences that do not join.
 
-   tools/farm_strip.py now joins them once, offline: the seam is searched for
-   rather than assumed, the ground lines are levelled by sliding each panel
-   instead of scaling it, and the skies and fields are tone-matched row by row.
-   The game draws the result as a single opaque image, tiled -- so `blend` is 0
-   and there is nothing left to see through. Re-run that tool if the panels are
-   ever repainted; it prints the two marks below. */
+   tools/farm_strip.py now joins them once, offline: the seams are searched
+   for rather than assumed, the ground lines are levelled by sliding each panel
+   instead of scaling it, and the fields are tone-matched. The painted sky is
+   keyed out entirely -- the three skies were (27,157,252), (56,182,253) and
+   (1,117,216) at the same height, which is not one sky by any amount of
+   correction -- so the game's own gradient shows through the whole strip and
+   the clouds ride over it. The game tiles the result; `blend` is 0 and there
+   is nothing left to see through. Re-run that tool if the panels are ever
+   repainted; it prints the two marks below. */
 const FARM = loadPanels({ srcs:['sheets/v2/farm_strip.webp'],
-               imgs:[], ready:0, blend:0, haze:'rgba(146,196,246,.15)',
+               imgs:[], ready:0, blend:0, haze:'rgba(146,196,246,.10)',
                marks:[[0.8199,0.6276]],
                // buildLayers has already run by the time the art lands, so the
                // fallback layers are still in `layers`. Throw them away.
@@ -3295,12 +3297,9 @@ function titleRect(){
   return { w: iw*s, h: ih*s, x: (VW - iw*s)/2, y: (VH - ih*s)/2 };
 }
 
-/* The painted farm. Each panel is solved from its own two landmarks, so they
-   are not all the same size -- the widest is about 17% bigger than the
-   narrowest -- and that is fine: they are different scenery, and a continuous
-   fence line is worth far more than identical scales. Sizing them against the
-   play band instead of GROUND magnifies a 572px source about fourfold and puts
-   the silo tops off the frame, which is the trap the prison wall hit. */
+/* The painted farm: one image, one scale, tiled. Sizing it against the play
+   band instead of GROUND magnifies a 572px source about fourfold and puts the
+   silo tops off the frame, which is the trap the prison wall hit. */
 function farmGeom(){
   if(FARM.geom && FARM.geom.ground === GROUND && FARM.geom.n === FARM.ready) return FARM.geom;
   const F = GROUND * FARM_RAIL;
