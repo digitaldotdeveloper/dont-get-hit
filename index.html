@@ -2658,6 +2658,12 @@ function updateEggs(dt){
     if(e.x < cam.x - 200) game.eggs.splice(i,1);
   }
 }
+/* Turns a second. The painted frames took the spin from a squash to something
+   with a lit face and a dark reverse, and at 0.30 -- one turn every three and a
+   half seconds -- you never saw it: an egg drifted past having barely moved off
+   the frame it entered on. Fast enough to read as spinning is the point of
+   having painted it. */
+const EGG_SPIN = 1.15;
 function drawEggs(){
   const list = FRAME_DATA.egg;
   for(const e of game.eggs){
@@ -2673,7 +2679,7 @@ function drawEggs(){
     ctx.translate(x, y + Math.sin(e.t*0.9)*4);
     let drew = false;
     if(list && FR.ready){
-      const fr = list[Math.floor((((e.t*0.30) % 1)+1)%1 * list.length) % list.length];
+      const fr = list[Math.floor((((e.t*EGG_SPIN) % 1)+1)%1 * list.length) % list.length];
       const im = FR.img[fr.f];
       if(im && im.complete && im.naturalWidth){
         const w = fr.w*SPR*sc, h = fr.h*SPR*sc;
@@ -2682,7 +2688,7 @@ function drawEggs(){
       }
     }
     if(!drew){
-      const wob = Math.abs(Math.cos(e.t*0.9));
+      const wob = Math.abs(Math.cos(e.t*EGG_SPIN*Math.PI));   // same rate as the frames
       ctx.beginPath();
       ctx.ellipse(0, 0, (10+16*wob)*sc, 26*sc, 0, 0, TAU);
       const g2 = ctx.createLinearGradient(-18*sc,-24*sc, 14*sc, 24*sc);

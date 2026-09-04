@@ -685,6 +685,12 @@ is the lit face or the reverse. They are then laid on a cosine, and the second
 half of the turn reuses the first half's art MIRRORED -- what a symmetric object
 actually does, and it stops the loop reading as a repeat.
 
+**`EGG_SPIN` is turns a second, and it is 1.15.** It was 0.30 -- one turn every
+three and a half seconds -- which meant an egg crossed the whole screen having
+barely left the frame it entered on, and none of the painted rotation was ever
+seen. The procedural fallback is tied to the same constant so the two cannot
+drift apart.
+
 **`LIFT` brightens the reverse frames by a third.** The painted reverse is
 genuinely dark, which is right for a lit object and wrong for a pickup: half a
 cycle of dark brown reads as the egg flickering out of existence rather than
