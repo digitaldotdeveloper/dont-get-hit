@@ -729,6 +729,41 @@ counter and the pickup are one object. Alternates: `egg_alt_soft.png`,
 semitone per egg in a streak. `game.eggBank` persists in `localStorage` under
 `dgh_eggs`.
 
+## The hay bales (`tools/thin_bales.py`)
+
+`art/bg/near.webp` is one tile that loops, so however many stacks are painted on
+it is how many the player sees for the whole run. Two per 923px was a stack
+every half screen, forever, and the field read as a hay depot.
+
+**Nothing is deleted.** Bale-free stretches are spliced in, which makes the tile
+longer and the bales rarer and needs no inpainting at all, because every pixel
+is already the right pixel. The splice is invisible because everything crossing
+it -- the grass line, the fence rails -- is horizontal, so any x works provided
+the cut misses the posts and the bales.
+
+Deleting a stack is the first instinct and it is a trap: a fence post stands
+behind it, so the hole needs a donor slab carrying its own post at exactly the
+right offset, and on a tile this short no such donor exists. Every attempt left
+either a sliver of hay or a hole in the fence.
+
+Finding the bales is the other half, and colour alone will not do it:
+
+- Blobs are filtered **by height**. The grass is full of buttercups that pass
+  any straw colour test, and the fence rail has a straw-coloured highlight
+  running its whole length. A stack is a hundred pixels tall; a buttercup is
+  twenty. Filtering by area instead merges every stack into one run covering
+  most of the tile.
+- The blobs are **dilated** before their extent is taken. The colour test finds
+  the lit face of a bale and misses its ink outline and the loose straw round
+  its foot, so the raw extent is about 40px too narrow at each end -- and a
+  chunk cut against it contains a sliver of the very thing it is avoiding.
+- Posts are found by **opacity**, not colour: the sky is keyed out of this
+  layer, so a post is a column that is opaque all the way up.
+
+The copies are taken at different offsets inside the clean stretch rather than
+being the same slab N times, because three identical slabs of grass in a row
+read as a repeat.
+
 ## NPCs
 
 **`NPC_REACT` is FALSE: they walk and do nothing else.** Reactions made every
