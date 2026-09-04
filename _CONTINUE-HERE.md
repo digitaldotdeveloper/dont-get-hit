@@ -1005,133 +1005,99 @@ anything looking one up still finds it -- an `Image` with no `src` reports
 about this was visible locally; every asset loaded instantly and the game
 looked right.
 
-## The obstacle set
+## The obstacle set — everything is wire
 
-Two families, and the line between them is the whole design.
+There is no jumping half. The farmyard props, the crate columns, the crows,
+the things that fell out of the sky, the bale trap, the rotating bar and the
+windmill are all gone, and with them the `air`, `fall`, `roll` and `bounce`
+obstacle kinds and every branch that served them. What is left is four
+families, and all four are electric:
 
-**Ground props are solid and you jump them.** Painted farmyard objects cut off
-the Gemini Studio sheets, registered with `farmProp(name, w, h)`, sprite
-filling its hitbox exactly. `fence`, `gate`, `cart`, `engine`, `haywagon`,
-`tracwheel`, `mud` and the three corn pieces joined the fourteen that were
-already there. Sizes are the art's own aspect ratio at the height the hazard
-wants -- take the ratio out of `tools/cut_obstacles.py`'s output, never guess
-it, or the prop is stretched and the hitbox lies.
+| family | keys | what it asks |
+|---|---|---|
+| zapper | `zap_h` `zap_v` `zap_d` `zap_m` | pick a side |
+| corn | `corn_one` `corn_clump` `corn_row` | get over it |
+| fence | `e_fence` `e_wire` | get over it, higher |
+| ladder | `e_double` `e_gate` `e_multi` `e_g2a` | find the opening |
 
-**Electric pieces are the flying half, and one rule holds the family together:
-an electric piece is lethal everywhere it is solid, and its opening is empty
-air.** There is no safe-looking post you are meant to fly through. In a side
-view a lethal upright is a wall for its whole height, so a hazard with a gap in
-the middle CANNOT be one tall frame -- it has to be a piece standing off the
-floor and a piece hanging off the roof with nothing whatever between them.
-That is `elecLadder`, and it is why nothing in there ever draws a post across
-its own opening. Get it wrong and the safe passage is blocked by the thing
-framing it, which is the definition of randomly unavoidable.
+**Variety has to come from the wire, because the wire is all there is.** A
+fence at two heights is the same fence twice. A wire at two ANGLES is two
+obstacles, and one you must go under is a different question from one you must
+go over. That is what the zappers are for, and it is why nothing about a
+zapper is fixed by its type: `rollZap` rolls the angle, the length, the height
+and the drift at spawn.
 
-Nine pieces: `e_fence`, `e_wire` and `e_baletrap` are gone over; `e_rotor` and
-`e_mill` turn; `e_double`, `e_gate`, `e_multi` and `e_g2a` are ladders you go
-through. Each one describes itself once in `build()`, and the drawing, the
-collision and the near-miss meter all read that same description -- so the wire
-you see and the segment you die on are literally the same two numbers.
-Geometry is in world units with y measured UP from the ground; the flip into
-screen coordinates happens once, in `drawElec`.
+**`rollZap` is rejection sampling, not arithmetic.** The constraint is not a
+range you can solve for -- the angle changes how much vertical room the wire
+eats and the drift changes it again -- so it rolls, checks, and rolls again.
+Twenty tries, and the last resort is a guaranteed-legal flat wire low in the
+column, so it cannot fail to place something on a screen too short for the fun
+ones. A drifting zapper's corridor is measured at the ENDS of its sweep, never
+the middle: a corridor that is only open half the time is not a corridor.
 
-Three things worth knowing before touching them:
+**The rule both `rollZap` and `?obtest=1` enforce**: a side is either a
+corridor of at least `CLEAR`, or it is under `SHUT` and plainly reads as no
+way through. Never the in-between -- the 200 units that look flyable and are
+not, which is the shape of every unfair obstacle ever shipped.
 
-- **A rotor is collided as the disc it sweeps, not as its blades.** At 2.2
-  rad/s a blade crosses the bird's box between two frames, so per-blade
-  collision is a coin toss dressed up as skill. The bright ring is drawn so the
-  disc is what you see as well as what you hit.
-- **Rotation is a fixed rate off a phase seeded from the piece's own x.** No
-  easing, no reversal, no speed-up. The air above a rotor's reach is safe
-  whatever it is doing, so timing is a flourish and never the difference
-  between passing and not.
-- **`spawnElec` picks the gap FIRST and clamps the floor into what is left.**
-  Doing it the other way round produces a legal-looking piece with a 90px slot
-  on a short screen. `CLEAR` is 250 and `?obtest=1` re-checks it.
+`CLEAR` is 330 and it is the single number that says how tight this game is
+willing to be; every ladder's gap range is clamped to it. Raise that rather
+than widening pieces one at a time.
 
-This is also the shape the farm had lost. The crate gates that used to be here
-were two independent objects that happened to land at the same x and left
-whatever slot they happened to leave, which is Flappy Bird -- that is why they
-were removed. A ladder is ONE object that owns both halves and therefore owns
-the gap, which is a different thing wearing the same silhouette.
+**Every lethal post carries a live wire up it.** Bare timber is the thing you
+have been flying over all game, so an upright that reads as scenery and then
+electrocutes you is the game lying, however honest the hitbox is. `postWire`
+marks a wire `thin` -- a third the weight -- because at full strength the glow
+is 26 units and `e_posttall` is 34 wide, and the post vanished inside its own
+electricity. The wire also carries an ink rim under its core: cyan on a bright
+blue sky is the lowest-contrast pairing in the game, and a zapper IS its wire.
+
+Each piece describes itself once in `build()`, and the drawing, the collision
+and the near-miss meter all read that same description -- so the wire you see
+and the segment you die on are the same two numbers. Geometry is in world
+units with y measured UP from the ground; the flip to screen happens once, in
+`drawElec`.
+
+`elecSpec` must copy through anything `build` needs off the spec. It did not
+copy `zap`, so every zapper spawned with no angle and no length and drew
+nothing -- silently, because a missing image is a fallback here and an
+undefined number is a NaN, and neither throws.
 
 ### Patterns, not dice
 
 `spawnPattern` picks from `PAT`: short sequences with their spacing in
 SECONDS, followed by a safe section. Seconds and not pixels, because the world
 speeds up as a run goes on and pixel spacing would quietly tighten every
-pattern into a different pattern. Difficulty is which patterns have unlocked
-and how much shorter the safe tail has become -- never a hazard that got harder
-to see. Tokens: `#gnd`, `#air`, `#col`, `#corn`.
+pattern into a different one. Difficulty is which patterns have unlocked and
+how much shorter the safe tail is -- never a hazard that got harder to see.
 
-Everything in a sequence is placed the moment the pattern fires, each at its
-own arrival time, so the spacing inside a pattern is exact rather than the sum
-of several later spawn decisions.
+Patterns are written in **tokens** (`#zap` `#corn` `#fence` `#lad`), not keys,
+so a pattern says what SHAPE it wants and the tier decides which one that is.
+That is why the table did not have to be rewritten when the roster was.
 
-**Corn is a crop, not a fence.** Any pattern containing `#corn` is skipped
-whole while `game.cornT` is running, so it arrives in bursts and then leaves
-you alone. Note that `?obtest=1` never advances time, so corn shows up once per
-tier in the test and then locks itself out -- that is the harness, not the game.
+Corn keeps a short cooldown (`game.cornT`, 5-9s) -- it is a third of the
+roster now rather than one prop among twenty, so the cooldown is there to stop
+two corn beats running into each other, not to make the crop rare. **`?obtest=1`
+zeroes it every iteration**, because that loop does not advance the clock and
+the crop would otherwise appear once per tier and lock itself out of its own
+test.
 
 ### Looking at them
 
 - `?ob=KEY` parks one hazard mid-screen in a live run and holds it there
   (`game.freeze`, which is 6% time, not a pause -- a paused game does not draw).
-  It also hangs the setup on `window`, because everything is inside an IIFE.
+  It hangs the setup on `window`, because everything is inside an IIFE.
 - `?hit=1` draws every lethal shape over the art: boxes magenta, wires yellow
-  at their true lethal thickness, a rotor's swept disc green. This is how "the
-  sprite fills its hitbox" gets checked instead of asserted.
+  at their true lethal thickness. This is how "the sprite fills its hitbox"
+  gets checked instead of asserted.
 - `tools/obshot.py URL out.png key,key --hit` builds a contact sheet from those.
-- `?obtest=1` spawns 240 patterns per tier and checks openings and spacing.
-  Corridors come out >=252 and gaps >=0.82s.
+  `OBSHOT_SETTLE` overrides the wait; 6s is plenty locally and nowhere near
+  enough against the CDN.
+- `?obtest=1` spawns 240 patterns per tier and checks openings, half-gaps and
+  spacing. Corridors come out >=330, gaps >=0.85s.
 
-**A rolling prop rests ON the ground.** It used to spin about the origin, which
-drew every roller half buried while its hitbox ran 0..h -- so the top half of
-the box was empty sky and you died on the air above a tyre. The tractor wheel
-made it obvious; the fix is one translate, and it is the tyre and the fuel drum
-too. `bounce` still integrates a height nothing reads: it is in neither the
-draw nor the collision, so do not set it expecting a hop.
-
-## The background: four speeds and one sky
-
-`art/bg/far|mid|near.webp` plus a field the game fills in, drawn in that order
-with the neighbours walking between the farm and the fence. It replaced a single
-painting at a single speed, which is why that one read as a sticker rather than
-a place.
-
-- **Generated per layer** by `tools/gen_bg.py` (Gemini Studio, `Pro`), each on a
-  flat **magenta** field rather than a painted sky. Magenta is in none of the
-  palettes so it keys cleanly, and keying the sky is the whole trick: the game
-  draws one sky behind everything and no layer ever has to agree with another
-  about what colour it is.
-- **Cut to loop** by `tools/bg_layers.py`. A generator will not hand you a
-  tiling image, so the seam is searched for: score the columns near the right
-  edge against the columns near the left, keep the best pair, crop between them.
-- **The speeds are close together on purpose** -- 0.10 / 0.26 / 0.44 / 0.60
-  against the road's 1.0. Open that gap and the eye starts tracking the
-  parallax instead of the chicken, which at this pace is tiring to look at.
-
-Three things that each looked like a different bug:
-
-- **The neighbours vanished.** They were laid out along one axis and looked for
-  along another: `first` was computed from `cam.x` while their position used
-  `cam.x*par`, so every one of them sat off the right-hand edge by a gap that
-  grew with the run. Index by the layer's camera.
-- **The buildings stood on sky.** The layers are cut-outs, so the ground between
-  the fence and the barns is sky until something puts grass there. `drawField()`
-  is that grass -- and it has to start at the FAR layer's feet, not the mid
-  layer's, or a blue band runs across the middle of the farm.
-- **A hard black rule across the scene.** The generator paints a ground line
-  along the bottom of the mid layer. Fine in a picture that stands alone, a
-  black rule straight across the farm once it is standing in a field.
-  `trim_baseline()` takes it off.
-
-**Trim the empty sky off every tile.** Transparent pixels are not free -- they
-are blended once per tile per frame -- and these were up to 62% empty. Trimming
-took the unthrottled frame from 19.2ms back to 16.9. Three layers still cost
-more fill than one painting (about 40% under a 4x CPU throttle), which the
-resolution dial absorbs: 22 seconds in it has walked DPR to 1.0 and settled at
-22ms a frame, better than the single painting managed at 1.25.
+Art the set no longer uses is still in `art/farm` -- nothing requests it, so it
+costs nothing, and it is there if the farmyard props are ever wanted back.
 
 ## Next
 
