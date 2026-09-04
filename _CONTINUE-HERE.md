@@ -309,6 +309,27 @@ cutoff are pushed every frame, and it ran 260-1760Hz at Q 0.55. A band that broa
 that low has skirts down in the rumble, so the constant layer under everything
 was a fan rather than speed. It runs 640-3140Hz at Q 0.85 now, and quieter.
 
+**And it must not be LONG either.** `FLAP_HZ` is about eight and a half beats a
+second, so they land 118ms apart: anything over about 70ms overlaps its own next
+beat, overlapping beats of filtered noise are a texture, and a texture is
+indistinguishable from wind however feathery its spectrum. Length was as much of
+the problem as pitch.
+
+Each beat is short now, and the strokes **alternate** -- a fuller down-stroke and
+a thinner recovery -- because a rhythm reads as wings where an even hiss at 8Hz
+reads as a fan. One beat in six gets a rubbery squeak and one in thirty a
+strangled cluck, which at this rate lands about once a second and once every
+three: he cannot really fly, and that is the joke.
+
+**The air bed DUCKS to 22% while he is holding.** The wing beats are the thing to
+hear when you are flying, and they were competing with a layer that rises at
+exactly the moment they start. `windSet` smooths over 0.10s, so it is a swell
+rather than a switch.
+
+`flapSide` lives beside `stepFoot` at module level and **not** on `S`:
+`?audiotest=1` walks every key of `S` and calls it, so a number parked in there
+is a crash. The test caught exactly that.
+
 When retuning any of this, measuring beats guessing: sum the parts offline and
 look at the spectral centroid and the fraction of energy below 300Hz. Filtered
 noise is hard to model faithfully at low Q, but pure tones are exact -- and a
