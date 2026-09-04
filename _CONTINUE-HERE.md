@@ -656,7 +656,23 @@ has to hand over to the map's own panels.
 Joyride lays out coins - a flat line, an arc, or a climb - so a run of them can
 be followed with one held press. **`eggFree` rejects any egg that lands inside a
 hazard**, including zapper beams, so chasing them is a real choice and never
-bait. Ten-frame spin sheet. Taken eggs fly to the counter; the pickup pings up a
+bait. **The ten-frame spin is DERIVED from one painted egg**, not drawn ten times
+(`tools/cut_eggs.py`, `sheets/v2/egg_hero.png`). Ten separate drawings drift --
+the silhouette wobbles and the highlight jumps between frames -- so instead the
+hero is turned on its vertical axis: width scaled per frame, the far half drawn
+mirrored and knocked back so it reads as the reverse face. The loop is exact by
+construction and the egg cannot wobble.
+
+The width profile is **not** `|cos t|`. A true cosine spends a third of the cycle
+edge-on, and a pickup you cannot see is a pickup the player cannot read; `SPIN`
+holds the proportions the old hand-made set used -- mostly facing you, one quick
+flick through the edge -- measured off it and kept.
+
+The egg carries a stamped chicken, which is what makes it read as minted
+currency rather than an Easter egg, and `art/egg_icon.webp` puts the same
+painting in the HUD so the counter and the thing you collected are obviously the
+same object. Two alternates are kept next to the hero: `egg_alt_band.png` and
+`egg_alt_plain.png`. Swapping is one file plus a re-run of the tool. Taken eggs fly to the counter; the pickup pings up a
 semitone per egg in a streak. `game.eggBank` persists in `localStorage` under
 `dgh_eggs`.
 

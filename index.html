@@ -594,6 +594,13 @@ const S = {
   },
   thud(){ noise(0.18,170,45,0.2,1.0); tone(96,0.16,'sine',0.15,44); },
   near(){ noise(0.24,2000,320,0.095,1.8); tone(1040,0.08,'sine',0.045,1560); },
+  /* Electrocution, played UNDER hit() rather than instead of it: a hard AC
+     buzz, so dying on a wire never sounds like dying on a hay bale. */
+  zap(){
+    wob(92, 60, 0.42, {type:'square', vol:0.15, depth:46, rate:34});
+    noise(0.26, 3200, 900, 0.10, 2.4);
+    tone(2400, 0.07, 'square', 0.065, 380);
+  },
   stumble(){ tone(200,0.1,'triangle',0.09,140); noise(0.16,320,140,0.08,1.2); },
   /* ---- score and UI ------------------------------------------------ */
   combo(n){ const k=Math.min(n,8); tone(520*Math.pow(1.16,k),0.11,'triangle',0.12,780*Math.pow(1.1,k)); },
@@ -2396,7 +2403,7 @@ const game = {
   speed:620, score:0, best:0,
   dist:0, near:0, combo:0, comboBest:0, comboT:0,
   obstacles:[], parts:[], pops:[], ui:[],
-  spawnT:1.2, tier:0, lastGroundX:-1e9, lastAirX:-1e9,
+  spawnT:1.2, cornT:0, tier:0, lastGroundX:-1e9, lastAirX:-1e9,
   freeze:0, timeScale:1, tsTarget:1,
   shake:0, flash:0, zoom:1, zoomT:1, camY:0, camYT:0,
   firstRun:true, hasJumped:false, tut:false
@@ -2522,6 +2529,31 @@ function spawnOne(key, aheadTime){
   }
   game.obstacles.push(o);
   if(spec.kind==='air') game.lastAirX = o.x; else game.lastGroundX = o.x;
+  return o;
+}
+
+/* Placing an electric piece is the one spawn that gets checked rather than
+   just done. The ladders choose their own opening, and an opening under CLEAR
+   is a hazard with no way through it -- so the gap is picked first, the floor
+   of the opening is then clamped into whatever room that leaves, and the band
+   is stashed on the object because build() needs to know where the roof is.
+   Doing it the other way round (floor first, gap into the remainder) is what
+   produces a legal-looking piece with a 90px slot on a short screen. */
+function spawnElec(key, aheadTime){
+  const spec = OB[key], band = GROUND - CEIL;
+  const o = spawnOne(key, aheadTime);
+  o.band  = band;
+  o.seed  = hash(o.x*0.017)*97;      // per-piece, so two on screen do not flicker as one
+  o.phase = hash(o.x*0.031)*TAU;     // and two rotors are never in step
+  if(spec.ladder){
+    const d   = spec.ladder;
+    const gap = clamp(rnd(d.gap[0], d.gap[1]), CLEAR, Math.max(CLEAR, band-180));
+    o.lo = clamp(rnd(d.lo[0], d.lo[1]), 80, Math.max(80, band-gap-80));
+    o.hi = o.lo + gap;
+    o.h  = band;                     // eggs keep out of the whole column
+  } else {
+    o.h = spec.top;
+  }
   return o;
 }
 
@@ -2655,61 +2687,126 @@ function drawEggs(){
    column with clear air all round it -- never a floor piece and a ceiling
    piece stacked into a narrow slot. That stacking is Flappy Bird, and it is
    what made this feel like threading a needle instead of flying. */
-function spawnStandalone(hang){
+function spawnStandalone(hang, lead){
   const band = GROUND - CEIL;
   const spec = hang ? OB.hanger : OB.tower;
   const h = hang ? rnd(110, Math.min(300, band*0.40))
                  : rnd(90,  Math.min(280, band*0.38));
   const closure = game.speed;
-  const x = player.x + closure*Math.max(1.6, (VW - PX + 200)/closure + 0.25);
+  const x = player.x + closure*Math.max(lead||1.6, (VW - PX + 200)/closure + 0.25);
   game.obstacles.push({ key: hang?'hanger':'tower', spec, x, kind:'ground', hang,
     w:spec.w, h, cap: pick(hang?gateHangs():gateTops()), base:0, vx:0, rot:0,
     bz:0, y:0, vy:0, landed:true, warn:0, passed:false, minGap:1e9, counted:false });
 }
-/* The zapper used to take 22-26% of every tier above 0, and it was the one
-   hazard that could sit anywhere in the column. With it gone that share goes to
-   the standalone columns and the air, which are the only other things that make
-   you choose a height -- otherwise every tier collapses into "fly over the
-   ground props" and the ceiling stops mattering. */
+/* ============================================================
+   PATTERNS — sequences, not dice
+   ============================================================
+   A pattern is a short SEQUENCE of hazards with its spacing written in
+   SECONDS, followed by a safe section. Seconds and not pixels, because the
+   world speeds up as a run goes on: pixel spacing would quietly tighten every
+   pattern into a different pattern, where a second of air is a second of air
+   at any speed.
+
+   Difficulty is which patterns have unlocked and how much shorter the safe
+   tail has become. It is never a hazard that got harder to see, and never a
+   hazard dropped closer than its sequence says -- so a run gets harder in a
+   way you can learn rather than in a way you can only be surprised by.
+
+   Reading the table: a string is an obstacle key or a token, a number is the
+   seconds of clear air before the next one, and `tail` is the safe section
+   after the last one. The tokens are '#gnd' (any farmyard prop of this tier),
+   '#air' (the crows), '#col' (a crate column) and '#corn' -- the crop keeps
+   its own cooldown, so any pattern containing it is skipped entirely while
+   game.cornT is still running. Corn is a crop, not a fence: it turns up in
+   bursts and then leaves you alone.
+
+   The five combinations the farm was designed around are all in here:
+   fence into a wire, corn into bales into a wire, a bale into the gate,
+   corn into a fence into the turning bar, and one wire followed by the same
+   wire at another height. */
+const isCorn = k => CORN_KEYS.indexOf(k) >= 0;
+function groundPool(tier){
+  return poolFor(tier).filter(k => OB[k].kind==='ground' &&
+    k!=='tower' && k!=='hanger' && !isCorn(k));
+}
+function airPool(tier){ return poolFor(tier).filter(k => OB[k].kind==='air'); }
+function cornPool(tier){ return CORN_KEYS.filter(k => OB[k].tier <= tier); }
+
+function mkPat(tier, tail, spec){
+  const seq=[]; let dt=0;
+  for(const it of spec){
+    if(typeof it === 'number') dt = it;
+    else { seq.push({k:it, dt}); dt = 0; }
+  }
+  return { tier, tail, seq, corn: spec.indexOf('#corn') >= 0 };
+}
+const PAT = [
+  /* tier 0 — one thing on the floor at a time, and a long look at it */
+  mkPat(0, [1.55,1.95], ['#gnd']),
+  mkPat(0, [1.45,1.80], ['mud']),
+  mkPat(0, [1.55,1.95], ['fence']),
+
+  /* tier 1 — the first live wire, and the first combination */
+  mkPat(1, [1.35,1.70], ['#gnd']),
+  mkPat(1, [1.40,1.75], ['e_fence']),
+  mkPat(1, [1.35,1.70], ['#corn']),
+  mkPat(1, [1.30,1.60], ['#air']),
+  mkPat(1, [1.45,1.80], ['fence', 1.05, 'e_fence']),
+
+  /* tier 2 — the crop, the bales, and the first opening to aim at */
+  mkPat(2, [1.25,1.55], ['#gnd', 0.95, 'e_fence']),
+  mkPat(2, [1.30,1.60], ['e_wire']),
+  mkPat(2, [1.30,1.60], ['e_baletrap']),
+  mkPat(2, [1.35,1.65], ['e_double']),
+  mkPat(2, [1.20,1.50], ['#col']),
+  mkPat(2, [1.30,1.60], ['#corn', 0.95, 'haybale', 1.00, 'e_wire']),
+  mkPat(2, [1.55,1.90], ['haybale', 1.05, 'e_gate']),
+  mkPat(2, [1.20,1.50], ['#gnd', 0.90, '#air']),
+
+  /* tier 3 — the openings, and the bar that turns */
+  mkPat(3, [1.20,1.50], ['e_multi']),
+  mkPat(3, [1.25,1.55], ['e_gate']),
+  mkPat(3, [1.20,1.50], ['e_rotor']),
+  mkPat(3, [1.20,1.50], ['#corn', 0.90, 'fence', 1.00, 'e_rotor']),
+  mkPat(3, [1.45,1.80], ['e_fence', 0.95, 'e_wire']),
+  mkPat(3, [1.15,1.45], ['#gnd', 0.85, 'e_multi']),
+  mkPat(3, [1.15,1.45], ['#col', 0.90, 'e_fence']),
+
+  /* tier 4 — three beats, and the two big machines */
+  mkPat(4, [1.15,1.45], ['e_mill']),
+  mkPat(4, [1.15,1.45], ['e_g2a']),
+  mkPat(4, [1.10,1.40], ['e_fence', 0.88, 'e_multi', 1.10, '#gnd']),
+  mkPat(4, [1.10,1.40], ['#corn', 0.85, 'e_baletrap', 1.00, 'e_gate']),
+  mkPat(4, [1.10,1.40], ['haywagon', 0.88, 'e_rotor', 1.05, 'e_fence']),
+];
+
 function spawnPattern(){
   const tier = tierNow();
-  const pool = poolFor(tier);
-  const air  = pool.filter(k=>OB[k].kind==='air');
-  const gnd  = pool.filter(k=>OB[k].kind==='ground' && k!=='tower' && k!=='hanger');
-  const fall = pool.filter(k=>OB[k].kind==='fall');
-  const r = Math.random();
-  let gap;
-  if(tier===0){                                   // just objects on the floor
-    spawnOne(pick(gnd), 0);
-    gap = rnd(2.20, 2.70);
-  } else if(tier===1){                            // the whole cast, well spaced
-    if(r<0.46) spawnOne(pick(gnd),0);
-    else if(r<0.74) spawnOne(pick(air),0);
-    else spawnStandalone(Math.random()<0.5);
-    gap = rnd(1.75, 2.20);
-  } else if(tier===2){                            // things start falling
-    if(r<0.36) spawnOne(pick(gnd),0);
-    else if(r<0.60) spawnOne(pick(air),0);
-    else if(r<0.84) spawnStandalone(Math.random()<0.55);
-    else if(fall.length) spawnOne(pick(fall),0);
-    else spawnStandalone(true);
-    gap = rnd(1.50, 1.90);
-  } else if(tier===3){                            // two things at once
-    if(r<0.26) spawnOne(pick(gnd),0);
-    else if(r<0.48) spawnOne(pick(air),0);
-    else if(r<0.72) spawnStandalone(Math.random()<0.55);
-    else if(r<0.86 && fall.length) spawnOne(pick(fall),0);
-    else { spawnStandalone(Math.random()<0.55); spawnOne(pick(air), 0.9); }
-    gap = rnd(1.30, 1.65);
-  } else {
-    if(r<0.20) spawnOne(pick(gnd),0);
-    else if(r<0.40) spawnOne(pick(air),0);
-    else if(r<0.66) spawnStandalone(Math.random()<0.55);
-    else if(r<0.80 && fall.length) spawnOne(pick(fall),0);
-    else { spawnStandalone(Math.random()<0.55); spawnOne(pick(gnd.concat(air)), 0.85); }
-    gap = rnd(1.10, 1.42);
+  let pool = PAT.filter(p => p.tier<=tier && !(p.corn && game.cornT>0));
+  if(!pool.length) pool = PAT.filter(p => p.tier<=tier);
+  /* Weighted towards what has just unlocked. Picking flat from everything
+     available means a tier-4 run is mostly tier-0 patterns and the machines
+     you unlocked show up twice a minute, which reads as the game running out
+     of ideas exactly when it should be at its widest. */
+  const fresh = pool.filter(p => p.tier >= tier-1);
+  const p = (fresh.length && Math.random() < 0.55) ? pick(fresh) : pick(pool);
+  /* Everything in the sequence is placed NOW, at its own arrival time, so the
+     spacing inside a pattern is exact rather than the sum of several later
+     spawn decisions. */
+  const base = (VW - PX + 210)/game.speed + 0.15;
+  let lead = base;
+  for(const st of p.seq){
+    lead += st.dt;
+    if(st.k === '#col'){ spawnStandalone(Math.random()<0.55, lead); continue; }
+    const k = st.k==='#gnd'  ? pick(groundPool(tier))
+            : st.k==='#air'  ? pick(airPool(tier))
+            : st.k==='#corn' ? pick(cornPool(tier))
+            : st.k;
+    if(!k) continue;                       // a token with nothing in its pool yet
+    if(OB[k].elec) spawnElec(k, lead); else spawnOne(k, lead);
   }
-  game.spawnT = gap;
+  if(p.corn) game.cornT = rnd(9, 17);
+  game.spawnT = (lead - base) + rnd(p.tail[0], p.tail[1]) * lerp(1, 0.78, game.diff);
 }
 
 /* ============================================================
@@ -2866,7 +2963,7 @@ function startRun(){
   applyTheme();
   game.mode='play'; game.runT=game.presetRunT||0; game.score=0; game.dist=0;
   game.near=0; game.combo=0; game.comboBest=0; game.comboT=0;
-  game.speed=340*PACE; game.diff=0; game.spawnT=2.6;
+  game.speed=340*PACE; game.diff=0; game.spawnT=2.6; game.cornT=0;
   game.obstacles.length=0; game.parts.length=0; game.pops.length=0; game.ui.length=0;
   game.eggs.length=0; game.eggT=1.6; game.runEggs=0; game.eggStreak=0;
   game.freeze=0; game.timeScale=1; game.tsTarget=1; game.shake=0; game.zoom=1; game.zoomT=1;
@@ -2909,6 +3006,7 @@ function die(o){
   game.freeze = 0.11; addShake(30); game.flash=0.75;
   slowmo(0.32, 0.55);
   S.hit();
+  if(o && o.spec && o.spec.elec){ S.zap(); game.flash = 1; }
   if(navigator.vibrate) try{ navigator.vibrate([26,40,60]); }catch(e){}
   const gy = GROUND;
   spark(player.x, gy - player.y - 90, 26, {col:C.gold, s0:180,s1:620, l0:0.4,l1:0.9, r0:4,r1:11});
@@ -3226,6 +3324,7 @@ function updatePlay(dt){
 
   // ---- spawn ----
   game.spawnT -= dt;
+  game.cornT = Math.max(0, (game.cornT||0) - dt);
   if(game.spawnT<=0) spawnPattern();
 
   // ---- obstacles ----
@@ -3256,7 +3355,11 @@ function updatePlay(dt){
       if(whooshCool <= 0){ S.whoosh(); whooshCool = 0.4; }
     }
     // collision
-    const ow = o.w*0.42;
+    /* An electric piece is a bundle of wires, boxes and discs rather than one
+       block, so it answers for itself; everything else is the block it looks
+       like. The 8px the box is shrunk by is the same forgiveness the block
+       test gives, applied once here so both families are equally generous. */
+    const ow = o.spec.hw!=null ? o.spec.hw : o.w*0.42;
     let obot, otop;
     if(o.hang){ otop = (GROUND-CEIL); obot = otop - o.h; }
     else if(o.kind==='air'){ obot=o.base; otop=o.base+o.h; }
@@ -3264,16 +3367,18 @@ function updatePlay(dt){
     const ol=o.x-ow, or=o.x+ow;
     const overlapX = pr>ol && pl<or;
     if(overlapX && !o.hitBy){
-      if(pt>obot+8 && pb<otop-8){ die(o); }
+      if(o.spec.elec){ if(o.spec.hit(o, pl+8, pr-8, pb+8, pt-8)) die(o); }
+      else if(pt>obot+8 && pb<otop-8){ die(o); }
     }
     // near-miss tracking
     if(overlapX){
-      const gap = (o.kind==='air'||o.hang) ? (obot - pt) : (pb - otop);
+      const gap = o.spec.elec ? o.spec.gapTo(o, pl+8, pr-8, pb+8, pt-8)
+                : (o.kind==='air'||o.hang) ? (obot - pt) : (pb - otop);
       if(gap>0) o.minGap = Math.min(o.minGap, gap);
     }
     if(!o.counted && o.x < p.x-30){
       o.counted = true;
-      const thr = (o.kind==='air'||o.hang) ? 74 : 62;
+      const thr = o.spec.elec ? 66 : (o.kind==='air'||o.hang) ? 74 : 62;
       if(o.minGap < thr && o.minGap > 0 && game.mode==='play') nearMiss(o);
     }
     if(o.x < cam.x - 420) game.obstacles.splice(i,1);
@@ -3326,7 +3431,8 @@ function nearMiss(o){
   const y = GROUND - p.y - 150;
   pop(p.x+40, y, (game.combo>1? 'x'+game.combo+' ' : '')+pick(['PHEW!','CLOSE!','NICE!','WOW!']), C.mint, 34, -150);
   pop(p.x+40, y+46, '+'+bonus, C.gold, 24, -110);
-  spark(o.x, GROUND - (o.kind==='air'? o.base : o.h) , 10, {col:C.mint, s0:80,s1:300, l0:0.25,l1:0.6, r0:3,r1:8, g:200});
+  spark(o.x, GROUND - (o.spec.elec ? p.y+70 : (o.kind==='air'? o.base : o.h)), 10,
+    {col:C.mint, s0:80,s1:300, l0:0.25,l1:0.6, r0:3,r1:8, g:200});
   elScore.classList.remove('pop'); void elScore.offsetWidth; elScore.classList.add('pop');
   if(game.combo>1){ elComboTxt.textContent='x'+game.combo; elCombo.classList.add('on');
     elCombo.style.transform='translateX(-50%) scale(1.25)';
