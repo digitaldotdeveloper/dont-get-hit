@@ -337,6 +337,26 @@ tone is usually what is making a sound heavy.
 
 ## Music
 
+**The scene follows game.mode, and `musicScene` is still the only thing that
+sets volume.** `trackTick` compares `musicFor()` against the current scene and
+asks for the right one when they drift apart. It sets no volumes itself.
+
+That guard exists because hanging music off TRANSITIONS means every new
+transition is a chance to forget one, and this has now been forgotten twice.
+`musicScene('play')` lived at the end of the cage intro, so the retry beat --
+which deliberately skips the cage -- never reached it: a retry played the menu
+theme straight through the run and the chase never started. `toMenu` had the
+mirror of it before that, carrying the chase theme on into the score card.
+`startRun` no longer sets a scene at all, because it is shared by the escape
+(which wants the menu theme over it) and by a retry (which does not).
+
+**`?musictest=1` now drives the real entry points**, not just the scenes.
+The scenes were always right in isolation -- `musicScene('play')` set the right
+volumes every time -- and testing only those is why this shipped. It calls
+`toMenu`, `startIntro`, `startQuick` and back, ticks a frame, and checks what is
+actually playing. On the broken build it reports `FAIL RETRY -> menu (wanted
+play)`.
+
 **`musicScene('menu'|'play'|'duck')` is the only thing that sets music volume.**
 The menu theme (`audio/music_menu.mp3`) covers the title screen, the escape and
 the score card; the chase playlist belongs to the run and starts on the kick.

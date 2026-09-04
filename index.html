@@ -859,6 +859,7 @@ function initTrack(){
 function musicScene(which){
   audioInit();
   initTrack();
+  musicNow = which;
   if(which === 'play'){        menuWanted = 0;    trackVol(0.55); musicVol(0.50); }
   else if(which === 'duck'){   menuWanted = 0;    trackVol(0.18); musicVol(0.12); }
   else {                       menuWanted = 0.40; trackVol(0);    musicVol(0);    }
@@ -892,7 +893,33 @@ function trackVol(v){
   }
   return true;
 }
+/* THE SCENE FOLLOWS THE MODE.
+
+   musicScene is still the only thing that sets volumes -- this does not set
+   any. It notices that the scene and the game's mode have drifted apart and
+   asks for the right one, once.
+
+   It exists because every new way into 'play' has forgotten to start the chase
+   at least once. musicScene('play') lived at the END OF THE CAGE INTRO, so the
+   retry beat -- which deliberately skips the cage -- never reached it, and the
+   menu theme played straight through the run while the chase never started.
+   `toMenu` had the mirror of this bug before that, carrying the chase theme on
+   into the score card. Hanging music off transitions means every new transition
+   is a chance to forget; hanging it off the mode means there is nothing to
+   forget. */
+let musicNow = '';
+function musicFor(){
+  const m = game.mode;
+  if(m === 'play')  return 'play';
+  if(m === 'dying') return 'duck';
+  return 'menu';               // the menu, the escape and the score card share one
+}
 function trackTick(dt){
+  // gated on A.started so nothing starts an AudioContext before a gesture
+  if(A.started){
+    const want = musicFor();
+    if(want !== musicNow) musicScene(want);
+  }
   if(MENU_TRACK){
     const mt = A.on ? menuWanted : 0;
     MENU_TRACK.volume = clamp(MENU_TRACK.volume + (mt - MENU_TRACK.volume) * Math.min(1, dt*2.2), 0, 1);
@@ -3671,7 +3698,11 @@ function startRun(){
     player.thrusting=true; player.flapT = (game.demoFlap!==undefined?game.demoFlap:0.2); }
   game.tut = game.firstRun;
   elTut.classList.toggle('show', game.tut);
-  musicScene('menu');            // the escape still plays over the menu theme
+  /* No music call here any more. This used to force the menu theme, because the
+     cage escape plays over it -- but startRun is also how a RETRY begins, and a
+     retry has no cage, so it forced the menu theme onto a run and then had no
+     way back. trackTick reads game.mode and settles it either way, one frame
+     later and without a blip. */
 }
 /* One pickup at a time, floating where a hazard is not. It is placed by the
    same rule the eggs are -- `eggFree` already answers "is this bit of sky
@@ -5682,6 +5713,24 @@ function boot(){
                  ' chase '+trackWanted.toFixed(2));
         if(menuWanted>0 && trackWanted>0){ out.push('  BOTH PLAYING AT ONCE'); bad++; }
       }
+      /* The scenes were always right in isolation; what was broken was a
+         TRANSITION that never asked for one. So drive the real entry points and
+         check what is playing after a frame -- this is the test that would have
+         caught the retry starting a run under the menu theme. */
+      const A_ON = A.started; A.started = true;
+      const paths = [
+        ['menu screen', ()=>toMenu(),      'menu'],
+        ['the escape',  ()=>startIntro(),  'menu'],
+        ['RETRY',       ()=>startQuick(),  'play'],
+        ['back to menu',()=>toMenu(),      'menu'],
+      ];
+      for(const [name, go, scene] of paths){
+        go(); trackTick(1/60);
+        const ok = musicNow === scene;
+        if(!ok) bad++;
+        out.push((ok?'ok   ':'FAIL ') + name + ' -> ' + musicNow + ' (wanted ' + scene + ')');
+      }
+      A.started = A_ON; toMenu();
       out.unshift(bad ? ('MUSIC: '+bad+' PROBLEMS') : 'MUSIC: scenes ok, never both at once');
       const el=document.getElementById('selftest');
       el.style.display='block'; el.style.color = bad ? '#FF456E' : '#0f0';
