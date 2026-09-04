@@ -1461,38 +1461,112 @@ changes to suit it, and **a hit takes the vehicle rather than the run**. That
 last one is why a vehicle reads as a reward instead of a handicap -- riding is
 strictly safer than not, so you chase the pickup.
 
-It is a shopping basket on monster-truck wheels (`art/truck.webp`, generated
-from the user's own key art through `tools/gen_bg.py`'s magenta-key route), and
-it is a GROUND vehicle:
+It is a shopping basket on monster-truck wheels, and it is a GROUND vehicle.
 
 - **Control.** Holding does nothing. The press is a jump -- one off the road and
   one more in the air (`RIDE_JUMP`, `RIDE_JUMP2`) -- and that is the whole
   difference from the bird, whose entire control is the hold. Same solved
-  movement model, gravity at full strength and the drag almost off, because
-  drag is what turns a jump into a float.
-- **The rail was the real ceiling.** `VY_UP` is -2775 at this pace, so raising
-  the impulse from 3000 to 3250 moved the apex by *four units* -- both were
-  being clipped on the frame they were applied. The truck gets its own rail
-  (`VY_UP*1.55`) and now tops out at 490, which is measured against what it has
-  to clear: a fence at 148 and the tall wire at 352. **Measure the apex, do not
-  compute it** -- the drag term makes the paper figure 30% optimistic.
+  movement model; only the constants change.
+- **TAKING IT CUTS THE FARM'S POWER.** This is the best thing about it. Every
+  live wire on the board stops killing on the frame of the pickup (`wireHot()`,
+  read by `elecDist`), and the picture follows over half a second -- `game.gridT`
+  goes 1 to 0 and each wire independently *strobes* against the level rather
+  than crossfading, so it reads as a substation tripping. Dead, a wire is a
+  slack grey cable. Only the wires go: posts, corn stalks' own boxes and painted
+  hardware stay solid, so a ladder becomes two posts to jump rather than an
+  empty screen. Lethality flips on a boolean and the picture eases, which is the
+  right way round -- the only frames where they disagree are frames where the
+  wire looks live and is already harmless.
+- **It brings its own obstacles.** `RIDE_PAT` used to be the flying fences at two
+  heights, which made the reward for taking a monster truck *the same obstacle
+  with a fence on top of it*. The roster is now six `roadblock()` pieces built
+  out of farmyard props with no wire on them at all: `r_tyres`, `r_trough`,
+  `r_crates`, `r_bales`, `r_drums`, `r_wagon`. Crates and drums go **through**
+  (`spec.smash`, which lives on the piece now rather than in a `SMASHABLE` list
+  half the game away from the collision test); the rest you jump.
+- **They wear hazard stripes** (`drawHazardBase`). The background is painted full
+  of hay bales, because it is a farm, so a seventh bale standing on the road is
+  not an obstacle -- it is scenery you happen to die on. The electric set never
+  had this problem because it glows. Nothing in the background has a striped
+  plinth.
+- **THE SCALE WAS THE REAL BUG, not the tuning.** At `GROUND*0.46` the rig was a
+  third of the screen wide, and that number was set when the sprite was the cart
+  alone. A piece 300 wide plus a truck 379 wide overlap for 680 units of road,
+  while the whole airtime of a jump at the slowest speed in the game covers
+  about 500 -- the low tiers were *arithmetically impossible* while the fast
+  ones were fine, which is the shape of a bug that reads as bad difficulty
+  curve. Fixed with a smaller rig (`GROUND*0.335`), lighter gravity for the hang
+  (`RIDE_G` 0.60 -> 0.27; a truck jump is the one thing here allowed to float),
+  and impulses to match.
+- **Two ceilings.** `VY_UP*RIDE_VUP` rails the velocity -- the impulse and the
+  rail have to be raised *together* or neither does anything, which is why
+  `RIDE_VUP` is next to the impulses and not buried in the physics. Separately
+  `rideCeil()` rails the *height*: `CEIL` is headroom measured for a bird 142
+  tall, and the rig is nearly 300 including its driver, so the bird's rail threw
+  it three quarters of the way out of the picture and the jump read as a glitch.
+- **`rideApex(impulse)` solves the height in closed form** -- `(u - vT*ln(1 +
+  u/vT))/k` -- and the teaching course is laid out of it, so changing the jump
+  moves the lesson instead of quietly making it a lie.
+- **`?ridetest` is how any of this is known.** It does not reason about the arc:
+  it drives. One piece on an empty road, press at a given distance, run the real
+  update loop, sweep the distance, and report the **window** of presses that
+  clear -- 270-450px everywhere now, and 0 before. A piece is tested at its own
+  tier's pace, because the arc is a fixed number of *seconds* and slow running
+  covers less road. It also asks `elecDist`, not the paint, whether the grid is
+  really off, and checks the closest pair in any pattern against the time a jump
+  takes.
 - **`?demo=1` could not drive it.** The autopilot set `p.thrusting` directly,
   which never reaches `thrustOn()`, and a jump happens on the edge -- so every
-  measurement of the truck came back "never left the ground". It presses now.
-- **Level.** `RIDE_PAT` replaces the pattern table, and it is written in the
-  truck's two verbs rather than borrowed from the run: **jump it** (`e_fence` at
-  148, `e_wire` at 352) or **drive through it** (corn, which `SMASHABLE` lets
-  the bumper destroy for 25 points instead of ending the ride -- a vehicle on
-  monster-truck tyres stopped by a plant reads as a bug). Nothing that hangs in
-  the air: a gate with an opening halfway up the screen is a fine hazard for
-  something that flies and an impossible one for something with wheels.
-- **It is faster** (`RIDE_BOOST`), which is the other half of why it reads as a
-  reward.
-- **He is lifted to the rim** and the truck is drawn after him, so the wire
-  front crosses his legs and his head clears the top. Drawn at his feet he
-  simply vanishes inside it -- the basket is taller than he is.
+  measurement came back "never left the ground". It presses now.
+- **Landing recharges the double jump.** It never did: `rideJumps` was zeroed
+  once, in `startRide`, so the second press worked exactly one time per pickup
+  and every landing after that left one jump and no way to know why.
+- **It is faster** (`RIDE_BOOST`), and calmer -- wider tails in the table and
+  crows at 1.8x the gap, because the vehicle is where the run breathes out.
+
+**The frames.** `TRUCK_FR` is four pictures with Nugget *painted into the cart*
+(`sheets/v2/truck_ride.png` -> `tools/cut_truck.py`): driving with both wings on
+the wheel, the launch with his cap already leaving, over the top braced and
+shouting, and the compressed landing. `truckFrame()` reads the physics rather
+than running a clock, so the animation cannot drift from what the truck is doing;
+`rideLand` is the only timer, and only because the landing frame has to hold for
+a beat after the tyres are down.
+
+- He is **not** drawn separately any more. He used to be lifted half a truck up
+  so his head cleared the rim, which works for exactly one pose -- the moment the
+  rig tilts, a bird hovering at a fixed offset over a tilted cart is a bird
+  standing on nothing.
+- The sheet is cut by **connected component**, not by column gaps: the four
+  trucks are drawn at four tilts and overlap in x, so a vertical cut puts half a
+  tyre in the wrong frame. The flying cap is a loose blob and is given back to
+  the nearest truck rather than dropped.
+- ONE scale for the whole sheet, off the driving frame's width. Normalising each
+  frame to a common box is what makes a sprite breathe as it animates.
 - **The exhaust is drawn, not painted**, because it has to flicker and because
-  its length is a number the rest of the game reads.
+  its length is a number the rest of the game reads. Each frame carries `px`/`py`
+  -- where its own pipes ended up, as fractions of its own picture, read off the
+  art. A single offset for all four put the flame on the grass behind the truck
+  with nothing attached to it.
+- **Dust, not sparks** (`smoke()`, and a `'smoke'` kind in `drawParticles`). Big,
+  dull, slow, rising, growing. A wall of it off the back tyres on the launch, a
+  ring under the truck on the second jump because there is no contact to feel,
+  and a skirt of it on the landing.
+
+**The pickup is a mystery egg** (`art/mystery_egg.webp`), not a small picture of
+the truck -- a screenshot of the reward answers the question before the player
+has crossed the screen for it. It is placed by the **column**, not the point:
+`spawnBasketDrop` used to roll twenty heights at one x and accept the first that
+missed a wire, which passes an egg threaded between two rungs of a ladder, so
+going for it was punished and ignoring it was punished. The x now walks forward
+until the road is clear for `DROP_CLEAR` either side, and the next pattern is
+held off until the pickup is behind him.
+
+**Taking it lays a lesson** (`layRideCourse`). A vehicle whose controls differ
+from the game's has to teach them, and the only honest way to teach a jump is to
+put something you want in the shape of the jump: one arc that peaks inside a
+single press, then one that is 1.6x *longer* -- not higher, because the play area
+is barely taller than one jump, so the second press mostly buys hang. Obstacles,
+crows and the normal egg spawner are all pushed past the end of it.
 
 **What it does to the neighbours**, and the two read differently on purpose:
 
@@ -1666,10 +1740,15 @@ MP3 set 7.4 MB, and no player ever fetches both.
 
 Two things that section does not cover, and both matter for a bundle:
 
-**The game plays 3 of the 8 tracks.** `MOVEMENTS` is `spy_long` and
-`spy_long_b`, plus `music_menu`. The other five are never fetched on the web
-but *would* be bundled into an APK. The three that play are **2.8 MB** in Opus;
-the five that do not are another 2.7 MB of nothing.
+**The soundtrack is three tracks, and only three exist.** `MOVEMENTS` is
+`spy_long` and `spy_long_b`, plus `music_menu`. Five more were carried for a
+while and referenced by nothing -- never fetched on the web, but they *would*
+have gone into an APK -- so they were deleted on 2026-09-05, taking the shipped
+audio from 12.9 MB to 6.7 MB across both formats. Their 192k masters are still
+in `audio/src/`, so bringing one back is a re-encode rather than a
+regeneration. `?track=NAME` only accepts a name that still exists; an unknown
+one 404s, the error handler marks it dead, and the run is silent rather than
+broken.
 
 **`tools/audio_report.py`** reads bitrate, channel mode and duration straight
 off the ID3 header and the first MPEG frame, so it works on a machine with no
@@ -1679,8 +1758,7 @@ in the first place, before there was an ffmpeg on the box to ask.
 **Android estimate:** ~4.7 MB images and code, ~2.8 MB music, ~50 KB fonts if
 bundled locally = **~7.6 MB of assets**, plus ~3 MB for a Capacitor/WebView
 wrapper, so **an APK around 10-11 MB** and an AAB nearer 8-9. At bundle time
-drop `audio/*.mp3` (Android has Opus natively), `audio/src/`, and the five
-tracks nothing plays.
+drop `audio/*.mp3` (Android has Opus natively) and `audio/src/`.
 
 ## Next
 

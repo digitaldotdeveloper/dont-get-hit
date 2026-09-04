@@ -23,7 +23,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SH   = os.path.join(ROOT, "sheets", "v2")
 ART  = os.path.join(ROOT, "art")
 
-DRIVE_W = 815.0      # the width the reference art/truck.webp is drawn at
+DRIVE_W = 815.0      # the driving frame's own width; truckGeom scales off this
 NAMES   = ["drive", "launch", "air", "land"]
 
 
