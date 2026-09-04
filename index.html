@@ -835,12 +835,27 @@ let MENU_TRACK = null, menuWanted = 0;
    minutes before anything repeats. These come from the Pro model: everything
    generated on Flash comes back at 30.8s no matter what the prompt asks for. */
 const MOVEMENTS = ['spy_long', 'spy_long_b'];
+/* Opus where it exists, MP3 where it does not.
+
+   The masters were 192 kbps joint-stereo -- CD rates for music that plays
+   under sound effects on a phone speaker. Opus at 64k is about a 128k MP3 and
+   came out 63% smaller; the MP3 set is re-encoded to 96k for the one browser
+   that still needs it, Safari older than 17.4. Android takes the Opus.
+
+   Asked once, at load. canPlayType answers "probably", "maybe" or "" -- and ""
+   is the only one that means no, so anything truthy is a yes. A browser that
+   lies gets the error handler below, which already drops a dead track without
+   taking the game with it. */
+const MUS_EXT = (() => {
+  try{ return new Audio().canPlayType('audio/ogg; codecs=opus') ? '.ogg' : '.mp3'; }
+  catch(e){ return '.mp3'; }
+})();
 function initTrack(){
   if(TRACKS.length) return;
   const alt = /[?&]track=(\w+)/.exec(location.search);
   const names = alt ? [alt[1]] : MOVEMENTS;
   names.forEach((n, i) => {
-    const a = new Audio('audio/music_' + n + '.mp3');
+    const a = new Audio('audio/music_' + n + MUS_EXT);
     a.preload = i === 0 ? 'auto' : 'none';       // only the first one up front
     a.loop = names.length === 1;                 // one movement? then it repeats
     a.volume = 0;
@@ -850,7 +865,7 @@ function initTrack(){
   });
   TRACK = TRACKS[0];
   // the title screen, the escape and the score card all sit on this one
-  MENU_TRACK = new Audio('audio/music_menu.mp3');
+  MENU_TRACK = new Audio('audio/music_menu' + MUS_EXT);
   MENU_TRACK.loop = true; MENU_TRACK.volume = 0; MENU_TRACK.preload = 'auto';
   MENU_TRACK.addEventListener('error', () => { MENU_TRACK = null; });
 }
