@@ -2117,48 +2117,81 @@ const CORN_KEYS = ['corn1','corn3','cornrow'];
    not something to leave to eyeballing. */
 
 const WIRE_R = 9;     // lethal half-thickness of a wire: the drawn core, no more
-const CLEAR  = 250;   // narrowest opening any electric piece is allowed to leave
+/* The narrowest opening any electric piece may leave. The bird's box is 142
+   tall, so 250 was a shade under two of him -- legal, checkable, and still
+   the kind of gap you thread rather than fly through. 330 is nearer two and a
+   half, which is the difference between aiming and committing. Raise this
+   rather than widening the pieces one at a time: every ladder's gap range is
+   clamped to it, so it is the single number that says how tight this game is
+   willing to be. */
+const CLEAR  = 330;
 const RUNG   = 66;    // wire spacing in a ladder. Well under the bird's 142 of
                       // height, so a rung gap can never read as a way through.
+
+/* A live wire down a post that is lethal.
+
+   Bare timber reads as scenery -- it is the fence you have been flying over
+   all game -- so an upright that kills while looking like a fence post is the
+   game lying to the player, however honest the hitbox is. Every post that
+   appears in `solids` gets one of these running its full height, which puts
+   the crackle on the whole lethal shape instead of only the bit strung
+   between two posts.
+
+   It costs nothing in collision: each of these sits inside the post's own
+   solid box, wire radius included, so it changes what you SEE and never what
+   you hit. Inset from both ends so it terminates on the insulators rather
+   than running off into the ground. */
+function postWire(x, y0, y1){ return [x, y0+6, x, y1-6, 1]; }
 
 /* --- a live wire ---------------------------------------------------------
    A glow, a core that will not hold still, and a charge running along it.
    The jitter is hashed off (seed, quantised t) rather than random, so it
    flickers at a fixed 24Hz instead of shimmering at whatever the frame rate
    is -- which is the difference between reading as electricity and reading as
-   noise. Endpoints are pinned so the wire never leaves its insulators. */
-function drawWire(x0,y0,x1,y1, t, seed){
+   noise. Endpoints are pinned so the wire never leaves its insulators.
+
+   `thin` is the version that runs UP A POST rather than between two of them.
+   It exists because the full-fat wire is 26 units of glow and `e_posttall` is
+   34 units wide: drawn at full strength the post disappeared inside its own
+   electricity and every upright became a featureless blue tube. The point of
+   marking a post live is that you can see it is a POST and that it will kill
+   you -- lose the timber and the farm goes with it. So the post version is a
+   thread with the same colour, the same flicker and the same arcs, at about a
+   third the weight. */
+function drawWire(x0,y0,x1,y1, t, seed, thin){
   const dx=x1-x0, dy=y1-y0, L=Math.hypot(dx,dy)||1;
   const nx=-dy/L, ny=dx/L, ux=dx/L, uy=dy/L;
   const n = Math.max(3, Math.min(20, Math.round(L/28)));
   const k = Math.floor(t*24);
+  const g1 = thin ? 11 : 26, g2 = thin ? 5.5 : 13;
+  const c1 = thin ? 3.4 : 7, c2 = thin ? 1.5 : 3, amp = thin ? 3.0 : 7.5;
   ctx.lineCap='round'; ctx.lineJoin='round';
   ctx.beginPath(); ctx.moveTo(x0,-y0); ctx.lineTo(x1,-y1);
-  ctx.strokeStyle='rgba(110,222,255,0.13)'; ctx.lineWidth=26; ctx.stroke();
-  ctx.strokeStyle='rgba(150,240,255,0.28)'; ctx.lineWidth=13; ctx.stroke();
+  ctx.strokeStyle='rgba(110,222,255,0.13)'; ctx.lineWidth=g1; ctx.stroke();
+  ctx.strokeStyle='rgba(150,240,255,0.28)'; ctx.lineWidth=g2; ctx.stroke();
   ctx.beginPath();
   for(let i=0;i<=n;i++){
     const u=i/n, live=(i===0||i===n)?0:1;
-    const j=(hash(seed + i*7.13 + k*3.71)-0.5)*7.5*live;
+    const j=(hash(seed + i*7.13 + k*3.71)-0.5)*amp*live;
     const x=x0+dx*u+nx*j, y=y0+dy*u+ny*j;
     if(i) ctx.lineTo(x,-y); else ctx.moveTo(x,-y);
   }
-  ctx.strokeStyle='#4CCFFF'; ctx.lineWidth=7; ctx.stroke();
-  ctx.strokeStyle='#EDFCFF'; ctx.lineWidth=3; ctx.stroke();
-  // two forks, on and off at the same 24Hz, so the wire looks like it is arcing
-  for(let f=0; f<2; f++){
-    if(hash(seed + f*31.7 + k*1.93) > 0.42) continue;
+  ctx.strokeStyle='#4CCFFF'; ctx.lineWidth=c1; ctx.stroke();
+  ctx.strokeStyle='#EDFCFF'; ctx.lineWidth=c2; ctx.stroke();
+  // forks, on and off at the same 24Hz, so the wire looks like it is arcing
+  for(let f=0; f<(thin?1:2); f++){
+    if(hash(seed + f*31.7 + k*1.93) > (thin?0.30:0.42)) continue;
     const u=hash(seed + f*11.3 + k*5.11), side=hash(seed + f*17.9 + k*2.31)<0.5?-1:1;
-    const bx=x0+dx*u, by=y0+dy*u, a=side*(10+hash(seed+f*3.3+k)*13);
+    const bx=x0+dx*u, by=y0+dy*u, a=side*((thin?6:10)+hash(seed+f*3.3+k)*(thin?7:13));
     ctx.beginPath(); ctx.moveTo(bx,-by);
     ctx.lineTo(bx+nx*a*0.55-ux*6, -(by+ny*a*0.55));
     ctx.lineTo(bx+nx*a+ux*9,      -(by+ny*a));
-    ctx.strokeStyle='#EDFCFF'; ctx.lineWidth=2.6; ctx.stroke();
+    ctx.strokeStyle='#EDFCFF'; ctx.lineWidth=thin?1.7:2.6; ctx.stroke();
   }
   // the charge itself, so the wire is obviously live even standing still
   const u=(t*0.55 + hash(seed)) % 1, bx=x0+dx*u, by=y0+dy*u;
-  ctx.beginPath(); ctx.arc(bx,-by,12,0,TAU); ctx.fillStyle='rgba(160,244,255,.30)'; ctx.fill();
-  ctx.beginPath(); ctx.arc(bx,-by,5,0,TAU);  ctx.fillStyle='#FFFFFF'; ctx.fill();
+  ctx.beginPath(); ctx.arc(bx,-by,thin?6:12,0,TAU); ctx.fillStyle='rgba(160,244,255,.30)'; ctx.fill();
+  ctx.beginPath(); ctx.arc(bx,-by,thin?2.6:5,0,TAU);  ctx.fillStyle='#FFFFFF'; ctx.fill();
 }
 
 /* Painted hardware. y is the foot and h the height; the width comes from the
@@ -2228,7 +2261,7 @@ function drawElec(o, t){
   }
   for(let i=0;i<p.wires.length;i++){
     const w = p.wires[i];
-    drawWire(w[0],w[1],w[2],w[3], t, (o.seed||0) + i*13.7);
+    drawWire(w[0],w[1],w[2],w[3], t, (o.seed||0) + i*13.7, w[4]);
   }
   /* The swept circle, drawn as hard as the wires are. A rotor kills over its
      whole disc, so a faint ring next to a wire that crackles would be telling
@@ -2258,7 +2291,7 @@ Object.assign(OB, {
     build(){ return {
       hw:[{a:'e_post',x:-78,y:0,h:140},{a:'e_post',x:78,y:0,h:140}],
       solids:[[-107,0,-49,140],[49,0,107,140]],
-      wires:[[-78,116, 78,116]] }; },
+      wires:[[-78,116, 78,116], postWire(-78,0,140), postWire(78,0,140)] }; },
     free(o,band){ return [[148, band]]; } }),
 
   /* Suspended wire: the same idea strung high enough that it is a real climb
@@ -2267,7 +2300,7 @@ Object.assign(OB, {
     build(){ return {
       hw:[{a:'e_posttall',x:-126,y:0,h:344},{a:'e_posttall',x:126,y:0,h:344}],
       solids:[[-143,0,-109,344],[109,0,143,344]],
-      wires:[[-126,326, 126,326]] }; },
+      wires:[[-126,326, 126,326], postWire(-126,0,344), postWire(126,0,344)] }; },
     free(o,band){ return [[352, band]]; } }),
 
   /* Two bales with the wire run straight over the top of them. The joke is
@@ -2292,7 +2325,7 @@ Object.assign(OB, {
         hw:[{a:'e_post',x:0,y:0,h:206}],
         spin:[{a:'e_bar',x:0,y:cy,rot:-a,d:2*R}],
         solids:[[-42,0,42,206]],
-        wires:[[-ex,cy-ey, ex,cy+ey]] };
+        wires:[[-ex,cy-ey, ex,cy+ey], postWire(0,0,206)] };
     },
     free(o,band){ return [[336, band]]; } }),
 
@@ -2306,7 +2339,7 @@ Object.assign(OB, {
       spin:[{a:'e_rotor',x:0,y:266,rot:(o.phase||0)+t*2.2,d:228}],
       solids:[[-64,0,64,250]],
       discs:[[0,266,110]],
-      wires:[[-22,250, 22,250]] }; },
+      wires:[[-22,250, 22,250], postWire(0,0,250)] }; },
     free(o,band){ return [[384, band]]; } }),
 });
 
@@ -2336,12 +2369,14 @@ function elecLadder(tier, o){
       const rung=o.rung||RUNG, wires=[], solids=[], parts=[];
       parts.push({a:'e_posttall',x:-px,y:0,h:lo},{a:'e_posttall',x:px,y:0,h:lo});
       solids.push([-px-17,0,-px+17,lo],[px-17,0,px+17,lo]);
+      wires.push(postWire(-px, 0, lo), postWire(px, 0, lo));
       for(let y=lo-16; y>14; y-=rung) wires.push([-px,y, px,y]);
       const uh = band-hi;
       if(o.cap) parts.push({a:o.cap,x:0,y:band,h:Math.min(uh,214),flip:true});
       parts.push({a:'e_posttall',x:-px,y:band,h:uh,flip:true},
                  {a:'e_posttall',x:px,y:band,h:uh,flip:true});
       solids.push([-px-17,hi,-px+17,band],[px-17,hi,px+17,band]);
+      wires.push(postWire(-px, hi, band), postWire(px, hi, band));
       for(let y=hi+16; y<band-14; y+=rung) wires.push([-px,y, px,y]);
       return { hw:parts, wires, solids };
     },
@@ -2349,13 +2384,13 @@ function elecLadder(tier, o){
 }
 Object.assign(OB, {
   /* Two wires, one low one high, and a wide safe lane between them. */
-  e_double: elecLadder(2, { hw:126, lo:[120,300], gap:[300,360], rung:900 }),
+  e_double: elecLadder(2, { hw:126, lo:[120,280], gap:[380,440], rung:900 }),
   /* The gate: the painted frame hung over the opening, wires filling the rest. */
-  e_gate:   elecLadder(3, { hw:132, lo:[140,330], gap:[262,312], cap:'e_gateframe' }),
+  e_gate:   elecLadder(3, { hw:132, lo:[140,300], gap:[350,410], cap:'e_gateframe' }),
   /* Multi-level: every rung filled, so the one gap is the only read. */
-  e_multi:  elecLadder(3, { hw:126, lo:[150,360], gap:[252,292], rung:62 }),
+  e_multi:  elecLadder(3, { hw:126, lo:[150,320], gap:[340,390], rung:62 }),
   /* Ground-to-air: the lower half is a tower, and the lane is high. */
-  e_g2a:    elecLadder(4, { hw:126, lo:[300,430], gap:[250,286], rung:70 }),
+  e_g2a:    elecLadder(4, { hw:126, lo:[280,400], gap:[335,380], rung:70 }),
 });
 const ELEC_KEYS = ['e_fence','e_wire','e_baletrap','e_rotor','e_mill',
                    'e_double','e_gate','e_multi','e_g2a'];
