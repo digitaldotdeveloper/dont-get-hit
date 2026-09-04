@@ -608,8 +608,8 @@ const S = {
   /* Wings out, not beating. Played on a cooldown while he falls, so a long
      drop is not silence between flaps. */
   glide(){
-    noise(0.42, 620, 300, 0.022, 1.0);
-    noise(0.20, 2600, 1500, 0.010, 3.0, 0.10);
+    noise(0.42, 620, 300, 0.075, 0.5);
+    noise(0.22, 2600, 1400, 0.030, 1.6, 0.10);
   },
   /* The sky is a ceiling and he can hit it. Soft, feathery, no impact. */
   ceiling(){
@@ -675,11 +675,11 @@ const S = {
      Cheap version -- one rising swish into one falling one -- but the ear
      only wants the turn, not the physics. */
   crowpass(near){
-    const v = near ? 0.075 : 0.045;
-    noise(0.13, 500, 2200, v, 1.1);
-    noise(0.20, 2200, 380, v, 1.0, 0.11);
-    tone(520, 0.22, 'triangle', v*0.5, 210, null, 0.08);
-    if(near) tone(1300, 0.10, 'sine', 0.030, 700, null, 0.10);
+    const v = near ? 0.17 : 0.10;
+    noise(0.13, 500, 2200, v, 0.7);
+    noise(0.20, 2200, 380, v, 0.7, 0.11);
+    tone(520, 0.22, 'triangle', v*0.45, 210, null, 0.08);
+    if(near) tone(1300, 0.10, 'sine', 0.045, 700, null, 0.10);
   },
   /* Hit BY a crow, played under hit(). Everything else in the game that kills
      him is wood or wire and sounds like it -- this one has to sound like an
@@ -1266,7 +1266,7 @@ function cosmeticImage(id, slot, src, opt){
    swappable while frames are in use. If any image fails to load the
    procedural puppet draws instead - the character can never vanish.
    ============================================================ */
-const FRAME_DATA = {"cow":[{"f":"cow0.webp","w":89,"h":154,"ay":153.5},{"f":"cow1.webp","w":85,"h":146,"ay":152.0},{"f":"cow2.webp","w":84,"h":164,"ay":165.1},{"f":"cow3.webp","w":91,"h":163,"ay":164.0},{"f":"cow4.webp","w":92,"h":146,"ay":147.2},{"f":"cow5.webp","w":60,"h":146,"ay":147.2}],"cowrun":[{"f":"cowrun0.webp","w":118,"h":164,"ay":164.0},{"f":"cowrun1.webp","w":120,"h":164,"ay":165.8},{"f":"cowrun2.webp","w":128,"h":154,"ay":159.1},{"f":"cowrun3.webp","w":154,"h":152,"ay":156.6},{"f":"cowrun4.webp","w":157,"h":147,"ay":152.9},{"f":"cowrun5.webp","w":170,"h":158,"ay":164.0}],"pig":[{"f":"pig0.webp","w":98,"h":156,"ay":156.0},{"f":"pig1.webp","w":113,"h":155,"ay":156.0},{"f":"pig2.webp","w":90,"h":154,"ay":156.0},{"f":"pig3.webp","w":110,"h":156,"ay":156.0},{"f":"pig4.webp","w":89,"h":155,"ay":156.0},{"f":"pig5.webp","w":92,"h":155,"ay":156.0}],"pigrun":[{"f":"pigrun0.webp","w":105,"h":156,"ay":156.0},{"f":"pigrun1.webp","w":110,"h":150,"ay":152.3},{"f":"pigrun2.webp","w":91,"h":132,"ay":135.0},{"f":"pigrun3.webp","w":125,"h":133,"ay":133.1},{"f":"pigrun4.webp","w":96,"h":125,"ay":125.8},{"f":"pigrun5.webp","w":107,"h":137,"ay":136.8}],"goat":[{"f":"goat0.webp","w":92,"h":159,"ay":161.4},{"f":"goat1.webp","w":91,"h":159,"ay":161.4},{"f":"goat2.webp","w":81,"h":158,"ay":159.5},{"f":"goat3.webp","w":82,"h":160,"ay":160.0},{"f":"goat4.webp","w":89,"h":160,"ay":159.5},{"f":"goat5.webp","w":92,"h":158,"ay":161.0}],"goatrun":[{"f":"goatrun0.webp","w":94,"h":159,"ay":160.0},{"f":"goatrun1.webp","w":84,"h":160,"ay":160.0},{"f":"goatrun2.webp","w":118,"h":148,"ay":147.7},{"f":"goatrun3.webp","w":125,"h":145,"ay":149.3},{"f":"goatrun4.webp","w":132,"h":143,"ay":147.7},{"f":"goatrun5.webp","w":141,"h":144,"ay":147.7}],"run":[{"f":"run0.webp","w":206,"h":199,"ay":199},{"f":"run1.webp","w":138,"h":182,"ay":182},{"f":"run2.webp","w":136,"h":181,"ay":181},{"f":"run3.webp","w":187,"h":196,"ay":196},{"f":"run4.webp","w":140,"h":181,"ay":181},{"f":"run5.webp","w":179,"h":195,"ay":195}],"fly":[{"f":"fly0.webp","w":110,"h":161,"ay":162.3},{"f":"fly1.webp","w":112,"h":158,"ay":163.1},{"f":"fly2.webp","w":163,"h":210,"ay":191.6},{"f":"fly3.webp","w":147,"h":158,"ay":181.3},{"f":"fly4.webp","w":148,"h":186,"ay":187.3},{"f":"fly5.webp","w":130,"h":185,"ay":179.7}],"fall":[{"f":"fall0.webp","w":122,"h":187,"ay":184.0},{"f":"fall1.webp","w":145,"h":199,"ay":186.0},{"f":"fall2.webp","w":174,"h":210,"ay":179.8},{"f":"fall3.webp","w":143,"h":198,"ay":182.3}],"jump":[{"f":"jump0.webp","w":122,"h":148,"ay":171.0},{"f":"jump1.webp","w":140,"h":171,"ay":169.4},{"f":"jump2.webp","w":138,"h":221,"ay":193.2},{"f":"jump3.webp","w":183,"h":186,"ay":179.6},{"f":"jump4.webp","w":155,"h":186,"ay":180.3}],"land":[{"f":"land0.webp","w":145,"h":183,"ay":183},{"f":"land1.webp","w":157,"h":179,"ay":179},{"f":"land2.webp","w":122,"h":121,"ay":121},{"f":"land3.webp","w":165,"h":186,"ay":186}],"hit":[{"f":"hit0.webp","w":145,"h":164,"ay":172.9},{"f":"hit1.webp","w":163,"h":186,"ay":185.1},{"f":"hit2.webp","w":122,"h":154,"ay":173.6},{"f":"hit3.webp","w":106,"h":126,"ay":166.0},{"f":"hit4.webp","w":178,"h":81,"ay":140.5},{"f":"hit5.webp","w":128,"h":146,"ay":173.4}],"kick":[{"f":"kick0.webp","w":164,"h":239,"ay":239.0},{"f":"kick1.webp","w":162,"h":228,"ay":228.0},{"f":"kick2.webp","w":172,"h":172,"ay":179.4},{"f":"kick3.webp","w":132,"h":192,"ay":178.6},{"f":"kick4.webp","w":182,"h":194,"ay":194.0}],"boom":[{"f":"boom0.webp","w":121,"h":125},{"f":"boom1.webp","w":194,"h":215},{"f":"boom2.webp","w":260,"h":273},{"f":"boom3.webp","w":209,"h":215},{"f":"boom4.webp","w":170,"h":175}],"cricket":[{"f":"cricket0.webp","w":45,"h":136,"ay":136.0},{"f":"cricket1.webp","w":44,"h":143,"ay":143.0},{"f":"cricket2.webp","w":67,"h":127,"ay":127.0},{"f":"cricket3.webp","w":58,"h":129,"ay":129.0},{"f":"cricket4.webp","w":62,"h":121,"ay":121.0},{"f":"cricket5.webp","w":55,"h":107,"ay":107.0}],"egg":[{"f":"egg0.webp","w":48,"h":62,"ay":31.0},{"f":"egg1.webp","w":39,"h":62,"ay":31.0},{"f":"egg2.webp","w":15,"h":62,"ay":31.0},{"f":"egg3.webp","w":15,"h":62,"ay":31.0},{"f":"egg4.webp","w":38,"h":62,"ay":31.0},{"f":"egg5.webp","w":48,"h":62,"ay":31.0},{"f":"egg6.webp","w":38,"h":62,"ay":31.0},{"f":"egg7.webp","w":15,"h":62,"ay":31.0},{"f":"egg8.webp","w":15,"h":62,"ay":31.0},{"f":"egg9.webp","w":39,"h":62,"ay":31.0}],"hensad":[{"f":"hensad0.webp","w":92,"h":98,"ay":98.0},{"f":"hensad1.webp","w":95,"h":98,"ay":98.0},{"f":"hensad2.webp","w":98,"h":98,"ay":98.0},{"f":"hensad3.webp","w":93,"h":98,"ay":98.0},{"f":"hensad4.webp","w":83,"h":98,"ay":98.0}],"henjoy":[{"f":"henjoy0.webp","w":94,"h":98,"ay":98.0},{"f":"henjoy1.webp","w":80,"h":98,"ay":98.0},{"f":"henjoy2.webp","w":80,"h":98,"ay":98.0},{"f":"henjoy3.webp","w":80,"h":98,"ay":98.0}],"farmer":[{"f":"farmer0.webp","w":94,"h":224,"ay":224.0},{"f":"farmer1.webp","w":102,"h":225,"ay":225.0},{"f":"farmer2.webp","w":141,"h":224,"ay":224.0},{"f":"farmer3.webp","w":155,"h":218,"ay":218.0},{"f":"farmer4.webp","w":129,"h":252,"ay":252.0},{"f":"farmer5.webp","w":122,"h":189,"ay":189.0}],"spy":[{"f":"spy0.webp","w":62,"h":86,"ay":86.0},{"f":"spy1.webp","w":62,"h":86,"ay":86.0},{"f":"spy2.webp","w":62,"h":86,"ay":86.0},{"f":"spy3.webp","w":85,"h":82,"ay":82.0},{"f":"spy4.webp","w":63,"h":86,"ay":86.0},{"f":"spy5.webp","w":76,"h":86,"ay":86.0}],"farmeridle":[{"f":"farmeridle0.webp","w":93,"h":224,"ay":224.0},{"f":"farmeridle1.webp","w":113,"h":224,"ay":224.0},{"f":"farmeridle2.webp","w":127,"h":222,"ay":222.0},{"f":"farmeridle3.webp","w":120,"h":224,"ay":224.0},{"f":"farmeridle4.webp","w":98,"h":222,"ay":222.0},{"f":"farmeridle5.webp","w":92,"h":224,"ay":224.0}],"spyalert":[{"f":"spyalert0.webp","w":62,"h":86,"ay":86.0},{"f":"spyalert1.webp","w":62,"h":86,"ay":86.0},{"f":"spyalert2.webp","w":62,"h":86,"ay":86.0},{"f":"spyalert3.webp","w":79,"h":86,"ay":86.0},{"f":"spyalert4.webp","w":63,"h":86,"ay":86.0},{"f":"spyalert5.webp","w":62,"h":85,"ay":85.0}],"farmerwalk":[{"f":"farmerwalk0.webp","w":113,"h":224,"ay":224.0},{"f":"farmerwalk1.webp","w":106,"h":220,"ay":220.0},{"f":"farmerwalk2.webp","w":109,"h":225,"ay":225.0},{"f":"farmerwalk3.webp","w":140,"h":234,"ay":234.0},{"f":"farmerwalk4.webp","w":127,"h":226,"ay":226.0},{"f":"farmerwalk5.webp","w":115,"h":221,"ay":221.0}]};
+const FRAME_DATA = {"cow":[{"f":"cow0.webp","w":89,"h":154,"ay":153.5},{"f":"cow1.webp","w":85,"h":146,"ay":152.0},{"f":"cow2.webp","w":84,"h":164,"ay":165.1},{"f":"cow3.webp","w":91,"h":163,"ay":164.0},{"f":"cow4.webp","w":92,"h":146,"ay":147.2},{"f":"cow5.webp","w":60,"h":146,"ay":147.2}],"cowrun":[{"f":"cowrun0.webp","w":118,"h":164,"ay":164.0},{"f":"cowrun1.webp","w":120,"h":164,"ay":165.8},{"f":"cowrun2.webp","w":128,"h":154,"ay":159.1},{"f":"cowrun3.webp","w":154,"h":152,"ay":156.6},{"f":"cowrun4.webp","w":157,"h":147,"ay":152.9},{"f":"cowrun5.webp","w":170,"h":158,"ay":164.0}],"pig":[{"f":"pig0.webp","w":98,"h":156,"ay":156.0},{"f":"pig1.webp","w":113,"h":155,"ay":156.0},{"f":"pig2.webp","w":90,"h":154,"ay":156.0},{"f":"pig3.webp","w":110,"h":156,"ay":156.0},{"f":"pig4.webp","w":89,"h":155,"ay":156.0},{"f":"pig5.webp","w":92,"h":155,"ay":156.0}],"pigrun":[{"f":"pigrun0.webp","w":105,"h":156,"ay":156.0},{"f":"pigrun1.webp","w":110,"h":150,"ay":152.3},{"f":"pigrun2.webp","w":91,"h":132,"ay":135.0},{"f":"pigrun3.webp","w":125,"h":133,"ay":133.1},{"f":"pigrun4.webp","w":96,"h":125,"ay":125.8},{"f":"pigrun5.webp","w":107,"h":137,"ay":136.8}],"goat":[{"f":"goat0.webp","w":92,"h":159,"ay":161.4},{"f":"goat1.webp","w":91,"h":159,"ay":161.4},{"f":"goat2.webp","w":81,"h":158,"ay":159.5},{"f":"goat3.webp","w":82,"h":160,"ay":160.0},{"f":"goat4.webp","w":89,"h":160,"ay":159.5},{"f":"goat5.webp","w":92,"h":158,"ay":161.0}],"goatrun":[{"f":"goatrun0.webp","w":94,"h":159,"ay":160.0},{"f":"goatrun1.webp","w":84,"h":160,"ay":160.0},{"f":"goatrun2.webp","w":118,"h":148,"ay":147.7},{"f":"goatrun3.webp","w":125,"h":145,"ay":149.3},{"f":"goatrun4.webp","w":132,"h":143,"ay":147.7},{"f":"goatrun5.webp","w":141,"h":144,"ay":147.7}],"run":[{"f":"run0.webp","w":206,"h":199,"ay":199},{"f":"run1.webp","w":138,"h":182,"ay":182},{"f":"run2.webp","w":136,"h":181,"ay":181},{"f":"run3.webp","w":187,"h":196,"ay":196},{"f":"run4.webp","w":140,"h":181,"ay":181},{"f":"run5.webp","w":179,"h":195,"ay":195}],"fly":[{"f":"fly0.webp","w":110,"h":161,"ay":162.3},{"f":"fly1.webp","w":112,"h":158,"ay":163.1},{"f":"fly2.webp","w":163,"h":210,"ay":191.6},{"f":"fly3.webp","w":147,"h":158,"ay":181.3},{"f":"fly4.webp","w":148,"h":186,"ay":187.3},{"f":"fly5.webp","w":130,"h":185,"ay":179.7}],"fall":[{"f":"fall0.webp","w":122,"h":187,"ay":184.0},{"f":"fall1.webp","w":145,"h":199,"ay":186.0},{"f":"fall2.webp","w":174,"h":210,"ay":179.8},{"f":"fall3.webp","w":143,"h":198,"ay":182.3}],"jump":[{"f":"jump0.webp","w":122,"h":148,"ay":171.0},{"f":"jump1.webp","w":140,"h":171,"ay":169.4},{"f":"jump2.webp","w":138,"h":221,"ay":193.2},{"f":"jump3.webp","w":183,"h":186,"ay":179.6},{"f":"jump4.webp","w":155,"h":186,"ay":180.3}],"land":[{"f":"land0.webp","w":145,"h":183,"ay":183},{"f":"land1.webp","w":157,"h":179,"ay":179},{"f":"land2.webp","w":122,"h":121,"ay":121},{"f":"land3.webp","w":165,"h":186,"ay":186}],"hit":[{"f":"hit0.webp","w":145,"h":164,"ay":172.9},{"f":"hit1.webp","w":163,"h":186,"ay":185.1},{"f":"hit2.webp","w":122,"h":154,"ay":173.6},{"f":"hit3.webp","w":106,"h":126,"ay":166.0},{"f":"hit4.webp","w":178,"h":81,"ay":140.5},{"f":"hit5.webp","w":128,"h":146,"ay":173.4}],"kick":[{"f":"kick0.webp","w":164,"h":239,"ay":239.0},{"f":"kick1.webp","w":162,"h":228,"ay":228.0},{"f":"kick2.webp","w":172,"h":172,"ay":179.4},{"f":"kick3.webp","w":132,"h":192,"ay":178.6},{"f":"kick4.webp","w":182,"h":194,"ay":194.0}],"boom":[{"f":"boom0.webp","w":121,"h":125},{"f":"boom1.webp","w":194,"h":215},{"f":"boom2.webp","w":260,"h":273},{"f":"boom3.webp","w":209,"h":215},{"f":"boom4.webp","w":170,"h":175}],"cricket":[{"f":"cricket0.webp","w":45,"h":136,"ay":136.0},{"f":"cricket1.webp","w":44,"h":143,"ay":143.0},{"f":"cricket2.webp","w":67,"h":127,"ay":127.0},{"f":"cricket3.webp","w":58,"h":129,"ay":129.0},{"f":"cricket4.webp","w":62,"h":121,"ay":121.0},{"f":"cricket5.webp","w":55,"h":107,"ay":107.0}],"egg":[{"f":"egg0.webp","w":48,"h":62,"ay":31.0},{"f":"egg1.webp","w":43,"h":62,"ay":31.0},{"f":"egg2.webp","w":30,"h":62,"ay":31.0},{"f":"egg3.webp","w":11,"h":62,"ay":31.0},{"f":"egg4.webp","w":29,"h":62,"ay":31.0},{"f":"egg5.webp","w":43,"h":62,"ay":31.0},{"f":"egg6.webp","w":48,"h":62,"ay":31.0},{"f":"egg7.webp","w":43,"h":62,"ay":31.0},{"f":"egg8.webp","w":29,"h":62,"ay":31.0},{"f":"egg9.webp","w":11,"h":62,"ay":31.0},{"f":"egg10.webp","w":30,"h":62,"ay":31.0},{"f":"egg11.webp","w":43,"h":62,"ay":31.0}],"hensad":[{"f":"hensad0.webp","w":92,"h":98,"ay":98.0},{"f":"hensad1.webp","w":95,"h":98,"ay":98.0},{"f":"hensad2.webp","w":98,"h":98,"ay":98.0},{"f":"hensad3.webp","w":93,"h":98,"ay":98.0},{"f":"hensad4.webp","w":83,"h":98,"ay":98.0}],"henjoy":[{"f":"henjoy0.webp","w":94,"h":98,"ay":98.0},{"f":"henjoy1.webp","w":80,"h":98,"ay":98.0},{"f":"henjoy2.webp","w":80,"h":98,"ay":98.0},{"f":"henjoy3.webp","w":80,"h":98,"ay":98.0}],"farmer":[{"f":"farmer0.webp","w":94,"h":224,"ay":224.0},{"f":"farmer1.webp","w":102,"h":225,"ay":225.0},{"f":"farmer2.webp","w":141,"h":224,"ay":224.0},{"f":"farmer3.webp","w":155,"h":218,"ay":218.0},{"f":"farmer4.webp","w":129,"h":252,"ay":252.0},{"f":"farmer5.webp","w":122,"h":189,"ay":189.0}],"spy":[{"f":"spy0.webp","w":62,"h":86,"ay":86.0},{"f":"spy1.webp","w":62,"h":86,"ay":86.0},{"f":"spy2.webp","w":62,"h":86,"ay":86.0},{"f":"spy3.webp","w":85,"h":82,"ay":82.0},{"f":"spy4.webp","w":63,"h":86,"ay":86.0},{"f":"spy5.webp","w":76,"h":86,"ay":86.0}],"farmeridle":[{"f":"farmeridle0.webp","w":93,"h":224,"ay":224.0},{"f":"farmeridle1.webp","w":113,"h":224,"ay":224.0},{"f":"farmeridle2.webp","w":127,"h":222,"ay":222.0},{"f":"farmeridle3.webp","w":120,"h":224,"ay":224.0},{"f":"farmeridle4.webp","w":98,"h":222,"ay":222.0},{"f":"farmeridle5.webp","w":92,"h":224,"ay":224.0}],"spyalert":[{"f":"spyalert0.webp","w":62,"h":86,"ay":86.0},{"f":"spyalert1.webp","w":62,"h":86,"ay":86.0},{"f":"spyalert2.webp","w":62,"h":86,"ay":86.0},{"f":"spyalert3.webp","w":79,"h":86,"ay":86.0},{"f":"spyalert4.webp","w":63,"h":86,"ay":86.0},{"f":"spyalert5.webp","w":62,"h":85,"ay":85.0}],"farmerwalk":[{"f":"farmerwalk0.webp","w":113,"h":224,"ay":224.0},{"f":"farmerwalk1.webp","w":106,"h":220,"ay":220.0},{"f":"farmerwalk2.webp","w":109,"h":225,"ay":225.0},{"f":"farmerwalk3.webp","w":140,"h":234,"ay":234.0},{"f":"farmerwalk4.webp","w":127,"h":226,"ay":226.0},{"f":"farmerwalk5.webp","w":115,"h":221,"ay":221.0}]};
 const FR = { ready:false, n:0, need:0, img:{} };
 const SPR = 175/190;                       // world units per frame pixel
 /* The roadside animals are scenery. They are loaded like everything else but
@@ -1749,6 +1749,52 @@ const rag = {
      1.52  through the doorway, still airborne
      2.00  control returns mid-stride
    ============================================================ */
+/* ============================================================
+   THE BASKET -- the vehicle.
+
+   Jetpack Joyride's contract, and it is worth stating because every part of it
+   earns its place: a vehicle is picked up mid-run, it REPLACES the control you
+   already know with a different one, the level changes to suit it, and a hit
+   takes the vehicle rather than the run. That last one is the whole reason
+   vehicles feel like a reward instead of a handicap -- riding one is strictly
+   safer, so you chase it.
+
+   Here it is a wicker basket under a bunch of balloons:
+
+     control   the flap is gone. Hold to rise, release to sink, and both are
+               gentle -- the model is the same one, with gravity and thrust cut
+               to a third and the drag nearly doubled, so it floats where the
+               bird darts. That contrast IS the vehicle.
+     level     `RIDE_PAT` replaces the pattern table: gates and wires only, no
+               corn. Corn is ankle-high clutter that a floating basket sails
+               over, and a hazard you cannot fail is worse than no hazard.
+     clearance CLEAR_RIDE, because the basket is over twice the bird's height
+               and an opening that was generous is suddenly a squeeze.
+     ending    fourteen seconds, or one hit. Either way the balloons pop, the
+               basket drops away, and there is a moment of grace before the
+               bird is solid again.
+   ============================================================ */
+const RIDE_TIME = 14, RIDE_GRACE = 0.85, RIDE_EVERY = [17, 26];
+const RIDE_G = 0.34, RIDE_T = 0.38, RIDE_D = 1.85;   // gravity, thrust, drag
+/* Measured, not picked: basket plus balloons stands about 410 units tall, so
+   an opening of 430 left twenty units of slack and the ride was a punishment.
+   The vehicle is supposed to be the safe part of the run. */
+const CLEAR_RIDE = 560;
+const BASKET = { img: new Image(), ready:false };
+const BALLOONS = { img: new Image(), ready:false };
+BASKET.img.onload   = () => { BASKET.ready = true; };
+BALLOONS.img.onload = () => { BALLOONS.ready = true; };
+BASKET.img.src   = 'art/basket.webp';
+BALLOONS.img.src = 'art/balloons.webp';
+/* Drawn from the bird's feet: the basket he sits in, and the balloons over it.
+   Sized off GROUND so the whole rig scales with the play area. */
+function basketGeom(){
+  const bw = GROUND*0.30, bh = bw*(952/980);
+  const lw = GROUND*0.26, lh = lw*(884/732);
+  return { bw, bh, lw, lh, lift: bh*0.62 };
+}
+const riding = () => game.ride > 0;
+
 const CAGE = {
   ready:false, img:null, door:null,
   floorFrac:0.985,                     // where the barn meets the ground
@@ -2347,11 +2393,16 @@ Object.assign(OB, {
    Three widths, and the width is the whole of the difference. A single stalk
    drops between two zappers without turning the pattern into a wall; the row
    is 419 units of commitment, a hold rather than a flick. */
+/* Electrified corn: the stalks themselves are live, and that is all. There
+   used to be a horizontal wire strung across the top of them as well, which
+   made every corn hazard read as a fence someone had planted corn behind --
+   the one silhouette this obstacle must not have, because the fence pieces are
+   a different hazard with a different rule. The crop is the hazard here. */
 function cornHazard(tier, art, w, h, stalks){
-  const top = h + 20, clear = top + 16;
+  const clear = h + 36;
   return elecSpec({ tier, hw:w*0.5 + 14, top:clear, h:clear, art:[art],
     build(){
-      const wires = [[-w*0.5 + 10, top, w*0.5 - 10, top]];
+      const wires = [];
       for(const x of stalks) wires.push(postWire(x, 0, h));
       return { hw:[{ a:art, x:0, y:0, h:h }], shadow:w*0.5,
                solids:[[-w*0.5, 0, w*0.5, h]], wires };
@@ -2671,7 +2722,11 @@ function spawnElec(key, aheadTime){
   o.phase = hash(o.x*0.031)*TAU;     // and two rotors are never in step
   if(spec.ladder){
     const d   = spec.ladder;
-    const gap = clamp(rnd(d.gap[0], d.gap[1]), CLEAR, Math.max(CLEAR, band-180));
+    /* The opening has to clear whatever is flying through it, and the basket
+       is over twice the bird's height -- an opening that was generous on foot
+       is a squeeze in it. */
+    const clr = riding() ? CLEAR_RIDE : CLEAR;
+    const gap = clamp(rnd(d.gap[0], d.gap[1]), clr, Math.max(clr, band-180));
     o.lo = clamp(rnd(d.lo[0], d.lo[1]), 80, Math.max(80, band-gap-80));
     o.hi = o.lo + gap;
     o.h  = band;                     // eggs keep out of the whole column
@@ -3226,10 +3281,26 @@ const PAT = [
   mkPat(4, [1.15,1.45], ['#zap', 0.90, '#lad', 1.05, '#corn']),
 ];
 
+/* What the basket flies through. Gates and wires, nothing on the floor: corn
+   is ankle-high and a basket sails over it without noticing, and a hazard you
+   cannot fail is worse than no hazard at all. Spaced a little wider than the
+   equivalent tier on foot, because the thing you are steering is twice the
+   size and turns like a barge. */
+const RIDE_PAT = [
+  mkPat(0, [1.60,2.00], ['#lad']),
+  mkPat(0, [1.55,1.95], ['#zap']),
+  mkPat(1, [1.50,1.85], ['#zap', 1.15, '#lad']),
+  mkPat(1, [1.45,1.80], ['#lad', 1.20, '#zap']),
+  mkPat(2, [1.40,1.75], ['#zap', 1.05, '#zap']),
+  mkPat(2, [1.40,1.75], ['#lad', 1.10, '#lad']),
+  mkPat(3, [1.35,1.70], ['#zap', 1.00, '#lad', 1.10, '#zap']),
+];
 function spawnPattern(){
   const tier = tierNow();
-  let pool = PAT.filter(p => p.tier<=tier && !(p.corn && game.cornT>0));
-  if(!pool.length) pool = PAT.filter(p => p.tier<=tier);
+  const table = riding() ? RIDE_PAT : PAT;
+  let pool = table.filter(p => p.tier<=tier && !(p.corn && game.cornT>0));
+  if(!pool.length) pool = table.filter(p => p.tier<=tier);
+  if(!pool.length) pool = table.slice(0, 2);
   /* Weighted towards what has just unlocked. Picking flat from everything
      available means a tier-4 run is mostly tier-0 patterns and the machines
      you unlocked show up twice a minute, which reads as the game running out
@@ -3417,6 +3488,8 @@ function startRun(){
   game.speed=340*PACE; game.diff=0; game.spawnT=2.6; game.cornT=0;
   game.obstacles.length=0; game.parts.length=0; game.pops.length=0; game.ui.length=0;
   game.eggs.length=0; game.eggT=1.6; game.runEggs=0; game.eggStreak=0;
+  game.ride=game.forceRide?RIDE_TIME:0; game.rideGrace=0; game.drop=null;
+  game.dropT=game.forceRide?1e9:rnd(9, 14);
   game.crows.length=0; game.crowT=5*CROW_GAP; game.crowN=0; game.crowWait=0;
   game.freeze=0; game.timeScale=1; game.tsTarget=1; game.shake=0; game.zoom=1; game.zoomT=1;
   game.camY=0; game.camYT=0; game.deadT=0; game.newBest=false;
@@ -3438,6 +3511,93 @@ function startRun(){
   game.tut = game.firstRun;
   elTut.classList.toggle('show', game.tut);
   musicScene('menu');            // the escape still plays over the menu theme
+}
+/* One pickup at a time, floating where a hazard is not. It is placed by the
+   same rule the eggs are -- `eggFree` already answers "is this bit of sky
+   safe" -- because a reward you cannot reach without dying is a punishment. */
+function spawnBasketDrop(){
+  const band = GROUND - CEIL;
+  const x = player.x + game.speed*Math.max(1.9, (VW - PX + 260)/game.speed + 0.3);
+  for(let tryN = 0; tryN < 20; tryN++){
+    const y = rnd(band*0.30, band*0.78);
+    if(eggFree(x, y)){ game.drop = { x, y, t:0 }; return true; }
+  }
+  return false;
+}
+function startRide(){
+  game.ride = RIDE_TIME; game.rideGrace = 0;
+  game.drop = null;
+  player.vy = Math.min(player.vy, -60);        // a little lift as he climbs in
+  S.egg && S.egg();
+  pop(player.x, GROUND - player.y - 210, 'BASKET!', C.gold, 56, -70);
+  spark(player.x, GROUND - player.y - 120, 16,
+        {col:C.gold, s0:120,s1:380, l0:0.3,l1:0.7, r0:3,r1:9});
+}
+/* Losing it is not dying. The balloons go, the basket drops away behind him,
+   and for RIDE_GRACE seconds nothing can touch him -- without that he is
+   solid again inside the same gap that just took the basket. */
+function loseRide(o){
+  game.ride = 0; game.rideGrace = RIDE_GRACE;
+  addShake(16); game.flash = 0.35; S.hit();
+  const gy = GROUND - player.y;
+  featherBurst(player.x, gy - 120, 8, 240);
+  spark(player.x, gy - 150, 20, {col:C.coral, s0:200,s1:520, l0:0.3,l1:0.8, r0:4,r1:10});
+  pop(player.x, gy - 230, 'POP!', C.coral, 48, -60);
+  if(o){ o.hitBy = true; o.spin = rnd(-5,5); o.vy = -320; }
+}
+function updateRide(dt){
+  game.rideGrace = Math.max(0, (game.rideGrace||0) - dt);
+  if(riding()){
+    game.ride -= dt;
+    if(game.ride <= 0){ game.ride = 0; game.rideGrace = RIDE_GRACE*0.6;
+      pop(player.x, GROUND - player.y - 230, 'POP!', C.coral, 44, -60);
+      featherBurst(player.x, GROUND - player.y - 120, 6, 200); }
+    return;
+  }
+  // not riding: count down to the next one, and float the pickup along
+  if(game.drop){
+    const d = game.drop;
+    d.t += dt;
+    if(d.x < player.x - 260) game.drop = null;
+    else {
+      const dy = (GROUND - player.y - 90) - (GROUND - d.y);
+      if(Math.abs(d.x - player.x) < 90 && Math.abs(dy) < 130) startRide();
+    }
+    return;
+  }
+  game.dropT = (game.dropT||0) - dt;
+  if(game.dropT <= 0 && game.runT > 6){
+    game.dropT = rnd(RIDE_EVERY[0], RIDE_EVERY[1]);
+    spawnBasketDrop();
+  }
+}
+function drawBasket(){
+  const g = basketGeom();
+  const x = player.x - cam.x, y = GROUND - player.y;
+  if(BALLOONS.ready){
+    const sway = Math.sin(game.t*1.7)*0.06 + clamp(player.vy/2600, -0.18, 0.18);
+    ctx.save();
+    ctx.translate(x, y - g.lift);
+    ctx.rotate(sway);
+    ctx.drawImage(BALLOONS.img, -g.lw*0.5, -g.lh, g.lw, g.lh);
+    ctx.restore();
+  }
+  if(BASKET.ready) ctx.drawImage(BASKET.img, x - g.bw*0.5, y - g.bh*0.72, g.bw, g.bh);
+}
+/* The pickup itself: the basket, small, bobbing, with the glow the eggs use so
+   it reads as something to go and get rather than something to avoid. */
+function drawBasketDrop(){
+  const d = game.drop; if(!d || !BASKET.ready) return;
+  const sx = d.x - cam.x;
+  if(sx < -200 || sx > VW + 200) return;
+  const w = GROUND*0.15, h = w*(952/980);
+  const yy = GROUND - d.y + Math.sin(game.t*2.6)*7;
+  ctx.save();
+  ctx.globalAlpha = 0.30;
+  ctx.fillStyle = C.gold;
+  ctx.beginPath(); ctx.ellipse(sx, yy - h*0.3, w*0.7, h*0.55, 0, 0, TAU); ctx.fill();
+  ctx.restore();
+  ctx.drawImage(BASKET.img, sx - w*0.5, yy - h*0.72, w, h);
 }
 function die(o){
   if(game.mode!=='play') return;
@@ -3709,9 +3869,12 @@ function updatePlay(dt){
      thrust; releasing removes it that same frame. Drag makes velocity ease
      toward a terminal speed instead of ramping forever, which is what gives
      smooth acceleration and deceleration without any impulse. */
-  p.vy += GRAV*dt;
-  if(p.thrusting) p.vy -= THRUST*dt;
-  p.vy -= p.vy * DRAG * dt;
+  /* The same three lines run the basket; only the constants change. A second
+     movement model would be a second thing to keep in step with this one. */
+  const rG = riding() ? RIDE_G : 1, rT = riding() ? RIDE_T : 1, rD = riding() ? RIDE_D : 1;
+  p.vy += GRAV*rG*dt;
+  if(p.thrusting) p.vy -= THRUST*rT*dt;
+  p.vy -= p.vy * DRAG*rD * dt;
   p.vy = clamp(p.vy, VY_UP, VY_DOWN);                // safety rails only
   p.y -= p.vy*dt;
 
@@ -3769,6 +3932,7 @@ function updatePlay(dt){
     }
   }
 
+  updateRide(dt);
   updateEggs(dt);
 
   // ---- spawn ----
@@ -3777,7 +3941,15 @@ function updatePlay(dt){
   if(game.spawnT<=0) spawnPattern();
 
   // ---- obstacles ----
-  const pl = p.x-48, pr = p.x+48, pb = p.y+8, pt = p.y+150;
+  /* The basket is a much bigger thing to fly through a gap than the bird, and
+     pretending otherwise would let it clip through wires it visibly touches. */
+  const bg = basketGeom();
+  const pl = p.x - (riding() ? bg.bw*0.42 : 48), pr = p.x + (riding() ? bg.bw*0.42 : 48);
+  const pb = p.y + (riding() ? -bg.bh*0.12 : 8);
+  /* Only the lower half of the balloons is solid. They are the tallest part of
+     the rig and the least believable thing to lose it to -- clipping the top of
+     a balloon on a wire you were never near reads as a bug, not a mistake. */
+  const pt = p.y + (riding() ? bg.lift + bg.lh*0.45 : 150);
   for(let i=game.obstacles.length-1;i>=0;i--){
     const o = game.obstacles[i];
     // collision
@@ -3787,7 +3959,11 @@ function updatePlay(dt){
        test gives, applied once here so both families are equally generous. */
     const ow = o.spec.hw;
     const overlapX = pr > o.x-ow && pl < o.x+ow;
-    if(overlapX && !o.hitBy && o.spec.hit(o, pl+8, pr-8, pb+8, pt-8)) die(o);
+    if(overlapX && !o.hitBy && o.spec.hit(o, pl+8, pr-8, pb+8, pt-8)){
+      if(game.rideGrace > 0){ /* just lost it; let him get clear */ }
+      else if(riding()) loseRide(o);
+      else die(o);
+    }
     // near-miss tracking: the true distance to the nearest lethal part
     if(overlapX){
       const gap = o.spec.gapTo(o, pl+8, pr-8, pb+8, pt-8);
@@ -4711,6 +4887,7 @@ function render(){
   drawGround();
   drawObstacles();
   drawEggs();
+  drawBasketDrop();
 
   // character
   let px = (game.mode==='menu') ? PX : player.x - cam.x;
@@ -4734,6 +4911,9 @@ function render(){
   } else {
     drawPlayerShadow(px, py);
     drawChicken(px, GROUND - py, player.pose);
+    /* After him, so the rim of the basket crosses his legs and the balloons
+       ride over his head -- he is IN it rather than next to it. */
+    if(riding()) drawBasket();
   }
 
   if(inCage || cageSX > -VW*1.3) drawCageFront(cageSX);
@@ -4797,6 +4977,9 @@ function boot(){
   if(it){ game.holdIntro = parseFloat(it[1]); }   // freeze the intro to look at a beat
   const sl=/[?&]slow=([0-9.]+)/.exec(location.search);
   if(sl) game.introSlow = Math.max(1, parseFloat(sl[1]));  // run the escape in slow motion
+  // ?ride=1 starts the run already in the basket, which is the only sane way
+  // to look at a vehicle that otherwise turns up once every twenty seconds
+  if(/[?&]ride/.test(location.search)) game.forceRide = true;
   const rt=/[?&]runt=([0-9.]+)/.exec(location.search);
   if(rt) game.presetRunT = parseFloat(rt[1]);   // jump to a difficulty tier
   const ds=/[?&]dist=([0-9.]+)/.exec(location.search);
