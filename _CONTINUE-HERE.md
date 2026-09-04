@@ -832,7 +832,9 @@ dropped frame every 26s, for tens of MB of canvas held on a phone.
     python tools/title_art.py               # rebuild the title poster from ref/
     python tools/npc_frames.py              # recut the cow, pig and goat frames
     python tools/farm_seams.py              # where the farm panels should be cut
-    python tools/farm_strip.py              # rebuild the one-image background
+    python tools/gen_bg.py                  # generate the parallax layers (Gemini)
+    python tools/bg_layers.py               # key, loop and trim them
+    python tools/farm_strip.py              # the old one-image background
     python tools/build_apex.py              # rebuild the barn's roof from sheets/v2/barn_raw.png
 
 `clip.py` uses `Page.startScreencast`, which timestamps frames, so the GIF keeps
@@ -1075,6 +1077,47 @@ the box was empty sky and you died on the air above a tyre. The tractor wheel
 made it obvious; the fix is one translate, and it is the tyre and the fuel drum
 too. `bounce` still integrates a height nothing reads: it is in neither the
 draw nor the collision, so do not set it expecting a hop.
+
+## The background: four speeds and one sky
+
+`art/bg/far|mid|near.webp` plus a field the game fills in, drawn in that order
+with the neighbours walking between the farm and the fence. It replaced a single
+painting at a single speed, which is why that one read as a sticker rather than
+a place.
+
+- **Generated per layer** by `tools/gen_bg.py` (Gemini Studio, `Pro`), each on a
+  flat **magenta** field rather than a painted sky. Magenta is in none of the
+  palettes so it keys cleanly, and keying the sky is the whole trick: the game
+  draws one sky behind everything and no layer ever has to agree with another
+  about what colour it is.
+- **Cut to loop** by `tools/bg_layers.py`. A generator will not hand you a
+  tiling image, so the seam is searched for: score the columns near the right
+  edge against the columns near the left, keep the best pair, crop between them.
+- **The speeds are close together on purpose** -- 0.10 / 0.26 / 0.44 / 0.60
+  against the road's 1.0. Open that gap and the eye starts tracking the
+  parallax instead of the chicken, which at this pace is tiring to look at.
+
+Three things that each looked like a different bug:
+
+- **The neighbours vanished.** They were laid out along one axis and looked for
+  along another: `first` was computed from `cam.x` while their position used
+  `cam.x*par`, so every one of them sat off the right-hand edge by a gap that
+  grew with the run. Index by the layer's camera.
+- **The buildings stood on sky.** The layers are cut-outs, so the ground between
+  the fence and the barns is sky until something puts grass there. `drawField()`
+  is that grass -- and it has to start at the FAR layer's feet, not the mid
+  layer's, or a blue band runs across the middle of the farm.
+- **A hard black rule across the scene.** The generator paints a ground line
+  along the bottom of the mid layer. Fine in a picture that stands alone, a
+  black rule straight across the farm once it is standing in a field.
+  `trim_baseline()` takes it off.
+
+**Trim the empty sky off every tile.** Transparent pixels are not free -- they
+are blended once per tile per frame -- and these were up to 62% empty. Trimming
+took the unthrottled frame from 19.2ms back to 16.9. Three layers still cost
+more fill than one painting (about 40% under a 4x CPU throttle), which the
+resolution dial absorbs: 22 seconds in it has walked DPR to 1.0 and settled at
+22ms a frame, better than the single painting managed at 1.25.
 
 ## Next
 

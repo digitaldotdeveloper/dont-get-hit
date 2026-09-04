@@ -2439,7 +2439,7 @@ function buildFarmLayers(TW){
   // The painted panels are the farm's middle distance. These coloured layers
   // are the fallback for when the art has not loaded -- drawn as well, they
   // stack a second farm behind the first and its hills show through the fade.
-  if(FARM.ready) return;
+  if(bgReady()) return;
   // far: rolling hills
   layers.push({ f:0.10, y:0, tile: makeLayer(TW, 620, (g)=>{
     g.fillStyle=C.far; g.beginPath(); g.moveTo(0,0);
@@ -3806,30 +3806,43 @@ function loadPanels(SET){
    lines really were painted at 0.785, 0.802 and 0.820. tools/farm_strip.py
    levels that offline now, by sliding each panel rather than scaling it, so
    there is one pair of marks left. */
-/* ONE painting. The three panels used to be drawn as three: overlapped by 46
-   units, cross-faded into each other through an alpha ramp, and each scaled by
-   a different amount so its own two landmarks would land where the game wanted
-   them. Every complaint about this background came out of that. The cross-fade
-   showed one painting through another -- a silo ghosting through a windmill --
-   and the per-panel scale made the fence change size halfway across the field,
-   which is what read as fences that do not join.
+/* THE BACKGROUND: four things at four speeds, and one sky behind all of them.
 
-   tools/farm_strip.py now joins them once, offline: the seams are searched
-   for rather than assumed, the ground lines are levelled by sliding each panel
-   instead of scaling it, and the fields are tone-matched. The painted sky is
-   keyed out entirely -- the three skies were (27,157,252), (56,182,253) and
-   (1,117,216) at the same height, which is not one sky by any amount of
-   correction -- so the game's own gradient shows through the whole strip and
-   the clouds ride over it. The game tiles the result; `blend` is 0 and there
-   is nothing left to see through. Re-run that tool if the panels are ever
-   repainted; it prints the two marks below. */
-const FARM = loadPanels({ srcs:['sheets/v2/farm_strip.webp'],
-               imgs:[], ready:0, blend:0, haze:'rgba(146,196,246,.10)',
-               marks:[[0.8199,0.6276]],
-               // buildLayers has already run by the time the art lands, so the
-               // fallback layers are still in `layers`. Throw them away.
-               onReady(){ if(SCALE) buildLayers(); } });
-const FARMF = 0.40;                       // the farm's own parallax
+   It used to be a single painting at a single speed, which is why it read as a
+   sticker rather than a place. Now: hills a long way off, the farm in the
+   middle distance, the neighbours walking through the field, and the fence you
+   run past. Each is generated on its own (tools/gen_bg.py) and cut to loop
+   (tools/bg_layers.py) with the sky keyed out, so no layer has to agree with
+   another about what colour the sky is -- the game draws that once, behind
+   everything.
+
+   The speeds are deliberately gentle and deliberately close together. Depth
+   here is meant to be felt rather than noticed: open the gap between the far
+   and near layers and the eye starts tracking the parallax instead of the
+   chicken, which at this pace is exhausting to look at.
+
+     f     how much of the camera each layer takes -- 1 is the road
+     hf    drawn height, as a fraction of GROUND
+     base  where the bottom of the layer sits relative to GROUND; further away
+           means higher up the screen */
+const BG = [
+  { key:'far',  f:0.10, hf:0.138, base:-214 },
+  { key:'mid',  f:0.26, hf:0.412, base:-158 },
+  { key:'near', f:0.60, hf:0.214, base:   8 },
+];
+/* Loaded directly rather than through IMQ: three requests, and they are the
+   three that decide whether the game looks like anything at all. */
+BG.forEach(L => {
+  L.img = new Image();
+  L.img.onload = () => { L.ready = true; if(SCALE) buildLayers(); };
+  L.img.onerror = () => { L.ready = false; };
+  L.img.src = 'art/bg/' + L.key + '.webp';
+});
+function bgReady(){ return BG.every(L => L.ready); }
+function bgGeom(L){
+  const H = GROUND*L.hf;
+  return { H, W: H*(L.img.naturalWidth/L.img.naturalHeight), y: GROUND + L.base - H };
+}
 const FARM_RAIL = 0.148;                  // fence rail height above GROUND, as a fraction of it
 
 /* The title poster. The menu is this same file as a CSS background, and the
@@ -3854,35 +3867,19 @@ function titleRect(){
 /* The painted farm: one image, one scale, tiled. Sizing it against the play
    band instead of GROUND magnifies a 572px source about fourfold and puts the
    silo tops off the frame, which is the trap the prison wall hit. */
-function farmGeom(){
-  if(FARM.geom && FARM.geom.ground === GROUND && FARM.geom.n === FARM.ready) return FARM.geom;
-  const F = GROUND * FARM_RAIL;
-  const P = [];
-  let x = 0; const xs = [];
-  for(let i=0;i<FARM.imgs.length;i++){
-    const im = FARM.imgs[i]; if(!im) continue;
-    const m = (FARM.marks && FARM.marks[i]) || [0.806, 0.610];
-    const H = F / (m[0] - m[1]);           // ground line and rail both land where they must
-    const W = H * (im.width/im.height);
-    P.push({ im, H, W, gf:m[0], top: GROUND - m[0]*H });
-    xs.push(x); x += W - FARM.blend;
-  }
-  FARM.geom = { ground:GROUND, n:FARM.ready, P, xs, cycle:x || 1 };
-  return FARM.geom;
-}
 /* THE LOOKOUTS. Three pigeons in sunglasses on the watchtower's balcony rail.
    The tower is painted into the strip, so they are drawn at fractions measured
    off it and ride with it wherever it repeats -- which is also why they are in
    here rather than in the props pass. The fractions are of the whole strip now,
    not of the panel the tower came from; tools/farm_strip.py is where the panel
    ended up in it. */
-const SPY = { x0:0.6765, x1:0.7128, y:0.400, panel:0, h:0.075 };
-function drawSpyPigeons(x, q){
-  const y = q.top + SPY.y*q.H;
+const SPY = { x0:0.742, x1:0.800, y:0.395, h:0.105 };
+function drawSpyPigeons(x, y0, W, H){
+  const y = y0 + SPY.y*H;
   const px = player.x - cam.x;                       // where he is on screen
   for(let i=0;i<3;i++){
     const fx = SPY.x0 + (SPY.x1-SPY.x0)*(i/2);
-    const bx = x + fx*q.W;
+    const bx = x + fx*W;
     /* Two loops. Idle they shuffle and preen slowly; once he is close they run
        the alert cycle -- head up, wing to the earpiece, talking into it. The
        test is screen distance rather than world distance because the tower
@@ -3892,30 +3889,52 @@ function drawSpyPigeons(x, q){
     if(!list || !list.length) continue;
     const fr = list[Math.floor(game.t*(near ? 9 : 2.6) + i*2.7) % list.length];
     const im = FR.img[fr.f]; if(!im || !im.complete || !im.naturalWidth) continue;
-    const h = SPY.h*q.H, w = h*(fr.w/fr.h);
+    const h = SPY.h*H, w = h*(fr.w/fr.h);
     ctx.drawImage(im, bx - w*0.5, y - h, w, h);
   }
 }
-function drawFarmPainted(){
-  const g = farmGeom(); if(!g.P.length) return;
-  const off = cam.x * FARMF;
-  const rep0 = Math.floor(off / g.cycle) - 1;
-  for(let rep = rep0; rep <= rep0 + 3; rep++){
-    for(let i=0;i<g.P.length;i++){
-      const q = g.P[i], x = rep*g.cycle + g.xs[i] - off;
-      if(x > VW || x + q.W < 0) continue;
-      // crop at the painted ground line and let drawGround's road carry on
-      // underneath: the panels are different heights now, so their own dirt
-      // bands would end at different depths and step along the bottom
-      ctx.drawImage(q.im, 0, 0, q.im.width, q.im.height*q.gf,
-                    x, q.top, q.W, q.gf*q.H);
-      if(i === SPY.panel) drawSpyPigeons(x, q);
+/* The field the farm stands in.
+
+   The layers are cut-outs with the sky keyed out, which is what makes them one
+   scene -- but it also means the ground between the fence and the buildings is
+   sky until something puts grass there. Without this the barns stand on a strip
+   of blue, which reads as a row of stickers pasted over the horizon, and no
+   amount of fiddling with the parallax fixes it because the problem is that
+   there is nothing underneath them.
+
+   One flat band, from the far hills' feet down to the near grass, graded
+   between the two so it belongs to both: hazy sage where it meets the hills,
+   the near layer's own green where it meets the fence. */
+function drawField(){
+  /* Starts at the FAR layer's feet, not the mid layer's. Anchor it to the
+     buildings and the strip between the hills and the field stays sky -- a
+     blue band across the middle of the farm. */
+  const top = GROUND + BG[0].base + 10;
+  const h = GROUND + 10 - top;
+  ctx.drawImage(surface('field|' + Math.round(top) + '|' + Math.round(h), VW, h, true, (g) => {
+    const gd = g.createLinearGradient(0, 0, 0, h);
+    gd.addColorStop(0,    '#93B77E');       // where the hills stop
+    gd.addColorStop(0.38, '#79AC55');
+    gd.addColorStop(1,    '#5C9A28');       // where the near grass starts
+    g.fillStyle = gd; g.fillRect(0, 0, VW, h);
+  }), 0, top, VW, h);
+}
+function drawBgLayers(upTo){
+  for(const L of BG){
+    if(!L.ready) continue;
+    if(L.key === 'mid') drawField();        // the buildings need somewhere to stand
+    const g = bgGeom(L);
+    const off = ((cam.x*L.f) % g.W + g.W) % g.W;
+    for(let x = -off; x < VW + 1; x += g.W){
+      ctx.drawImage(L.img, x, g.y, g.W, g.H);
+      if(L.key === 'mid') drawSpyPigeons(x, g.y, g.W, g.H);
     }
+    if(L.key === upTo) return;
   }
 }
 /* The code-drawn fallback, for the moment before the panels load. */
 function drawFarmProps(){
-  if(FARM.ready) return drawFarmPainted();
+  if(bgReady()) return;                 // the layers are drawn by drawProps
   const spacing=470, first=Math.floor((cam.x-200)/spacing);
   for(let i=first;i<first+Math.ceil(VW/spacing)+3;i++){
     const x=i*spacing-cam.x+140, kind=hash(i*3.7);
@@ -4041,13 +4060,25 @@ function npcPose(list, height, phase){
   const cycles = npcWalk() / Math.max(40, height * NPC_STRIDE);
   return Math.floor((cycles + phase) * list.length) % list.length;
 }
+/* They walk in the field, at the field's speed: their own parallax, their own
+   scale, and their feet on the painted ground line rather than on the road.
+   Distances that used to be world distances have to become screen distances
+   once a thing rides a parallax -- its world x is no longer where it looks. */
+const NPC_F = 0.44, NPC_SCALE = 0.58, NPC_BASE = -128;
 function drawSpectators(){
   const spacing = 1750, walk = npcWalk();
-  const first = Math.floor((cam.x - 300 + walk)/spacing);
+  const par = bgReady() ? NPC_F : 1;
+  const scale = bgReady() ? NPC_SCALE : 1;
+  const base = bgReady() ? NPC_BASE : -8;
+  /* Index by the LAYER's camera, not the road's. Laying them out along one
+     axis and looking for them along another puts every one of them off the
+     right-hand edge, by a gap that grows with the run -- which is exactly as
+     invisible as not drawing them at all. */
+  const first = Math.floor((cam.x*par - 300 + walk)/spacing);
   for(let i=first; i<first+Math.ceil(VW/spacing)+3; i++){
     if(hash(i*9.3) > 0.58) continue;                    // most stops are empty
     const gx = i*spacing + 300 - walk;                  // they are going somewhere
-    const sx = gx - cam.x;
+    const sx = gx - cam.x*par;
     if(sx < -220 || sx > VW+220) continue;
     const n = 1;                                        // one animal, on its own
     /* Panic starts shortly before he arrives and carries on well after: they
@@ -4055,7 +4086,7 @@ function drawSpectators(){
        as a reaction to him rather than a state of the scenery. Kept tight on
        the approach side on purpose -- the whole point of the walk cycles is
        that you get to see them being unimpressed first. */
-    const dx = player.x - gx;
+    const dx = (player.x - cam.x) - sx;                 // on screen, not in the world
     const near = NPC_REACT && game.mode === 'play' && dx > -430 && dx < 900;
     for(let k=0;k<n;k++){
       const ox = (k-(n-1)/2) * 74 + hash(i*7.7+k)*12;
@@ -4070,10 +4101,10 @@ function drawSpectators(){
         ? (list.length ? Math.floor(game.t*13 + ph*2) % list.length : 0)
         : npcPose(list, fr0 ? fr0.h*SPR : 140, hash(i*2.3+k*1.7));
       const lift = near ? bob*0.35 : Math.sin(game.t*1.6 + ph)*1.6;
-      if(drawNPC(set, pose, sx+ox, GROUND-8+lift, 1, !near)) continue;
+      if(drawNPC(set, pose, sx+ox, GROUND+base+lift, scale, !near)) continue;
       ctx.save();
-      ctx.translate(sx + ox, GROUND - 10);
-      ctx.scale(0.82, 0.82);
+      ctx.translate(sx + ox, GROUND + base - 2);
+      ctx.scale(0.82*scale, 0.82*scale);
       drawLilChicken(near, bob);
       ctx.restore();
     }
@@ -4090,15 +4121,16 @@ function drawSpectators(){
 function drawFarmer(){
   const list = FRAME_DATA.farmer; if(!list || !list.length) return;
   const spacing = 3200, travelled = npcWalk();
-  const first = Math.floor((cam.x - 300 + travelled)/spacing);
+  const par = bgReady() ? NPC_F : 1;                   // out in the field with the rest
+  const first = Math.floor((cam.x*par - 300 + travelled)/spacing);
   for(let i=first; i<first+Math.ceil(VW/spacing)+3; i++){
     if(hash(i*3.9) > 0.55) continue;                   // rarer still than the animals
     const gx = i*spacing + 640 - travelled;
-    const sx = gx - cam.x;
+    const sx = gx - cam.x*par;
     if(sx < -260 || sx > VW+260) continue;
     // same window the livestock use: he starts before Nugget arrives and is
     // still going when he is most of a screen away
-    const dx = player.x - gx;
+    const dx = (player.x - cam.x) - sx;                 // on screen, not in the world
     const near = NPC_REACT && game.mode === 'play' && dx > -430 && dx < 900;
     const ph = hash(i*2.7)*TAU;
     const bob = near ? -Math.abs(Math.sin(game.t*7 + ph))*8 : Math.sin(game.t*1.4 + ph)*2;
@@ -4114,16 +4146,20 @@ function drawFarmer(){
                       : npcPose(list, (fr0 ? fr0.h*SPR : 220) * 0.60, hash(i*2.7));
     // behind the fence and a good head taller than the bird, so he is drawn
     // smaller than his own art and stood a little back from the road
-    drawNPC(set, pose, sx, GROUND-30+bob, 0.60, false);
+    drawNPC(set, pose, sx, GROUND + (bgReady() ? NPC_BASE : -30) + bob,
+            0.60*(bgReady() ? NPC_SCALE/0.66 : 1), false);
   }
 }
 function drawProps(){
-  // The panels paint the whole middle distance, so anyone standing in the field
-  // has to be drawn AFTER them or the fence simply covers them -- which is what
-  // happened to the crickets the moment the art landed.
-  drawFarmProps();
+  /* The order IS the depth. Hills, then the farm, then the neighbours walking
+     about in the field, then the fence in front of them -- which is what puts
+     them in the background instead of on the road, and what lets the fence
+     pass in front of a cow without anybody having to sort anything. */
+  if(!bgReady()){ drawFarmProps(); drawSpectators(); drawFarmer(); return; }
+  drawBgLayers('mid');
   drawSpectators();
   drawFarmer();
+  drawBgLayers();
 }
 function drawGround(){
   const y = GROUND;
