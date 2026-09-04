@@ -980,9 +980,99 @@ anything looking one up still finds it -- an `Image` with no `src` reports
 about this was visible locally; every asset loaded instantly and the game
 looked right.
 
+## The obstacle set
+
+Two families, and the line between them is the whole design.
+
+**Ground props are solid and you jump them.** Painted farmyard objects cut off
+the Gemini Studio sheets, registered with `farmProp(name, w, h)`, sprite
+filling its hitbox exactly. `fence`, `gate`, `cart`, `engine`, `haywagon`,
+`tracwheel`, `mud` and the three corn pieces joined the fourteen that were
+already there. Sizes are the art's own aspect ratio at the height the hazard
+wants -- take the ratio out of `tools/cut_obstacles.py`'s output, never guess
+it, or the prop is stretched and the hitbox lies.
+
+**Electric pieces are the flying half, and one rule holds the family together:
+an electric piece is lethal everywhere it is solid, and its opening is empty
+air.** There is no safe-looking post you are meant to fly through. In a side
+view a lethal upright is a wall for its whole height, so a hazard with a gap in
+the middle CANNOT be one tall frame -- it has to be a piece standing off the
+floor and a piece hanging off the roof with nothing whatever between them.
+That is `elecLadder`, and it is why nothing in there ever draws a post across
+its own opening. Get it wrong and the safe passage is blocked by the thing
+framing it, which is the definition of randomly unavoidable.
+
+Nine pieces: `e_fence`, `e_wire` and `e_baletrap` are gone over; `e_rotor` and
+`e_mill` turn; `e_double`, `e_gate`, `e_multi` and `e_g2a` are ladders you go
+through. Each one describes itself once in `build()`, and the drawing, the
+collision and the near-miss meter all read that same description -- so the wire
+you see and the segment you die on are literally the same two numbers.
+Geometry is in world units with y measured UP from the ground; the flip into
+screen coordinates happens once, in `drawElec`.
+
+Three things worth knowing before touching them:
+
+- **A rotor is collided as the disc it sweeps, not as its blades.** At 2.2
+  rad/s a blade crosses the bird's box between two frames, so per-blade
+  collision is a coin toss dressed up as skill. The bright ring is drawn so the
+  disc is what you see as well as what you hit.
+- **Rotation is a fixed rate off a phase seeded from the piece's own x.** No
+  easing, no reversal, no speed-up. The air above a rotor's reach is safe
+  whatever it is doing, so timing is a flourish and never the difference
+  between passing and not.
+- **`spawnElec` picks the gap FIRST and clamps the floor into what is left.**
+  Doing it the other way round produces a legal-looking piece with a 90px slot
+  on a short screen. `CLEAR` is 250 and `?obtest=1` re-checks it.
+
+This is also the shape the farm had lost. The crate gates that used to be here
+were two independent objects that happened to land at the same x and left
+whatever slot they happened to leave, which is Flappy Bird -- that is why they
+were removed. A ladder is ONE object that owns both halves and therefore owns
+the gap, which is a different thing wearing the same silhouette.
+
+### Patterns, not dice
+
+`spawnPattern` picks from `PAT`: short sequences with their spacing in
+SECONDS, followed by a safe section. Seconds and not pixels, because the world
+speeds up as a run goes on and pixel spacing would quietly tighten every
+pattern into a different pattern. Difficulty is which patterns have unlocked
+and how much shorter the safe tail has become -- never a hazard that got harder
+to see. Tokens: `#gnd`, `#air`, `#col`, `#corn`.
+
+Everything in a sequence is placed the moment the pattern fires, each at its
+own arrival time, so the spacing inside a pattern is exact rather than the sum
+of several later spawn decisions.
+
+**Corn is a crop, not a fence.** Any pattern containing `#corn` is skipped
+whole while `game.cornT` is running, so it arrives in bursts and then leaves
+you alone. Note that `?obtest=1` never advances time, so corn shows up once per
+tier in the test and then locks itself out -- that is the harness, not the game.
+
+### Looking at them
+
+- `?ob=KEY` parks one hazard mid-screen in a live run and holds it there
+  (`game.freeze`, which is 6% time, not a pause -- a paused game does not draw).
+  It also hangs the setup on `window`, because everything is inside an IIFE.
+- `?hit=1` draws every lethal shape over the art: boxes magenta, wires yellow
+  at their true lethal thickness, a rotor's swept disc green. This is how "the
+  sprite fills its hitbox" gets checked instead of asserted.
+- `tools/obshot.py URL out.png key,key --hit` builds a contact sheet from those.
+- `?obtest=1` spawns 240 patterns per tier and checks openings and spacing.
+  Corridors come out >=252 and gaps >=0.82s.
+
+**A rolling prop rests ON the ground.** It used to spin about the origin, which
+drew every roller half buried while its hitbox ran 0..h -- so the top half of
+the box was empty sky and you died on the air above a tyre. The tractor wheel
+made it obvious; the fix is one translate, and it is the tyre and the fuel drum
+too. `bounce` still integrates a height nothing reads: it is in neither the
+draw nor the collision, so do not set it expecting a hop.
+
 ## Next
 
 - Nothing spends the eggs yet.
+- The electric set has no sound of its own beyond `S.zap()` on a death. A hum
+  that rises as you close on a live wire is the obvious next thing, and the
+  near-miss meter already knows the distance.
 - There is one map on purpose. A second one is a `THEME` plus a builder plus a
   deliberate way in, never a timer that swaps the world out mid-run.
 - The three wall panels are ~345 KB each, so first load pulls about 1 MB of

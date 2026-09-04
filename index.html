@@ -1962,11 +1962,16 @@ crows:{ kind:'air', w:96, base:210, h:230, tier:1, roll:-90, draw(o,t){
    Every one falls back to a flat block if its image has not loaded, the same
    bargain the character frames make: art can never make a hazard invisible. */
 const PROPS = {};
+/* Through IMQ like everything else. The farm went from fourteen props to
+   thirty-three when the electric set landed, and thirty-three more requests
+   fired at once is the same pile-up the frame queue exists to stop. The image
+   goes into PROPS immediately, unloaded: naturalWidth 0 is already what every
+   draw call tests for. */
 function loadProp(n){
+  if(PROPS[n]) return;                        // several pieces share a post
   const im = new Image();
-  im.onload = ()=>{ PROPS[n] = im; };
-  im.onerror = ()=>{};
-  im.src = 'art/farm/' + n + '.webp';
+  PROPS[n] = im;
+  imqLoad(im, 'art/farm/' + n + '.webp', ()=>{}, ()=>{ delete PROPS[n]; });
 }
 function farmProp(name, w, h, opt){
   opt = opt || {};
@@ -1977,7 +1982,14 @@ function farmProp(name, w, h, opt){
       if(spec.kind === 'ground') shadowEllipse(ow*0.50, 0.40);
       const im = PROPS[name];
       ctx.save();
-      if(opt.roll) ctx.rotate(o.rot||0);          // rolling props spin on the spot
+      /* A rolling prop spins about its own centre, and that centre sits half
+         a height ABOVE the ground -- a wheel rests on the floor, it is not
+         buried to its axle in it. Rotating about the origin drew every roller
+         with its bottom half underground while its hitbox ran 0..h, so the top
+         half of the box was empty sky and you died on the air above a tyre.
+         Moving the origin up is the fix, and it is the tyre and the fuel drum
+         as much as the tractor wheel that made it obvious. */
+      if(opt.roll){ ctx.translate(0, -oh*0.5); ctx.rotate(o.rot||0); }
       else if(opt.sway) ctx.rotate(Math.sin(t*1.6 + o.x*0.011)*opt.sway);
       else if(opt.squash){                         // a puddle ripples, it does not lean
         const k = 1 + Math.sin(t*2.3 + o.x*0.02)*opt.squash;
@@ -2032,7 +2044,7 @@ Object.assign(OB, {
   /* A tractor wheel is the one farm prop that obviously rolls, so it does --
      it is the fast-closing hazard of the ground set, and the whoosh in
      updatePlay already keys off any roll over 100. */
-  tracwheel:farmProp('tractorwheel',122, 168, { tier:2, roll:-165, bounce:true }),
+  tracwheel:farmProp('tractorwheel',122, 168, { tier:2, roll:-165 }),
   /* Mud is deliberately the shortest thing in the game: a hop, not a climb.
      It squashes rather than sways, because a puddle that rocked would read as
      a solid object tipping over. */
@@ -2177,12 +2189,16 @@ function elecDist(o, l, r, b, t){
 function drawElec(o, t){
   const p = o.spec.build(o, t);
   for(const h of p.hw) drawHW(h.a, h.x, h.y, h.h, h.flip);
+  /* `d` is the piece's length ALONG ITS OWN AXIS, and the other dimension
+     follows from the art. Scaling d by the aspect ratio instead drew the
+     260x60 bar 1057 units long -- four times the hitbox it turns inside, which
+     is the one failure this obstacle set is not allowed to have. */
   if(p.spin) for(const sp of p.spin){
     ctx.save(); ctx.translate(sp.x, -sp.y); ctx.rotate(sp.rot);
     const im = PROPS[sp.a];
     if(im && im.complete && im.naturalWidth){
-      const w = sp.d*(im.naturalWidth/im.naturalHeight);
-      ctx.drawImage(im, -w/2, -sp.d/2, w, sp.d);
+      const h = sp.d*(im.naturalHeight/im.naturalWidth);
+      ctx.drawImage(im, -sp.d/2, -h/2, sp.d, h);
     } else { ctx.beginPath(); ctx.rect(-sp.d/2,-9,sp.d,18); paint('#B9C4CE',5); }
     ctx.restore();
   }
@@ -2190,9 +2206,21 @@ function drawElec(o, t){
     const w = p.wires[i];
     drawWire(w[0],w[1],w[2],w[3], t, (o.seed||0) + i*13.7);
   }
-  if(p.discs) for(const c of p.discs){          // the ring the blades sweep
+  /* The swept circle, drawn as hard as the wires are. A rotor kills over its
+     whole disc, so a faint ring next to a wire that crackles would be telling
+     the player the blades are the safer of the two. Same palette, same arcing,
+     read at a glance as the same kind of death. */
+  if(p.discs) for(const c of p.discs){
+    const k = Math.floor(t*24);
     ctx.beginPath(); ctx.arc(c[0],-c[1],c[2],0,TAU);
-    ctx.strokeStyle='rgba(150,240,255,0.30)'; ctx.lineWidth=6; ctx.stroke();
+    ctx.strokeStyle='rgba(110,222,255,0.16)'; ctx.lineWidth=20; ctx.stroke();
+    ctx.strokeStyle='rgba(150,240,255,0.42)'; ctx.lineWidth=9;  ctx.stroke();
+    ctx.strokeStyle='#7FE6FF'; ctx.lineWidth=3.5; ctx.stroke();
+    for(let f=0; f<3; f++){                    // sparks running round the rim
+      const a = hash((o.seed||0) + f*23.1 + k*1.7)*TAU;
+      const x = c[0]+Math.cos(a)*c[2], y = c[1]+Math.sin(a)*c[2];
+      ctx.beginPath(); ctx.arc(x,-y,4.5,0,TAU); ctx.fillStyle='#FFFFFF'; ctx.fill();
+    }
   }
 }
 
@@ -2741,10 +2769,13 @@ function mkPat(tier, tail, spec){
   return { tier, tail, seq, corn: spec.indexOf('#corn') >= 0 };
 }
 const PAT = [
-  /* tier 0 — one thing on the floor at a time, and a long look at it */
+  /* tier 0 — one thing on the floor at a time, and a long look at it.
+     Both entries draw from the same pool on purpose: giving mud and the fence
+     a pattern each as well as their place in the pool put mud in front of the
+     player 42% of the time, which is not an introduction, it is a puddle
+     level. Two entries rather than one only so the pacing varies. */
   mkPat(0, [1.55,1.95], ['#gnd']),
-  mkPat(0, [1.45,1.80], ['mud']),
-  mkPat(0, [1.55,1.95], ['fence']),
+  mkPat(0, [1.42,1.72], ['#gnd']),
 
   /* tier 1 — the first live wire, and the first combination */
   mkPat(1, [1.35,1.70], ['#gnd']),
@@ -4057,6 +4088,30 @@ function drawGround(){
   }
 }
 
+/* ?hit=1 — every lethal shape, over the art that is supposed to be showing
+   it. The rule for this obstacle set is that the sprite fills its hitbox and
+   an electric piece kills exactly where it glows; this is how that gets
+   checked rather than asserted. Boxes magenta, wires yellow at their true
+   lethal thickness, a rotor's swept disc green. */
+const HITDBG = /[?&]hit=1/.test(location.search);
+function drawHitbox(o){
+  ctx.save();
+  const ow = o.spec.hw!=null ? o.spec.hw : o.w*0.42;
+  if(o.spec.elec){
+    const p = o.spec.build(o, game.t);
+    ctx.strokeStyle='rgba(255,0,220,0.9)'; ctx.lineWidth=2.5;
+    for(const q of (p.solids||[])) ctx.strokeRect(q[0], -q[3], q[2]-q[0], q[3]-q[1]);
+    ctx.strokeStyle='rgba(255,232,0,0.55)'; ctx.lineWidth=WIRE_R*2; ctx.lineCap='butt';
+    for(const w of p.wires){ ctx.beginPath(); ctx.moveTo(w[0],-w[1]); ctx.lineTo(w[2],-w[3]); ctx.stroke(); }
+    ctx.strokeStyle='rgba(0,255,170,0.9)'; ctx.lineWidth=2.5;
+    for(const c of (p.discs||[])){ ctx.beginPath(); ctx.arc(c[0],-c[1],c[2],0,TAU); ctx.stroke(); }
+  } else {
+    ctx.strokeStyle='rgba(255,0,220,0.9)'; ctx.lineWidth=2.5;
+    ctx.strokeRect(-ow, o.hang ? 0 : -o.h, ow*2, o.h);
+  }
+  ctx.restore();
+}
+
 function drawObstacles(){
   for(const o of game.obstacles){
     const sx = o.x - cam.x;
@@ -4077,6 +4132,7 @@ function drawObstacles(){
     ctx.translate(sx, o.hang ? CEIL : GROUND - (o.kind==='air'? o.base : (o.y||0)));
     if(o.hitBy) ctx.rotate(o.rot||0);
     o.spec.draw(o, game.t);
+    if(HITDBG) drawHitbox(o);
     ctx.restore();
   }
 }
@@ -4347,6 +4403,37 @@ function boot(){
   /* Spawn every tier a few hundred times and look at what comes out: nothing
      may stack into a gate, and none of it
      may throw. */
+  /* ?ob=KEY — park one hazard in the middle of a live run and hold it there,
+     so a new prop can be LOOKED at instead of waited for. With ?hit=1 the
+     lethal shapes are drawn over it, which is how "the sprite fills its
+     hitbox" gets checked rather than asserted.
+
+     It also hangs the setup on window, because the whole game is inside an
+     IIFE: a headless shot of the next hazard would otherwise mean a full
+     reload and every prop fetched again, per hazard. Nothing is exposed
+     unless the flag is on the URL. */
+  const obm = /[?&]ob=([A-Za-z0-9_]+)/.exec(location.search);
+  if(obm){
+    const show = (k)=>{
+      if(!OB[k]) return 'no such obstacle: '+k;
+      startRun();
+      game.tut = false; elTut.classList.remove('show');
+      game.obstacles.length=0; game.eggs.length=0;
+      game.parts.length=0; game.pops.length=0;
+      game.spawnT = 1e9; game.eggT = 1e9;      // nothing else joins the picture
+      player.x = 2000; player.y = 300; player.vy = 0; player.thrusting = false;
+      cam.x = player.x - PX;
+      const o = OB[k].elec ? spawnElec(k, 3.0) : spawnOne(k, 3.0);
+      o.x = cam.x + VW*0.56;
+      o.seed = 3.1; o.phase = 0.85;            // fixed, so two shots agree
+      game.freeze = 9999;                      // 6% time: it holds still
+      return JSON.stringify({key:k, h:Math.round(o.h), w:Math.round(o.w),
+        lo:Math.round(o.lo||0), hi:Math.round(o.hi||0),
+        band:Math.round(GROUND-CEIL)});
+    };
+    window.__ob = show;
+    setTimeout(()=>show(obm[1]), 90);
+  }
   if(/[?&]obtest/.test(location.search)){
     setTimeout(()=>{
       const out=[]; let bad=0;
@@ -4356,7 +4443,7 @@ function boot(){
         // They used to be [0,30,55,80,120], which lands on tiers 0,2,3,4,4 --
         // so tier 1 was never tested at all and tier 4 was tested twice.
         game.runT = [0,15,30,50,80][tier];
-        const kinds={}; let worst=1e9, pairs=0;
+        const kinds={}; let worst=1e9, pairs=0, tight=1e9;
         for(let n=0;n<240;n++){
           game.obstacles.length = 0;
           try{ spawnPattern(); }catch(e){ out.push('tier'+tier+' THREW '+e.message); bad++; break; }
@@ -4366,15 +4453,36 @@ function boot(){
           for(const o of os) for(const q of os)
             if(o!==q && o.hang!==q.hang && Math.abs(o.x-q.x)<160) pairs++;
           for(const o of os){
-            if(o.hang){ worst=Math.min(worst, band-o.h); }
+            /* An electric piece answers for its own opening. Measuring it as
+               band-o.h would read every ladder as a solid wall, because a
+               ladder IS the full column height -- the gap is the point. */
+            if(o.spec.elec){
+              let best = 0;
+              for(const f of o.spec.free(o, band)) best = Math.max(best, f[1]-f[0]);
+              worst = Math.min(worst, best);
+              if(best < CLEAR-1){ bad++;
+                out.push('tier'+tier+' '+o.key+' opening only '+Math.round(best)); }
+            }
+            else if(o.hang){ worst=Math.min(worst, band-o.h); }
             else if(o.kind!=='air' && o.kind!=='fall'){ worst=Math.min(worst, band-o.h); }
             if(!isFinite(worst)){ out.push('tier'+tier+' BAD '+o.key+' kind='+o.kind+
               ' h='+o.h+' cy='+o.cy+' len='+o.len); bad++; worst=1e9; }
           }
+          /* Spacing inside a pattern, measured in ARRIVAL TIME rather than in
+             x: a rolling prop is placed further away precisely so it arrives
+             with the rest, so comparing positions would call every pattern
+             holding one badly spaced. */
+          for(let a=0;a<os.length;a++) for(let b2=a+1;b2<os.length;b2++){
+            const ta = (os[a].x-player.x)/(game.speed+Math.abs(os[a].spec.roll||0));
+            const tb = (os[b2].x-player.x)/(game.speed+Math.abs(os[b2].spec.roll||0));
+            tight = Math.min(tight, Math.abs(ta-tb));
+          }
         }
         if(pairs){ bad++; out.push('tier'+tier+' STACKED PAIRS: '+pairs); }
         if(worst<170){ bad++; out.push('tier'+tier+' corridor only '+Math.round(worst)); }
-        out.push('tier'+tier+' corridor>='+Math.round(worst)+'  '+
+        if(tight<0.62){ bad++; out.push('tier'+tier+' spacing only '+tight.toFixed(2)+'s'); }
+        out.push('tier'+tier+' corridor>='+Math.round(worst)+
+          '  gap>='+(tight<1e8?tight.toFixed(2)+'s':'-')+'  '+
           Object.keys(kinds).sort().map(k=>k+':'+kinds[k]).join(' '));
       }
       out.unshift(bad ? ('OBSTACLES: '+bad+' PROBLEMS') : 'OBSTACLES: ok, no stacked gates');
