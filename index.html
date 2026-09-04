@@ -3827,13 +3827,27 @@ function loseRide(o){
 const NPC_BURN = 520;          // how far behind the truck the flame still bites
 const NPC_HIT_W = 120;         // and how close the bumper has to be
 function npcHits(){ return game.npcHit || (game.npcHit = {}); }
+/* A bowled animal keeps its feet. It used to be launched over the bonnet in an
+   arc and spun, which is the same knock-away the obstacles had and looks the
+   same way about it: a cow is not a loose crate, and sending it cartwheeling
+   out of the picture reads as physics happening TO the scenery rather than an
+   animal reacting to a truck.
+
+   It bolts instead -- the panic frames it already owns, on the spot it already
+   stands on. The MOOO, the shake and the change of gait carry the beat; the
+   flight was never what sold it.
+
+   The entry is still dropped after a couple of seconds, and it still has to
+   be: it is keyed by the stop's index, and a run that never forgot them would
+   grow that map for as long as the player survived. Two seconds is well after
+   the world has scrolled the animal past the cull, so nothing is seen popping
+   back to an amble. */
 function updateNpcHits(dt){
   const h = npcHits();
   for(const k in h){
     const o = h[k];
-    o.t += dt; o.vy += 2400*dt;
-    o.x += o.vx*dt; o.y -= o.vy*dt; o.rot += o.spin*dt;
-    if(o.t > 2.2 || o.y < -400) delete h[k];
+    o.t += dt;
+    if(o.t > 2.2) delete h[k];
   }
 }
 function updateRide(dt){
@@ -5004,25 +5018,20 @@ function drawSpectators(){
     const rb = rideBox();
     if(riding() && !hits[i] && game.mode === 'play'
        && Math.abs(dx) < NPC_HIT_W && player.y < 210){
-      hits[i] = { t:0, x:0, y:0, vx: 120 + Math.random()*120,
-                  vy: 430 + Math.random()*260, rot:0, spin: rnd(-9, 9), kind };
+      hits[i] = { t:0, kind };            // hit, and staying exactly where it is
       pop(sx, GROUND - 250, pick(['MOOO!','OINK!','BAAA!','WHOA!']), C.gold, 44, -70);
       featherBurst(gx, GROUND - 90, 5, 260);
       addShake(9); S.step();
     }
     const hit = hits[i];
     if(hit){
-      /* Gone over the bonnet: the panic frame, spinning, on its way out of the
-         picture. Drawn here rather than in a system of its own because it is
-         the same animal, one frame later. */
+      /* Hit: the panic frames, at pace, on the ground it was standing on.
+         Drawn here rather than in a system of its own because it is the same
+         animal one frame later -- and now that it neither flies nor spins,
+         that is all it is. */
       const hl = FRAME_DATA[kind+'run'] || FRAME_DATA[kind] || [];
-      ctx.save();
-      ctx.translate(sx + hit.x, GROUND - 6 - hit.y);
-      ctx.rotate(hit.rot);
-      ctx.globalAlpha = clamp(1 - (hit.t-1.4)/0.8, 0, 1);
       drawNPC(kind+'run', hl.length ? (Math.floor(game.t*16) % hl.length) : 0,
-              0, 0, 1, false);
-      ctx.restore();
+              sx, GROUND - 6, 1, false);
       continue;
     }
     /* The flame. Anything in its reach drops the amble and runs, and turns to
