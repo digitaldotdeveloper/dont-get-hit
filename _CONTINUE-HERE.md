@@ -955,6 +955,42 @@ anything similar added later must be too. `?pace=N` tries another value; the
 `?selftest=1` arcs are sampled per frame, so at 1.85 they show the old curve
 read 1.85x further along, not a taller one.
 
+## The HUD, the metre, and the score
+
+The readout is **one small block pinned into the top-left corner** -- Jetpack
+Joyride's shape: a `SCORE` label, the count, `BEST`, and the egg counter under
+it, all inside `#hudTL`. It used to be a 54px score centred across the top,
+which put the biggest thing on screen exactly where the next obstacle arrives
+from. It is small on purpose: the number is glanced at between hazards, never
+read. Fonts are unchanged -- Archivo 900 for the count, Bungee for the eggs.
+
+`pad6` keeps the count six digits wide so it cannot jitter in the corner, and
+`setScore()` wraps the padding zeros in `<span class="z">` at 26% opacity, so
+the width is fixed but the eye only gets the digits that mean something. It
+writes to the DOM only when the six digits change; it is called every frame.
+
+**`UPM` is how many world units make a metre, and it is 60.** It was 10, and
+that is what was wrong with the odometer: the screen is ~1300 units across, so
+a viewport holding one barn and a stretch of fence claimed to be 130 metres
+wide, and a ten-second run clocked 1200m. The number sprinted while the scenery
+strolled and the two visibly disagreed. At 60 a screen is a believable ~22m of
+farmyard, and he covers 10 m/s at the start and 23 m/s flat out -- a panicking
+chicken, not a car. **Nothing about the world moved; only what we call the
+distance it moves through**, so every arc, gap and spawn cadence is untouched.
+
+Score is **1 point per metre** (`SCORE_PER_M`), the Jetpack Joyride deal where
+the counter *is* the distance. The old rate was 0.25 per *unit* = 2.5 per metre,
+which spun the odometer at 150-340 a second: too fast to read, and fast enough
+that a 25-point egg and a 60-point near miss were rounding errors against it.
+At 1/m the bonuses are worth chasing. The odometer tick sound fires every 10
+metres for the same reason -- at the old rate its every-50 threshold was a
+machine gun.
+
+Anything measured in metres has to be `* UPM`, never `* 10`. `CROW_FLOCK_M` and
+`NPC_TEACH_M` were restated (3000 -> 500, 400 -> 67) so they still fire at the
+same *world* position they always did. `BEST_KEY` went to `v2`: bests banked at
+the old ~15x rate would never have been beaten.
+
 ## Performance -- it is fill rate, nothing else
 
 Profiled with `tools/prof.py` (wraps every draw section over CDP and reports

@@ -39,31 +39,46 @@
   #stage{position:fixed;inset:0;overflow:hidden}
   #game{position:absolute;inset:0;width:100%;height:100%;display:block}
 
-  /* ---------- HUD ---------- */
-  #hud{position:absolute;inset:0;pointer-events:none;
-       padding:calc(env(safe-area-inset-top,0px) + 14px) 16px 0}
-  #scoreWrap{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 12px);
-             transform:translateX(-50%);text-align:center;opacity:0;transition:opacity .25s}
+  /* ---------- HUD ----------
+     Jetpack Joyride's readout: ONE small block pinned into the top-left corner,
+     not a scoreboard across the top of the screen. The number is glanced at
+     between hazards, never read, so it is sized to be ignorable -- the old
+     centred 54px score sat exactly where the next obstacle comes in, and it
+     was the biggest thing on screen. Same fonts as before: Archivo 900 for the
+     count, Bungee for the eggs. */
+  #hud{position:absolute;inset:0;pointer-events:none}
+  #hudTL{position:absolute;
+         left:calc(env(safe-area-inset-left,0px) + 14px);
+         top:calc(env(safe-area-inset-top,0px) + 11px);
+         display:flex;flex-direction:column;align-items:flex-start;gap:5px}
+  #scoreWrap{text-align:left;opacity:0;transition:opacity .25s}
   #hud.on #scoreWrap{opacity:1}
-  #scoreLabel{font-size:11px;font-weight:900;letter-spacing:.22em;color:rgba(255,242,222,.62)}
-  #score{font-size:clamp(34px,8.5vw,54px);font-weight:900;line-height:.98;
-         font-variant-numeric:tabular-nums;letter-spacing:.02em;
-         color:var(--cream);text-shadow:0 3px 0 rgba(36,16,67,.85),0 0 26px rgba(255,180,71,.35)}
+  #scoreLabel{font-size:9px;font-weight:900;letter-spacing:.2em;line-height:1;
+              color:rgba(255,242,222,.55)}
+  #score{font-size:clamp(21px,4.6vh,30px);font-weight:900;line-height:1.04;
+         font-variant-numeric:tabular-nums;letter-spacing:.01em;
+         /* the pop has to grow off the corner it is pinned to, not off its
+            own middle, or a scoring number nudges itself out of alignment */
+         transform-origin:left center;
+         color:var(--cream);text-shadow:0 2px 0 rgba(36,16,67,.85),0 0 18px rgba(255,180,71,.32)}
+  /* Six digits keep the number's width fixed so it never jitters in the corner,
+     but at HUD size the leading zeros shout as loud as the score. Dimming them
+     keeps the width and gives the eye only the digits that mean something. */
+  #score .z{opacity:.26}
   #score.pop{animation:pop .18s ease-out}
-  @keyframes pop{0%{transform:scale(1)}45%{transform:scale(1.13)}100%{transform:scale(1)}}
-  #eggWrap{position:absolute;top:calc(env(safe-area-inset-top,0px) + 14px);left:14px;
-    display:flex;align-items:center;gap:7px;opacity:0;transition:opacity .3s}
+  @keyframes pop{0%{transform:scale(1)}45%{transform:scale(1.12)}100%{transform:scale(1)}}
+  #eggWrap{display:flex;align-items:center;gap:6px;opacity:0;transition:opacity .3s}
   #hud.on #eggWrap{opacity:1}
   /* the same painted egg the pickups are, so the counter and the thing you
      collected are obviously the same object */
-  #eggIcon{width:18px;height:23px;
+  #eggIcon{width:13px;height:17px;
     background:url(art/egg_icon.webp) center/contain no-repeat;
-    filter:drop-shadow(0 0 8px rgba(255,213,74,.5))}
-  #eggCount{font-family:'Bungee',cursive;font-size:19px;color:#FFD54A;
+    filter:drop-shadow(0 0 7px rgba(255,213,74,.5))}
+  #eggCount{font-family:'Bungee',cursive;font-size:14px;color:#FFD54A;
     text-shadow:0 2px 0 #241043;font-variant-numeric:tabular-nums}
   #eggCount.pop{animation:pop .2s ease-out}
-  #bestLine{font-size:11px;font-weight:700;letter-spacing:.18em;color:rgba(255,242,222,.5);
-            font-variant-numeric:tabular-nums;margin-top:2px}
+  #bestLine{font-size:9px;font-weight:700;letter-spacing:.16em;color:rgba(255,242,222,.45);
+            font-variant-numeric:tabular-nums;margin-top:1px}
 
   #combo{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 104px);
          transform:translateX(-50%) scale(.6);opacity:0;
@@ -235,12 +250,14 @@
   <div id="flash"></div>
 
   <div id="hud">
-    <div id="scoreWrap">
-      <div id="scoreLabel">SCORE</div>
-      <div id="score">000000</div>
-      <div id="bestLine">BEST 000000</div>
+    <div id="hudTL">
+      <div id="scoreWrap">
+        <div id="scoreLabel">SCORE</div>
+        <div id="score">000000</div>
+        <div id="bestLine">BEST 000000</div>
+      </div>
+      <div id="eggWrap"><span id="eggIcon"></span><span id="eggCount">0</span></div>
     </div>
-    <div id="eggWrap"><span id="eggIcon"></span><span id="eggCount">0</span></div>
     <div id="combo"><span id="comboTxt">x2</span></div>
     <button id="mute" aria-label="Toggle sound">
       <svg class="on" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4zm12.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 2.2v2.1a7.8 7.8 0 0 1 0 15.4v2.1a9.9 9.9 0 0 0 0-19.6z"/></svg>
@@ -2688,7 +2705,24 @@ const player = {
   pose:newPose(), face:newFace(), prevY:0
 };
 
-const BEST_KEY = 'dgh.best.v1';
+/* How many world units make a metre. It used to be 10, which is where the
+   odometer went wrong: the screen is ~1300 units across, so a viewport holding
+   one barn and a stretch of fence claimed to be 130 metres wide, and the run
+   clocked 1200m in ten seconds -- the number sprinted while the scenery
+   strolled, and the two obviously disagreed. At 60 the screen is a believable
+   ~22m of farmyard and he covers 10 m/s at the start, 23 m/s flat out, which
+   is a panicking chicken rather than a car. Nothing about the world moved;
+   only what we call the distance it moves through. */
+const UPM = 60;
+
+/* Score is now 1 point per metre -- Jetpack Joyride's deal, where the counter
+   IS the distance. The old 0.25-per-unit rate spun it at 150-340 a second, far
+   too fast to read and so fast that a 25-point egg and a 60-point near miss
+   were rounding errors against it. At 1/m the bonuses are worth chasing. */
+const SCORE_PER_M = 1;
+
+/* v2: v1 bests were banked at the old ~15x score rate and would never be beaten. */
+const BEST_KEY = 'dgh.best.v2';
 try{ game.best = parseInt(localStorage.getItem(BEST_KEY)||'0',10)||0; }catch(e){ game.best=0; }
 try{ game.firstRun = !localStorage.getItem('dgh.played'); }catch(e){}
 
@@ -2734,6 +2768,19 @@ const elHud=$('#hud'), elScore=$('#score'), elBestLine=$('#bestLine'),
       elOverTitle=$('#overTitle'),
       elTut=$('#tut'), elFlash=$('#flash'), elMute=$('#mute');
 elBestLine.textContent = 'BEST '+pad6(game.best);
+
+/* The HUD score, with its padding zeros greyed back. Only touches the DOM when
+   the six digits actually change -- this runs every frame. */
+let scoreStr = '';
+function setScore(n){
+  const t = pad6(n);
+  if(t === scoreStr) return;
+  scoreStr = t;
+  const k = t.search(/[^0]/);              // -1 while the score is still zero
+  const lead = k < 0 ? 5 : k;              // ...and then five zeros are padding
+  elScore.innerHTML = lead ? '<span class="z">'+t.slice(0,lead)+'</span>'+t.slice(lead) : t;
+}
+setScore(0);
 
 /* ---------- particles ---------- */
 function spark(x,y,n,opt){
@@ -3070,13 +3117,13 @@ function crowSpan(){ return CROW_WARN + crowFlightTime(); }
    pairs of crows before it had finished meeting the hazards that stand still,
    and a screen with two locked badges on it is a different game from the one
    the first minute teaches. */
-const CROW_FLOCK_M = 3000;
-const crowFloor = () => game.dist >= CROW_FLOCK_M*10 ? 2 : 1;
+const CROW_FLOCK_M = 500;      // (was 3000 old-metres = the same 30000 units)
+const crowFloor = () => game.dist >= CROW_FLOCK_M*UPM ? 2 : 1;
 function crowVolleySize(){
   /* One bird is a dodge. Two is a dodge you have to hold, because the second
      badge locks onto wherever the first one chased you. Three is the same
      trick again with nowhere left to have gone. */
-  if(game.dist >= CROW_FLOCK_M*10) return Math.random() < 0.40 ? 3 : 2;
+  if(game.dist >= CROW_FLOCK_M*UPM) return Math.random() < 0.40 ? 3 : 2;
   return (game.diff > 0.90 && Math.random() < 0.12) ? 3
        : (game.diff > 0.70 && Math.random() < 0.22) ? 2 : 1;
 }
@@ -3679,7 +3726,7 @@ function startRun(){
   game.runCount = (game.runCount||0) + 1;
   applyTheme();
   game.mode='play'; game.runT=game.presetRunT||0; game.score=0;
-  game.dist=(game.presetDist||0)*10;           // ?dist=N starts the odometer there
+  game.dist=(game.presetDist||0)*UPM;            // ?dist=N starts the odometer there
   game.near=0; game.combo=0; game.comboBest=0; game.comboT=0;
   game.speed=340*PACE; game.diff=0; game.spawnT=2.6; game.cornT=0; game.goT=0;
   game.obstacles.length=0; game.parts.length=0; game.pops.length=0; game.ui.length=0;
@@ -3920,7 +3967,7 @@ function finish(){
   elFinalBest.textContent = 'BEST '+pad6(game.best);
   elNear.textContent = game.near;
   elCmb.textContent = 'x'+Math.max(1,game.comboBest);
-  elDist.textContent = Math.floor(game.dist/10)+'m';
+  elDist.textContent = Math.floor(game.dist/UPM)+'m';
   elOverTitle.textContent = overTxt;
   elCard.classList.toggle('best', game.newBest);
   elOver.classList.add('show');
@@ -4137,8 +4184,11 @@ function updatePlay(dt){
   p.x += game.speed*dt;
   game.dist += game.speed*dt;
   const before = game.score;
-  game.score += dt*game.speed*0.25;
-  if(Math.floor(game.score/50) !== Math.floor(before/50)) S.tick();
+  game.score += dt*game.speed/UPM*SCORE_PER_M;
+  /* The tick is the odometer's sound. It was every 50 points at ~250/s, so it
+     machine-gunned; at 1 point per metre that same 50 would leave four seconds
+     of silence. Every 10 metres lands it about once a second. */
+  if(Math.floor(game.score/10) !== Math.floor(before/10)) S.tick();
 
   if(game.demoRun!==undefined){                    // freeze one frame of the run cycle
     p.onGround=true; p.y=0; p.vy=0; p.state='run'; p.thrusting=false;
@@ -4331,7 +4381,7 @@ function updatePlay(dt){
   windSet((0.003 + air*0.038)*duck, 640 + air*2500);
 
   // HUD
-  elScore.textContent = pad6(game.score);
+  setScore(game.score);
   if(game.dbg){
     const el=document.getElementById('selftest');
     if(el){ el.style.display='block';
@@ -4929,13 +4979,13 @@ const NPC_F = 0.44, NPC_SCALE = 0.58, NPC_BASE = -128;
    rather than a draw-time cap, which would pop a third one in the moment the
    first left. */
 const NPC_SPACING = 780;      // >= VW/2, so two on screen at once is the most
-const NPC_TEACH_M = 400;      // ...and for the opening 400m there is always one
+const NPC_TEACH_M = 67;       // ...and for the opening ~67m there is always one
 function drawSpectators(){
   const spacing = NPC_SPACING, walk = npcWalk();
   /* The opening stretch is never empty: the lesson only works if he meets one
      of these BEFORE he meets anything that kills him, and leaving that to a
      hash means the run that teaches it is the run that happens not to. */
-  const teach = game.mode === 'play' && game.dist < NPC_TEACH_M*10;
+  const teach = game.mode === 'play' && game.dist < NPC_TEACH_M*UPM;
   const first = Math.floor((cam.x - 300 + walk)/spacing);
   for(let i=first; i<first+Math.ceil(VW/spacing)+3; i++){
     if(!teach && hash(i*9.3) > 0.58) continue;         // some stops are empty
@@ -5618,7 +5668,7 @@ function boot(){
           wait += dt;
           updateCrows(dt);
           if(game.crows.length){                 // a volley got its window
-            (game.dist >= CROW_FLOCK_M*10 ? sizes.post : sizes.pre)[game.crows.length]++;
+            (game.dist >= CROW_FLOCK_M*UPM ? sizes.post : sizes.pre)[game.crows.length]++;
             waits.push(wait); wait = 0;
             game.crows.length = 0;               // no camera here to fly it across
           }
