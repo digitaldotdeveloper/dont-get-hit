@@ -1911,9 +1911,23 @@ const RIDE_G = 0.27, RIDE_D = 0.22;
    wide, and a jump you can only just make over a thing you cannot see the far
    side of is not a jump, it is a coin flip. There is real air over everything
    now, and the double jump is headroom rather than a rescue. */
-const RIDE_JUMP = 1700, RIDE_JUMP2 = 1300;
+/* THE JUMP IS A SHARE OF THE SCREEN, and the impulse is SOLVED FOR.
+
+   It used to be a launch speed, which is the wrong end of the problem: what
+   anybody can actually see is how high up the picture the truck gets, and a
+   fixed impulse means that height changes with the screen -- three quarters of
+   the way up a phone in landscape and half way up a tablet, off the same
+   number. So the design says 0.75 and `rideImpulse` finds the speed that lands
+   there, per screen, from the same closed form `rideApex` uses forwards.
+
+   RIDE_ROOF is the rail, a little over the first jump: the second press then
+   buys HANG rather than another screen of sky, which is the only thing it can
+   usefully buy in a play area barely taller than one jump. */
+const RIDE_TOP  = 0.75;    // where the wheels get to at the top of one jump
+const RIDE_TOP2 = 0.30;    // what a second press would add, on its own
+const RIDE_ROOF = 0.80;    // and the height rail, as the same share
 const RIDE_VUP  = 2.35;                      // the truck's own ceiling on velocity
-const RIDE_BOOST = 1.12;                     // faster than running, but it has calmed down
+const RIDE_BOOST = 1.30;                     // and it is quicker than running
 const CLEAR_RIDE = 560;
 /* FOUR FRAMES, AND NUGGET IS PAINTED INTO ALL OF THEM.
 
@@ -1988,7 +2002,7 @@ function truckGeom(){
    rail of its own that keeps the whole sprite in frame, and the arc above is
    tuned to sit just under it. */
 function rideCeil(){
-  return Math.max(160, GROUND - truckGeom().sh - 12);
+  return GROUND * RIDE_ROOF;
 }
 const riding = () => game.ride > 0;
 /* ONE definition of what can be hit, because two of them drift. The obstacle
@@ -2953,6 +2967,32 @@ const player = {
    is a panicking chicken rather than a car. Nothing about the world moved;
    only what we call the distance it moves through. */
 const UPM = 60;
+/* THE RUN GETS QUICKER THE FURTHER IT GOES: 5% every 500 metres.
+
+   `game.diff` already ramps the pace, but it runs on the CLOCK and it is done
+   after 95 seconds -- about 1600m -- so past that point a run had exactly one
+   speed for as long as you could hold it, and an endless runner with a top
+   speed stops being one. This is the ramp that never finishes, and it is on
+   DISTANCE, which is the axis the player is scored on.
+
+   Continuous rather than a step at each marker: `pow(1.05, m/500)` is exactly
+   5% per 500m at every marker and imperceptible between them, where a step
+   would be a lurch mid-jump. The marker is announced instead (see updatePlay),
+   because a difficulty ramp nobody can perceive is not a feature.
+
+   Capped, and this is a judgement call rather than a request: obstacles are
+   placed a fixed number of SECONDS ahead but they appear at the screen edge, so
+   the time between seeing one and reaching it falls as the reciprocal of speed.
+   At the cap that reaction window is about two thirds of a second, which is
+   hard. Uncompounded it would reach a tenth, which is not a difficulty curve,
+   it is a wall with a countdown. */
+const SPEED_STEP_M = 500, SPEED_STEP = 0.05, SPEED_CAP = 1.60;
+function distSpeed(){
+  return Math.min(SPEED_CAP, Math.pow(1 + SPEED_STEP, (game.dist/UPM)/SPEED_STEP_M));
+}
+/* One place that says how fast the world moves, because there were two and the
+   second one -- inside a test harness -- had already drifted. */
+function worldSpeed(){ return (340 + 400*game.diff)*PACE*distSpeed(); }
 
 /* Score is now 1 point per metre -- Jetpack Joyride's deal, where the counter
    IS the distance. The old 0.25-per-unit rate spun it at 150-340 a second, far
@@ -3789,8 +3829,8 @@ const RIDE_PAT = [
   mkPat(1, [1.95,2.40], ['#corn', 1.40, 'r_tyres']),
   mkPat(2, [1.90,2.35], ['r_drums', 1.35, 'r_bales']),
   mkPat(2, [1.95,2.40], ['r_wagon']),
-  mkPat(2, [1.90,2.35], ['r_tyres', 1.35, 'r_wagon']),
-  mkPat(3, [1.90,2.35], ['r_bales', 1.50, 'r_bales']),
+  mkPat(2, [1.90,2.35], ['r_tyres', 1.80, 'r_wagon']),
+  mkPat(3, [1.90,2.35], ['r_bales', 1.80, 'r_bales']),
   mkPat(3, [1.85,2.30], ['#corn', 1.30, 'r_wagon', 1.55, 'r_crates']),
 ];
 function spawnPattern(){
@@ -3852,7 +3892,7 @@ function thrustOn(){
   if(riding()){
     player.thrusting = true;
     if(player.onGround){
-      player.vy = -RIDE_JUMP; player.onGround = false;
+      player.vy = -rideJump(); player.onGround = false;
       player.rideJumps = 1; S.takeoff(); addShake(5);
       /* A WALL OF DUST off the back tyres, thrown backwards and up. Sparks
          alone read as a spell being cast; what leaves the ground when two
@@ -3863,7 +3903,7 @@ function thrustOn(){
             {col:'rgba(210,180,140,.9)', a0:Math.PI*0.9, a1:Math.PI*1.4,
              s0:120, s1:340, l0:0.2, l1:0.5, r0:4, r1:10, g:900});
     } else if((player.rideJumps||0) < 2){
-      player.vy = -RIDE_JUMP2; player.rideJumps = 2; S.takeoff();
+      player.vy = -rideJump2(); player.rideJumps = 2; S.takeoff();
       /* The second jump has no ground to kick off, so it brings its own: a
          ring of exhaust punched out sideways under the truck. That puff is the
          only thing telling the player the second press did something, since
@@ -4012,6 +4052,9 @@ function startRun(){
   applyTheme();
   game.mode='play'; game.runT=game.presetRunT||0; game.score=0;
   game.dist=(game.presetDist||0)*UPM;            // ?dist=N starts the odometer there
+  game.boost=1;                                  // no vehicle, so no boost to ease off
+  game.leg=Math.floor(game.dist/UPM/SPEED_STEP_M);   // ...and ?dist does not announce
+
   game.near=0; game.combo=0; game.comboBest=0; game.comboT=0;
   game.speed=340*PACE; game.diff=0; game.spawnT=2.6; game.cornT=0; game.goT=0;
   game.obstacles.length=0; game.parts.length=0; game.pops.length=0; game.ui.length=0;
@@ -4123,6 +4166,44 @@ function rideRise(impulse){                       // and how long the way up tak
   const u = Math.min(Math.abs(impulse), Math.abs(VY_UP*RIDE_VUP));
   return Math.log(1 + u/vT) / k;
 }
+/* How long the whole arc lasts. The rise has a closed form; the fall does not
+   invert, so it is bisected the same way the impulse is. This used to be
+   `rideRise*2.1`, a fudge that ran 8% short -- and it was feeding the one test
+   that decides whether two obstacles in a row are landable, so it was the
+   optimistic side of the wrong number. */
+function rideAir(impulse){
+  const a = GRAV*RIDE_G, k = DRAG*RIDE_D, vT = a/k, A = rideApex(impulse);
+  let lo = 0, hi = 20;
+  for(let i = 0; i < 40; i++){
+    const t = (lo + hi) * 0.5;
+    if(vT*t - vT*(1 - Math.exp(-k*t))/k < A) lo = t; else hi = t;
+  }
+  return rideRise(impulse) + (lo + hi) * 0.5;
+}
+/* And the inverse. `rideApex` has no closed-form inverse -- `u - vT*ln(1+u/vT)`
+   will not come apart -- but it is strictly increasing in u, so forty bisections
+   land on it to well under a pixel and cost nothing next to a frame. Living
+   beside the forward version is the point: change one and the other still
+   agrees, which a hand-tuned launch speed sitting in a constant never did. */
+function rideImpulse(apex){
+  const a = GRAV*RIDE_G, k = DRAG*RIDE_D, vT = a/k;
+  let lo = 0, hi = Math.abs(VY_UP*RIDE_VUP);
+  for(let i = 0; i < 40; i++){
+    const u = (lo + hi) * 0.5;
+    if((u - vT*Math.log(1 + u/vT))/k < apex) lo = u; else hi = u;
+  }
+  return (lo + hi) * 0.5;
+}
+/* Cached against GROUND, because that is the only thing either of them depends
+   on and it changes on a resize, not on a frame. */
+let _rimp = null;
+function rideImp(){
+  if(!_rimp || _rimp.g !== GROUND) _rimp = { g: GROUND,
+    one: rideImpulse(GROUND*RIDE_TOP), two: rideImpulse(GROUND*RIDE_TOP2) };
+  return _rimp;
+}
+const rideJump  = () => rideImp().one;
+const rideJump2 = () => rideImp().two;
 /* THE LESSON.
 
    A vehicle whose controls are different from the game's controls has to teach
@@ -4143,8 +4224,8 @@ function rideRise(impulse){                       // and how long the way up tak
    both pushed past the end of the course, because a lesson you have to dodge
    during is not a lesson. */
 function layRideCourse(){
-  const a1 = rideApex(RIDE_JUMP), a2 = rideApex(RIDE_JUMP2);
-  const t1 = rideRise(RIDE_JUMP);
+  const a1 = rideApex(rideJump()), a2 = rideApex(rideJump2());
+  const t1 = rideRise(rideJump());
   const span1 = game.speed * t1 * 2.05;             // up and down, near enough
   /* The second arc is LONGER, not higher, and that is the honest lesson here:
      the play area is barely taller than one jump, so a double jump mostly buys
@@ -4643,11 +4724,30 @@ function updatePlay(dt){
   game.diff = clamp(game.runT/95, 0, 1);
   /* The truck is faster than running, which is half of why it feels like a
      reward -- the other half being that it takes the hit for you. */
-  game.speed = (340 + 400*game.diff)*PACE*(riding() ? RIDE_BOOST : 1);
+  /* The truck's boost EASES in and out. It is a third again as fast as running
+     and it used to be a step change on the frame of the pickup and another on
+     the frame it was lost -- which reads as the game skipping rather than as
+     the vehicle pulling away, and on the way out it arrives in the same
+     instant as losing the thing, where there is already plenty happening. */
+  game.boost = damp(game.boost === undefined ? 1 : game.boost,
+                    riding() ? RIDE_BOOST : 1, 5.5, dt);
+  game.speed = worldSpeed() * game.boost;
   const speedT = game.diff;
 
   p.x += game.speed*dt;
   game.dist += game.speed*dt;
+  /* Every 500m marker, once. The ramp itself is smooth; this is the only thing
+     that tells the player it happened, and it stops once the cap is reached
+     because announcing a speed-up that is not going to arrive is a lie. */
+  const leg = Math.floor(game.dist/UPM/SPEED_STEP_M);
+  if(leg !== game.leg){
+    if(game.leg !== undefined && leg > game.leg && game.mode === 'play'
+       && distSpeed() < SPEED_CAP - 1e-6){
+      pop(player.x, GROUND - player.y - 250, 'SPEED UP', C.mint, 34, -56);
+      S.combo();
+    }
+    game.leg = leg;
+  }
   const before = game.score;
   game.score += dt*game.speed/UPM*SCORE_PER_M;
   /* The tick is the odometer's sound. It was every 50 points at ~250/s, so it
@@ -5927,7 +6027,8 @@ function boot(){
     startRun, startQuick, startIntro, toMenu, updatePlay, thrustOn, thrustOff,
     startRide, loseRide, spawnBasketDrop, spawnElec, spawnPattern, spawnEggs,
     layRideCourse, rideApex, rideRise, rideCeil, truckGeom, truckFrame,
-    elecDist, riding, wireHot, smoke, spark, pop, updateParticles, render };
+    elecDist, riding, wireHot, smoke, spark, pop, updateParticles, render,
+    worldSpeed, distSpeed, rideAir, rideImpulse, rideJump, rideJump2, UPM };
   const it=/[?&]introt=([0-9.]+)/.exec(location.search);
   if(it){ game.holdIntro = parseFloat(it[1]); }   // freeze the intro to look at a beat
   const sl=/[?&]slow=([0-9.]+)/.exec(location.search);
@@ -6157,7 +6258,7 @@ function boot(){
       for(const rt of [T0+6, T0+25, T0+50, T0+80]){
         startRun();
         game.runT = rt; game.diff = clamp(rt/95, 0, 1);
-        game.speed = (340 + 400*game.diff)*PACE;
+        game.speed = worldSpeed();
         game.obstacles.length = 0; game.spawnT = 0;
         game.crows.length = 0; game.crowT = 0; game.crowN = 0;
         player.x = 0; player.y = 300; cam.x = -PX;
@@ -6347,20 +6448,31 @@ function boot(){
          Each is jumpable on its own; what decides whether the PAIR is fair is
          whether there is time to land between them and leave the ground again,
          and that is a property of the table rather than of the pieces. */
-      const air = rideRise(RIDE_JUMP) * 2.1;
+      /* ...and only where BOTH of them have to be jumped. A piece you drive
+         through never leaves the ground, so the gap after it has to cover
+         seeing the next one, not landing from this one -- treating every pair
+         the same makes the test demand a jump's worth of road after a corn
+         stalk, which is why the smashables are in the table in the first
+         place. `#corn` is a token, so it is resolved the way spawnPattern
+         resolves it rather than looked up as a key. */
+      const air = rideAir(rideJump());
+      const jumped = k => k === '#corn' ? false
+                        : k === '#fence' || k === '#zap' || k === '#lad' ? true
+                        : !(OB[k] && OB[k].smash);
       let tightest = 1e9, worstPat = '';
       for(const pat of RIDE_PAT){
-        let t = 0, last = null;
+        let t = 0, last = null, lastK = null;
         for(const st of pat.seq){
           t += st.dt;
-          if(last !== null && t - last < tightest){
+          if(last !== null && jumped(lastK) && jumped(st.k) && t - last < tightest){
             tightest = t - last; worstPat = pat.seq.map(q => q.k).join(' + ');
           }
-          last = t;
+          last = t; lastK = st.k;
         }
       }
-      out.push((tightest >= air ? 'ok     ' : 'TIGHT  ') + 'closest pair in a pattern ' +
-               tightest.toFixed(2) + 's, a jump takes ' + air.toFixed(2) + 's  (' + worstPat + ')');
+      out.push((tightest >= air ? 'ok     ' : 'TIGHT  ') + 'closest jump-to-jump pair ' +
+               (tightest > 1e8 ? 'none' : tightest.toFixed(2) + 's') +
+               ', an arc takes ' + air.toFixed(2) + 's  (' + (worstPat || '-') + ')');
       if(tightest < air) bad++;
       /* The power-down, asked of the collision rather than the paint: stand a
          box on top of a live wire and see whether it dies. */
@@ -6384,7 +6496,7 @@ function boot(){
       try{
         startQuick(); game.eggs.length = 0; game.ride = 1e9;
         layRideCourse();
-        const a1 = rideApex(RIDE_JUMP), a2 = rideApex(RIDE_JUMP2);
+        const a1 = rideApex(rideJump()), a2 = rideApex(rideJump2());
         const roof = rideCeil() - 90;
         const xs = game.eggs.map(e => e.x), ys = game.eggs.map(e => e.y - 74);
         const p1 = Math.max(...ys.slice(0, 7)), p2 = Math.max(...ys.slice(7));
