@@ -379,11 +379,20 @@
    first thing in the file. */
 const LOAD = {
   total: 0, done: 0, sealed: false, ready: false, t0: Date.now(),
-  /* A stalled asset must not be able to lock a player out of the game.
-     After this, whatever has arrived is what we start with -- back to the
-     old behaviour, which was survivable, rather than a dead screen. */
-  LIMIT_MS: 20000,
-  hit(){ LOAD.done++; },
+  /* A stalled asset must not lock a player out of the game -- but "give up
+     after N seconds" is the WRONG SHAPE for that, and it was wrong here first
+     time: at 20s it fired on a perfectly healthy 2 Mbps load of the live site,
+     which is exactly the connection the gate is for. A slow line and a broken
+     one look identical on a clock and completely different on a counter.
+
+     So the give-up condition is a STALL: nothing has arrived for STALL_MS.
+     While the bar is still moving we keep waiting however long it takes,
+     because the player can see it moving and that is the whole job of the
+     screen. CEILING_MS is only a backstop against a pathological trickle. */
+  STALL_MS: 9000,
+  CEILING_MS: 90000,
+  lastAt: Date.now(),
+  hit(){ LOAD.done++; LOAD.lastAt = Date.now(); },
 };
 (function trackEveryImage(){
   const d = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
@@ -6323,10 +6332,12 @@ function gateStart(){
     what.textContent = say(shown);
 
     const drained = LOAD.total > 0 && LOAD.done >= LOAD.total;
-    if(drained || waited > LOAD.LIMIT_MS){
+    const stalled = LOAD.sealed && (Date.now() - LOAD.lastAt) > LOAD.STALL_MS;
+    if(drained || stalled || waited > LOAD.CEILING_MS){
       LOAD.ready   = true;
       LOAD.waitMs  = waited;
       LOAD.timedOut = !drained;
+      LOAD.gaveUpOn = drained ? null : (stalled ? 'stall' : 'ceiling');
       fill.style.width = '100%'; pct.textContent = '100%';
       el.classList.add('gone');
       setTimeout(()=>{ el.style.display = 'none'; }, 500);

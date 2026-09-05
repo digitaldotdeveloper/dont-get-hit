@@ -1837,8 +1837,21 @@ requests (191 total minus index.html, three audio files and the favicon).
 - `thrustOn` returns early and the PLAY button is gated, so a press cannot start
   a run against half an atlas. Verified: at 14s into a cold 2 Mbps load the mode
   stayed `menu`.
-- **20s timeout.** A stalled asset must not lock a player out; past that it
-  starts with whatever arrived, which is the old behaviour and was survivable.
+- **The give-up condition is a STALL, not a clock, and getting that wrong was
+  the one real bug in this change.** It shipped as "give up after 20s" and then
+  fired at 20.5s on a perfectly healthy 2 Mbps load of the *live* site — the
+  exact connection the gate exists for. **A slow line and a broken one are
+  indistinguishable on a clock and obvious on a counter.** So: give up when
+  nothing has arrived for `STALL_MS` (9s). While the bar is still moving we
+  wait however long it takes, because the player can see it moving and that is
+  the entire job of the screen. `CEILING_MS` (90s) is only a backstop against a
+  pathological trickle.
+  All three paths are tested, and the second one is not obvious: a **drain**
+  opens at 15.2s on 2 Mbps; going **offline** opens it in 0.4s, because every
+  pending request fails immediately and an error counts as done — the gate
+  cannot hang on a disconnect; a **trickle** (sockets open, nothing arriving)
+  opens it 9.3s later with `gaveUpOn:'stall'`. A gate that never opens is worse
+  than the bug it fixes, so test the giving-up, not just the finishing.
 - `?noboot=1` skips the wait, for harnesses that drive runs directly. Every
   `tools/` probe needs it.
 
