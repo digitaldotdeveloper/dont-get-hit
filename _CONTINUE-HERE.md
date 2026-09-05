@@ -1900,6 +1900,107 @@ it removes the safety net at exactly the moment it exists for, so it wants its
 own change and its own test rather than a ride on this one.
 
 
+## The world travels now: farm → ant territory → ant empire (2026-09-05)
+
+The run is one continuous place with regions pinned to DISTANCE, not a stack of
+maps. `ZONES` in index.html; `tools/gen_ants.py` makes the art,
+`tools/cut_ant_bg.py` and `tools/cut_ant_props.py` and `tools/cut_ants.py` cut
+it. Look at any metre with `?dist=N`.
+
+**This is not the old travelling system coming back.** That one changed leg
+every 26 SECONDS and CROSSFADED the screen, and it was deleted for good reason:
+the world dissolved around a stationary-looking bird on a timer, which is a
+scene change, not a journey. What is different:
+
+- **The boundary is a place, not a moment.** Zones are pinned to metres, so the
+  farm ends at a spot on the map and 1100m is the same dusk in every run.
+- **The seam is a vertical line that scrolls past you.** Farm slides off the
+  left, empire slides in from the right, and for a while the screen genuinely
+  holds both.
+- **The seam is hidden behind something solid** — the root-and-earth formation
+  with the tunnel mouth stands exactly on it, so the join is behind an object
+  you are looking at and running into.
+
+### I built the far/mid layers as a cross-fade first and it was wrong
+
+The reasoning was that the seam is only ~22m of screen — about one second at
+20 m/s — so distance should change by haze instead. It produced a **double
+exposure**: the empire hung over the farm as a ghost, both worlds at half alpha
+in the SAME pixels. And "left is farm, middle is the entrance, right is the
+empire" is a spatial arrangement that no amount of alpha can produce.
+
+**Two keyed layers at partial alpha are a ghost, never a horizon.** Every slot
+uses the spatial seam now. What gives the change its time is not the seam, it is
+the approach: fifteen mounds growing over 500m, the light dimming, the livestock
+thinning out, and the formation visible from far off with the lit city already
+showing through its mouth.
+
+### The light is on a different schedule from the scenery, deliberately
+
+The layers cut; the palette cannot, because a sky that changes between two
+frames is the cheapest-looking thing a game can do. But a plain long crossfade
+turns the sky black while a sunlit farm still fills the screen. So it is
+**asymmetric and hung off the boundary**: 0 → 0.45 over the 300m approach (it
+gets gloomy near the hole), then 0.45 → 1 over 80m past it (it is night inside).
+`LIGHT_PRE` / `LIGHT_POST` / `LIGHT_AT_MOUTH`.
+
+### The open top is the one rule that overrides the reference art
+
+Every reference for this world is a tunnel with a heavy solid ceiling filling
+the upper third. Nugget flies to the top of the screen, so a roof drawn across
+it forbids the exact space the whole control scheme is about. The layer prompts
+carry an explicit CRITICAL clause demanding the top third stay empty, and there
+is a **fourth layer slot, `hang`**, anchored to the TOP of the screen instead of
+the ground: roots and lanterns that drop INTO frame with air between them.
+Things that dangle say "there is a ceiling somewhere" while leaving it flyable.
+One tall tile could not do both halves — sized so the bank sits right the roots
+float in the middle, sized so the roots reach the top the bank is enormous —
+which is why `cut_ant_bg.py` splits the source on the empty band between them.
+
+### Things that were quietly still the farm
+
+Each of these is a small lie that adds up to "this is a brown filter over the
+farm", and each needed its own fix:
+
+- **`T.sunR || 1` made a sunR of ZERO mean ONE**, so the underground zones —
+  which set it to 0 precisely to have no sun — drew a full-size disc. A
+  falsy-guard on a number whose meaningful value is 0 is always this bug.
+- **`C.road` is applied once from the STARTING theme**, so the largest flat area
+  on screen stayed farm-tan in a mine. `drawGround` reads `themeNow()` now.
+- Clouds, the sun and the meadow grass all multiply by `outdoor()` rather than
+  testing a boolean, so none of them can pop off between two frames.
+- The livestock and the farmer thin out over the last 380m and are gone before
+  the mouth (`farmness()`), rather than vanishing.
+
+### The ants
+
+Background life only: never in `game.obstacles`, no collision. `ANT_H` is 52
+world units against Nugget's ~190, which is the scale joke — a sugar cube is
+cargo. Placed by world position so they do not pop, spaced wide because a column
+of ants is a wall and readability wins. The guard flips to his startled frame
+when Nugget is within 420 units: no state machine, no alert cone, just "is the
+chicken close", and it lands every time.
+
+**The walk sheet cut into 2 blobs instead of 6** because the generator draws a
+ground rule under each row and it TOUCHES ALL OF THEM — same family as the
+truck's dark-pixel labelling. `parts_no_rule()` erases any horizontal dark run
+spanning >55% of the sheet first; no ant is 60% of the width. The baseline is
+not lost, it is exactly where the erased rows were, and that is what grounds the
+frames.
+
+**The signboards are generated BLANK and lettered in code.** A generator cannot
+spell reliably at sign size, one blank board is every sign, and drawn text stays
+sharp at any scale.
+
+### Not built yet
+
+The zones and palettes for DEEP ANT EMPIRE (2100m) and SECRET ANT LAB (3000m)
+exist and are reachable, but they reuse the empire's layers — the industrial
+creep (pipes, cables, metal panels in dirt), transition 3 and the lab interior
+are not made. `tools/gen_ants.py` is where their prompts go; the pattern is
+already there.
+
+
 ## Next
 
 - Nothing spends the eggs yet.

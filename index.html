@@ -490,6 +490,164 @@ function applyTheme(){
   if(SCALE) buildLayers();
 }
 
+/* ============================================================
+   ZONES — ONE CONTINUOUS WORLD, NOT A STACK OF MAPS
+   ============================================================
+   The run travels: farm -> ant territory -> ant empire -> deep
+   empire -> secret lab, and it must read as one place the player
+   walked through rather than four levels that got swapped in.
+
+   THE OLD TRAVELLING SYSTEM WAS DELETED FOR GOOD REASONS AND THIS
+   IS NOT IT COMING BACK. That one changed leg every 26 SECONDS and
+   CROSSFADED the whole screen: the world dissolved around a
+   stationary-looking bird on a timer, which is a scene change, not
+   a journey. Three things are different here and each one is the
+   difference between travelling and being teleported:
+
+     1. THE BOUNDARY IS A PLACE, NOT A MOMENT. Zones are pinned to
+        DISTANCE, so the farm ends at a spot on the map. Run back
+        the same metre twice and you get the same world both times.
+     2. THE SEAM IS A VERTICAL LINE THAT SCROLLS PAST YOU. It is
+        drawn at its own world position, so the farm slides off the
+        left of the screen while the empire slides in from the
+        right, and for a while the screen genuinely holds both:
+        farm behind, formation in the middle, empire ahead. That is
+        the whole brief, and a crossfade cannot do it -- a
+        crossfade puts both worlds in the SAME pixels at half
+        strength, which reads as a ghost, not a horizon.
+     3. THE SEAM IS HIDDEN BEHIND SOMETHING SOLID. A great root and
+        earth formation with the tunnel mouth in it stands exactly
+        on the boundary, so the join is behind an object the player
+        is looking at and running into. No dissolve is needed where
+        there is a doorway.
+
+   THE SEAM MOVES AT CAMERA SPEED (f = 1) FOR EVERY LAYER, while
+   the layers keep tiling at their own parallax rates. Pinning the
+   seam to each layer's own scroll rate is the "correct" thing and
+   it looks broken: the far layer moves at 0.10, so its boundary
+   would crawl and the hills would still be farm a thousand metres
+   after the ground had become an ant city. One boundary, sweeping
+   past at the speed you are actually travelling, changes the world
+   as a wall of change moving through it.
+
+   Nugget is never moved, dropped or cut away from. He runs. */
+const ZONES = [
+  { id:'farm', name:'CLUCK COUNTY', start:0, layers:'farm', ants:0,
+    theme:THEME },
+
+  /* Still the farm to look at. What changes is the LIFE: ants start
+     crossing, then carrying, then queueing, and the ground gets
+     barer. Nothing about the backdrop announces it -- the player is
+     meant to notice on their own, which is why this zone reuses the
+     farm's own layers rather than getting a set of its own. */
+  { id:'terr', name:'ANT TERRITORY', start:560, layers:'farm', ants:0.45,
+    theme:{ id:'terr', name:'ANT TERRITORY', sunR:0.42, sunGlow:0.30, vig:0.46,
+      skyA:'#0E72DA', skyB:'#2280DC', skyC:'#4B95D2', skyD:'#8FBEDA', skyE:'#D8DCC6',
+      sun:'#FFEDA0', far:'#7FA85E', mid:'#5E8F44', near:'#4A6E31', prop:'#33532A',
+      road:'#B0722E', roadLine:'#8F5C23', curb:'#835420', rim:'#8CB44E' } },
+
+  /* Through the mouth. Daylight is gone, the wash is lantern-warm,
+     and the layers are the city. */
+  { id:'empire', name:'ANT EMPIRE', start:1180, layers:'ant', ants:1, indoors:true,
+    theme:{ id:'empire', name:'ANT EMPIRE', sunR:0, sunGlow:0, vig:0.72,
+      skyA:'#1A0E0A', skyB:'#2C1710', skyC:'#4A2617', skyD:'#7A4021', skyE:'#B4682E',
+      sun:'#FFC46B', far:'#5A3520', mid:'#7A4726', near:'#93552B', prop:'#3E2415',
+      road:'#8A5326', roadLine:'#6E401D', curb:'#5C3517', rim:'#C98B3E' } },
+
+  /* Deeper: the same city, colder and stranger, with the first
+     things down here that ants have no business owning. */
+  { id:'deep', name:'DEEP ANT EMPIRE', start:2100, layers:'ant', ants:1, indoors:true,
+    theme:{ id:'deep', name:'DEEP ANT EMPIRE', sunR:0, sunGlow:0, vig:0.80,
+      skyA:'#0D0A12', skyB:'#171326', skyC:'#2A1E33', skyD:'#4A2C3A', skyE:'#7A4438',
+      sun:'#9FD8E8', far:'#3E2A2A', mid:'#5A3830', near:'#6E4534', prop:'#2A1A18',
+      road:'#6E4426', roadLine:'#55341C', curb:'#472B16', rim:'#8FA8C0' } },
+
+  /* The joke lands here: it was never a cave. */
+  { id:'lab', name:'SECRET ANT LAB', start:3000, layers:'ant', ants:1, indoors:true,
+    theme:{ id:'lab', name:'SECRET ANT LAB', sunR:0, sunGlow:0, vig:0.86,
+      skyA:'#04080C', skyB:'#071620', skyC:'#0C2733', skyD:'#123A46', skyE:'#1C5462',
+      sun:'#7FF2E0', far:'#16323C', mid:'#1E4450', near:'#265563', prop:'#0E2129',
+      road:'#26424C', roadLine:'#1A2F37', curb:'#152730', rim:'#57E6D2' } },
+];
+
+/* Where the world is at a given distance in metres. `a` is the zone you are
+   standing in, `b` the one ahead, `seamM` the metre they meet at. */
+function zoneAt(m){
+  let i = 0;
+  while(i + 1 < ZONES.length && m >= ZONES[i+1].start) i++;
+  return { a:ZONES[i], b:ZONES[i+1] || ZONES[i], i,
+           seamM: ZONES[i+1] ? ZONES[i+1].start : Infinity };
+}
+
+/* THE LIGHT CHANGES ON A DIFFERENT SCHEDULE FROM THE SCENERY, and that is
+   deliberate. The layers cut at the seam because two worlds must be in
+   different pixels; the palette cannot cut, because a sky that changes colour
+   between two frames is the cheapest-looking thing a game can do.
+
+   But it must not simply be a long crossfade either -- run that and the sky
+   goes black while a sunlit farm is still filling the screen, which looks like
+   a bug and not like weather. So it is ASYMMETRIC and hung off the boundary:
+
+     from PRE metres out, up to the mouth : 0 -> 0.45   it gets gloomy as you
+                                                        approach the hole
+     from the mouth, over POST metres     : 0.45 -> 1   and it is night inside
+
+   Nothing about it is a timer. Stand at 1100m and it is the same dusk every
+   run, because it is a property of the place. */
+const LIGHT_PRE = 300, LIGHT_POST = 80, LIGHT_AT_MOUTH = 0.72;
+const smoothstep = u => (u = clamp(u,0,1), u*u*(3-2*u));
+
+const THEME_KEYS = ['skyA','skyB','skyC','skyD','skyE','sun','far','mid','near',
+                    'prop','road','roadLine','curb','rim'];
+
+/* The two zones the light is currently between, and how far through. */
+function lightMix(m){
+  const z = zoneAt(m);
+  // just came through a mouth: finish the change we started on the way in
+  const since = m - z.a.start, prev = ZONES[z.i - 1];
+  if(prev && since < LIGHT_POST){
+    return { A:prev.theme, B:z.a.theme,
+             u: LIGHT_AT_MOUTH + (1 - LIGHT_AT_MOUTH)*smoothstep(since/LIGHT_POST) };
+  }
+  const to = z.seamM - m;
+  if(z.b !== z.a && to < LIGHT_PRE){
+    return { A:z.a.theme, B:z.b.theme,
+             u: LIGHT_AT_MOUTH*smoothstep((LIGHT_PRE - to)/LIGHT_PRE) };
+  }
+  return { A:z.a.theme, B:z.a.theme, u:0 };
+}
+
+/* 1 under the open sky, 0 underground, and smooth between. Anything that only
+   exists outdoors -- clouds, the sun, grass -- multiplies by this rather than
+   testing a boolean, so none of them can pop off between two frames. */
+function outdoor(m){
+  const L = lightMix(m === undefined ? game.dist/UPM : m);
+  const ai = !!(ZONES.find(z => z.theme === L.A) || {}).indoors;
+  const bi = !!(ZONES.find(z => z.theme === L.B) || {}).indoors;
+  return 1 - ((ai ? 1 : 0)*(1 - L.u) + (bi ? 1 : 0)*L.u);
+}
+
+/* The palette for right now. Quantised to 1/24 because drawSky caches its
+   gradient on the theme id, and a continuously-varying key would rebuild that
+   surface every frame -- the kind of thing that shows up later as "the game
+   got slow around 1200m" and costs an hour to find. */
+function themeNow(m){
+  const L = lightMix(m === undefined ? game.dist/UPM : m);
+  if(L.u <= 0.002 || L.A === L.B) return L.A;
+  if(L.u >= 0.998) return L.B;
+  const q = Math.round(L.u*24)/24;
+  const key = L.A.id + '>' + L.B.id + '|' + q;
+  if(themeNow.k === key) return themeNow.v;
+  const out = { id:key, name:(q > 0.5 ? L.B : L.A).name };
+  for(const k of THEME_KEYS) out[k] = lerpHex(L.A[k], L.B[k], q);
+  out.sunR    = L.A.sunR    + (L.B.sunR    - L.A.sunR)*q;
+  out.sunGlow = L.A.sunGlow + (L.B.sunGlow - L.A.sunGlow)*q;
+  const va = L.A.vig===undefined?0.5:L.A.vig, vb = L.B.vig===undefined?0.5:L.B.vig;
+  out.vig = va + (vb - va)*q;
+  themeNow.k = key; themeNow.v = out;
+  return out;
+}
+
 /* ---------- canvas ---------- */
 const cv = document.getElementById('game');
 const ctx = cv.getContext('2d', { alpha:false });
@@ -5426,7 +5584,11 @@ const SKY_CLOUDS = [{f:'cloud0.webp',w:210,h:94},{f:'cloud1.webp',w:178,h:89},{f
 const CLOUD_IMG = {};
 SKY_CLOUDS.forEach(d => { const im = new Image(); im.src = 'art/' + d.f; CLOUD_IMG[d.f] = im; });
 function drawSky(){
-  const T = THEME;
+  /* THEME is where the run STARTS; themeNow() is where it is. Everything
+     downstream keys its cache on T.id, and themeNow quantises that id, so the
+     gradient surface is rebuilt 24 times across a seam rather than every
+     frame. */
+  const T = themeNow();
   const top = Math.max(0, GROUND - 1150);
   const skyH = GROUND + 40;
   // sky band and sun: two gradients that never change -> one cached blit
@@ -5439,7 +5601,7 @@ function drawSky(){
     // sun, sinking behind the skyline
     // A low sinking sun suits the city. On the farm the same disc reads as a
     // moon hanging in a bright blue midday sky, so the theme scales it down.
-    const R = 96*(T.sunR||1), sx = VW*0.76, sy = GROUND - 500;
+    const R = 96*(T.sunR === undefined ? 1 : T.sunR), sx = VW*0.76, sy = GROUND - 500;
     const gr = g.createRadialGradient(sx,sy,10,sx,sy,420);
     const gl = T.sunGlow===undefined ? 1 : T.sunGlow;
     gr.addColorStop(0,'rgba(255,233,168,'+(0.8*gl)+')');
@@ -5455,7 +5617,8 @@ function drawSky(){
   // soft translucent blobs that used to be here sat next to cel-shaded painted
   // clouds looking like smudges on the lens.
   const t=game.t;
-  for(let i=0;i<7;i++){
+  const outK = outdoor();
+  if(outK > 0.02) for(let i=0;i<7;i++){
     const cx = ((hash(i*3.1)*VW*2.4) - (t*(6+hash(i)*10) + cam.x*0.04)) % (VW*1.9);
     const x = cx<0? cx+VW*1.9 : cx;
     const y = GROUND - 380 - hash(i*7.7)*VH*0.22;
@@ -5463,12 +5626,12 @@ function drawSky(){
     const d = SKY_CLOUDS[i % SKY_CLOUDS.length];
     const im = d && CLOUD_IMG[d.f];
     if(im && im.complete && im.naturalWidth){
-      ctx.globalAlpha = 0.82+hash(i*5)*0.18;
+      ctx.globalAlpha = (0.82+hash(i*5)*0.18)*outK;
       ctx.drawImage(im, x-d.w*s*0.5, y-d.h*s*0.5, d.w*s*1.7, d.h*s*1.7);
       ctx.globalAlpha = 1;
       continue;
     }
-    ctx.globalAlpha = 0.20+hash(i*5)*0.16;
+    ctx.globalAlpha = (0.20+hash(i*5)*0.16)*outK;
     ctx.fillStyle=C.cream;
     ctx.beginPath();
     ctx.ellipse(x, y, 90*s, 22*s, 0,0,TAU);
@@ -5583,18 +5746,44 @@ const BG = [
   { key:'mid',  f:0.26, hf:0.412, base:-158 },
   { key:'near', f:0.60, hf:0.214, base:   8 },
 ];
-/* Loaded directly rather than through IMQ: three requests, and they are the
-   three that decide whether the game looks like anything at all. */
-BG.forEach(L => {
-  L.img = new Image();
-  L.img.onload = () => { L.ready = true; if(SCALE) buildLayers(); };
-  L.img.onerror = () => { L.ready = false; };
-  L.img.src = 'art/bg/' + L.key + '.webp';
+/* The ant city's three slots. Same contract as the farm's -- same keys, same
+   parallax factors, same geometry -- so one drawing path serves both and a
+   third world later is a fourth line here, not a fourth code path.
+   `base` sits a little lower: underground the near bank should crowd the road
+   more than a hedgerow does. */
+const BG_ANT = [
+  { key:'far',  f:0.10, hf:0.150, base:-206 },
+  { key:'mid',  f:0.26, hf:0.430, base:-150 },
+  { key:'near', f:0.60, hf:0.232, base:  14 },
+  /* Roots and lanterns coming DOWN from the top of the world, anchored to the
+     ceiling instead of the ground -- the only layer in the game that is. It is
+     what frames the upper half of the screen without closing it: the brief's
+     hard rule is that Nugget can fly to the top, and every reference for this
+     world draws a solid roof across exactly the space he is meant to use.
+     Things that dangle say "there is a ceiling up there somewhere" while
+     leaving the air between them free. */
+  { key:'hang', f:0.60, hf:0.300, top:true },
+];
+const LAYERSETS = { farm:BG, ant:BG_ANT };
+
+/* Loaded directly rather than through IMQ: six requests, and they are the six
+   that decide whether the game looks like anything at all. */
+[[BG,'art/bg/'], [BG_ANT,'art/ant/']].forEach(([set, dir]) => {
+  set.forEach(L => {
+    L.img = new Image();
+    L.img.onload = () => { L.ready = true; if(SCALE) buildLayers(); };
+    L.img.onerror = () => { L.ready = false; };
+    L.img.src = dir + L.key + '.webp';
+  });
 });
 function bgReady(){ return BG.every(L => L.ready); }
+const setReady = set => set.every(L => L.ready);
 function bgGeom(L){
   const H = GROUND*L.hf;
-  return { H, W: H*(L.img.naturalWidth/L.img.naturalHeight), y: GROUND + L.base - H };
+  const W = H*(L.img.naturalWidth/L.img.naturalHeight);
+  // `top` hangs from the roof of the play area; everything else stands on the
+  // ground and is placed by its bottom edge.
+  return { H, W, y: L.top ? -H*0.04 : GROUND + L.base - H };
 }
 const FARM_RAIL = 0.148;                  // fence rail height above GROUND, as a fraction of it
 
@@ -5658,19 +5847,25 @@ function drawSpyPigeons(x, y0, W, H){
    One flat band, from the far hills' feet down to the near grass, graded
    between the two so it belongs to both: hazy sage where it meets the hills,
    the near layer's own green where it meets the fence. */
-function drawField(){
+function drawField(alpha){
   /* Starts at the FAR layer's feet, not the mid layer's. Anchor it to the
      buildings and the strip between the hills and the field stays sky -- a
-     blue band across the middle of the farm. */
+     blue band across the middle of the farm.
+     `alpha` fades it out across a zone change: it is daylit meadow, and there
+     is none of that underground. */
+  if(alpha !== undefined && alpha <= 0.004) return;
   const top = GROUND + BG[0].base + 10;
   const h = GROUND + 10 - top;
-  ctx.drawImage(surface('field|' + Math.round(top) + '|' + Math.round(h), VW, h, true, (g) => {
+  const surf = surface('field|' + Math.round(top) + '|' + Math.round(h), VW, h, true, (g) => {
     const gd = g.createLinearGradient(0, 0, 0, h);
     gd.addColorStop(0,    '#93B77E');       // where the hills stop
     gd.addColorStop(0.38, '#79AC55');
     gd.addColorStop(1,    '#5C9A28');       // where the near grass starts
     g.fillStyle = gd; g.fillRect(0, 0, VW, h);
-  }), 0, top, VW, h);
+  });
+  if(alpha !== undefined && alpha < 1){ ctx.save(); ctx.globalAlpha = alpha; }
+  ctx.drawImage(surf, 0, top, VW, h);
+  if(alpha !== undefined && alpha < 1) ctx.restore();
 }
 /* Draws the named layers and only those. It used to take the layer to stop
    AFTER, which meant the second call -- the one for the fence -- started at the
@@ -5678,16 +5873,86 @@ function drawField(){
    neighbours who had just been drawn between them. They were on screen the
    whole time, painted over a frame later, which looks exactly like not being
    drawn at all. It also paid for the two big layers twice a frame. */
+/* One slot of one layer set, tiled across the screen at its own parallax rate.
+   `alpha` and `clip` are what the zone change is built out of. */
+function drawLayerSlot(set, key, alpha, clipL, clipR){
+  const L = set && set.find(x => x.key === key);
+  if(!L || !L.ready || alpha <= 0.004) return false;
+  const g = bgGeom(L);
+  const off = ((cam.x*L.f) % g.W + g.W) % g.W;
+  const clipped = clipL !== undefined;
+  if(alpha < 1 || clipped) ctx.save();
+  if(clipped){
+    if(clipR <= clipL) { ctx.restore(); return false; }
+    ctx.beginPath(); ctx.rect(clipL, 0, clipR - clipL, VH); ctx.clip();
+  }
+  if(alpha < 1) ctx.globalAlpha = alpha;
+  for(let x = -off; x < VW + 1; x += g.W){
+    ctx.drawImage(L.img, x, g.y, g.W, g.H);
+    if(key === 'mid' && set === BG) drawSpyPigeons(x, g.y, g.W, g.H);
+  }
+  if(alpha < 1 || clipped) ctx.restore();
+  return true;
+}
+
+/* THE ZONE CHANGE, and it is two different mechanisms on purpose.
+
+   The seam -- the true world position where one place becomes the next -- is
+   only ~22 metres of screen, which at 20 m/s is ABOUT ONE SECOND. Sweeping a
+   hard boundary across the screen is therefore a cut with a doorway in front of
+   it, not a journey, and the brief asks for "a short period where the screen
+   contains both". So the distance and the foreground are treated differently,
+   the way they behave in life:
+
+     FAR and MID cross-fade over the whole blend band (150m, about seven
+     seconds). Distance changes by haze -- the farm hills thin out and the first
+     chambers resolve behind them long before you arrive. This is the "for a
+     while you can see both" part.
+
+     NEAR swaps hard AT the seam, and the great root formation stands exactly
+     there to hide the join. The ground under your feet does not dissolve; you
+     run through a doorway and it is different on the other side.
+
+   Fading BOTH ways (A out as B in) rather than laying B over A matters,
+   because both sets are keyed art with an open top: laying one over the other
+   leaves the farm's hills showing through the empire's sky forever. */
 function drawBgLayers(keys){
-  for(const L of BG){
-    if(!L.ready || keys.indexOf(L.key) < 0) continue;
-    if(L.key === 'mid') drawField();        // the buildings need somewhere to stand
-    const g = bgGeom(L);
-    const off = ((cam.x*L.f) % g.W + g.W) % g.W;
-    for(let x = -off; x < VW + 1; x += g.W){
-      ctx.drawImage(L.img, x, g.y, g.W, g.H);
-      if(L.key === 'mid') drawSpyPigeons(x, g.y, g.W, g.H);
+  const z = zoneAt(game.dist/UPM);
+  const A = LAYERSETS[z.a.layers] || BG;
+  const B = LAYERSETS[z.b.layers] || BG;
+  const same = A === B;
+  const seam = z.seamM === Infinity ? Infinity : z.seamM*UPM - cam.x;
+
+  for(const key of ['hang','far','mid','near']){
+    if(keys.indexOf(key) < 0) continue;
+    /* The green field band belongs to the farm and has to go with it, or the
+       empire gets a strip of daylit meadow across its middle distance. */
+    if(key === 'mid'){
+      // the daylit meadow band stops where the farm stops
+      if(same || seam > VW) drawField(1);
+      else if(seam > 0){
+        ctx.save(); ctx.beginPath(); ctx.rect(0, 0, seam, VH); ctx.clip();
+        drawField(1); ctx.restore();
+      }
     }
+
+    if(same || seam > VW + 2){ drawLayerSlot(A, key, 1); continue; }
+    /* EVERY slot uses the spatial seam, including the distance.
+       This was built as a cross-fade for far and mid first, on the reasoning
+       that distance changes by haze and the seam is only about a second of
+       screen. It was wrong and it was obvious the moment it was drawn: two
+       keyed layers at half alpha are a DOUBLE EXPOSURE. The empire hung over
+       the farm like a ghost instead of standing beyond it, and the one thing
+       the brief keeps asking for -- farm behind, formation in the middle,
+       empire ahead -- is a spatial arrangement that no amount of alpha can
+       produce. Both worlds have to be in DIFFERENT pixels.
+       What gives the change its time is not the seam, it is the approach:
+       the mounds grow for hundreds of metres, the light dims, the livestock
+       thin out, and the formation itself is visible from a long way off with
+       the lit city already showing through its mouth. */
+    const cut = Math.max(-2, Math.min(VW + 2, seam));
+    drawLayerSlot(A, key, 1, -2, cut);
+    drawLayerSlot(B, key, 1, cut, VW + 2);
   }
 }
 /* The code-drawn fallback, for the moment before the panels load. */
@@ -5839,7 +6104,19 @@ const NPC_F = 0.44, NPC_SCALE = 0.58, NPC_BASE = -128;
    first left. */
 const NPC_SPACING = 780;      // >= VW/2, so two on screen at once is the most
 const NPC_TEACH_M = 67;       // ...and for the opening ~67m there is always one
+/* How much of the FARM is still around, 1 on the farm and 0 underground.
+   Used to thin the livestock out rather than switch them off: a cow that
+   vanishes between two frames is as wrong as a cow in a mine. */
+function farmness(){
+  const m = game.dist/UPM, gate = ZONES.find(z => z.id === 'empire').start;
+  const fadeFrom = gate - 380, fadeTo = gate - 40;
+  if(m <= fadeFrom) return 1;
+  if(m >= fadeTo) return 0;
+  return 1 - (m - fadeFrom)/(fadeTo - fadeFrom);
+}
 function drawSpectators(){
+  const fq = farmness();
+  if(fq <= 0.02) return;                    // no livestock in the ant empire
   const spacing = NPC_SPACING, walk = npcWalk();
   /* The opening stretch is never empty: the lesson only works if he meets one
      of these BEFORE he meets anything that kills him, and leaving that to a
@@ -5847,7 +6124,9 @@ function drawSpectators(){
   const teach = game.mode === 'play' && game.dist < NPC_TEACH_M*UPM;
   const first = Math.floor((cam.x - 300 + walk)/spacing);
   for(let i=first; i<first+Math.ceil(VW/spacing)+3; i++){
-    if(!teach && hash(i*9.3) > 0.58) continue;         // some stops are empty
+    if(!teach && hash(i*9.3) > 0.58*fq) continue;      // some stops are empty,
+                                                       // and more of them the
+                                                       // closer the mouth gets
     const gx = i*spacing + 300 - walk;                 // they are going somewhere
     const sx = gx - cam.x;
     if(sx < -260 || sx > VW+260) continue;
@@ -5912,6 +6191,7 @@ function drawSpectators(){
    one farmer reads as a man, three in a row reads as a bug, and the animals
    want to come in groups. */
 function drawFarmer(){
+  if(farmness() <= 0.02) return;      // he does not follow you underground
   const list = FRAME_DATA.farmer; if(!list || !list.length) return;
   const spacing = 2200, travelled = npcWalk();
   const par = bgReady() ? NPC_F : 1;                   // out in the field with the rest
@@ -5955,28 +6235,232 @@ function drawProps(){
      farmer, the fence crossed them and they read as being in the field no
      matter what scale they were given. */
   if(!bgReady()){ drawFarmProps(); drawFarmer(); drawSpectators(); return; }
-  drawBgLayers(['far', 'mid']);
+  drawBgLayers(['hang', 'far', 'mid']);
   drawFarmer();
   drawBgLayers(['near']);
+  drawZoneScenery();          // mounds, signs, and the formation on the seam
+  drawAnts();                 // and the civilisation going about its day
   drawSpectators();
 }
+/* ============================================================
+   ZONE SCENERY — the things that make the change a PLACE
+   ============================================================
+   Layers are the world; these are the landmarks in it. All of it is
+   BACKGROUND: nothing here is solid and nothing here can kill you.
+   The obstacle set is a separate system on purpose, because a piece
+   of scenery that hurts is indistinguishable from a bug, and a
+   hazard you can walk through is worse.
+
+   Everything is placed by WORLD POSITION and nothing is spawned, so
+   the anthill at 812m is at 812m in every run, and the seam has the
+   same formation standing on it every time. That is what makes a
+   route feel like a route rather than a shuffle. */
+const ANTART = {};
+['gate','hill1','hill2','hill3','sign_a','sign_arrow','sign_b','sign_wide']
+  .forEach(n => {
+    const im = new Image();
+    imqLoad(im, 'art/ant/' + n + '.webp', ()=>{ ANTART[n] = im; }, ()=>{}, 'gp');
+  });
+
+/* The jokes. Occasional, never a wall of them -- the brief's word is that
+   finding one should be funny, and a sign every screen is signage. */
+const ANT_SIGNS = [
+  { m: 705, art:'sign_a',     text:['ANT','TERRITORY'] },
+  { m: 905, art:'sign_arrow', text:['EMPIRE','AHEAD']  },
+  { m:1105, art:'sign_wide',  text:['NO CHICKENS']     },
+  { m:1330, art:'sign_b',     text:['SUGAR','STORAGE'] },
+  { m:1610, art:'sign_wide',  text:['WORK HARD.','STAY ANTSOME.'] },
+  { m:1880, art:'sign_b',     text:['QUEEN','ONLY']    },
+  { m:2260, art:'sign_wide',  text:['AUTHORIZED','ANTS ONLY'] },
+  { m:2620, art:'sign_a',     text:['DEEP','SECTOR']   },
+];
+/* The mounds grow on the way in: two small, then bigger, then one the size of a
+   barn door right before the entrance. That escalation is the whole "wait, how
+   big is this thing" beat, and it only works if they are ORDERED. */
+const ANT_HILLS = [
+  { m: 600, art:'hill1', s:0.5 },  { m: 640, art:'hill1', s:0.55 },
+  { m: 676, art:'hill1', s:0.62 }, { m: 712, art:'hill2', s:0.62 },
+  { m: 748, art:'hill1', s:0.7 },  { m: 786, art:'hill2', s:0.78 },
+  { m: 822, art:'hill2', s:0.85 }, { m: 860, art:'hill3', s:0.8 },
+  { m: 900, art:'hill2', s:1.0 },  { m: 940, art:'hill3', s:1.0 },
+  { m: 980, art:'hill3', s:1.15 }, { m:1022, art:'hill3', s:1.3 },
+  { m:1062, art:'hill3', s:1.5 },  { m:1104, art:'hill3', s:1.75 },
+  { m:1142, art:'hill3', s:2.0 },
+];
+
+/* Lettering a blank board. Two lines at most, sized to fit the plank rather
+   than a fixed point size, because the boards are four different widths. */
+function drawSignText(lines, w, h){
+  const pad = w*0.13;
+  const size = Math.min(h*0.30, (w - pad*2) / Math.max(4, Math.max.apply(null, lines.map(l=>l.length))*0.60));
+  ctx.fillStyle = '#4A2E17';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const lh = size*1.12, y0 = -lh*(lines.length-1)/2;
+  for(let i=0;i<lines.length;i++){
+    ctx.font = '900 ' + size.toFixed(1) + 'px Archivo, system-ui, sans-serif';
+    ctx.fillText(lines[i], 0, y0 + i*lh);
+  }
+}
+
+function drawZoneScenery(){
+  const m = game.dist/UPM, z = zoneAt(m);
+  const left = m - 24, right = m + 34;          // a screen is ~22m; give margin
+
+  const put = (im, worldM, scale, lift) => {
+    if(!im || !im.naturalWidth) return null;
+    const sx = worldM*UPM - cam.x;
+    const w = im.naturalWidth*scale, h = im.naturalHeight*scale;
+    ctx.drawImage(im, sx - w/2, GROUND + (lift||0) - h, w, h);
+    return { sx, w, h };
+  };
+
+  // the mounds, and the great formation standing on the boundary itself
+  for(const q of ANT_HILLS){
+    if(q.m < left || q.m > right) continue;
+    put(ANTART[q.art], q.m, (GROUND/980)*0.62*q.s, 6);
+  }
+
+  /* THE GATE. It stands exactly on the seam so the layer swap happens behind
+     an object the player is looking at and running into -- which is why the
+     near layer can cut hard there and nobody sees a join. */
+  const gm = ZONES.find(z2 => z2.id === 'empire').start;
+  if(gm >= left && gm <= right && ANTART.gate){
+    const s = (GROUND/980)*1.55;
+    put(ANTART.gate, gm, s, 10);
+  }
+
+  for(const q of ANT_SIGNS){
+    if(q.m < left || q.m > right) continue;
+    const im = ANTART[q.art];
+    if(!im || !im.naturalWidth) continue;
+    const s = (GROUND/980)*0.52;
+    const w = im.naturalWidth*s, h = im.naturalHeight*s;
+    const sx = q.m*UPM - cam.x;
+    ctx.drawImage(im, sx - w/2, GROUND + 6 - h, w, h);
+    ctx.save();
+    // the board face sits in the upper part of the art, above the post
+    ctx.translate(sx, GROUND + 6 - h + h*0.32);
+    drawSignText(q.text, w*0.80, h*0.42);
+    ctx.restore();
+  }
+}
+
+/* ============================================================
+   THE ANTS — background life, and the scale joke
+   ============================================================
+   Nugget is a chicken and these are ants, so ANT_H is a sixth of his
+   height and a sugar cube is cargo. That size difference is the
+   whole gag and it is why the carriers are worth having: a crumb
+   the size of an armchair says more about the world than any sign.
+
+   Rules taken straight off the brief, and each one is a thing that
+   would otherwise go wrong:
+
+     THEY ARE SCENERY. Never in game.obstacles, no collision, no
+     death. A background actor that can kill you is indistinguishable
+     from a bug.
+     THEY DO NOT CROWD THE SCREEN. Density comes off the zone and the
+     spacing is wide; gameplay readability wins every time.
+     THEY ARE PLACED BY WORLD POSITION, not spawned, so the same
+     metre has the same ants every run and they do not pop.
+     THEY REACT. A guard flips to his startled frame when Nugget is
+     close -- which is the cheapest possible way to say "you are not
+     supposed to be in here" and it lands every time. */
+const ANT_FR = {"antw":[{"f":"ant/antw0.webp","w":200,"h":198,"ay":198},{"f":"ant/antw1.webp","w":204,"h":199,"ay":199},{"f":"ant/antw2.webp","w":200,"h":200,"ay":200},{"f":"ant/antw3.webp","w":196,"h":213,"ay":213},{"f":"ant/antw4.webp","w":194,"h":212,"ay":212},{"f":"ant/antw5.webp","w":197,"h":214,"ay":214}],"antc":[{"f":"ant/antc0.webp","w":163,"h":289,"ay":289},{"f":"ant/antc1.webp","w":177,"h":299,"ay":299},{"f":"ant/antc2.webp","w":213,"h":273,"ay":273},{"f":"ant/antc3.webp","w":155,"h":258,"ay":258}],"antg":[{"f":"ant/antg0.webp","w":266,"h":347,"ay":347},{"f":"ant/antg1.webp","w":316,"h":405,"ay":405}]};
+const ANT_IMG = {};
+Object.keys(ANT_FR).forEach(set => ANT_FR[set].forEach(fr => {
+  const im = new Image();
+  ANT_IMG[fr.f] = im;
+  imqLoad(im, 'art/' + fr.f, ()=>{}, ()=>{ delete ANT_IMG[fr.f]; }, 'late');
+}));
+
+const ANT_H = 52;              // world units tall. Nugget is about 190.
+const ANT_SPACING = 200;       // wide: a column of ants is a wall, not a crowd
+
+/* How busy it is here. Ramps in across the territory so the first ant is an
+   oddity and the hundredth is a civilisation. */
+function antDensity(){
+  const m = game.dist/UPM, z = zoneAt(m);
+  const a = z.a.ants || 0, b = (z.b && z.b.ants) || a;
+  const to = z.seamM - m;
+  if(z.b === z.a || to > 260) return a;
+  return a + (b - a)*smoothstep((260 - to)/260);
+}
+
+function drawOneAnt(fr, sx, scale, flip){
+  const im = ANT_IMG[fr.f];
+  if(!im || !im.naturalWidth) return;
+  const h = ANT_H*scale, w = h*(fr.w/fr.h);
+  const foot = GROUND + 4;                     // they walk on the road, like he does
+  ctx.save();
+  ctx.translate(sx, foot - h*(fr.ay/fr.h));
+  if(flip) ctx.scale(-1, 1);
+  ctx.drawImage(im, -w/2, 0, w, h);
+  ctx.restore();
+}
+
+function drawAnts(){
+  const dens = antDensity();
+  if(dens <= 0.02) return;
+  const m = game.dist/UPM;
+  const first = Math.floor((cam.x - 300)/ANT_SPACING);
+  const px = player.x;
+  for(let i = first; i < first + Math.ceil(VW/ANT_SPACING) + 3; i++){
+    const r = hash(i*4.7);
+    if(r > dens*0.72) continue;                // most stops are empty
+    const gx = i*ANT_SPACING + hash(i*2.3)*140;
+    const sx = gx - cam.x;
+    if(sx < -140 || sx > VW + 140) continue;
+
+    const kind = hash(i*8.1);
+    const scale = 0.82 + hash(i*3.3)*0.5;
+    const near = Math.abs(gx - px) < 420;
+
+    if(kind > 0.90 && ANT_FR.antg){
+      /* A guard, and he notices. The startled pose is the entire reaction
+         system: no state machine, no alert cone, just "is the chicken close". */
+      drawOneAnt(ANT_FR.antg[near ? 1 : 0], sx, scale*1.15, false);
+    } else if(kind > 0.58){
+      // a carrier, plodding the other way with something absurd on its head
+      const f = ANT_FR.antc[Math.floor(hash(i*6.9)*ANT_FR.antc.length) % ANT_FR.antc.length];
+      const walk = (game.t*1.4 + i) % 1;
+      drawOneAnt(f, sx + Math.sin(walk*TAU)*3, scale, hash(i*1.7) > 0.5);
+    } else {
+      // a worker on his rounds; the cycle runs off world position so a line of
+      // them is not a chorus line all stepping together
+      const ph = ((gx*0.02 + game.t*7.5) % ANT_FR.antw.length + ANT_FR.antw.length)
+                 % ANT_FR.antw.length;
+      drawOneAnt(ANT_FR.antw[Math.floor(ph)], sx, scale, hash(i*5.5) > 0.62);
+    }
+  }
+}
+
 function drawGround(){
   const y = GROUND;
+  /* C.road and friends are applied once from the STARTING theme. Underground
+     that left a bright farm track running through an ant city -- the largest
+     flat area on screen, still the wrong colour. The ground reads the live
+     palette instead, and the grass fringe is an outdoor thing that goes with
+     the daylight. */
+  const T = themeNow(), outK = outdoor();
   {
     /* The dirt track. Its colour is sampled off the painted panels so the seam
        between the art and the code disappears -- a curb and a hazard stripe are
        a street, and this is a farm road he was just kicked out onto. */
-    ctx.fillStyle=C.road; ctx.fillRect(0,y,VW,VH-y+340);
-    ctx.fillStyle='rgba(255,244,204,.16)'; ctx.fillRect(0,y,VW,9);   // the sunlit lip
+    ctx.fillStyle=T.road; ctx.fillRect(0,y,VW,VH-y+340);
+    ctx.fillStyle='rgba(255,244,204,'+(0.16*outK+0.05).toFixed(3)+')';
+    ctx.fillRect(0,y,VW,9);                                       // the lit lip
     // a fringe of grass along the top edge, so the dirt starts rather than stops
     const gs=46, go=((cam.x%gs)+gs)%gs;
-    ctx.strokeStyle=C.rim; ctx.lineWidth=3.4; ctx.lineCap='round';
-    for(let i=-1;i<VW/gs+2;i++){
+    ctx.strokeStyle=T.rim; ctx.lineWidth=3.4; ctx.lineCap='round';
+    // no meadow grass in a mine; the near layer already has its own detail
+    if(outK > 0.05) for(let i=-1;i<VW/gs+2;i++){
       const gx=i*gs-go, hgt=7+hash(i*2.3)*11;
       ctx.beginPath(); ctx.moveTo(gx,y+3); ctx.lineTo(gx-4,y+3-hgt);
       ctx.moveTo(gx+7,y+3); ctx.lineTo(gx+10,y+3-hgt*0.8); ctx.stroke();
     }
     // wheel ruts, and a scatter of stones so the track is not a flat slab
+    ctx.globalAlpha = 1;
     ctx.strokeStyle='rgba(122,80,32,.42)'; ctx.lineWidth=6;
     ctx.beginPath(); ctx.moveTo(0,y+62); ctx.lineTo(VW,y+62); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(0,y+126); ctx.lineTo(VW,y+126); ctx.stroke();
@@ -6264,7 +6748,7 @@ function render(){
   // vignette + warm bloom
   // The prison wants the corners crushed. A bright farm under a blue sky does
   // not -- at 0.5 it looked like the sun had gone in.
-  const vigK = THEME.vig === undefined ? 0.5 : THEME.vig;
+  const vigK = (()=>{ const v = themeNow().vig; return v === undefined ? 0.5 : v; })();
   ctx.drawImage(surface('vignette|'+vigK, VW, VH, false, (g) => {
     const vg = g.createRadialGradient(VW*0.5,VH*0.5,VH*0.30, VW*0.5,VH*0.5,VH*0.85);
     vg.addColorStop(0,'rgba(21,8,39,0)'); vg.addColorStop(1,'rgba(21,8,39,'+vigK+')');
