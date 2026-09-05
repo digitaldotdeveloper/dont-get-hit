@@ -1923,8 +1923,7 @@ const RIDE_G = 0.27, RIDE_D = 0.22;
    RIDE_ROOF is the rail, a little over the first jump: the second press then
    buys HANG rather than another screen of sky, which is the only thing it can
    usefully buy in a play area barely taller than one jump. */
-const RIDE_TOP  = 0.75;    // where the wheels get to at the top of one jump
-const RIDE_TOP2 = 0.30;    // what a second press would add, on its own
+const RIDE_TOP  = 0.75;    // where the wheels get to at the top of the jump
 const RIDE_ROOF = 0.80;    // and the height rail, as the same share
 const RIDE_VUP  = 2.35;                      // the truck's own ceiling on velocity
 const RIDE_BOOST = 1.30;                     // and it is quicker than running
@@ -1946,19 +1945,27 @@ const CLEAR_RIDE = 560;
    ONE scale for the sheet, off the driving frame's width, so the truck is the
    same truck in every pose. Normalising each frame to a common box instead is
    what makes a sprite breathe as it animates. */
-/* `px`/`py` are WHERE THE PIPES ARE, as fractions of each frame's own picture,
-   read off the art rather than guessed at. They have to be per frame and they
-   have to be fractions: the rig is drawn at four tilts, so the exhaust stack
-   that sits at 56% of the way down the driving frame has swung to 72% of the
-   way down the launch frame, and a single offset applied to all four put the
-   flame on the grass behind the truck with nothing attached to it. `fl` is how
-   hard that frame is burning -- hardest on the launch, nearly out on the
-   landing, which is most of what makes four stills read as one jump. */
+/* `px`/`py`/`rot` are WHERE THE PIPES ARE AND WHICH WAY THEY POINT, as
+   fractions of each frame's own picture and an angle. They have to be per
+   frame: the rig is drawn at four tilts, so the stack that sits 45% of the way
+   down the driving frame has swung to 58% of the way down the launch frame and
+   turned thirty degrees with it.
+
+   These were read off a ten-division grid by eye and three of the four were
+   wrong -- the launch anchor landed in open sky a truck's length behind the
+   rig, which is precisely the frame the flame most needs to be right in,
+   because it is the one the player is looking at when they press. Read them off
+   a TWENTY-division grid with a crosshair drawn at the candidate point and
+   check the crosshair is on the metal. Guessing at this from the tilt of the
+   cart does not work; the pipes move further than the cart does.
+
+   `fl` is how hard that frame is burning -- hardest on the launch, nearly out
+   on the landing, which is most of what makes four stills read as one jump. */
 const TRUCK_FR = [
-  { n:'truck_drive',  w:815, h:860, px:0.010, py:0.560, fl:1.00 },
-  { n:'truck_launch', w:854, h:963, px:0.050, py:0.715, fl:1.55 },
-  { n:'truck_air',    w:754, h:911, px:0.010, py:0.610, fl:1.20 },
-  { n:'truck_land',   w:764, h:793, px:0.030, py:0.580, fl:0.65 },
+  { n:'truck_drive',  w:815, h:860, px:0.030, py:0.447, rot: 0.00, fl:1.00 },
+  { n:'truck_launch', w:854, h:963, px:0.075, py:0.575, rot:-0.30, fl:1.55 },
+  { n:'truck_air',    w:754, h:911, px:0.010, py:0.490, rot:-0.06, fl:1.20 },
+  { n:'truck_land',   w:764, h:793, px:0.040, py:0.475, rot: 0.26, fl:0.65 },
 ];
 const TRUCK = { ready:false, n:0 };
 TRUCK_FR.forEach(f => {
@@ -2363,13 +2370,25 @@ function loadProp(n){
        AND ITS OPENING IS EMPTY AIR.
 
    There is no safe-looking post you are meant to fly through. In a side view
-   a lethal upright is a wall for its whole height, so a hazard with a gap in
-   the middle CANNOT be one tall frame -- it has to be a piece standing off the
-   floor and a piece hanging off the roof with nothing whatever between them.
-   That is what elecLadder builds, and it is why nothing here ever draws a
-   post across its own opening. Get that wrong and you have a hazard whose
-   safe passage is blocked by the thing framing it, which is the definition of
-   randomly unavoidable.
+   a lethal upright is a wall for its whole height, so nothing here ever draws
+   a post across its own opening -- a hazard whose safe passage is blocked by
+   the thing framing it is the definition of randomly unavoidable.
+
+   AND NOTHING IS BUILT AS A SLOT. There used to be a `elecLadder` family --
+   one piece that owned a floor half and a roof half at the SAME x, with an
+   opening between them -- and it is gone. Two fences directly in line, one up
+   and one down, is a keyhole: it has exactly one answer, it has to be found in
+   the fraction of a second before you arrive, and missing it by a body reads as
+   the game refusing you rather than as a mistake you made. It is also not what
+   this genre does; Jetpack Joyride never stacks two zappers into a letterbox.
+
+   The pieces are one-sided instead -- standing off the floor (`e_fence`,
+   `e_wire`, corn) or hanging off the roof (`e_hang*`) -- and where the run
+   wants both, the TABLE staggers them down the road so you fly a line through
+   them over a second rather than aiming at a hole. Which means the fairness
+   question has moved from inside a piece to between two of them: see the
+   transit check in ?obtest, which asks whether the bird can actually get from
+   one opening to the next in the time the table leaves him.
 
    Geometry is in world units with y measured UP from the ground -- the frame
    the collision code already uses. The flip into screen coordinates happens
@@ -2510,7 +2529,7 @@ function elecSpec(def){
   (def.art||[]).forEach(loadProp);
   return {
     kind:'elec', elec:true, tier:def.tier, hw:def.hw, w:def.hw*2, h:def.h||200,
-    ladder:def.ladder||null, zap:def.zap||null, top:def.top||0,
+    hang:def.hang||null, zap:def.zap||null, top:def.top||0,
     build:def.build, free:def.free,
     draw(o,t){ drawElec(o,t); },
     hit(o,l,r,b,t){ return elecDist(o,l,r,b,t) <= 0; },
@@ -2799,8 +2818,8 @@ Object.assign(OB, {
    here were two independent objects that randomly landed at the same x and
    left whatever slot they happened to leave, which is Flappy Bird; a ladder
    is one object that owns both halves and therefore owns the gap as well. */
-function elecLadder(tier, o){
-  /* The art list is what registers a piece's images for loading, so a ladder
+function elecHang(tier, o){
+  /* The art list is what registers a piece's images for loading, so a piece
      that does not declare its own posts and cap gets neither. e_gateframe is
      used by nothing else, so the gate's painted frame was never requested at
      all and quietly fell back to a plain post -- silently, because a missing
@@ -2808,14 +2827,10 @@ function elecLadder(tier, o){
      in this list too. */
   return elecSpec({ tier, hw:o.hw,
     art: ['e_posttall'].concat(o.cap ? [o.cap] : []),
-    ladder:{ lo:o.lo, gap:o.gap, rung:o.rung||RUNG, cap:o.cap||null },
+    hang:{ drop:o.drop, rung:o.rung||RUNG, cap:o.cap||null },
     build(ob){
-      const px=o.hw-26, lo=ob.lo||160, hi=ob.hi||(lo+CLEAR), band=ob.band||700;
+      const px=o.hw-26, band=ob.band||700, hi=ob.hi||(band-260);
       const rung=o.rung||RUNG, wires=[], solids=[], parts=[];
-      parts.push({a:'e_posttall',x:-px,y:0,h:lo},{a:'e_posttall',x:px,y:0,h:lo});
-      solids.push([-px-17,0,-px+17,lo],[px-17,0,px+17,lo]);
-      wires.push(postWire(-px, 0, lo), postWire(px, 0, lo));
-      for(let y=lo-16; y>14; y-=rung) wires.push([-px,y, px,y]);
       const uh = band-hi;
       if(o.cap) parts.push({a:o.cap,x:0,y:band,h:Math.min(uh,214),flip:true});
       parts.push({a:'e_posttall',x:-px,y:band,h:uh,flip:true},
@@ -2825,23 +2840,22 @@ function elecLadder(tier, o){
       for(let y=hi+16; y<band-14; y+=rung) wires.push([-px,y, px,y]);
       return { hw:parts, wires, solids };
     },
-    free(ob,band){ return [[ob.lo||0, ob.hi||band]]; } });
+    free(ob,band){ return [[0, ob.hi||band]]; } });
 }
 Object.assign(OB, {
-  /* Two wires, one low one high, and a wide safe lane between them. */
-  e_double: elecLadder(2, { hw:126, lo:[120,280], gap:[380,440], rung:900 }),
-  /* The gate: the painted frame hung over the opening, wires filling the rest. */
-  e_gate:   elecLadder(3, { hw:132, lo:[140,300], gap:[350,410], cap:'e_gateframe' }),
-  /* Multi-level: every rung filled, so the one gap is the only read. */
-  e_multi:  elecLadder(3, { hw:126, lo:[150,320], gap:[340,390], rung:62 }),
-  /* Ground-to-air: the lower half is a tower, and the lane is high. */
-  e_g2a:    elecLadder(4, { hw:126, lo:[280,400], gap:[335,380], rung:70 }),
+  /* A short overhang: two posts and a wire, with most of the column open. */
+  e_hang:  elecHang(2, { hw:126, drop:[190,320], rung:900 }),
+  /* The gate, hung from the roof: the painted frame on the ceiling, wires
+     filling the rest of the drop. */
+  e_hang2: elecHang(3, { hw:132, drop:[280,400], cap:'e_gateframe' }),
+  /* Deep, every rung filled, so there is no reading it as a way through. */
+  e_hang3: elecHang(4, { hw:126, drop:[340,450], rung:62 }),
 });
 /* Four families, and every one of them is wire. */
 const ZAP_KEYS   = ['zap_h','zap_v','zap_d','zap_m'];
 const CORN_KEYS  = ['corn_one','corn_clump','corn_row'];
 const FENCE_KEYS = ['e_fence','e_wire'];
-const LAD_KEYS   = ['e_double','e_gate','e_multi','e_g2a'];
+const HANG_KEYS  = ['e_hang','e_hang2','e_hang3'];
 
 /* ============================================================
    PARALLAX LAYERS — baked once per resize
@@ -3078,8 +3092,8 @@ function smoke(x, y, n, opt){
       x: x + rnd(-20,20), y: y + rnd(-8,8),
       vx: Math.cos(a)*sp + (opt.vx||0), vy: Math.sin(a)*sp*0.55 - rnd(20,80),
       life: rnd(opt.l0||0.34, opt.l1||0.78), t:0,
-      r: rnd(opt.r0||15, opt.r1||31), col: opt.col || 'rgba(211,196,172,0.62)',
-      g: -70, kind:'smoke', rot:rnd(0,TAU), vr:rnd(-1.6,1.6),
+      r: rnd(opt.r0||15, opt.r1||31), col: opt.col || 'rgba(216,203,182,0.92)',
+      g: -70, kind:'smoke', rot:rnd(0,TAU), vr:rnd(-2.6,2.6),
       drag: opt.drag || 0.80, grow: rnd(70,150)
     });
   }
@@ -3151,15 +3165,16 @@ function spawnElec(key, aheadTime){
   o.band  = band;
   o.seed  = hash(o.x*0.017)*97;      // per-piece, so two on screen do not flicker as one
   o.phase = hash(o.x*0.031)*TAU;     // and two rotors are never in step
-  if(spec.ladder){
-    const d   = spec.ladder;
-    /* The opening has to clear whatever is flying through it, and the basket
-       is over twice the bird's height -- an opening that was generous on foot
-       is a squeeze in it. */
+  if(spec.hang){
+    /* The lane underneath has to clear whatever is flying through it, and the
+       truck is over twice the bird's height -- a lane that was generous on
+       foot is a squeeze in it. The DROP is what is rolled and the lane is what
+       is left, so the clamp is on the drop: roll the lane instead and a deep
+       piece silently becomes a shallow one. */
     const clr = riding() ? CLEAR_RIDE : CLEAR;
-    const gap = clamp(rnd(d.gap[0], d.gap[1]), clr, Math.max(clr, band-180));
-    o.lo = clamp(rnd(d.lo[0], d.lo[1]), 80, Math.max(80, band-gap-80));
-    o.hi = o.lo + gap;
+    const drop = clamp(rnd(spec.hang.drop[0], spec.hang.drop[1]), 60,
+                       Math.max(60, band - clr));
+    o.hi = band - drop;
     o.h  = band;                     // eggs keep out of the whole column
   } else if(spec.zap){
     rollZap(o, spec.zap, band);
@@ -3182,6 +3197,42 @@ function spawnElec(key, aheadTime){
    corridor of at least CLEAR, or it is under SHUT and reads as no way through
    at all. In between is the gap that looks flyable and is not. */
 const SHUT = 150;
+/* HOW FAR THE BIRD CAN MOVE IN t SECONDS, up on a full hold or down on none.
+
+   The same solved model the flight uses -- `dv/dt = a - k*v` integrated exactly
+   -- started from rest, which is the honest worst case for arriving at an
+   opening: he may have been holding steady at a height rather than already
+   travelling the way he needs to go. Climbing is faster than falling here,
+   because thrust beats gravity by more than gravity is on its own.
+
+   This exists because taking the slot pieces out moved the fairness question.
+   A ladder owned both halves of its opening, so checking the piece was enough;
+   an overhang and a fence a beat apart are two pieces whose openings do not
+   overlap, and whether that is a line or a trap is a question about the TIME
+   between them, which no single piece can answer. */
+function flyReach(t, up){
+  const a = up ? (GRAV - THRUST) : GRAV, k = DRAG, vT = a/k;
+  return Math.abs(vT*t - vT*(1 - Math.exp(-k*t))/k);
+}
+const BIRD_H = 142;                  // his box, and what an opening has to fit
+/* Is there any pair of openings, one on each piece, he can get between? */
+function transitOk(A, B, band, speed){
+  const t = (B.x - A.x)/speed;
+  if(t <= 0) return true;
+  const up = flyReach(t, true), down = flyReach(t, false);
+  for(const fa of A.spec.free(A, band)){
+    const a0 = fa[0], a1 = fa[1] - BIRD_H;
+    if(a1 < a0) continue;                        // too small to be in at all
+    for(const fb of B.spec.free(B, band)){
+      const b0 = fb[0], b1 = fb[1] - BIRD_H;
+      if(b1 < b0) continue;
+      if(b0 > a1){ if(b0 - a1 <= up) return true; }        // he has to climb
+      else if(b1 < a0){ if(a0 - b1 <= down) return true; } // he has to drop
+      else return true;                                    // they already line up
+    }
+  }
+  return false;
+}
 function rollZap(o, z, band){
   for(let n=0; n<20; n++){
     const ang = rnd(z.ang[0], z.ang[1]) * (Math.random()<0.5 ? -1 : 1);
@@ -3752,7 +3803,15 @@ function mkPat(tier, tail, spec){
 }
 /* Tokens, not keys, so a pattern says what SHAPE of hazard it wants and the
    tier decides which one that is. '#zap' a loose wire, '#corn' the crop,
-   '#fence' posts on the ground, '#lad' one of the pieces with an opening. */
+   '#fence' posts on the ground, '#hang' one hanging off the roof.
+
+   A HANG BEAT IS ALWAYS STAGGERED AGAINST A FLOOR BEAT, never stacked on one.
+   Two fences in line -- one up, one down, same x -- is a keyhole with a single
+   answer that has to be found in the fraction of a second before you arrive.
+   Set them a beat apart instead and the same two pieces become a line to fly:
+   duck under the overhang, climb over the fence, and the skill is holding the
+   right amount for a second rather than hitting a slot. The transit check in
+   ?obtest is what keeps the beat wide enough to actually fly. */
 const PAT = [
   /* tier 0 — one thing at a time, and a long look at it */
   mkPat(0, [1.55,1.95], ['#fence']),
@@ -3766,24 +3825,24 @@ const PAT = [
 
   /* tier 2 — wires at other angles, and the first opening to aim at */
   mkPat(2, [1.25,1.55], ['#zap']),
-  mkPat(2, [1.30,1.60], ['#lad']),
+  mkPat(2, [1.35,1.65], ['#hang', 1.15, '#fence']),
   mkPat(2, [1.30,1.60], ['#fence', 1.00, '#zap']),
   mkPat(2, [1.25,1.55], ['#corn', 0.95, '#zap']),
   mkPat(2, [1.35,1.65], ['#zap', 1.05, '#zap']),
 
   /* tier 3 — three beats, and the openings you have to aim at */
-  mkPat(3, [1.20,1.50], ['#lad']),
+  mkPat(3, [1.25,1.55], ['#fence', 1.10, '#hang']),
   mkPat(3, [1.20,1.50], ['#zap', 0.95, '#zap']),
   mkPat(3, [1.20,1.50], ['#zap', 0.90, '#corn', 1.00, '#zap']),
-  mkPat(3, [1.25,1.55], ['#zap', 0.90, '#lad']),
-  mkPat(3, [1.25,1.55], ['#corn', 0.95, '#lad']),
+  mkPat(3, [1.25,1.55], ['#zap', 1.05, '#hang']),
+  mkPat(3, [1.25,1.55], ['#corn', 1.10, '#hang', 1.15, '#fence']),
 
   /* tier 4 — everything, close together, still never closer than the table */
   mkPat(4, [1.15,1.45], ['#zap', 0.85, '#zap', 0.95, '#zap']),
-  mkPat(4, [1.15,1.45], ['#lad', 1.00, '#zap']),
-  mkPat(4, [1.15,1.45], ['#corn', 0.88, '#zap', 1.00, '#lad']),
+  mkPat(4, [1.15,1.45], ['#hang', 1.10, '#zap']),
+  mkPat(4, [1.15,1.45], ['#corn', 0.88, '#zap', 1.15, '#hang']),
   mkPat(4, [1.20,1.50], ['#fence', 0.88, '#zap', 0.95, '#corn']),
-  mkPat(4, [1.15,1.45], ['#zap', 0.90, '#lad', 1.05, '#corn']),
+  mkPat(4, [1.15,1.45], ['#zap', 1.05, '#hang', 1.15, '#corn']),
 ];
 
 /* What the basket flies through. Gates and wires, nothing on the floor: corn
@@ -3855,7 +3914,7 @@ function spawnPattern(){
     const k = st.k==='#zap'   ? pick(inTier(ZAP_KEYS, tier))
             : st.k==='#corn'  ? pick(inTier(CORN_KEYS, tier))
             : st.k==='#fence' ? pick(inTier(FENCE_KEYS, tier))
-            : st.k==='#lad'   ? pick(inTier(LAD_KEYS, tier))
+            : st.k==='#hang'  ? pick(inTier(HANG_KEYS, tier))
             : st.k;
     if(!k) continue;                       // a token with nothing in its pool yet
     spawnElec(k, lead);
@@ -3897,23 +3956,24 @@ function thrustOn(){
       /* A WALL OF DUST off the back tyres, thrown backwards and up. Sparks
          alone read as a spell being cast; what leaves the ground when two
          tonnes of tractor tyre launches off a dirt road is dirt. */
-      smoke(player.x - 44, GROUND - 6, 10,
-            {a0:Math.PI*0.92, a1:Math.PI*1.80, s0:150, s1:410, r0:17, r1:34, l0:0.4, l1:0.9});
+      smoke(player.x - 44, GROUND - 6, 18,
+            {a0:Math.PI*0.92, a1:Math.PI*1.80, s0:150, s1:430, r0:20, r1:40, l0:0.45, l1:1.0});
       spark(player.x-40, GROUND-player.y, 10,
             {col:'rgba(210,180,140,.9)', a0:Math.PI*0.9, a1:Math.PI*1.4,
              s0:120, s1:340, l0:0.2, l1:0.5, r0:4, r1:10, g:900});
-    } else if((player.rideJumps||0) < 2){
-      player.vy = -rideJump2(); player.rideJumps = 2; S.takeoff();
-      /* The second jump has no ground to kick off, so it brings its own: a
-         ring of exhaust punched out sideways under the truck. That puff is the
-         only thing telling the player the second press did something, since
-         there is no contact to feel. */
-      smoke(player.x, GROUND-player.y-16, 8,
-            {s0:130, s1:320, r0:12, r1:25, l0:0.3, l1:0.6, col:'rgba(196,186,176,0.55)'});
-      spark(player.x, GROUND-player.y-30, 8,
-            {col:'rgba(255,190,80,.9)', a0:Math.PI*0.7, a1:Math.PI*1.3,
-             s0:100, s1:260, l0:0.2, l1:0.45, r0:3, r1:8, g:700});
     }
+    /* AND THAT IS THE ONLY JUMP. There used to be a second one in mid-air, and
+       it was reported as a bug rather than found as a feature -- which is fair,
+       because nothing in the truck says it should have one and the ground is
+       the only thing it visibly pushes off. It also fired one FRAME off the
+       road if you tapped twice quickly, spending both jumps at ankle height on
+       a truck that then had nothing left for the fence.
+
+       It mattered when the jump was small. It does not now: one press clears
+       three quarters of the screen, which is over everything in the ride's
+       roster with room to spare, so a second press was buying hang on top of a
+       jump that already lasts a second and a half. One button, one jump, and
+       you have to be on the ground to use it. */
     return;
   }
   const wasOff = !player.thrusting;
@@ -4198,12 +4258,10 @@ function rideImpulse(apex){
    on and it changes on a resize, not on a frame. */
 let _rimp = null;
 function rideImp(){
-  if(!_rimp || _rimp.g !== GROUND) _rimp = { g: GROUND,
-    one: rideImpulse(GROUND*RIDE_TOP), two: rideImpulse(GROUND*RIDE_TOP2) };
+  if(!_rimp || _rimp.g !== GROUND) _rimp = { g: GROUND, one: rideImpulse(GROUND*RIDE_TOP) };
   return _rimp;
 }
-const rideJump  = () => rideImp().one;
-const rideJump2 = () => rideImp().two;
+const rideJump = () => rideImp().one;
 /* THE LESSON.
 
    A vehicle whose controls are different from the game's controls has to teach
@@ -4212,11 +4270,13 @@ const rideJump2 = () => rideImp().two;
    is not an obstacle -- it is two arcs of eggs, and following them IS the
    tutorial:
 
-     ONE   an arc that peaks well inside a single jump. Press, collect, land.
-     TWO   an arc that peaks above anything one jump reaches. Halfway up it
-           stops being reachable, and the only thing left to try is pressing
-           again -- at the top of the first jump, which is exactly where the
-           second one is worth the most.
+     ONE   a small arc, easily inside the jump. Press, collect, land. This one
+           only has to teach that the press is a jump at all, since it is the
+           opposite of the control the bird uses.
+     TWO   the WHOLE jump: the real apex and the real span, drawn in eggs. You
+           learn how big the thing you just picked up is by flying the shape of
+           it once, with nothing to hit -- which is worth far more than finding
+           out over the first hay wagon.
 
    Both are laid out of `rideApex` and the actual scroll speed, so they are the
    real jump at the real pace rather than two numbers that were true once. And
@@ -4224,15 +4284,12 @@ const rideJump2 = () => rideImp().two;
    both pushed past the end of the course, because a lesson you have to dodge
    during is not a lesson. */
 function layRideCourse(){
-  const a1 = rideApex(rideJump()), a2 = rideApex(rideJump2());
-  const t1 = rideRise(rideJump());
-  const span1 = game.speed * t1 * 2.05;             // up and down, near enough
-  /* The second arc is LONGER, not higher, and that is the honest lesson here:
-     the play area is barely taller than one jump, so a double jump mostly buys
-     HANG rather than altitude -- press again near the top and you stay up a
-     good deal further down the road. Teaching it as extra height would be
-     teaching a thing the ceiling immediately takes away. */
-  const span2 = span1 * 1.62;
+  const a1 = rideApex(rideJump());
+  /* The full arc, in road: how long it lasts times how fast the road is going.
+     `rideAir` solves the fall as well as the rise, so this is the actual shape
+     the truck flies rather than a doubled rise. */
+  const span2 = game.speed * rideAir(rideJump());
+  const span1 = span2 * 0.52;                       // a hop, to introduce the button
   const y0 = 74;                                    // the height eggs are collected at
   let x = player.x + game.speed*1.25;
   const put = (n, w, peak) => {
@@ -4242,12 +4299,11 @@ function layRideCourse(){
     }
     x += w;
   };
-  /* Both arcs are clamped into the play area. A double jump can reach higher
-     than the ceiling -- that is fine, he bonks it -- but an EGG above the
-     ceiling is a promise the game will not keep, and the one place that must
-     not happen is the screen that is teaching the controls. */
+  /* Both arcs are clamped into the play area. An EGG above the ceiling is a
+     promise the game will not keep, and the one place that must never happen
+     is the screen that is teaching the controls. */
   const roof = rideCeil() - 90;
-  put(7, span1, Math.min(a1*0.68, roof));
+  put(7, span1, Math.min(a1*0.40, roof));
   x += game.speed*0.55;                             // land, breathe, and go again
   put(11, span2, Math.min(a1*0.94, roof));
   const clear = (x - player.x)/game.speed + 0.7;    // when the course is behind him
@@ -4334,6 +4390,20 @@ function updateRide(dt){
   game.gridT = tgt > now ? Math.min(tgt, now + step) : Math.max(tgt, now - step);
   game.rideTeach = Math.max(0, (game.rideTeach||0) - dt);
   player.rideLand = Math.max(0, (player.rideLand||0) - dt);
+  /* A DUST TRAIL OFF THE BACK TYRE while it is on the road. Dust only at the
+     two big moments left the truck looking like it was gliding along a
+     polished floor between them -- the whole reason the thing reads as heavy
+     is that it disturbs the ground it is on, continuously. Small, sparse and
+     short-lived, so it is texture rather than a smokescreen. */
+  if(riding() && player.onGround && game.mode === 'play'){
+    game.dustT = (game.dustT||0) - dt;
+    if(game.dustT <= 0){
+      game.dustT = 0.07;
+      smoke(player.x - truckGeom().tw*0.34, GROUND - 4, 1,
+            {a0:Math.PI*0.95, a1:Math.PI*1.55, s0:70, s1:190,
+             r0:9, r1:17, l0:0.26, l1:0.5, col:'rgba(214,200,176,0.70)'});
+    }
+  }
   game.rideGrace = Math.max(0, (game.rideGrace||0) - dt);
   if(riding()){
     game.ride -= dt;
@@ -4382,7 +4452,11 @@ function drawTruck(){
      the same flame the livestock react to, so its length is a number the rest
      of the game can read. It comes out of the pipes THIS frame drew, which is
      the only way it stays in them through a tilt. */
-  drawExhaust(L + f.px*w, T + f.py*h, g.tw*0.42*flameLen()*f.fl);
+  ctx.save();
+  ctx.translate(L + f.px*w, T + f.py*h);
+  ctx.rotate(f.rot);                    // the pipes tilt with the rig; so does the fire
+  drawExhaust(0, 0, g.tw*0.42*flameLen()*f.fl);
+  ctx.restore();
   if(TRUCK.ready) ctx.drawImage(f.img, L, T, w, h);
 }
 /* 0..1 of a truck length, pulsing, and longer for the moment after a jump --
@@ -4847,16 +4921,16 @@ function updatePlay(dt){
            shake. Twice the camera kick, a wide skirt of dust off both axles,
            and the compressed frame held for a quarter second.
 
-           This is also where the double jump is charged again. It never was --
-           `rideJumps` was set to 0 once, in startRide, so the second press
-           worked exactly one time per pickup and every landing after that left
-           you with a single jump and no way to know why. */
+           `rideJumps` goes back to 0 here, which is what makes the NEXT jump
+           possible -- the truck may only launch from the road, so landing is
+           the whole of its cooldown. It is also what `flameLen` reads to know
+           the exhaust is not still roaring from a jump that has landed. */
         p.rideLand = 0.26;
         p.rideJumps = 0;
         S.land(); addShake(clamp(impact/(150*PACE), 5, 16)); game.camYT = 22;
-        smoke(p.x - 26, GROUND - 4, 13,
-              {s0:170, s1:440, r0:18, r1:37, l0:0.42, l1:0.95});
-        smoke(p.x + 130, GROUND - 4, 5, {s0:110, s1:290, r0:14, r1:28});
+        smoke(p.x - 26, GROUND - 4, 20,
+              {s0:170, s1:460, r0:22, r1:42, l0:0.45, l1:1.05});
+        smoke(p.x + 130, GROUND - 4, 8, {s0:110, s1:300, r0:16, r1:32});
         spark(p.x, GROUND, 10, {col:'rgba(198,176,146,.85)', a0:Math.PI*1.05,a1:Math.PI*1.95,
               s0:150,s1:430, l0:0.2,l1:0.5, r0:3,r1:8, g:700});
       } else {
@@ -5819,15 +5893,29 @@ function drawParticles(){
       ctx.lineWidth=2.5; ctx.strokeStyle='rgba(21,8,39,.55)'; ctx.stroke();
       ctx.restore();
     } else if(q.kind==='smoke'){
-      /* Two soft discs, the outer one wider and fainter, so the edge of a puff
-         is a gradient rather than a circle. It fades on a square rather than
-         straight, because dust thins fastest at the end. */
+      /* THREE OVERLAPPING LOBES, not a disc.
+
+         This was two concentric circles at `a*a` alpha, and what it drew was a
+         pale smudge on the road -- round, flat, edgeless, and gone before it
+         registered. A circle is not a shape anybody reads as smoke; a cartoon
+         puff is a CLUSTER, and the lobes rotating as the particle spins is what
+         makes it look like it is boiling rather than merely growing.
+
+         The fade is linear held high for most of the life (`*1.7`, clamped)
+         instead of quadratic, because a square fade spends most of its life
+         nearly invisible -- which is the same as not existing. */
       const R = q.r + q.grow*q.t;
-      ctx.globalAlpha = a*a*0.9;
+      ctx.save();
+      ctx.translate(q.x-cam.x, q.y); ctx.rotate(q.rot);
+      ctx.globalAlpha = Math.min(1, a*1.7);
       ctx.fillStyle = q.col;
-      ctx.beginPath(); ctx.arc(q.x-cam.x, q.y, R, 0, TAU); ctx.fill();
-      ctx.globalAlpha = a*a*0.45;
-      ctx.beginPath(); ctx.arc(q.x-cam.x - R*0.22, q.y - R*0.18, R*1.34, 0, TAU); ctx.fill();
+      ctx.beginPath();
+      for(let i=0;i<3;i++){
+        const th = i*2.0944, cx = Math.cos(th)*R*0.40, cy = Math.sin(th)*R*0.40, rr = R*0.64;
+        ctx.moveTo(cx+rr, cy); ctx.arc(cx, cy, rr, 0, TAU);
+      }
+      ctx.fill();
+      ctx.restore();
     } else if(q.kind==='egg'){
       ctx.save(); ctx.translate(q.x-cam.x, q.y-q.r); ctx.rotate(q.rot);
       ctx.beginPath(); ctx.ellipse(0,0,q.r*0.78,q.r,0,0,TAU);
@@ -6028,7 +6116,7 @@ function boot(){
     startRide, loseRide, spawnBasketDrop, spawnElec, spawnPattern, spawnEggs,
     layRideCourse, rideApex, rideRise, rideCeil, truckGeom, truckFrame,
     elecDist, riding, wireHot, smoke, spark, pop, updateParticles, render,
-    worldSpeed, distSpeed, rideAir, rideImpulse, rideJump, rideJump2, UPM };
+    worldSpeed, distSpeed, rideAir, rideImpulse, rideJump, UPM };
   const it=/[?&]introt=([0-9.]+)/.exec(location.search);
   if(it){ game.holdIntro = parseFloat(it[1]); }   // freeze the intro to look at a beat
   const sl=/[?&]slow=([0-9.]+)/.exec(location.search);
@@ -6315,7 +6403,7 @@ function boot(){
         // They used to be [0,30,55,80,120], which lands on tiers 0,2,3,4,4 --
         // so tier 1 was never tested at all and tier 4 was tested twice.
         game.runT = [0,15,30,50,80][tier];
-        const kinds={}; let worst=1e9, tight=1e9, shut=0;
+        const kinds={}; let worst=1e9, tight=1e9, shut=0, stuck=0;
         for(let n=0;n<240;n++){
           game.obstacles.length = 0;
           /* The crop's cooldown is in seconds and this loop does not advance
@@ -6349,12 +6437,26 @@ function boot(){
           // spacing inside a pattern, in arrival time
           for(let a=0;a<os.length;a++) for(let b2=a+1;b2<os.length;b2++)
             tight = Math.min(tight, Math.abs(os[a].x-os[b2].x)/game.speed);
+          /* And whether the openings are joined up. Every piece leaving a legal
+             corridor says nothing about whether you can be in this one and then
+             in the next: an overhang followed too soon by a tall fence asks for
+             a climb the bird cannot make, and it passes every other check here
+             because both pieces are individually fine. */
+          const byX = os.slice().sort((u,v)=>u.x-v.x);
+          for(let a=0;a<byX.length-1;a++)
+            if(!transitOk(byX[a], byX[a+1], band, game.speed)){
+              stuck++;
+              out.push('tier'+tier+' '+byX[a].key+' -> '+byX[a+1].key+' in '+
+                       ((byX[a+1].x-byX[a].x)/game.speed).toFixed(2)+'s is not flyable');
+            }
         }
         if(shut){ bad++; out.push('tier'+tier+' HALF-GAPS: '+shut); }
+        if(stuck){ bad++; out.push('tier'+tier+' UNFLYABLE TRANSITS: '+stuck); }
         if(worst<CLEAR-1){ bad++; out.push('tier'+tier+' corridor only '+Math.round(worst)); }
         if(tight<0.62){ bad++; out.push('tier'+tier+' spacing only '+tight.toFixed(2)+'s'); }
         out.push('tier'+tier+' corridor>='+Math.round(worst)+
-          '  gap>='+(tight<1e8?tight.toFixed(2)+'s':'-')+'  '+
+          '  gap>='+(tight<1e8?tight.toFixed(2)+'s':'-')+
+          '  transits '+(stuck?('BAD '+stuck):'ok')+'  '+
           Object.keys(kinds).sort().map(k=>k+':'+kinds[k]).join(' '));
       }
       out.unshift(bad ? ('OBSTACLES: '+bad+' PROBLEMS') : 'OBSTACLES: ok, every opening flyable');
@@ -6457,7 +6559,7 @@ function boot(){
          resolves it rather than looked up as a key. */
       const air = rideAir(rideJump());
       const jumped = k => k === '#corn' ? false
-                        : k === '#fence' || k === '#zap' || k === '#lad' ? true
+                        : k === '#fence' || k === '#zap' || k === '#hang' ? true
                         : !(OB[k] && OB[k].smash);
       let tightest = 1e9, worstPat = '';
       for(const pat of RIDE_PAT){
@@ -6491,23 +6593,25 @@ function boot(){
         if(onDead){ bad++; out.push('WIRE STILL LETHAL in the truck'); }
         if(onLive && !onDead) out.push('ok     the grid goes down in the truck');
       }catch(e){ bad++; out.push('grid test THREW ' + e.message); }
-      /* And the lesson: two arcs, the first inside one jump and the second
-         plainly not, laid out of the jump itself. */
+      /* And the lesson: a hop, then the whole arc, both laid out of the jump
+         itself so neither can promise an egg the truck cannot reach. */
       try{
         startQuick(); game.eggs.length = 0; game.ride = 1e9;
         layRideCourse();
-        const a1 = rideApex(rideJump()), a2 = rideApex(rideJump2());
+        const a1 = rideApex(rideJump()), full = game.speed*rideAir(rideJump());
         const roof = rideCeil() - 90;
         const xs = game.eggs.map(e => e.x), ys = game.eggs.map(e => e.y - 74);
         const p1 = Math.max(...ys.slice(0, 7)), p2 = Math.max(...ys.slice(7));
         const s1 = xs[6] - xs[0], s2 = xs[xs.length-1] - xs[7];
-        out.push('jump ' + Math.round(a1) + ' + ' + Math.round(a2) +
+        out.push('jump ' + Math.round(a1) + ' over ' + Math.round(full) +
                  ';  arc 1 peak ' + Math.round(p1) + ' over ' + Math.round(s1) +
                  ';  arc 2 peak ' + Math.round(p2) + ' over ' + Math.round(s2) +
                  ';  roof ' + Math.round(roof));
-        if(p1 > a1*0.90){ bad++; out.push('first arc needs a perfect jump'); }
+        if(p1 > a1*0.55){ bad++; out.push('the opening hop is not a hop'); }
         if(p1 > roof || p2 > roof){ bad++; out.push('an arc goes through the ceiling'); }
-        if(s2 < s1*1.35){ bad++; out.push('second arc fits inside one jump'); }
+        if(p2 < a1*0.80){ bad++; out.push('second arc does not show the real jump'); }
+        if(Math.abs(s2 - full) > full*0.12){ bad++;
+          out.push('second arc is not the jump\'s own span'); }
         game.ride = 0;
       }catch(e){ bad++; out.push('course test THREW ' + e.message); }
       toMenu();
