@@ -1718,9 +1718,26 @@ every time.
 
 ## Assets: what ships, and how big
 
-**2.79 MB** on a cold load, 173 requests, measured with the cache disabled --
-not summed off disk. `art` 1090 KB, `anim` 1085 KB, `index.html` 286 KB,
-`art/farm` 173 KB, `art/bg` 112 KB, the background strip 63 KB, fonts 50 KB.
+**3.5 MB before the player touches anything, 5.1 MB once they press PLAY**,
+184 requests, measured with the cache disabled -- not summed off disk. Music is
+the difference between the two numbers and it is gesture-gated: `audioInit`
+only runs on a real press, so nothing in `audio/` is fetched until PLAY. Note
+that `?auto=1` presses it for you, which is why a measurement taken with that
+flag shows the larger figure.
+
+| | files | |
+|---|---|---|
+| `art` | 23 | 1699 KB |
+| `anim` | 134 | 1085 KB |
+| `index.html` | 1 | 328 KB |
+| `art/farm` | 19 | 249 KB |
+| `art/bg` | 3 | 112 KB |
+| background strip | 1 | 63 KB |
+| fonts (Google) | 3 | 50 KB |
+| music, after PLAY | 2 | 1659 KB |
+
+Re-measure with the probe rather than trusting this table -- both sessions add
+art, and it drifts.
 
 **Images are all WebP and all lossless.** `tools/to_webp.py` did the last
 fourteen (2336 KB -> 1315 KB) and **refuses to delete a PNG whose WebP does not
@@ -1735,8 +1752,8 @@ on. Half the saving was there anyway.
 
 **Music ships twice and downloads once** -- see *The music, and how small it
 got* above for the encode chain. `MUS_EXT` asks `canPlayType` at load and takes
-Opus where it exists, MP3 96k where it does not. The Opus set is 5.5 MB, the
-MP3 set 7.4 MB, and no player ever fetches both.
+Opus where it exists, MP3 96k where it does not. The Opus set is 2.8 MB, the
+MP3 set 3.9 MB, and no player ever fetches both.
 
 Two things that section does not cover, and both matter for a bundle:
 
@@ -1755,7 +1772,7 @@ off the ID3 header and the first MPEG frame, so it works on a machine with no
 audio tooling installed at all -- which is how the 192k masters were diagnosed
 in the first place, before there was an ffmpeg on the box to ask.
 
-**Android estimate:** ~4.7 MB images and code, ~2.8 MB music, ~50 KB fonts if
+**Android estimate:** ~4.9 MB images and code, ~2.8 MB music, ~50 KB fonts if
 bundled locally = **~7.6 MB of assets**, plus ~3 MB for a Capacitor/WebView
 wrapper, so **an APK around 10-11 MB** and an AAB nearer 8-9. At bundle time
 drop `audio/*.mp3` (Android has Opus natively) and `audio/src/`.
