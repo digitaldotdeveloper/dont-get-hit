@@ -20,6 +20,9 @@ After that the head sits still and only the wings beat, which is the whole
 point. `--preview` writes a strip and an animated GIF to check that by eye.
 """
 import os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import SHEETS, REF, AUDIOSRC, ROOT as GAME, sheets, need
+import os, sys
 import numpy as np
 from PIL import Image, ImageDraw
 
@@ -27,7 +30,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from imglib import key_green, despill, bbox, label
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SH   = os.path.join(ROOT, "sheets", "v4")
+SH   = sheets("v4")
 ART  = os.path.join(ROOT, "art", "farm")
 
 FLY  = "crow_raw_6.png"          # the 2x2 whose four bodies sit level

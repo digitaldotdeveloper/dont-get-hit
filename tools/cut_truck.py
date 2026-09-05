@@ -12,6 +12,9 @@ frame is measured against that.
 
     python cut_truck.py     # sheets/v2/truck_ride.png -> art/truck_ride*.webp
 """
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import SHEETS, REF, AUDIOSRC, ROOT as GAME, sheets, need
 import os, sys, json
 import numpy as np
 from PIL import Image
@@ -20,7 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from imglib import key_green, despill, bbox, label
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SH   = os.path.join(ROOT, "sheets", "v2")
+SH   = sheets("v2")
 ART  = os.path.join(ROOT, "art")
 
 DRIVE_W = 815.0      # the driving frame's own width; truckGeom scales off this

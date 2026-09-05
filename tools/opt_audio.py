@@ -17,11 +17,14 @@ The 192k originals move to audio/src/ rather than being deleted. They are the
 only masters there are, and re-encoding a 96k MP3 later to chase another 20%
 would be a third generation of the same artefacts.
 """
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import SHEETS, REF, AUDIOSRC, ROOT as GAME, sheets, need
 import os, subprocess, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 AUD = os.path.join(ROOT, "audio")
-SRC = os.path.join(AUD, "src")
+SRC = AUDIOSRC
 FF = __import__("imageio_ffmpeg").get_ffmpeg_exe()
 
 

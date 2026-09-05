@@ -1,65 +1,65 @@
 # DON'T GET HIT
 
-A portrait one-button arcade flyer. **Hold to flap. Don't hit anything.**
-That's the whole game — understandable in about three seconds.
+A landscape one-button arcade flyer. **Hold to flap, release to fall. Don't hit
+anything.** Understandable in about three seconds.
 
 **Play:** https://digitaldotdeveloper.github.io/dont-get-hit/
+Target is Android with ads; GitHub Pages is the test rig.
 
-## What this is
+## The game
 
-A polished vertical slice built to answer one question: *is the basic loop fun?*
-No shops, no currencies, no missions, no IAP, no login — just
-`RUN → JUMP → AVOID → SURVIVE → HIGH SCORE`.
+Nugget kicks his way out of a barn cage and runs east across Cluck County, a
+painted farm somebody has wired up out of insulators, warning signs and a car
+battery. The wire is the hazard. Ground props you jump; electric pieces you fly
+through. Crows come at you horizontally and announce themselves first. A pickup
+truck turns up as a mystery egg and **cuts the farm's power** while you drive it.
 
-Single file, zero dependencies, zero image assets. Everything is drawn
-procedurally on a 2D canvas and every sound is synthesised with the WebAudio API.
-
-## The character
-
-A **painted head on a procedural body**. The hat, comb, face and beak are cut
-from a Gemini Studio render; the body, wings, tail, legs and sneakers are drawn
-in code. That split means the wings can actually flap, the body can squash and
-ragdoll, and swapping the hat — or later the legs and accessories — is a one-line
-change rather than new art.
-
-He flies with his own wings on purpose: lift arrives in pulses on each
+He flies with his own wings on purpose — lift arrives in pulses on each
 downstroke, so altitude is something you keep working at rather than a thrust
 button you hold. No jetpack.
 
-Animations: idle, peck and strut menu beats, ground run with the head locked in
-space the way a real chicken's is, flap, glide, dive, landing squash, near-miss
-flinch with a shock pop, impact, tumbling death with a feather burst — and he
-gets hit hard enough to lay an egg.
-
-## Obstacles (16)
-
-*Jump over:* traffic cone · delivery boxes · banana peel · shopping cart ·
-rolling barrel · office chair · giant coffee cup · vacuum cleaner ·
-bouncing basketball · giant rubber duck · rolling pizza · birthday cake
-
-*Do **not** jump — run under:* pigeon flock · newspaper swirl · beach balls
-
-*Falls from the sky (telegraphed with a shadow):* sofa · street sign
-
-## Difficulty
-
-Five tiers over ~72 seconds. The first 13 seconds are single, generous, slow
-obstacles so the opening always feels good. After that: frequency, speed and
-combinations ramp, and ground→air combos start appearing.
-
-## Feel
-
-Screen shake, hit-stop, slow-motion pulses on near misses, squash and stretch,
-particles, combo multiplier, score popups, a groove that speeds up with the run,
-and instant restart.
-
 ## Running it
 
-Open `index.html`. No build step.
-`index.html?auto=1` skips the menu and starts a run — useful for testing.
+Open `index.html`. No build step, no dependencies.
 
-Controls: tap / click / <kbd>Space</kbd>. Hold slightly longer for a higher jump.
+    ?auto=1     skip the menu and start a run
+    ?dbg=1      publish the internals as window.DGH
+    ?ob=KEY     park one hazard on screen
+    ?hit=1      draw the lethal shapes over the art
+    ?ride=1     start already in the truck
+    ?dist=N     start a run N metres in
+    ?obtest=1   check openings, spacing and transits
+    ?sfx=1      render the sounds offline instead of playing them
 
-## Character direction
+The full list is in `_CONTINUE-HERE.md`. Controls: tap / click / <kbd>Space</kbd>.
+Portrait shows a turn-your-phone gate and freezes the run.
 
-`chickens.html` is a scratch page for picking the character — four chicken designs, each with its own run cycle, all driven by the same IK rig the game uses. Live at /chickens.html
+## What is in here
+
+    index.html          the whole game, one file
+    art/                what ships: character parts, props, backgrounds, FX
+    anim/               136 character and NPC frames
+    audio/              three tracks, Opus 64k + MP3 96k fallback
+    tools/              the art pipeline and the test harness
+    chickens.html       the character/hat picker
+    PIPELINE.md         how the art is made, and how to make a second map
+    _CONTINUE-HERE.md   the deep handover — read before touching the cage,
+                        the crows, the truck or the metre
+
+The raw Gemini sheets, the reference art and the music masters are **not here**.
+They live in the Studio that made them, at
+`Gemini Prompt Sender/dashboard/dgh/`, and are reachable from the DGH section of
+the dashboard. `tools/paths.py` is what points the cut scripts at them.
+
+## The character
+
+A **painted head on a procedural body**. Hat, comb, face and beak are cut from a
+Gemini render; body, wings, tail, legs and sneakers are drawn in code. That split
+is why the wings can flap, the body can squash and ragdoll, and swapping the hat
+is swapping one PNG. `chickens.html` is the picker.
+
+## Scale
+
+Distance is in metres: `UPM` is world units per metre and it is **60**. A screen
+is about 22 m across and he covers 10 m/s off the line, 23 m/s flat out. Score is
+one point per metre. Anything measured in metres is `* UPM`, never `* 10`.

@@ -19,11 +19,14 @@ Mono, and lower rates than the run tracks, for the one place in the game where
 the music is the only thing playing: no sound effects to sit under, a phone
 speaker that is mono anyway, and it is the first thing every player downloads.
 """
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import SHEETS, REF, AUDIOSRC, ROOT as GAME, sheets, need
 import os, struct, subprocess, sys, wave
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 AUD  = os.path.join(ROOT, "audio")
-SRC  = os.path.join(AUD, "src", "music_menu.mp3")
+SRC  = os.path.join(AUDIOSRC, "music_menu.mp3")
 FF   = __import__("imageio_ffmpeg").get_ffmpeg_exe()
 
 HOP = 0.05                 # envelope resolution, seconds

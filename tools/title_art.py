@@ -19,9 +19,12 @@
      python tools/title_art.py            # -> art/title.webp
 """
 import os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import SHEETS, REF, AUDIOSRC, ROOT as GAME, sheets, need
+import os, sys
 from PIL import Image
 
-SRC = 'ref/keyart.png'
+SRC = os.path.join(REF, 'keyart.png')
 OUT = 'art/title.webp'
 W, H = 1080, 1920          # 9:16, enough for a 1.75x backing store on a phone
 FADE = 34                  # px of cross-fade into the real edge

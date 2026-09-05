@@ -15,13 +15,15 @@ The wedge is filled by smearing the wall upward, which is exactly right for
 vertical planks, and the trim is drawn along the two edges with the art's own
 colours sampled out of it.
 """
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import SHEETS, REF, AUDIOSRC, ROOT as GAME, sheets, need
 import os, sys, numpy as np
 from PIL import Image, ImageDraw
 
 sys.path.insert(0, r"C:\Users\it\Desktop\jj\tools")
 
-SRC = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                   "sheets", "v2", "barn_raw.png")
+SRC = sheets("v2", "barn_raw.png")
 PAD = 150                       # headroom added above the art, in source pixels
 RIDGE = 118                     # how far above the art the peak sits
 
@@ -79,8 +81,7 @@ for x0, dx, w in ((Lx0, Ldx, Lw), (Rx0, Rdx, Rw)):
     dr.line([(apex_x, ay), (x0 + dx * 44, PAD + 44)], fill=TRIM, width=int(w))
 dr.ellipse([apex_x - Lw*0.6, ay - Lw*0.6, apex_x + Lw*0.6, ay + Lw*0.6], fill=TRIM, outline=INK, width=4)
 
-canvas.save(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                        "sheets", "v2", "barn_apex.png"))
+canvas.save(sheets("v2", "barn_apex.png"))
 bg = Image.new("RGB", canvas.size, (60, 150, 240)); bg.paste(canvas, (0, 0), canvas)
 bg.save("apex_preview.png")   # eyeball this before trusting it
 print("apex at (%.0f, %.0f)   image now %dx%d" % (apex_x, ay, W, NH))

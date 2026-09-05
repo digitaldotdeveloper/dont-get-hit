@@ -29,6 +29,9 @@ symmetric object actually does and stops the loop reading as a repeat.
 
     python cut_eggs.py          # sheets/v2/egg_spin.png -> anim/egg*.webp
 """
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import SHEETS, REF, AUDIOSRC, ROOT as GAME, sheets, need
 import os, sys, json
 import numpy as np
 from PIL import Image
@@ -37,7 +40,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from imglib import key_green, despill, bbox, label
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SH   = os.path.join(ROOT, "sheets", "v2")
+SH   = sheets("v2")
 ANIM = os.path.join(ROOT, "anim")
 
 TALL = 62        # frame height in sprite pixels

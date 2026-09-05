@@ -16,12 +16,15 @@
      python tools/gen_bg.py            # queues the jobs and waits
      python tools/gen_bg.py --fetch    # just download whatever is ready
 """
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import SHEETS, REF, AUDIOSRC, ROOT as GAME, sheets, need
 import os, sys, time, json
 sys.path.insert(0, r"C:\Users\it\Desktop\Gemini Prompt Sender\dashboard")
 from client import Studio
 
 TOKEN = os.environ.get('GEMINI_STUDIO_TOKEN', '1a64c4bc884692a41e0bf84ed3fb4729a4a650484f264530')
-OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'sheets', 'v2')
+OUT = sheets('v2')
 
 STYLE = ("2D side-scrolling mobile game background art, bold black outlines, flat "
          "cel-shaded colours, clean vector cartoon look, bright and friendly, "

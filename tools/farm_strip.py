@@ -33,11 +33,14 @@
 
      python tools/farm_strip.py          # -> sheets/v2/farm_strip.webp
 """
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import SHEETS, REF, AUDIOSRC, ROOT as GAME, sheets, need
 import io, json, os, sys
 from PIL import Image
 
-SRCS = ['sheets/v2/farm_a.webp', 'sheets/v2/farm_b.webp', 'sheets/v2/farm_c.webp']
-OUT = 'sheets/v2/farm_strip.webp'
+SRCS = [sheets('v2', 'farm_%s.webp' % k) for k in 'abc']
+OUT = sheets('v2', 'farm_strip.webp')
 SPANS = [[259, 927], [147, 983], [3, 975]]      # from tools/farm_seams.py
 GROUND_F = [0.7850, 0.8024, 0.8199]             # painted ground line, per panel
 RAIL_F = [0.6084, 0.6102, 0.6119]               # top of the fence's top rail

@@ -16,6 +16,9 @@ in the pipe at 12Hz, which is the one thing it must not do.
 
     python tools/cut_truckfx.py
 """
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import SHEETS, REF, AUDIOSRC, ROOT as GAME, sheets, need
 import os, sys, json
 import numpy as np
 from PIL import Image
@@ -24,7 +27,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from imglib import key_green, despill, bbox, label
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SH   = os.path.join(ROOT, "sheets", "v2")
+SH   = sheets("v2")
 FX   = os.path.join(ROOT, "art", "fx")
 
 WHEEL_PX = 320       # the wheel is drawn small; this is plenty and stays sharp

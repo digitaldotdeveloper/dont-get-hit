@@ -16,10 +16,13 @@
 
      python tools/farm_seams.py          # prints the cuts, writes a preview
 """
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import SHEETS, REF, AUDIOSRC, ROOT as GAME, sheets, need
 import io, json, sys
 from PIL import Image
 
-SRCS = ['sheets/v2/farm_a.webp', 'sheets/v2/farm_b.webp', 'sheets/v2/farm_c.webp']
+SRCS = [sheets('v2', 'farm_%s.webp' % k) for k in 'abc']
 WINDOW = 0.26          # how far in from each edge to look, as a fraction of width
 STEP = 2               # column stride while searching
 NEI = 3                # columns either side that must also agree

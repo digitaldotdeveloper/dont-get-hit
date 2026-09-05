@@ -18,10 +18,13 @@
 
      python tools/cage_art.py        # -> sheets/v2/cage_scene.webp, art/cage_door.webp
 """
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import SHEETS, REF, AUDIOSRC, ROOT as GAME, sheets, need
 import os
 from PIL import Image
 
-SRC = 'sheets/v3'
+SRC = sheets('v3')
 BARN = 'match-the-attached-image-s-art-style-exactly-2-1788525495009-1.png'
 DOOR = 'match-the-attached-image-s-art-style-exactly-2-1788523499125-1.png'
 
@@ -84,9 +87,9 @@ def main():
     # the apex: the topmost row that has any barn in it, and where its middle is
     top = next(y for y in range(h) if any(px[x, y][3] > 80 for x in range(0, w, 3)))
     xs = [x for x in range(w) if px[x, top+2][3] > 80] or [w//2]
-    barn.save('sheets/v2/cage_scene.webp', 'WEBP', quality=92, method=6, exact=True)
+    barn.save(os.path.join(GAME, 'art', 'cage_scene.webp'), 'WEBP', quality=92, method=6, exact=True)
     dx0, dx1, dy0, dy1 = doorway(barn)
-    print('cage_scene.webp  %dx%d  %d KB' % (w, h, os.path.getsize('sheets/v2/cage_scene.webp')//1024))
+    print('cage_scene.webp  %dx%d  %d KB' % (w, h, os.path.getsize(os.path.join(GAME, 'art', 'cage_scene.webp'))//1024))
     print('  dx0:%.4f, dx1:%.4f,' % (dx0, dx1))
     print('  dy0:%.4f, dy1:%.4f,' % (dy0, dy1))
     print('  floorFrac:%.4f,   // the art is trimmed to the barn, so its base IS the ground'

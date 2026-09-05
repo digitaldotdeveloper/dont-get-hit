@@ -1842,7 +1842,7 @@ const rag = {
    door in the side of a red barn, and a chicken who is not remotely worried
    about any of it.
 
-   The scene is PAINTED (`sheets/v2/cage_scene.webp`), not drawn out of
+   The scene is PAINTED (`art/cage_scene.webp`), not drawn out of
    rectangles, and the door is its own sprite so it can buckle and then leave.
    Every number below is a fraction MEASURED off the art rather than guessed —
    which is what puts his feet on the straw instead of near it.
@@ -2100,7 +2100,7 @@ const CAGE = {
     CAGE.img = c; CAGE.ready = true;
   };
   im.onerror = ()=>{ CAGE.ready = false; };
-  im.src = 'sheets/v2/cage_scene.webp';
+  im.src = 'art/cage_scene.webp';
   const dr = new Image();
   dr.onload = ()=>{ CAGE.door = dr; };
   dr.src = 'art/cage_door.webp';

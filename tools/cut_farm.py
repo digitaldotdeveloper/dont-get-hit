@@ -12,6 +12,9 @@ sheets/v2. Run it from this directory:  python cut_farm.py
 It prints the FRAME_DATA rows for `kick` and `boom` rather than editing
 index.html, because the anchors there are worth a human's eyes.
 """
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import SHEETS, REF, AUDIOSRC, ROOT as GAME, sheets, need
 import json, os, sys
 import numpy as np
 from PIL import Image
@@ -21,7 +24,7 @@ from imglib import (key_green, despill, bbox, label, flood_split, fat_radius,
                     erode, key_sky)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SH   = os.path.join(ROOT, "sheets", "v2")
+SH   = sheets("v2")
 ANIM = os.path.join(ROOT, "anim")
 ART  = os.path.join(ROOT, "art", "farm")
 

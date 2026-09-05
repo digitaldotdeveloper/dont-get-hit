@@ -16,9 +16,12 @@
      python tools/bg_layers.py           # -> art/bg/far|mid|near.webp
 """
 import os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import SHEETS, REF, AUDIOSRC, ROOT as GAME, sheets, need
+import os, sys
 from PIL import Image
 
-SRC = 'sheets/v3'
+SRC = sheets('v3')
 OUT = 'art/bg'
 # (source file, layer name, how much of the left/right edge to search)
 LAYERS = [

@@ -24,12 +24,15 @@
      python tools/gen_truckfx.py           # queue and wait
      python tools/gen_truckfx.py --fetch   # just pull whatever is ready
 """
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import SHEETS, REF, AUDIOSRC, ROOT as GAME, sheets, need
 import os, sys, json
 sys.path.insert(0, r"C:\Users\it\Desktop\Gemini Prompt Sender\dashboard")
 from client import Studio
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, 'sheets', 'v2')
+OUT = sheets('v2')
 TOKEN = os.environ.get('GEMINI_STUDIO_TOKEN',
                        '4bb94235a6d0b1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8')
 
