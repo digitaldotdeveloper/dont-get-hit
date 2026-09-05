@@ -37,15 +37,36 @@ from PIL import Image                                      # noqa: E402
 
 SRC = sheets('v5')
 LIB = r"C:\Users\it\Desktop\Gemini Prompt Sender\dashboard\library"
-OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                   'art', 'ant')
+GAME = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# layer -> (words that must appear in the prompt, edge window for the seam search)
-WANT = {
-    'far':  ('FAR DISTANCE LAYER of a huge underground', 0.30),
-    'mid':  ('MIDDLE LAYER of a busy underground', 0.22),
-    'near': ('NEAR FOREGROUND LAYER: a bank of rich brown', 0.26),
+# world -> layer -> (words that must appear in the prompt, edge window)
+#
+# Three worlds, one cutter. `hang` is only listed where it was generated on its
+# own sheet; the ant empire does not have one, because its hanging roots come
+# from splitting the near layer (see split_row). Deep and lab draw theirs
+# separately -- there is more up there by then, and a pipe elbow does not belong
+# to the floor.
+WORLDS = {
+    'ant': {
+        'far':  ('FAR DISTANCE LAYER of a huge underground', 0.30),
+        'mid':  ('MIDDLE LAYER of a busy underground', 0.22),
+        'near': ('NEAR FOREGROUND LAYER: a bank of rich brown', 0.26),
+    },
+    'deep': {
+        'mid':  ('MIDDLE LAYER of the same busy underground ant city', 0.22),
+        'near': ('NEAR FOREGROUND LAYER: a bank of dark brown packed earth', 0.26),
+        'hang': ('ONLY things hanging DOWN from the top edge of the image, against', 0.26),
+    },
+    'lab': {
+        'far':  ('FAR DISTANCE LAYER inside an enormous high-tech', 0.30),
+        'mid':  ('MIDDLE LAYER inside a huge secret underground laboratory', 0.22),
+        'near': ('NEAR FOREGROUND LAYER: a bank of dark blue-grey industrial', 0.26),
+        'hang': ('ONLY things hanging DOWN from the top edge of the image against', 0.26),
+    },
 }
+WORLD = 'ant'
+WANT = WORLDS[WORLD]
+OUT = os.path.join(GAME, 'art', WORLD)
 
 
 def library_index():
@@ -73,29 +94,39 @@ def candidates():
     return out
 
 
-def split_row(im, lo=0.18, hi=0.86):
-    """The widest run of near-empty rows between lo and hi -> where to cut.
+def split_row(im, lo=0.30, hi=0.80):
+    """Where to cut the hanging half off the standing half.
 
-       Returns None when there is no gap, which is the honest answer for the
-       far layer: it is all one silhouette band and has nothing hanging."""
+       First version demanded a run of NEAR-EMPTY rows and that was too strict
+       the moment the art got busy: the deep layer has root tips and cable loops
+       dangling into the same band the bank occupies, so there is no empty row
+       anywhere and the whole frame came back as one tile -- which the near slot
+       then squashes to a quarter of its height.
+
+       So it looks for the QUIETEST row rather than an empty one: smooth the
+       per-row content count over a window and take the minimum inside the
+       middle band. There is always a quietest row, which is the point -- a
+       picture of things hanging above a floor always has a waist, even when
+       something crosses it."""
     w, h = im.size
     px = im.load()
-    empt = []
-    for y in range(int(h*lo), int(h*hi)):
-        n = sum(1 for x in range(0, w, 4) if px[x, y][3] > 40)
-        empt.append(n <= max(1, (w // 4) * 0.02))
-    best = cur = 0
-    beststart = curstart = None
-    for i, e in enumerate(empt):
-        if e:
-            if curstart is None: curstart = i
-            cur += 1
-            if cur > best: best, beststart = cur, curstart
-        else:
-            cur = 0; curstart = None
-    if best < h*0.06:
+    y0, y1 = int(h*lo), int(h*hi)
+    if y1 - y0 < 8:
         return None
-    return int(h*lo) + beststart + best // 2
+    count = []
+    for y in range(y0, y1):
+        count.append(sum(1 for x in range(0, w, 4) if px[x, y][3] > 40))
+    win = max(3, (y1 - y0)//12)
+    best, besti = None, 0
+    for i in range(len(count) - win):
+        avg = sum(count[i:i+win])/float(win)
+        if best is None or avg < best:
+            best, besti = avg, i
+    per = w/4.0
+    # a "waist" that is still 45% full is not a waist; that layer is one object
+    if best > per*0.45:
+        return None
+    return y0 + besti + win//2
 
 
 def save(im, name):
@@ -108,6 +139,13 @@ def save(im, name):
 
 
 def main():
+    global WORLD, WANT, OUT
+    for a in sys.argv[1:]:
+        if a in WORLDS:
+            WORLD = a
+    WANT = WORLDS[WORLD]
+    OUT = os.path.join(GAME, 'art', WORLD)
+    print('world: %s -> %s' % (WORLD, os.path.relpath(OUT, GAME)))
     pins = dict(a.split('=', 1) for a in sys.argv[1:] if '=' in a)
     cands = candidates()
 
@@ -131,6 +169,17 @@ def main():
         print('%-5s from %-28s seam %4d..%-4d score %d'
               % (name, os.path.basename(src)[-28:], b, a, score // 1000))
 
+        if name == 'hang':
+            # its own sheet already: everything hangs from y=0, so only the
+            # empty BOTTOM comes off. Trimming the top would cut it loose.
+            w, h = tile.size
+            px = tile.load()
+            last = 0
+            for y in range(h):
+                if any(px[x, y][3] > 40 for x in range(0, w, 5)):
+                    last = y
+            save(tile.crop((0, 0, w, min(h, last + 2))), 'hang')
+            continue
         cut = split_row(tile) if name != 'far' else None
         if cut:
             top = tile.crop((0, 0, tile.width, cut))
@@ -142,7 +191,10 @@ def main():
             if tb > 0.02:
                 bot = bot.crop((0, int(tb*bot.height), bot.width, bot.height))
             save(bot, name)
-            if name == 'near':
+            # Only the ant empire derives its hanging layer from the near
+            # sheet; deep and lab draw theirs on their own, and writing this
+            # one would overwrite the better version with the floor's offcuts.
+            if name == 'near' and 'hang' not in WANT:
                 # trim the hang tile's empty BOTTOM, it hangs from y=0
                 w, h = top.size
                 px = top.load()

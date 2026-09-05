@@ -556,14 +556,16 @@ const ZONES = [
 
   /* Deeper: the same city, colder and stranger, with the first
      things down here that ants have no business owning. */
-  { id:'deep', name:'DEEP ANT EMPIRE', start:2100, layers:'ant', ants:1, indoors:true,
+  { id:'deep', name:'DEEP ANT EMPIRE', start:2100, layers:'deep', ants:1, indoors:true,
+    cast:['antw','antt','antg'],
     theme:{ id:'deep', name:'DEEP ANT EMPIRE', sunR:0, sunGlow:0, vig:0.80,
       skyA:'#0D0A12', skyB:'#171326', skyC:'#2A1E33', skyD:'#4A2C3A', skyE:'#7A4438',
       sun:'#9FD8E8', far:'#3E2A2A', mid:'#5A3830', near:'#6E4534', prop:'#2A1A18',
       road:'#6E4426', roadLine:'#55341C', curb:'#472B16', rim:'#8FA8C0' } },
 
   /* The joke lands here: it was never a cave. */
-  { id:'lab', name:'SECRET ANT LAB', start:3000, layers:'ant', ants:1, indoors:true,
+  { id:'lab', name:'SECRET ANT LAB', start:3000, layers:'lab', ants:1, indoors:true,
+    cast:['antsci','antg','antt'],
     theme:{ id:'lab', name:'SECRET ANT LAB', sunR:0, sunGlow:0, vig:0.86,
       skyA:'#04080C', skyB:'#071620', skyC:'#0C2733', skyD:'#123A46', skyE:'#1C5462',
       sun:'#7FF2E0', far:'#16323C', mid:'#1E4450', near:'#265563', prop:'#0E2129',
@@ -5751,24 +5753,48 @@ const BG = [
    third world later is a fourth line here, not a fourth code path.
    `base` sits a little lower: underground the near bank should crowd the road
    more than a hedgerow does. */
-const BG_ANT = [
+/* THE UNDERGROUND GEOMETRY, shared by every world below the farm. All three
+   are the same kind of place -- a floor, a middle distance, a haze, and things
+   overhead -- so they get one set of numbers and differ only in their art. A
+   fourth world is one line in UNDER_SETS. */
+const UNDER_SLOTS = [
   { key:'far',  f:0.10, hf:0.150, base:-206 },
   { key:'mid',  f:0.26, hf:0.430, base:-150 },
   { key:'near', f:0.60, hf:0.232, base:  14 },
-  /* Roots and lanterns coming DOWN from the top of the world, anchored to the
-     ceiling instead of the ground -- the only layer in the game that is. It is
-     what frames the upper half of the screen without closing it: the brief's
-     hard rule is that Nugget can fly to the top, and every reference for this
-     world draws a solid roof across exactly the space he is meant to use.
+  /* Roots, pipes and lamps coming DOWN from the top of the world, anchored to
+     the ceiling instead of the ground -- the only slot in the game that is. It
+     is what frames the upper half of the screen without closing it: the hard
+     rule is that Nugget can fly to the top, and every reference for these
+     worlds draws a solid roof across exactly the space he is meant to use.
      Things that dangle say "there is a ceiling up there somewhere" while
      leaving the air between them free. */
   { key:'hang', f:0.60, hf:0.300, top:true },
 ];
-const LAYERSETS = { farm:BG, ant:BG_ANT };
+/* A world declares only the slots it actually OWNS. The rest are inherited at
+   draw time by slotFor(), which walks back through the zones behind it.
+   This is not just tidiness: a slot listed here is a file REQUESTED, and a
+   world that lists a slot nobody drew gets a 404 on every load. The deep city
+   deliberately has no haze of its own -- it is the same cavern as the empire,
+   seen from the same distance -- so it does not ask for one. */
+const underSet = keys => UNDER_SLOTS
+  .filter(o => keys.indexOf(o.key) >= 0)
+  .map(o => Object.assign({}, o));
 
-/* Loaded directly rather than through IMQ: six requests, and they are the six
-   that decide whether the game looks like anything at all. */
-[[BG,'art/bg/'], [BG_ANT,'art/ant/']].forEach(([set, dir]) => {
+const BG_ANT  = underSet(['far','mid','near','hang']);   // earth, wood, lanterns
+const BG_DEEP = underSet(['mid','near','hang']);         // ...with technology through it
+const BG_LAB  = underSet(['far','mid','near','hang']);   // ...and where it came from
+const LAYERSETS = { farm:BG, ant:BG_ANT, deep:BG_DEEP, lab:BG_LAB };
+// stamp each layer with the world it belongs to: drawLayerSlot now receives a
+// resolved LAYER rather than a set, and the spy pigeons are a farm thing
+Object.keys(LAYERSETS).forEach(k => LAYERSETS[k].forEach(L => { L.set = k; }));
+
+/* Loaded directly rather than through IMQ: these are the ones that decide
+   whether the game looks like anything at all. A world whose art has not been
+   made yet simply has no ready layers, and drawBgLayers falls back to the set
+   before it -- so an unfinished zone is a zone that still looks like the last
+   one, never a hole. */
+[[BG,'art/bg/'], [BG_ANT,'art/ant/'], [BG_DEEP,'art/deep/'], [BG_LAB,'art/lab/']]
+.forEach(([set, dir]) => {
   set.forEach(L => {
     L.img = new Image();
     L.img.onload = () => { L.ready = true; if(SCALE) buildLayers(); };
@@ -5875,8 +5901,7 @@ function drawField(alpha){
    drawn at all. It also paid for the two big layers twice a frame. */
 /* One slot of one layer set, tiled across the screen at its own parallax rate.
    `alpha` and `clip` are what the zone change is built out of. */
-function drawLayerSlot(set, key, alpha, clipL, clipR){
-  const L = set && set.find(x => x.key === key);
+function drawLayerSlot(L, key, alpha, clipL, clipR){
   if(!L || !L.ready || alpha <= 0.004) return false;
   const g = bgGeom(L);
   const off = ((cam.x*L.f) % g.W + g.W) % g.W;
@@ -5889,7 +5914,7 @@ function drawLayerSlot(set, key, alpha, clipL, clipR){
   if(alpha < 1) ctx.globalAlpha = alpha;
   for(let x = -off; x < VW + 1; x += g.W){
     ctx.drawImage(L.img, x, g.y, g.W, g.H);
-    if(key === 'mid' && set === BG) drawSpyPigeons(x, g.y, g.W, g.H);
+    if(key === 'mid' && L.set === 'farm') drawSpyPigeons(x, g.y, g.W, g.H);
   }
   if(alpha < 1 || clipped) ctx.restore();
   return true;
@@ -5916,11 +5941,24 @@ function drawLayerSlot(set, key, alpha, clipL, clipR){
    Fading BOTH ways (A out as B in) rather than laying B over A matters,
    because both sets are keyed art with an open top: laying one over the other
    leaves the farm's hills showing through the empire's sky forever. */
+/* The art for one SLOT of one zone, falling back through the zones behind it.
+   Per-slot rather than per-set on purpose: a world in progress usually has its
+   floor and its middle distance before it has its haze and its ceiling, and
+   borrowing only the missing pieces keeps it coherent. A world with nothing at
+   all simply looks like the place before it, which is wrong but whole; the
+   alternative is bare sky, which is broken. */
+function slotFor(zone, key){
+  for(let i = ZONES.indexOf(zone); i >= 0; i--){
+    const set = LAYERSETS[ZONES[i].layers];
+    const L = set && set.find(x => x.key === key);
+    if(L && L.ready) return L;
+  }
+  const L = BG.find(x => x.key === key);
+  return (L && L.ready) ? L : null;
+}
 function drawBgLayers(keys){
   const z = zoneAt(game.dist/UPM);
-  const A = LAYERSETS[z.a.layers] || BG;
-  const B = LAYERSETS[z.b.layers] || BG;
-  const same = A === B;
+  const same = z.a === z.b;
   const seam = z.seamM === Infinity ? Infinity : z.seamM*UPM - cam.x;
 
   for(const key of ['hang','far','mid','near']){
@@ -5928,15 +5966,23 @@ function drawBgLayers(keys){
     /* The green field band belongs to the farm and has to go with it, or the
        empire gets a strip of daylit meadow across its middle distance. */
     if(key === 'mid'){
-      // the daylit meadow band stops where the farm stops
-      if(same || seam > VW) drawField(1);
-      else if(seam > 0){
-        ctx.save(); ctx.beginPath(); ctx.rect(0, 0, seam, VH); ctx.clip();
-        drawField(1); ctx.restore();
+      /* The daylit meadow band is a FARM thing. Gating it on the seam alone
+         was not enough: past the mouth there is no seam on screen, so `same`
+         was true and it drew at full strength -- a bright green stripe across
+         the middle of an ant city. It is gated on outdoor() as well, which is
+         the thing that actually means "there is a sky here". */
+      const fq = outdoor();
+      if(fq > 0.004){
+        if(same || seam > VW) drawField(fq);
+        else if(seam > 0){
+          ctx.save(); ctx.beginPath(); ctx.rect(0, 0, seam, VH); ctx.clip();
+          drawField(fq); ctx.restore();
+        }
       }
     }
 
-    if(same || seam > VW + 2){ drawLayerSlot(A, key, 1); continue; }
+    const A = slotFor(z.a, key), B = slotFor(z.b, key);
+    if((same || seam > VW + 2) || A === B){ drawLayerSlot(A, key, 1); continue; }
     /* EVERY slot uses the spatial seam, including the distance.
        This was built as a cross-fade for far and mid first, on the reasoning
        that distance changes by haze and the seam is only about a second of
@@ -6256,23 +6302,56 @@ function drawProps(){
    same formation standing on it every time. That is what makes a
    route feel like a route rather than a shuffle. */
 const ANTART = {};
-['gate','hill1','hill2','hill3','sign_a','sign_arrow','sign_b','sign_wide']
+['gate','hill1','hill2','hill3','sign_a','sign_arrow','sign_b','sign_wide',
+ 'lab_door','plate_plain','plate_hazard','plate_screen','plate_chain']
   .forEach(n => {
     const im = new Image();
     imqLoad(im, 'art/ant/' + n + '.webp', ()=>{ ANTART[n] = im; }, ()=>{}, 'gp');
   });
 
+/* THE LANDMARKS THAT ARE DOORWAYS.
+   Each stands exactly on a zone boundary so the layer swap happens behind
+   something solid that the player is looking at and running into. That is the
+   whole reason the seam can cut hard and nobody sees a join -- and it is why
+   entering a new world needs no cutscene, no fall and no stop: you ran through
+   a door that was in your way. `zone` names the boundary it guards. */
+const GATEWAYS = [
+  { zone:'empire', art:'gate',     s:1.55, lift:10 },
+  /* Drawn BIG on purpose. The door sprite carries its own rectangle of earth
+     around it, and at a modest size you can see that rectangle's edges sitting
+     on the scene. Scaled past the screen width the edges leave the frame
+     entirely, which is the same trick the whole seam relies on: at the moment
+     of crossing, the doorway IS the view. */
+  { zone:'lab',    art:'lab_door', s:2.35, lift: 6 },
+];
+
 /* The jokes. Occasional, never a wall of them -- the brief's word is that
    finding one should be funny, and a sign every screen is signage. */
 const ANT_SIGNS = [
+  // --- the farm turning into somebody else's country
   { m: 705, art:'sign_a',     text:['ANT','TERRITORY'] },
   { m: 905, art:'sign_arrow', text:['EMPIRE','AHEAD']  },
   { m:1105, art:'sign_wide',  text:['NO CHICKENS']     },
+  // --- inside: a working civilisation with opinions
   { m:1330, art:'sign_b',     text:['SUGAR','STORAGE'] },
-  { m:1610, art:'sign_wide',  text:['WORK HARD.','STAY ANTSOME.'] },
-  { m:1880, art:'sign_b',     text:['QUEEN','ONLY']    },
-  { m:2260, art:'sign_wide',  text:['AUTHORIZED','ANTS ONLY'] },
-  { m:2620, art:'sign_a',     text:['DEEP','SECTOR']   },
+  { m:1520, art:'sign_wide',  text:['CRUMB STORAGE']   },
+  { m:1700, art:'sign_wide',  text:['WORK HARD.','STAY ANTSOME.'] },
+  { m:1900, art:'sign_b',     text:['QUEEN','ONLY']    },
+  // --- deeper, and the signage stops being about food
+  { m:2180, art:'plate_hazard', text:['SECTOR 7'],        ink:'#F2C14E' },
+  { m:2400, art:'plate_plain',  text:['MIND THE','CABLES'], ink:'#CBD5E0' },
+  { m:2660, art:'plate_hazard', text:['AUTHORIZED','ANTS ONLY'], ink:'#F2C14E' },
+  { m:2880, art:'plate_chain',  text:['NO DIGGING','BEYOND','THIS POINT'], ink:'#CBD5E0' },
+  /* --- and inside, the joke lands: they know his name.
+     Deliberately never explained. The brief's ask is curiosity, not a
+     backstory, so these are fragments a player reads at speed and assembles
+     for themselves. */
+  { m:3120, art:'plate_screen', text:['PROJECT','NUGGET'],  ink:'#7FF2E0' },
+  { m:3300, art:'plate_plain',  text:['SUBJECT','N-01'],    ink:'#CBD5E0' },
+  { m:3480, art:'plate_screen', text:['EGG TRIALS','DAY 412'], ink:'#7FF2E0' },
+  { m:3680, art:'plate_hazard', text:['CONTAINMENT'],       ink:'#F2C14E' },
+  { m:3900, art:'plate_screen', text:['HE IS','AWAKE'],     ink:'#7FF2E0' },
+  { m:4150, art:'plate_plain',  text:['DO NOT','FEED'],     ink:'#CBD5E0' },
 ];
 /* The mounds grow on the way in: two small, then bigger, then one the size of a
    barn door right before the entrance. That escalation is the whole "wait, how
@@ -6290,16 +6369,18 @@ const ANT_HILLS = [
 
 /* Lettering a blank board. Two lines at most, sized to fit the plank rather
    than a fixed point size, because the boards are four different widths. */
-function drawSignText(lines, w, h){
+function drawSignText(lines, w, h, ink){
   const pad = w*0.13;
   const size = Math.min(h*0.30, (w - pad*2) / Math.max(4, Math.max.apply(null, lines.map(l=>l.length))*0.60));
-  ctx.fillStyle = '#4A2E17';
+  ctx.fillStyle = ink || '#4A2E17';
+  if(ink && ink !== '#4A2E17'){ ctx.shadowColor = ink; ctx.shadowBlur = 14; }
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const lh = size*1.12, y0 = -lh*(lines.length-1)/2;
   for(let i=0;i<lines.length;i++){
     ctx.font = '900 ' + size.toFixed(1) + 'px Archivo, system-ui, sans-serif';
     ctx.fillText(lines[i], 0, y0 + i*lh);
   }
+  ctx.shadowBlur = 0;            // or every later draw inherits the glow
 }
 
 function drawZoneScenery(){
@@ -6320,13 +6401,12 @@ function drawZoneScenery(){
     put(ANTART[q.art], q.m, (GROUND/980)*0.62*q.s, 6);
   }
 
-  /* THE GATE. It stands exactly on the seam so the layer swap happens behind
-     an object the player is looking at and running into -- which is why the
-     near layer can cut hard there and nobody sees a join. */
-  const gm = ZONES.find(z2 => z2.id === 'empire').start;
-  if(gm >= left && gm <= right && ANTART.gate){
-    const s = (GROUND/980)*1.55;
-    put(ANTART.gate, gm, s, 10);
+  /* THE DOORWAYS. Each stands on its zone boundary, hiding the layer swap
+     behind something the player is running into. */
+  for(const g of GATEWAYS){
+    const zn = ZONES.find(z2 => z2.id === g.zone);
+    if(!zn || zn.start < left || zn.start > right) continue;
+    put(ANTART[g.art], zn.start, (GROUND/980)*g.s, g.lift);
   }
 
   for(const q of ANT_SIGNS){
@@ -6340,7 +6420,7 @@ function drawZoneScenery(){
     ctx.save();
     // the board face sits in the upper part of the art, above the post
     ctx.translate(sx, GROUND + 6 - h + h*0.32);
-    drawSignText(q.text, w*0.80, h*0.42);
+    drawSignText(q.text, w*0.80, h*0.42, q.ink);
     ctx.restore();
   }
 }
@@ -6366,7 +6446,7 @@ function drawZoneScenery(){
      THEY REACT. A guard flips to his startled frame when Nugget is
      close -- which is the cheapest possible way to say "you are not
      supposed to be in here" and it lands every time. */
-const ANT_FR = {"antw":[{"f":"ant/antw0.webp","w":200,"h":198,"ay":198},{"f":"ant/antw1.webp","w":204,"h":199,"ay":199},{"f":"ant/antw2.webp","w":200,"h":200,"ay":200},{"f":"ant/antw3.webp","w":196,"h":213,"ay":213},{"f":"ant/antw4.webp","w":194,"h":212,"ay":212},{"f":"ant/antw5.webp","w":197,"h":214,"ay":214}],"antc":[{"f":"ant/antc0.webp","w":163,"h":289,"ay":289},{"f":"ant/antc1.webp","w":177,"h":299,"ay":299},{"f":"ant/antc2.webp","w":213,"h":273,"ay":273},{"f":"ant/antc3.webp","w":155,"h":258,"ay":258}],"antg":[{"f":"ant/antg0.webp","w":266,"h":347,"ay":347},{"f":"ant/antg1.webp","w":316,"h":405,"ay":405}]};
+const ANT_FR = {"antw":[{"f":"ant/antw0.webp","w":200,"h":198,"ay":198},{"f":"ant/antw1.webp","w":204,"h":199,"ay":199},{"f":"ant/antw2.webp","w":200,"h":200,"ay":200},{"f":"ant/antw3.webp","w":196,"h":213,"ay":213},{"f":"ant/antw4.webp","w":194,"h":212,"ay":212},{"f":"ant/antw5.webp","w":197,"h":214,"ay":214}],"antc":[{"f":"ant/antc0.webp","w":163,"h":289,"ay":289},{"f":"ant/antc1.webp","w":177,"h":299,"ay":299},{"f":"ant/antc2.webp","w":213,"h":273,"ay":273},{"f":"ant/antc3.webp","w":155,"h":258,"ay":258}],"antg":[{"f":"ant/antg0.webp","w":266,"h":347,"ay":347},{"f":"ant/antg1.webp","w":316,"h":405,"ay":405}],"antsci":[{"f":"ant/antsci0.webp","w":182,"h":288,"ay":289},{"f":"ant/antsci1.webp","w":183,"h":289,"ay":289},{"f":"ant/antsci2.webp","w":206,"h":268,"ay":268},{"f":"ant/antsci3.webp","w":191,"h":311,"ay":311}],"antt":[{"f":"ant/antt0.webp","w":267,"h":290,"ay":290},{"f":"ant/antt1.webp","w":214,"h":290,"ay":290},{"f":"ant/antt2.webp","w":284,"h":290,"ay":290}]};
 const ANT_IMG = {};
 Object.keys(ANT_FR).forEach(set => ANT_FR[set].forEach(fr => {
   const im = new Image();
@@ -6412,25 +6492,38 @@ function drawAnts(){
     const sx = gx - cam.x;
     if(sx < -140 || sx > VW + 140) continue;
 
-    const kind = hash(i*8.1);
     const scale = 0.82 + hash(i*3.3)*0.5;
     const near = Math.abs(gx - px) < 420;
 
-    if(kind > 0.90 && ANT_FR.antg){
+    /* WHO WORKS HERE CHANGES AS YOU GO DOWN, and it is one of the quieter ways
+       the world tells the story: crumb-carriers in the empire, hard hats where
+       the pipes start, lab coats past the door. A cast entry whose art has not
+       been made yet is simply skipped, so a half-built zone is staffed by
+       whoever does exist rather than being empty. */
+    const cast = (zoneAt(m).a.cast || ['antw','antc','antg'])
+                 .filter(k => ANT_FR[k] && ANT_FR[k].length && ANT_IMG[ANT_FR[k][0].f]);
+    if(!cast.length) continue;
+    const who = cast[Math.floor(hash(i*8.1)*cast.length) % cast.length];
+    const set = ANT_FR[who];
+
+    if(who === 'antg'){
       /* A guard, and he notices. The startled pose is the entire reaction
          system: no state machine, no alert cone, just "is the chicken close". */
-      drawOneAnt(ANT_FR.antg[near ? 1 : 0], sx, scale*1.15, false);
-    } else if(kind > 0.58){
-      // a carrier, plodding the other way with something absurd on its head
-      const f = ANT_FR.antc[Math.floor(hash(i*6.9)*ANT_FR.antc.length) % ANT_FR.antc.length];
-      const walk = (game.t*1.4 + i) % 1;
-      drawOneAnt(f, sx + Math.sin(walk*TAU)*3, scale, hash(i*1.7) > 0.5);
-    } else {
+      drawOneAnt(set[near ? 1 : 0] || set[0], sx, scale*1.15, false);
+    } else if(who === 'antw'){
       // a worker on his rounds; the cycle runs off world position so a line of
       // them is not a chorus line all stepping together
-      const ph = ((gx*0.02 + game.t*7.5) % ANT_FR.antw.length + ANT_FR.antw.length)
-                 % ANT_FR.antw.length;
-      drawOneAnt(ANT_FR.antw[Math.floor(ph)], sx, scale, hash(i*5.5) > 0.62);
+      const ph = ((gx*0.02 + game.t*7.5) % set.length + set.length) % set.length;
+      drawOneAnt(set[Math.floor(ph)], sx, scale, hash(i*5.5) > 0.62);
+    } else {
+      /* carriers, hard hats and scientists are all "one pose, standing about
+         doing a job" -- the pose is picked off the position so it never
+         changes under you, and the last frame of the scientists is the
+         startled one, which he gets when the chicken is close. */
+      let f = Math.floor(hash(i*6.9)*set.length) % set.length;
+      if(who === 'antsci' && near) f = set.length - 1;
+      const bob = Math.sin((game.t*1.4 + i)*TAU) * (who === 'antc' ? 3 : 1.2);
+      drawOneAnt(set[f], sx + bob, scale, who === 'antc' && hash(i*1.7) > 0.5);
     }
   }
 }
@@ -6869,6 +6962,14 @@ function boot(){
   if(rt) game.presetRunT = parseFloat(rt[1]);   // jump to a difficulty tier
   const ds=/[?&]dist=([0-9.]+)/.exec(location.search);
   if(ds) game.presetDist = parseFloat(ds[1]);   // ...and to a distance, in metres
+  /* ?zone=empire|deep|lab -- the same thing said in the units a person thinks
+     in. Lands a little way INTO the zone rather than exactly on the boundary,
+     because standing on a seam shows you the doorway and not the place. */
+  const zq=/[?&]zone=([a-z]+)/.exec(location.search);
+  if(zq){
+    const z = ZONES.find(v => v.id === zq[1]);
+    if(z) game.presetDist = z.start + (z.id === 'farm' ? 0 : 90);
+  }
   if(/[?&]rig/.test(location.search)) game.rig = true;
   if(/[?&]align/.test(location.search)) game.align = true;
   if(/[?&]selftest/.test(location.search)){

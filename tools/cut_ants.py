@@ -39,6 +39,10 @@ JOBS = [
     ('SIX separate drawings of THE SAME single cartoon worker ant', 6, 'antw'),
     ('FOUR separate drawings of cartoon worker ants in a row',      4, 'antc'),
     ('TWO separate drawings of the same cartoon guard ant',         2, 'antg'),
+    # who works down there. The scientists' LAST frame is the startled one --
+    # drawAnts relies on that ordering to make them react to the chicken.
+    ('FOUR separate drawings of cartoon ant SCIENTISTS',            4, 'antsci'),
+    ('THREE separate drawings of cartoon worker ants in a row',     3, 'antt'),
 ]
 
 

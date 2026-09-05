@@ -35,6 +35,10 @@ JOBS = {
     'THREE separate drawings of an ant hill':         (3, ['hill1', 'hill2', 'hill3']),
     'FOUR separate weathered wooden signboards':      (4, ['sign_a', 'sign_arrow',
                                                            'sign_b', 'sign_wide']),
+    # the second doorway, and the signage on the other side of it
+    'ONE enormous industrial security door':         (1, ['lab_door']),
+    'FOUR separate industrial warning signs':        (4, ['plate_plain', 'plate_hazard',
+                                                          'plate_screen', 'plate_chain']),
 }
 
 

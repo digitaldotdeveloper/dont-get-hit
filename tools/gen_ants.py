@@ -71,6 +71,20 @@ LOOPS = ("The left edge and the right edge must match in height and content so t
 SEPARATE = ("The pictures are clearly separated by wide empty gaps of the flat "
             "background colour and must never touch or overlap each other. ")
 
+# DEEP EMPIRE AND THE LAB
+# -----------------------
+# The story the environment tells is "why do the ants have this?", and it only
+# works if the answer arrives LATE. So the deep zone is not a new place: it is
+# the SAME earth city with technology growing through it -- pipes bolted onto
+# chambers you have already run past, lanterns becoming caged bulbs, metal
+# plates set into the dirt. If it reads as a different world the question never
+# gets asked.
+#
+# The lab IS a different world, which is why it gets the only hard visual break
+# in the game: dark metal, cyan light, green glass. It still obeys the open top
+# -- ducts and cable runs and hanging lamps come down into frame, never a sealed
+# ceiling -- because the controls do not change just because the set does.
+
 GROUPS = {
     # ---------------------------------------------------------------- layers
     'layers': [
@@ -171,6 +185,129 @@ GROUPS = {
          "startled with the spear tilted and both antennae shot straight up in alarm. A "
          "sturdy dark red-brown ant with a small grey helmet and big white eyes. "
          + SEPARATE + GREEN),
+    ],
+    # ------------------------------------------------- deep: the tech creep
+    'deep': [
+        ('deep_mid',
+         STYLE_BG +
+         "MIDDLE LAYER of the same busy underground ant city built in packed earth, but "
+         "INDUSTRIALISED. A row of big rounded earth chambers along the bottom edge with "
+         "clear gaps between them, wooden beams supporting them -- and running across the "
+         "whole scene, bolted on top of the earth: fat grey metal pipes with flanged "
+         "joints, bundles of red and black electrical cables clipped to the walls, riveted "
+         "metal plates set into the dirt, a grey electrical box with a yellow hazard "
+         "triangle, and small red warning lamps. The warm lanterns are being replaced by "
+         "caged electric bulbs. Still mostly earth and wood, with the metal clearly ADDED "
+         "LATER by somebody else. The buildings occupy the BOTTOM TWO THIRDS only. "
+         + OPEN_TOP + LOOPS + MAGENTA),
+
+        ('deep_near',
+         STYLE_BG +
+         "NEAR FOREGROUND LAYER: a bank of dark brown packed earth along the BOTTOM of the "
+         "image only, about one quarter of the image height, with pale roots threading "
+         "through it -- and industrial equipment emerging from the soil: a thick grey metal "
+         "pipe running horizontally half-buried in the earth, a riveted steel plate set "
+         "into the bank, a bundle of cables snaking along the ground, and one small red "
+         "warning lamp. A few clusters of glowing cyan mushrooms. Strong saturated colour, "
+         "heavy black outlines. Above the bank, a few thick roots and one hanging cable "
+         "drop straight DOWN from the top edge as separate shapes with wide empty gaps. "
+         + OPEN_TOP + LOOPS + MAGENTA),
+
+        ('deep_hang',
+         STYLE_BG +
+         "ONLY things hanging DOWN from the top edge of the image, against completely empty "
+         "background, with WIDE EMPTY GAPS between them and nothing joining them across the "
+         "top: pale tree roots, a grey metal pipe elbow coming down and turning, bundles of "
+         "red and black cables looping down, and two caged industrial lamps with a warm "
+         "glow. Each shape hangs separately from the top edge and stops well before the "
+         "bottom. The BOTTOM HALF of the image is completely empty. " + LOOPS + MAGENTA),
+    ],
+
+    # ------------------------------------------------------ the lab itself
+    'lab': [
+        ('lab_far',
+         STYLE_BG +
+         "FAR DISTANCE LAYER inside an enormous high-tech underground laboratory, seen from "
+         "a long way off. Dark blue-grey metal gantries and walkways at several heights, "
+         "rows of tall glass cylinders lit from within, distant banks of screens as small "
+         "glowing rectangles, all in HAZY DARK SILHOUETTE with very low contrast and almost "
+         "no detail, lit by cold CYAN light. The structures occupy only the BOTTOM HALF. "
+         + OPEN_TOP + LOOPS + MAGENTA),
+
+        ('lab_mid',
+         STYLE_BG +
+         "MIDDLE LAYER inside a huge secret underground laboratory. A row of tall glass "
+         "cylindrical tanks standing side by side along the bottom edge with clear gaps "
+         "between them, each filled with glowing GREEN liquid and lit from below; between "
+         "them dark metal equipment cabinets, banks of computer monitors showing simple "
+         "glowing cyan graphs and diagrams, a robotic arm on a pedestal, and a metal "
+         "containment chamber with a round window. Dark blue-grey brushed metal, cold CYAN "
+         "lighting, green glass, small red and amber indicator lights. Clean stylised "
+         "cartoon, bright and readable, NOT horror. The equipment occupies the BOTTOM TWO "
+         "THIRDS only. " + OPEN_TOP + LOOPS + MAGENTA),
+
+        ('lab_near',
+         STYLE_BG +
+         "NEAR FOREGROUND LAYER: a bank of dark blue-grey industrial flooring along the "
+         "BOTTOM of the image only, about one quarter of the image height -- riveted metal "
+         "plates, a strip of yellow and black hazard chevrons, a low cable tray full of "
+         "cables, a grating vent glowing faintly cyan from below, and a couple of small "
+         "green-lit ports. Strong saturated colour, heavy black outlines. Above it, one "
+         "cable bundle and one thin pipe drop straight DOWN from the top edge as separate "
+         "shapes with wide empty gaps between them. " + OPEN_TOP + LOOPS + MAGENTA),
+
+        ('lab_hang',
+         STYLE_BG +
+         "ONLY things hanging DOWN from the top edge of the image against a completely "
+         "empty background, with WIDE EMPTY GAPS between them and nothing joining them "
+         "across the top: a square metal ventilation duct coming down and turning, bundles "
+         "of cables looping down, two long rectangular ceiling lamps glowing cold CYAN, a "
+         "small security camera on a bracket, and a thin robotic arm folded up. Each hangs "
+         "separately from the top edge and stops well before the bottom. The BOTTOM HALF of "
+         "the image is completely empty. " + LOOPS + MAGENTA),
+
+        ('lab_door',
+         STYLE_SP +
+         "ONE enormous industrial security door set into a wall of packed brown earth, seen "
+         "straight on from the side. A huge dark grey riveted metal double door with a "
+         "heavy frame, a thick yellow and black hazard chevron stripe along its base, a "
+         "small reinforced window, a red warning lamp glowing above it, a grey card-reader "
+         "panel beside it, and fat pipes and cable bundles running out of the earth into "
+         "the wall around it. The door is WIDER THAN IT IS TALL and its top does not reach "
+         "the top of the image. Through a gap between the doors a cold CYAN glow spills "
+         "out. " + GREEN),
+
+        ('lab_plates',
+         STYLE_SP +
+         "FOUR separate industrial warning signs in a row, all the same style, each with a "
+         "completely BLANK empty face and NO text and NO letters and NO symbols on it at "
+         "all: one a plain rectangular metal plate with rivets in the corners, one a wide "
+         "metal plate with a yellow and black hazard border, one a small square backlit "
+         "panel with a dark blank screen, and one a rectangular sign hanging from two short "
+         "chains. Dark grey brushed metal with clean edges. " + SEPARATE + GREEN),
+    ],
+
+    # -------------------------------------------------- the staff down here
+    'staff': [
+        ('ant_sci',
+         STYLE_SP +
+         "FOUR separate drawings of cartoon ant SCIENTISTS in a row, strict side view "
+         "facing RIGHT, all the same size and on the SAME horizontal ground line: the first "
+         "walking and carrying a clipboard, the second standing holding up a glass test "
+         "tube of glowing green liquid, the third looking through a small microscope on a "
+         "stand, the fourth standing startled with both antennae straight up and its "
+         "clipboard papers flying. Each is a friendly red-brown ant wearing a little white "
+         "lab coat and small round goggles, with big white eyes. Nothing on them is green "
+         "except the liquid in the tube. " + SEPARATE + GREEN),
+
+        ('ant_tech',
+         STYLE_SP +
+         "THREE separate drawings of cartoon worker ants in a row, strict side view facing "
+         "RIGHT, all the same size and on the SAME horizontal ground line, each doing "
+         "industrial work: the first walking while carrying a large wrench over its "
+         "shoulder, the second holding a small cable bundle in its front legs, the third "
+         "standing beside a low metal crate looking at a clipboard. Each is a red-brown ant "
+         "wearing a small yellow hard hat, with big white eyes. " + SEPARATE + GREEN),
     ],
 }
 

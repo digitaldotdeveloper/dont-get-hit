@@ -28,6 +28,7 @@ Open `index.html`. No build step, no dependencies.
     ?hit=1      draw the lethal shapes over the art
     ?ride=1     start already in the truck
     ?dist=N     start a run N metres in
+    ?zone=ID    jump to a world: farm terr empire deep lab
     ?obtest=1   check openings, spacing and transits
     ?sfx=1      render the sounds offline instead of playing them
     ?noboot=1   skip the loading gate (harnesses that drive runs directly)

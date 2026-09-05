@@ -1994,11 +1994,92 @@ sharp at any scale.
 
 ### Not built yet
 
-The zones and palettes for DEEP ANT EMPIRE (2100m) and SECRET ANT LAB (3000m)
-exist and are reachable, but they reuse the empire's layers — the industrial
-creep (pipes, cables, metal panels in dirt), transition 3 and the lab interior
-are not made. `tools/gen_ants.py` is where their prompts go; the pattern is
-already there.
+*(Superseded the same day -- deep empire and the lab are built; see the next
+section. Kept because "the pattern is already there" turned out to be the
+accurate part: the second and third worlds cost one prompt group and one
+cutter argument each.)*
+
+## Deep empire and the secret lab (2026-09-05, later)
+
+The progression is complete: farm → ant territory → ant empire → deep ant
+empire → secret ant lab. `?zone=farm|terr|empire|deep|lab` jumps to any of
+them; `?dist=N` is still the finer control.
+
+### The deep zone is not a new place, and that is the point
+
+The environmental question is *"why do the ants have this?"*, and it only gets
+asked if the answer arrives late. So the deep city is the SAME earth city with
+technology growing through it — pipes bolted onto chambers you have already run
+past, hazard boxes and warning lamps screwed into dirt walls, riveted plates set
+into the soil, and the warm lanterns replaced by caged electric bulbs. If it read
+as a different world nobody would wonder how it got there.
+
+The lab IS a different world, which is why it gets the only hard visual break in
+the game: dark blue metal, cold cyan light, green glass. It still obeys the open
+top — ducts, cable bundles, strip lamps and a security camera hang down into
+frame, never a sealed ceiling — because the controls do not change just because
+the set does.
+
+### Two doorways, one mechanism
+
+`GATEWAYS` replaced the single hardcoded gate. Each entry names a zone boundary
+and the art standing on it, so the layer seam always cuts behind something the
+player is running into. The lab door is drawn at **2.35x, deliberately past the
+screen edges**: the sprite carries its own rectangle of earth around it, and at
+a modest size you can see that rectangle's edges sitting on the scene. Scaled
+until the edges leave the frame, the doorway simply *is* the view at the moment
+of crossing — which is the same trick the seam itself relies on.
+
+### Per-slot fallback, and why a world declares its slots
+
+`slotFor(zone, key)` walks back through the zones behind a world for any slot it
+does not have. Per-slot rather than per-set, because a world in progress usually
+has its floor and its middle distance before it has its haze and its ceiling, and
+borrowing only the missing pieces keeps it coherent instead of showing bare sky.
+
+The other half of that: **a world lists only the slots it OWNS**, because a
+listed slot is a file REQUESTED. The deep city has no haze of its own — it is
+the same cavern as the empire, seen from the same distance — so it does not ask
+for one, and does not 404 on every load. That was a real 404 (nine of them)
+caught by the verify pass, not a hypothetical.
+
+### The bug the seam had been hiding
+
+`drawField()` paints the farm's daylit meadow band. It was gated on the seam
+only, which worked while a seam was on screen — and past the mouth there is no
+seam, so `same` was true and it drew at full strength: **a bright green stripe
+across the middle of an ant city**. Gated on `outdoor()` now, which is the thing
+that actually means "there is a sky here". A guard that only holds during the
+transition is not a guard.
+
+### The generator's failure mode at volume
+
+33 renders queued back to back came back roughly half failed — *"I can search
+for images, but can't create any right now"*, and one *"not signed in"*. It was
+**not quota** (4% of the daily window, checked). It is capacity, and it lands on
+whatever is at the end of the queue: the `staff` group finished with **zero**
+renders and had to be re-run on its own, after which it worked first time.
+
+So: **ask for 3 takes, queue big groups separately, and check what actually
+arrived rather than that the job exited 0.** `cut_*.py --list` is the check —
+it counts renders per prompt, and a zero there is the failure this produces.
+
+### `split_row` had to stop looking for empty
+
+The first version wanted a run of near-EMPTY rows to split the hanging half off
+the standing half. That was fine for the ant layer and useless the moment the art
+got busy: the deep layer has root tips and cable loops dangling into the same
+band the earth bank occupies, so there is no empty row anywhere and the whole
+frame came back as one tile — which the near slot then squashes to a quarter of
+its height. It looks for the QUIETEST row now, over a smoothed window. There is
+always a quietest row, which is the point: a picture of things hanging above a
+floor always has a waist, even when something crosses it.
+
+### Reaching it
+
+Zone starts are 0 / 560 / 1180 / 2100 / 3000 metres. At the speed curve that is
+around two and a half minutes of clean flying to reach the lab, which is a long
+way — the flags exist because nobody should have to earn it to look at it.
 
 
 ## Next
