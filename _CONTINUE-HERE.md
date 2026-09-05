@@ -1777,6 +1777,116 @@ bundled locally = **~7.6 MB of assets**, plus ~3 MB for a Capacitor/WebView
 wrapper, so **an APK around 10-11 MB** and an AAB nearer 8-9. At bundle time
 drop `audio/*.mp3` (Android has Opus natively) and `audio/src/`.
 
+## The loading gate, and the roof that would not shut up (2026-09-05)
+
+Three things, all reported as one complaint: *"remove the flying sound when I
+hold"*, *"the game progressively opens animation, they load a bit"*, and
+*"make sure the character and coins and obstacles and npc load before I start"*.
+
+### The flying sound was the ceiling, firing 35 times a second
+
+`S.flap` has been a deliberate no-op since 2026-09-05 and the wind bed **ducks**
+to 0.22 while you hold, so neither of them was it. What was actually playing:
+
+```
+held for 3s   →  {takeoff: 1, ceiling: 104, tick: 2}
+```
+
+Holding pushes `vy` negative again on every frame, so at the roof
+`if(p.vy < 0)` was true every frame, and the contact sound plus three feathers
+fired at the frame rate. At 35 a second a sound stops being a sound and becomes
+a texture you cannot stop hearing.
+
+**This is the exact bug the camera shake was already fixed for** — the comment
+above it explains that the roof "costs nothing, you hold against it for seconds,
+and it therefore fires over and over" — and the sound was left doing it.
+
+Now edge-triggered with hysteresis: it speaks once on arrival and cannot speak
+again until he has dropped `CEIL_CLEAR` (90 units, about his own body). A bare
+`wasTouching` flag is **not** enough — the bounce sets `vy` positive for a frame
+or two and he re-touches immediately, which flickers, and a flicker at this rate
+is the original bug back. Measured after: `{takeoff: 1, ceiling: 1, tick: 2}`.
+
+**Generally: any sound fired from a condition that a held button keeps true is
+a per-frame sound until proven otherwise.** Wrap `S` and count the calls —
+`tools/` has no harness for this because one probe answered it, but the shape is
+three lines of CDP over `?dbg=1`.
+
+### Nothing starts until the art is in
+
+Everything was already queued at boot; nothing was ever **waited for**. So the
+hazards drew as flat blocks, the neighbours popped into the field, and the
+chicken was a drawn rig until his frames landed — 20.2s for the first prop over
+the CDN, measured earlier.
+
+`LOAD` counts and `gateStart()` waits. The counting is the part worth
+understanding:
+
+**One property setter is intercepted — `src` on `HTMLImageElement.prototype` —
+so every image counts itself, wherever it is created.** A hand-written manifest
+was the obvious alternative and would have been wrong the first time somebody
+added a sprite; the image sources are spread over the frame queue, the prop
+lane, the parts, the backgrounds, the truck, the clouds, the cage and the
+cosmetics. The interception is the first thing in the file because it has to
+run before any image exists. It counts 186, which is exactly the game's image
+requests (191 total minus index.html, three audio files and the favicon).
+
+- The bar **only ever goes forward** (`shown = Math.max(shown, f)`): `total`
+  grows while the file is still executing, so a raw ratio steps backwards, and
+  a loading bar that goes backwards looks broken even when it is honest.
+- `thrustOn` returns early and the PLAY button is gated, so a press cannot start
+  a run against half an atlas. Verified: at 14s into a cold 2 Mbps load the mode
+  stayed `menu`.
+- **20s timeout.** A stalled asset must not lock a player out; past that it
+  starts with whatever arrived, which is the old behaviour and was survivable.
+- `?noboot=1` skips the wait, for harnesses that drive runs directly. Every
+  `tools/` probe needs it.
+
+Warm cache is ~110ms, so a returning player sees a flash, not a screen.
+
+### The art was 6-15x oversampled, and lossy is still the wrong answer
+
+`tools/shrink_art.py`. `part-shoe` was a 599px picture drawn at ~40 device
+pixels; `part-leg` 233x1024 drawn at 19. Thirteen files were 1.26MB of a 4.4MB
+payload. Target is derived, not guessed: `SCALE = min(CH/980, CW/1450)`, so 4K
+landscape gives 2.20 px per world unit — round to 2.3, x1.5 for the rig and the
+intro, **3.45 px per world unit**.
+
+The tempting alternative is to leave the resolution alone and encode lossy. It
+is worse, and the comparison only means anything **at the size the sprite is
+actually drawn**:
+
+```
+part-wing   resize 0.63 RMSE   lossy q90 1.40   both 2.60
+part-shoe          1.59                  0.78        4.48
+part-leg           0.94                  0.88        6.49
+```
+
+Cut-out art is the three things lossy WebP is worst at at once: hard ink
+outlines, flat cel fills, and an alpha edge. Resizing is near-invisible.
+
+**The four hats are the exception and prove the rule about looking first.** They
+were rejected by the sprite path for coming back RGB — because they are not
+sprites. They are opaque 1024x559 reference *renders* shown as picture cards by
+`chickens.html`, never composited, with no alpha at all. Photograph-shaped
+images get photograph treatment: 512px and q88, 92% off each. They are not in
+the game's payload.
+
+1261KB -> 341KB. Load at 2 Mbps went 16.95s -> 15.19s; the rest is the 3.5MB
+the game genuinely needs, so it is bandwidth-bound now rather than wasteful.
+
+### One thing found and NOT changed
+
+**The painted parts are a fallback that the gate has made nearly dead code.**
+`drawChicken` returns early when `FR.ready`, so the rig only draws when the
+frames have not arrived — and the gate now guarantees they have, before play.
+The parts are still downloaded every load. Instrumenting `drawImage` across the
+menu, intro, a run, a death and the ride recorded 100 images and **not one
+`part-*`**. Making them lazy would take ~290KB more off the critical path, but
+it removes the safety net at exactly the moment it exists for, so it wants its
+own change and its own test rather than a ride on this one.
+
+
 ## Next
 
 - Nothing spends the eggs yet.

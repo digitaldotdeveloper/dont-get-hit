@@ -157,6 +157,27 @@
      front of the bird, and the cage intro is a wide painted scene. Rather than
      re-lay everything out for a tall window, portrait asks for a turn and the
      run is frozen behind it, so rotating mid-run never costs a life. */
+  /* ---------- the loading screen ----------
+     z-index 50: over the menu, under the turn-your-phone gate at 60. It fades
+     rather than cutting, because the frame behind it is the painted cage and
+     a hard swap reads as a flash. `display:none` at the end of the fade so it
+     cannot eat the first press. */
+  #boot{position:fixed;inset:0;z-index:50;display:flex;
+        flex-direction:column;align-items:center;justify-content:center;gap:26px;
+        background:linear-gradient(172deg,#13284C,#3D1F55 58%,#150827);
+        text-align:center;padding:24px;transition:opacity .45s ease}
+  #boot.gone{opacity:0;pointer-events:none}
+  #boot .logo{transform:rotate(-2.5deg) scale(.86)}
+  .bootBar{width:min(58vw,320px);height:12px;border-radius:9px;
+           background:rgba(255,242,222,.16);
+           border:2px solid rgba(255,242,222,.30);overflow:hidden}
+  .bootBar i{display:block;height:100%;width:0%;border-radius:7px;
+             background:linear-gradient(90deg,var(--amber),var(--gold));
+             transition:width .25s ease}
+  .bootPct{margin:0;font-family:'Bungee',cursive;font-size:15px;
+           color:var(--gold);letter-spacing:.08em}
+  .bootWhat{margin:-14px 0 0;font-size:10px;font-weight:900;letter-spacing:.18em;
+            color:rgba(255,242,222,.62)}
   #rotate{position:fixed;inset:0;z-index:60;display:none;
           flex-direction:column;align-items:center;justify-content:center;gap:18px;
           background:linear-gradient(170deg,#13284C,#3D1F55 60%,#150827);
@@ -302,6 +323,16 @@
     <p>DON'T GET HIT PLAYS IN LANDSCAPE</p>
   </div>
 
+  <!-- Shown from the first paint and removed once the art is in. It sits over
+       #menu but UNDER #rotate, because a player holding the phone upright
+       should be told to turn it before being told to wait. -->
+  <div id="boot">
+    <div class="logo"><span class="l1">DON'T GET</span><span class="l2">HIT</span></div>
+    <div class="bootBar"><i id="bootFill"></i></div>
+    <p class="bootPct" id="bootPct">0%</p>
+    <p class="bootWhat" id="bootWhat">WAKING THE FARM</p>
+  </div>
+
   <pre id="selftest" style="position:fixed;left:0;top:0;z-index:99;color:#0f0;font:11px monospace;background:#000;margin:0;display:none"></pre>
   <div id="tut">
     <svg viewBox="0 0 24 24"><path d="M12 3v9"/><path d="m8.5 6.5 3.5-3.5 3.5 3.5"/><circle cx="12" cy="17" r="4"/></svg>
@@ -314,12 +345,65 @@
 'use strict';
 
 /* ============================================================
-   DON'T GET HIT — one-tap arcade runner
-   Everything is drawn procedurally: no image assets.
-   The character is a real skeletal rig (IK legs, FK arms,
-   spring-driven hair/jacket) so every animation is a pose,
-   not a sprite.
+   DON'T GET HIT — one-button arcade flyer
+   The character is a PAINTED HEAD ON A PROCEDURAL BODY: the
+   hat, comb, face and beak are cut art, the body, wings, tail
+   and legs are a real rig, so every animation is a pose rather
+   than a sprite. Around him is ~190 pieces of painted art.
    ============================================================ */
+
+/* ============================================================
+   THE LOADING GATE
+   ============================================================
+   The art used to arrive DURING the run. Everything is queued at
+   boot, but nothing was ever waited for, so a hazard drew as a flat
+   block until its prop landed, the neighbours popped into the field
+   a few seconds in, and the chicken himself was a drawn rig until
+   his frames caught up. Locally that is invisible; over the CDN the
+   first prop landed at 20.2s.
+
+   Every fallback in this file is still there and still correct --
+   art must never be able to make a hazard invisible -- but a fallback
+   is an emergency, not a loading strategy.
+
+   HOW IT COUNTS, and why it is done this way: the image sources are
+   spread over a dozen places (the frame queue, the prop lane, the
+   character parts, the backgrounds, the truck, the clouds, the cage,
+   the cosmetics) and a hand-written manifest of them would be wrong
+   the first time somebody adds a sprite. So instead ONE property
+   setter is intercepted -- `src` on HTMLImageElement -- and every
+   image the page will ever request counts itself, wherever it is
+   created and whenever it is added.
+
+   This must run before any image exists, which is why it is the
+   first thing in the file. */
+const LOAD = {
+  total: 0, done: 0, sealed: false, ready: false, t0: Date.now(),
+  /* A stalled asset must not be able to lock a player out of the game.
+     After this, whatever has arrived is what we start with -- back to the
+     old behaviour, which was survivable, rather than a dead screen. */
+  LIMIT_MS: 20000,
+  hit(){ LOAD.done++; },
+};
+(function trackEveryImage(){
+  const d = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+  if(!d || !d.set) return;                      // no interception, no gate: fail open
+  Object.defineProperty(HTMLImageElement.prototype, 'src', {
+    configurable: true, enumerable: d.enumerable,
+    get(){ return d.get.call(this); },
+    set(v){
+      /* Guarded, because a re-assigned src does not start a second load and
+         would otherwise inflate the total by one that can never complete. */
+      if(!this.__counted){
+        this.__counted = true;
+        LOAD.total++;
+        this.addEventListener('load',  LOAD.hit, {once:true});
+        this.addEventListener('error', LOAD.hit, {once:true});
+      }
+      d.set.call(this, v);
+    }
+  });
+})();
 
 /* ---------- tiny utils ---------- */
 const clamp = (v,a,b)=> v<a?a:(v>b?b:v);
@@ -3980,6 +4064,10 @@ function spawnPattern(){
    motion happens in one place in updatePlay. */
 let inputDown = false;
 function thrustOn(){
+  /* Nothing before the art is in. This is FIRST so it also covers the menu
+     press, which is the one that starts everything -- a run begun against a
+     half-loaded atlas is exactly the thing the gate exists to prevent. */
+  if(!LOAD.ready) return;
   inputDown = true;
   game.tapCount = (game.tapCount||0) + 1;        // counted at entry, for ?dbg=1
   if(game.mode==='menu'){ startIntro(); return; }
@@ -4123,6 +4211,7 @@ document.addEventListener('contextmenu', e=> e.preventDefault());
    which has already started the intro by the time the click lands, hence the
    mode check rather than a second startIntro(). */
 $('#play').addEventListener('click', ()=>{
+  if(!LOAD.ready) return;                        // same gate as the press
   audioInit(); S.click(); if(game.mode==='menu') startIntro(); });
 $('#retry').addEventListener('click', ()=>{
   S.click(); if(game.mode!=='intro') startQuick(); });
@@ -4916,6 +5005,10 @@ function updatePlay(dt){
   p.nearCool = Math.max(0, p.nearCool-dt);
   p.kickT = Math.max(0, (p.kickT||0)-dt);
   const ceilH = riding() ? rideCeil() : GROUND - CEIL;   // usable altitude, in world units
+  /* How far he has to drop off the roof before hitting it counts as arriving
+     again. Roughly his own body: big enough that the bounce cannot flicker it,
+     small enough that bumping the roof twice on purpose still sounds twice. */
+  const CEIL_CLEAR = 90;
 
   /* THE movement model. Gravity always pulls; holding adds constant upward
      thrust; releasing removes it that same frame. Drag makes velocity ease
@@ -4979,9 +5072,33 @@ function updatePlay(dt){
      which you hold against for seconds at a time, and which therefore fires it
      over and over -- devalues it everywhere else and makes a steady climb feel
      like a fault. The bounce, the sound and the feathers already say the roof
-     is there. */
-  if(p.y >= ceilH){ p.y = ceilH; if(p.vy<0){ p.vy *= -0.25;
-    S.ceiling(); featherBurst(p.x, GROUND-p.y+10, 3, 150); } }
+     is there.
+
+     AND THE SOUND HAD EXACTLY THE SAME BUG THE SHAKE WAS FIXED FOR. Holding
+     against the roof pushes vy negative again every single frame, so `vy < 0`
+     was true every frame, so this fired the ceiling rustle and three feathers
+     at the frame rate: MEASURED at 104 calls in three seconds of holding, ~35
+     a second. That is what "the flying sound when I hold" was -- not the wind
+     bed, not a wingbeat (that has been silent since 2026-09-05), but one
+     contact sound machine-gunning. At that rate it stops reading as a sound at
+     all and becomes a texture you cannot stop hearing.
+
+     So it is EDGE-TRIGGERED with hysteresis: it speaks once when he arrives,
+     and cannot speak again until he has come a body's length back down. A bare
+     `wasTouching` flag is not enough, because the bounce sets vy positive for a
+     frame or two and he re-touches immediately -- that flickers, and a flicker
+     at this rate is the bug again. CEIL_CLEAR is the distance he has to
+     actually leave by. */
+  const atCeil = p.y >= ceilH;
+  if(atCeil){
+    p.y = ceilH;
+    if(p.vy < 0){
+      p.vy *= -0.25;
+      if(!p.ceilOn){ p.ceilOn = true; S.ceiling(); featherBurst(p.x, GROUND-p.y+10, 3, 150); }
+    }
+  } else if(p.ceilOn && p.y < ceilH - CEIL_CLEAR){
+    p.ceilOn = false;                                // clear of it; the roof may speak again
+  }
 
   if(p.y <= 0){
     const impact = p.vy;
@@ -6165,10 +6282,65 @@ function frame(now){
 }
 
 /* boot */
+/* ============================================================
+   THE GATE ITSELF
+   ============================================================
+   By the time boot() runs, every loader in this file has already been
+   executed, so LOAD.total is the whole set and can be sealed. Until it
+   drains, the menu is behind the loading screen and the button does
+   nothing -- because "the character and the eggs and the obstacles and
+   the neighbours are all in before you play" is the entire point, and a
+   press that gets through would start a run against half an atlas.
+
+   `?noboot=1` skips the wait, for the shot and probe harnesses that
+   drive a run directly and do not want to sit through it. */
+function gateStart(){
+  LOAD.sealed = true;
+  const el   = document.getElementById('boot');
+  const fill = document.getElementById('bootFill');
+  const pct  = document.getElementById('bootPct');
+  const what = document.getElementById('bootWhat');
+  if(!el) { LOAD.ready = true; return; }
+  if(/[?&]noboot/.test(location.search)){ LOAD.ready = true; el.remove(); return; }
+
+  /* What it says while you wait. Not a lie about phases -- the queue is one
+     pool and finishes in whatever order the network allows -- but the bands
+     do match the order the lanes actually drain in. */
+  const say = f => f < 0.34 ? 'HATCHING THE CHICKEN'
+                 : f < 0.62 ? 'BUILDING THE FARM'
+                 : f < 0.86 ? 'WIRING THE FENCES'
+                            : 'LETTING THE ANIMALS OUT';
+  let shown = 0;
+  (function tick(){
+    const waited = Date.now() - LOAD.t0;
+    const f = LOAD.total ? LOAD.done / LOAD.total : 0;
+    /* The bar only ever goes forward. total grows while the file is still
+       executing, so a raw ratio can step backwards, and a loading bar that
+       goes backwards looks broken even when it is telling the truth. */
+    shown = Math.max(shown, f);
+    fill.style.width = (shown * 100).toFixed(1) + '%';
+    pct.textContent  = Math.round(shown * 100) + '%';
+    what.textContent = say(shown);
+
+    const drained = LOAD.total > 0 && LOAD.done >= LOAD.total;
+    if(drained || waited > LOAD.LIMIT_MS){
+      LOAD.ready   = true;
+      LOAD.waitMs  = waited;
+      LOAD.timedOut = !drained;
+      fill.style.width = '100%'; pct.textContent = '100%';
+      el.classList.add('gone');
+      setTimeout(()=>{ el.style.display = 'none'; }, 500);
+      return;
+    }
+    requestAnimationFrame(tick);
+  })();
+}
+
 function boot(){
   document.body.classList.toggle('poster', POSTER_TITLE);
   resize();
   toMenu();
+  gateStart();
   requestAnimationFrame(frame);
   // dev helper: index.html?auto=1 drops you straight into a run
   if(/[?&]auto/.test(location.search)) setTimeout(startIntro, 60);
@@ -6190,7 +6362,7 @@ function boot(){
     startRide, loseRide, spawnBasketDrop, spawnElec, spawnPattern, spawnEggs,
     layRideCourse, rideApex, rideRise, rideCeil, truckGeom, truckFrame,
     elecDist, riding, wireHot, smoke, spark, pop, updateParticles, render,
-    worldSpeed, distSpeed, rideAir, rideImpulse, rideJump, UPM };
+    worldSpeed, distSpeed, rideAir, rideImpulse, rideJump, UPM, LOAD };
   const it=/[?&]introt=([0-9.]+)/.exec(location.search);
   if(it){ game.holdIntro = parseFloat(it[1]); }   // freeze the intro to look at a beat
   const sl=/[?&]slow=([0-9.]+)/.exec(location.search);

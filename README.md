@@ -30,6 +30,7 @@ Open `index.html`. No build step, no dependencies.
     ?dist=N     start a run N metres in
     ?obtest=1   check openings, spacing and transits
     ?sfx=1      render the sounds offline instead of playing them
+    ?noboot=1   skip the loading gate (harnesses that drive runs directly)
 
 The full list is in `_CONTINUE-HERE.md`. Controls: tap / click / <kbd>Space</kbd>.
 Portrait shows a turn-your-phone gate and freezes the run.
