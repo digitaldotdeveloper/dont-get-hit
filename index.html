@@ -1880,7 +1880,16 @@ const rag = {
                basket drops away, and there is a moment of grace before the
                bird is solid again.
    ============================================================ */
-const RIDE_TIME = 22, RIDE_GRACE = 0.85, RIDE_EVERY = [17, 26];
+/* THE RIDE HAS NO CLOCK. It used to run out after 22 seconds, which is a
+   second way to lose a thing that already had one -- and the wrong way round:
+   a countdown takes the truck off you for nothing you did, in the middle of a
+   stretch you were driving perfectly, and the only signal it gives is that it
+   is over. Losing it to a hay wagon is a mistake you can see, learn and avoid.
+   So the truck lasts exactly as long as you keep it on the road.
+
+   `game.ride` is still the flag (`riding()` is `game.ride > 0`); it is simply
+   set to a number nothing counts down any more. */
+const RIDE_ON = 1, RIDE_GRACE = 0.85, RIDE_EVERY = [17, 26];
 /* It DRIVES. Gravity at full strength and almost no drag, because the arc of a
    jump is the whole feel of a ground vehicle and drag is what turns a jump
    into a float. There is no thrust at all -- holding does nothing, the press
@@ -1961,12 +1970,50 @@ const CLEAR_RIDE = 560;
 
    `fl` is how hard that frame is burning -- hardest on the launch, nearly out
    on the landing, which is most of what makes four stills read as one jump. */
+/* `wheels` is where the NEAR wheels sit in each frame -- centre and tyre
+   radius, as fractions of that frame's own picture. Found by looking for the
+   red rims and then casting a fan of rays downward from each centre to the
+   edge of the artwork, taking the median: the wheels are the lowest thing in
+   every pose, so the downward half of the fan can only exit at the tyre.
+
+   Only the near pair. Each axle is drawn as two overlapping wheels and the far
+   one is a dark shape behind the near one; spinning a wheel nobody can make out
+   would cost the same and show nothing. */
 const TRUCK_FR = [
-  { n:'truck_drive',  w:815, h:860, px:0.030, py:0.447, rot: 0.00, fl:1.00 },
-  { n:'truck_launch', w:854, h:963, px:0.075, py:0.575, rot:-0.30, fl:1.55 },
-  { n:'truck_air',    w:754, h:911, px:0.010, py:0.490, rot:-0.06, fl:1.20 },
-  { n:'truck_land',   w:764, h:793, px:0.040, py:0.475, rot: 0.26, fl:0.65 },
+  { n:'truck_drive',  w:815, h:860, px:0.030, py:0.447, rot: 0.00, fl:1.00,
+    wheels:[[0.1344,0.8424,0.1638],[0.6681,0.8430,0.1656]] },
+  { n:'truck_launch', w:854, h:963, px:0.075, py:0.575, rot:-0.30, fl:1.55,
+    wheels:[[0.3460,0.8718,0.1411],[0.7611,0.6360,0.1458]] },
+  { n:'truck_air',    w:754, h:911, px:0.010, py:0.490, rot:-0.06, fl:1.20,
+    wheels:[[0.1459,0.8600,0.1678],[0.6479,0.8375,0.1724]] },
+  { n:'truck_land',   w:764, h:793, px:0.040, py:0.475, rot: 0.26, fl:0.65,
+    wheels:[[0.1348,0.8903,0.1270],[0.6407,0.9067,0.1185]] },
 ];
+/* THE WHEEL IS ONE PICTURE AND A ROTATION, not a cycle of frames. A roll is
+   exact at any angle, so baking twelve stills of one would be bigger, blurrier
+   between the stills, and wrong at every speed that is not the one they were
+   timed for. `game.dist` drives it, so the tread turns at exactly the rate the
+   road goes past -- which is the whole difference between a vehicle and a
+   sticker, and it keeps turning in the air because a wheel does.
+
+   Six flame frames, because fire has no rule to solve. They replace three
+   quadratic curves drawn in code, which was fine as a flicker and nothing like
+   the painted art it comes out of. */
+const WHEEL = { img:new Image(), ready:false };
+WHEEL.img.onload = () => { WHEEL.ready = true; };
+WHEEL.img.src = 'art/fx/wheel.webp';
+const FLAME_FR = [
+  { w:545, h:217, ay:109.5 }, { w:529, h:251, ay:122.5 }, { w:538, h:238, ay:120.0 },
+  { w:568, h:247, ay:124.5 }, { w:507, h:260, ay:123.0 }, { w:473, h:226, ay:113.5 },
+];
+const FLAME_W0 = 527;                  // the median frame width, so `len` means length
+const FLAME = { ready:false, n:0 };
+FLAME_FR.forEach((f, i) => {
+  const im = new Image();
+  im.onload = () => { if(++FLAME.n >= FLAME_FR.length) FLAME.ready = true; };
+  im.src = 'art/fx/flame' + i + '.webp';
+  f.img = im;
+});
 const TRUCK = { ready:false, n:0 };
 TRUCK_FR.forEach(f => {
   const im = new Image();
@@ -4119,7 +4166,7 @@ function startRun(){
   game.speed=340*PACE; game.diff=0; game.spawnT=2.6; game.cornT=0; game.goT=0;
   game.obstacles.length=0; game.parts.length=0; game.pops.length=0; game.ui.length=0;
   game.eggs.length=0; game.eggT=1.6; game.runEggs=0; game.eggStreak=0;
-  game.ride=game.forceRide?RIDE_TIME:0; game.rideGrace=0; game.drop=null; game.npcHit={};
+  game.ride=game.forceRide?RIDE_ON:0; game.rideGrace=0; game.drop=null; game.npcHit={};
   game.gridT=1; game.rideTeach=0;        // the power is on again at the top of a run
   game.dropT=game.forceRide?1e9:rnd(9, 14);
   game.crows.length=0; game.crowT=5*CROW_GAP; game.crowN=0; game.crowWait=0;
@@ -4184,7 +4231,7 @@ function spawnBasketDrop(){
   return false;
 }
 function startRide(){
-  game.ride = RIDE_TIME; game.rideGrace = 0;
+  game.ride = RIDE_ON; game.rideGrace = 0;
   game.drop = null;
   /* Straight down onto the road: it is a ground vehicle, and being handed one
      in mid-air with no way to fly it is a worse surprise than the drop. */
@@ -4405,13 +4452,7 @@ function updateRide(dt){
     }
   }
   game.rideGrace = Math.max(0, (game.rideGrace||0) - dt);
-  if(riding()){
-    game.ride -= dt;
-    if(game.ride <= 0){ game.ride = 0; game.rideGrace = RIDE_GRACE*0.6;
-      pop(player.x, GROUND - player.y - 230, 'POP!', C.coral, 44, -60);
-      featherBurst(player.x, GROUND - player.y - 120, 6, 200); }
-    return;
-  }
+  if(riding()) return;      // it ends when it is hit, and only then
   // not riding: count down to the next one, and float the pickup along
   if(game.drop){
     const d = game.drop;
@@ -4455,9 +4496,20 @@ function drawTruck(){
   ctx.save();
   ctx.translate(L + f.px*w, T + f.py*h);
   ctx.rotate(f.rot);                    // the pipes tilt with the rig; so does the fire
-  drawExhaust(0, 0, g.tw*0.42*flameLen()*f.fl);
+  drawExhaust(0, 0, g.tw*0.62*flameLen()*f.fl);
   ctx.restore();
   if(TRUCK.ready) ctx.drawImage(f.img, L, T, w, h);
+  /* The wheels go on LAST, over the ones painted into the frame. Drawn a touch
+     proud of the measured tyre so the moving tread covers the still one's
+     outline rather than leaving a dark ring turning inside a dark ring. */
+  if(WHEEL.ready) for(const wl of f.wheels){
+    const r = wl[2]*w*1.045;
+    ctx.save();
+    ctx.translate(L + wl[0]*w, T + wl[1]*h);
+    ctx.rotate(game.dist / (wl[2]*w));       // rolling, at the rate the road passes
+    ctx.drawImage(WHEEL.img, -r, -r, r*2, r*2);
+    ctx.restore();
+  }
 }
 /* 0..1 of a truck length, pulsing, and longer for the moment after a jump --
    the whole point of a monster truck is that the noise comes out of the back. */
@@ -4477,6 +4529,21 @@ function flameLen(){
    one. */
 function drawExhaust(x, y, len){
   if(len <= 0) return;
+  /* PAINTED FIRE where there is any. The frames are anchored on their ROOT --
+     the blunt bright end that sits in the pipe -- so the flame grows and
+     shrinks out of the nozzle instead of sliding in and out of it, which is
+     what anchoring on a bounding box does when the tip is the part that moves.
+     12Hz, which is fast enough to boil and slow enough to read.
+
+     The drawn version below is the fallback for the frames that go past before
+     the images land, and it is worth keeping for that: a truck with no fire at
+     all for the first second reads as broken. */
+  if(FLAME.ready){
+    const f = FLAME_FR[Math.floor(game.t*12) % FLAME_FR.length];
+    const k = len / FLAME_W0;
+    ctx.drawImage(f.img, x - f.w*k, y - f.ay*k, f.w*k, f.h*k);
+    return;
+  }
   const gap = Math.max(5, len*0.15), h = Math.max(5, len*0.17);
   for(let k = -1; k <= 1; k++){
     const w = len*(1 - Math.abs(k)*0.22), yy = y + k*gap;
@@ -4906,7 +4973,14 @@ function updatePlay(dt){
     if(!p.onGround && p.vy < -60 && p.glideT <= 0){ S.glide(); p.glideT = 0.42; }
   }
 
-  if(p.y >= ceilH){ p.y = ceilH; if(p.vy<0){ p.vy *= -0.25; addShake(3);
+  /* The roof bounces him and says so, but it does NOT shake the camera. A
+     screen shake is the game's word for "that hurt", and it is spent on the
+     hits and the landings; spending it on the ceiling -- which costs nothing,
+     which you hold against for seconds at a time, and which therefore fires it
+     over and over -- devalues it everywhere else and makes a steady climb feel
+     like a fault. The bounce, the sound and the feathers already say the roof
+     is there. */
+  if(p.y >= ceilH){ p.y = ceilH; if(p.vy<0){ p.vy *= -0.25;
     S.ceiling(); featherBurst(p.x, GROUND-p.y+10, 3, 150); } }
 
   if(p.y <= 0){
