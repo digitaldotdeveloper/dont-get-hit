@@ -3043,6 +3043,48 @@ against the mechanism, not a fix for a diagnosed fault. If it recurs, the
 question that splits it is whether the OTHER samples go quiet at the same time
 -- all of them means the audio context, only the gate means the timing race.
 
+### The dynamite is priced off the run it is ending
+
+A flat 250 bought the same thousand metres whether you died at 200 or at 2,000,
+and that is the wrong way round twice over. **At the top of a good run those
+metres are the ones you actually want** -- they are the ones between you and a
+best -- and at the bottom of a bad one they were the cheapest score in the game.
+
+`TNT[i].cost` is the FLOOR now. `tntMul()` is `1 + reached/1000`, capped at
+`TNT_CAP` (4), and `tntCost(i)` rounds the product to ten.
+
+| died at | +500 | +750 | +1,000 |
+|---|---|---|---|
+| 0 m | 250 | 450 | 700 |
+| 500 m | 380 | 680 | 1,050 |
+| 1,000 m | 500 | 900 | 1,400 |
+| 2,000 m | 750 | 1,350 | 2,100 |
+| 3,000 m+ | 1,000 | 1,800 | 2,800 |
+
+Three properties, each load-bearing:
+
+- **Never cheaper than it was.** The multiplier floors at 1, so scaling the
+  price cannot accidentally turn a short run into a bargain -- which is the
+  failure mode of every "price it off the run" scheme that scales in both
+  directions.
+- **Capped.** Without `TNT_CAP` a 6,000 m run prices the top tier past anything
+  a player could have banked, and an offer nobody can take is the same as no
+  offer, except it looks like the game taunting you.
+- **Rounded to ten**, so the button reads as a price rather than as a
+  calculation. 1,347 is arithmetic; 1,350 is a price.
+
+**The multiplier goes on the label** -- `ONE LAST BANG x3.0`. A price that moves
+between runs and does not say why reads as the shop being unreliable.
+
+**`deathTnt` charges `tntCost(i)`, the same function the button was drawn
+from.** The trolley already taught that lesson the hard way: a price computed
+twice is a price that comes apart, and it stays self-consistent on screen the
+whole time it is wrong. The test asserts the exact amount taken against the
+exact string rendered, for the same reason.
+
+The floor row of that table is unreachable, incidentally -- `deathOffer` needs
+100 m before it shows anything, so the cheapest real price is x1.1.
+
 ## Next
 
 - **Nothing spends the eggs yet** -- the shop exists and none of it
