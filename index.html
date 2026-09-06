@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#241043">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="description" content="One tap. Don't get hit. A fast arcade runner.">
 <title>Don't Get Hit</title>
 <link rel="preload" as="image" href="art/title.webp">
@@ -1318,23 +1321,75 @@ function resize(){
   buildLayers();
 }
 window.addEventListener('resize', resize);
-window.addEventListener('orientationchange', ()=> setTimeout(resize,120));
-/* A phone will only honour an orientation lock from inside fullscreen, and only
-   off a user gesture, so this is best-effort and every failure is ignored: the
-   #rotate gate is what actually guarantees landscape. Desktop is left alone. */
-let orientTried = false;
-function lockLandscape(){
-  if(orientTried || !TOUCH) return; orientTried = true;
+
+/* ---------- Immersive landscape ----------
+   Turning the phone sideways is meant to be the whole gesture: the browser
+   chrome gets out of the way, the orientation pins, and nothing has to be
+   tapped. The Fullscreen spec allows a request triggered by a *user generated
+   orientation change* as well as by a user gesture, so the request is made
+   synchronously inside the orientation handler -- deferring it behind a
+   setTimeout is exactly what throws the permission away. A phone also only
+   honours an orientation lock from inside fullscreen, so the lock is chained
+   onto the request rather than attempted on its own.
+
+   All of it is best-effort and every failure is swallowed: iPhone Safari has no
+   element fullscreen at all, and there the #rotate gate is still what
+   guarantees landscape. Desktop is left alone. */
+function isLandscape(){
+  const o = screen.orientation && screen.orientation.type;
+  if(o) return o.indexOf('landscape') === 0;
+  if(typeof window.orientation === 'number') return Math.abs(window.orientation) === 90;
+  return window.innerWidth > window.innerHeight;
+}
+function inFullscreen(){
+  return !!(document.fullscreenElement || document.webkitFullscreenElement);
+}
+/* A player who deliberately swipes out of fullscreen is not dragged back in by
+   their next flap -- only by turning the phone again, which is a fresh
+   statement of intent. `lockDone` keeps the common case (already immersive,
+   and audioInit runs on every single touch) down to one comparison. */
+let fsOptOut = false, lockDone = false;
+function goImmersive(){
+  if(!TOUCH || fsOptOut || !isLandscape()) return;
+  if(inFullscreen() && lockDone) return;
+  const lock = () => {
+    lockDone = true;
+    try{ if(screen.orientation && screen.orientation.lock)
+           screen.orientation.lock('landscape').catch(()=>{}); }catch(e){}
+  };
+  if(inFullscreen()){ lock(); return; }
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if(!req){ lock(); return; }
   try{
-    const el = document.documentElement;
-    const go = () => { try{ screen.orientation.lock('landscape').catch(()=>{}); }catch(e){} };
-    if(screen.orientation && screen.orientation.lock){
-      if(document.fullscreenElement) go();
-      else if(el.requestFullscreen) el.requestFullscreen().then(go).catch(go);
-      else go();
-    }
+    const p = req.call(el, {navigationUI:'hide'});
+    if(p && p.then) p.then(lock, ()=>{}); else lock();
   }catch(e){}
 }
+function lockLandscape(){ goImmersive(); }   // the first-gesture path, from audioInit
+
+/* Both the modern and the legacy event fire for one physical turn; either is a
+   valid trigger, so take whichever lands first and ignore its twin. */
+let lastOrient = 0;
+function onOrient(){
+  const now = Date.now();
+  if(now - lastOrient < 500) return;
+  lastOrient = now;
+  fsOptOut = false;          // a physical turn re-arms it
+  goImmersive();             // synchronous -- this call is the allowed trigger
+  setTimeout(resize, 120);   // the viewport is only correct a beat later...
+  setTimeout(resize, 450);   // ...and again once the fullscreen transition lands
+}
+window.addEventListener('orientationchange', onOrient);
+try{ if(screen.orientation && screen.orientation.addEventListener)
+       screen.orientation.addEventListener('change', onOrient); }catch(e){}
+
+function onFsChange(){
+  if(!inFullscreen()){ fsOptOut = true; lockDone = false; }
+  resize();
+}
+document.addEventListener('fullscreenchange', onFsChange);
+document.addEventListener('webkitfullscreenchange', onFsChange);
 
 /* ============================================================
    AUDIO — everything synthesised, no files
@@ -1649,7 +1704,7 @@ function vroom(len, rpm0, rpm1, vol, at, o){
    sits down near a footstep. Anything that changes these should render the
    table again and compare, rather than nudging a number. */
 const ENG_BED_VOL = 0.075;   // the synth bed: four oscillators, thin
-const ENG_BED_SMP_VOL = 0.11;  // a real engine recording, which is not
+const ENG_BED_SMP_VOL = 0.145;  // a real engine recording, which is not
 const ENG = { g:null, osc:null, nz:null, clf:null, bp:null, rev:0, rate:false };
 
 function engineBedOn(){
@@ -2267,22 +2322,18 @@ const S = {
   },
 
   truckjump(){
-    /* DUCK THE RIFF FOR A QUARTER SECOND. Making the engine louder or brighter
-       is guesswork against a moving target -- the riff is a full mix and the
-       vroom is four oscillators, and whether one masks the other depends on
-       the bar. Sidechaining is the answer the whole audio industry already
-       reached: get out of the way for the length of the hit, and the hit is
-       audible whatever it is playing over.
-       `rideDuck` is read by trackTick; 0.25s is short enough that the music
-       reads as pumping with the truck rather than as dropping out. */
-    game.rideDuck = 0.25;
-    /* THE SAMPLE IS THE MECHANICS, THE ROAR IS THE MUSIC. The generated take
-       is a suspension thump -- good, and completely untuned, because nothing
-       told Gemini what key to be in. So it is LAYERED rather than returned
-       from: the thump gives the jump its weight, and the roar over it climbs
-       a fifth off the truck's own D onto A, the note the riff leans on
-       hardest after the root. A rising fifth is the oldest trick there is for
-       making something sound like it is going up. */
+    /* NO SIDECHAIN. The riff used to duck to 30% for a quarter second on every
+       jump, and that was the right answer to a problem that no longer exists:
+       the engine was four oscillators fighting a full mix in the same octave,
+       could not be heard however loud it got, and getting the music out of the
+       way for the length of the hit is what the whole industry does about
+       that. Since then the engine became a real recording and then, twice
+       over, a deliberately quiet one -- so the duck was pulling the music down
+       to make room for something that is no longer asking for room. What the
+       player heard was the music dipping on every jump for no reason they
+       could hear, which is worse than the masking it was invented to fix.
+       Removed rather than shortened: nothing sets rideDuck now, so its reader
+       in trackTick went with it. */
     /* THE JUMP IS THE PICKUP SOUND AGAIN, at the user's instruction -- the
        same engine recording that plays when the truck is collected. One key
        for both, so a jump restarts the engine rather than layering a second
@@ -2296,7 +2347,7 @@ const S = {
        the ear stops hearing within seconds; a jump is an event, arriving
        against that floor, and an event at the floor's own energy stands well
        above it. Halved again, to sit under the engine it is layered over. */
-    if(playSample('truckget', 0.040, 1, 'truck')) return;
+    if(playSample('truckget', 0.055, 1, 'truck')) return;
     tone(52, 0.18, 'sine', 0.20, 30);                        // the springs unloading
     vroom(0.60, RIFF_HZ*0.7, RIFF_HZ*1.5, 0.38, 0, {rise:0.35, drive:3.6})
   },
@@ -2522,15 +2573,11 @@ function trackTick(dt){
     game.rideMusicT -= dt;
     if(game.rideMusicT <= 0 && musicNow === 'ride') rideWanted = 0.60;
   }
-  let duck = 1;
-  if(game.rideDuck > 0){ game.rideDuck -= dt; duck = 0.30; }
-
   if(RIDE_TRACK){
     // held down for RIDE_MUSIC_WAIT after the pickup so the engine is heard
     // first, then quick, so it arrives with the truck rather than catching up
-    const rt = (A.on ? rideWanted : 0) * duck;
-    // 4.5/s could not complete a 0.25s duck; the dip has to be faster than
-    // the thing it is making room for
+    const rt = A.on ? rideWanted : 0;
+    // fast, so the riff arrives with the truck rather than catching it up
     RIDE_TRACK.volume = clamp(RIDE_TRACK.volume + (rt - RIDE_TRACK.volume) * Math.min(1, dt*11), 0, 1);
     /* SELF-HEALING, because the hold pauses it. The engine hold takes rideWanted
        to 0 for 0.85s, the volume follows it to zero, and the line below then
@@ -5972,7 +6019,7 @@ function startRun(){
   game.obstacles.length=0; game.parts.length=0; game.pops.length=0; game.ui.length=0;
   game.eggs.length=0; game.eggT=1.6; game.runEggs=0; game.eggStreak=0;
   game.ride=game.forceRide?RIDE_ON:0; game.rideGrace=0; game.drop=null; game.npcHit={};
-  game.rideDuck=0; game.rideMusicT=0;
+  game.rideMusicT=0;
   game.gridT=1; game.rideTeach=0;        // the power is on again at the top of a run
   game.dropT=game.forceRide?1e9:rnd(9, 14)*PERK.dropRate();
   game.crows.length=0; game.crowT=5*CROW_GAP; game.crowN=0; game.crowWait=0;
@@ -7604,16 +7651,49 @@ function drawField(alpha){
 
    A panel that has not been made yet is simply not in the list; the run then
    cycles whatever exists. The game never waits for art. */
-const MID_PANELS = { farm: {} };            // index -> Image, sparse while loading
-const MID_SEQ = { farm: [] };               // dense, rebuilt as they arrive
-function midPanel(i, src){
+const MID_PANELS = { farm: {}, trans: {} };  // name -> Image, sparse while loading
+const MID_SEQ = { farm: [], trans: [] };     // dense and ordered, rebuilt as they arrive
+function midPanel(group, i, src){
   const im = new Image();
   imqLoad(im, src, () => {
-    MID_PANELS.farm[i] = im;
-    MID_SEQ.farm = Object.keys(MID_PANELS.farm).sort((a,b)=>a-b).map(k => MID_PANELS.farm[k]);
+    MID_PANELS[group][i] = im;
+    MID_SEQ[group] = Object.keys(MID_PANELS[group]).sort((a,b)=>a-b)
+                           .map(k => MID_PANELS[group][k]);
   }, ()=>{}, 'gp');
 }
-[1,2,3,4,5,6,7,8].forEach(i => midPanel(i, 'art/bg/mid' + i + '.webp'));
+[1,2,3,4,5,6,7,8].forEach(i => midPanel('farm', i, 'art/bg/mid' + i + '.webp'));
+[1,2,3,4].forEach(i => midPanel('trans', i, 'art/bg/tr' + i + '.webp'));
+
+/* THE APPROACH IS ORDERED; THE FARM IS A CYCLE. That difference is the whole
+   design of the transition.
+
+   Out on the farm there is no story in which field comes next, so the panels
+   cycle and the only rule is that you do not see the same one twice running.
+   The approach to the mouth is the opposite: it is a sequence with a direction
+   -- mounds in the field, a shed shoved over, the farm half-buried and built
+   ON, then a wall of earth with the city already in it. Cycle those and the
+   farm gets undermined and then un-undermined, which is not a journey.
+
+   So a transition panel is chosen by HOW FAR THROUGH THE APPROACH you are,
+   not by tile index. Each panel therefore holds for a couple of tiles, which
+   is what makes it read as a stretch of country rather than a slideshow.
+
+   This is also where the anthills went after they were taken out of the lane
+   for looking like hazards -- same beat, told at the depth it belongs at. */
+const TR_FROM = 560;                         // ant territory begins
+function trSpan(){
+  const z = ZONES.find(q => q.id === 'empire');
+  return { a: TR_FROM, b: z ? z.start : 1180 };
+}
+function midPanelAt(worldM, k, base){
+  const t = MID_SEQ.trans, s = trSpan();
+  if(t.length && worldM >= s.a){
+    const u = clamp((worldM - s.a)/Math.max(1, s.b - s.a), 0, 0.9999);
+    return t[Math.min(t.length - 1, Math.floor(u*t.length))];
+  }
+  const f = base.concat(MID_SEQ.farm);
+  return f[((k % f.length) + f.length) % f.length];
+}
 
 function drawLayerSlot(L, key, alpha, clipL, clipR){
   if(!L || !L.ready || alpha <= 0.004) return false;
@@ -7622,8 +7702,8 @@ function drawLayerSlot(L, key, alpha, clipL, clipR){
   /* The farm's mid slot is the one that travels; every other slot is a tile.
      mid.webp itself is panel zero, so a run always opens on the painting the
      rest were matched to. */
-  const seq = (key === 'mid' && L.set === 'farm' && MID_SEQ.farm.length)
-              ? [L.img].concat(MID_SEQ.farm) : null;
+  const seq = (key === 'mid' && L.set === 'farm' &&
+               (MID_SEQ.farm.length || MID_SEQ.trans.length));
   let seqK = seq ? Math.floor(cam.x*L.f/g.W) : 0;
   const clipped = clipL !== undefined;
   if(alpha < 1 || clipped) ctx.save();
@@ -8098,20 +8178,6 @@ const ANT_SIGNS = [
   { m:3900, art:'plate_screen', text:['HE IS','AWAKE'],     ink:'#7FF2E0' },
   { m:4150, art:'plate_plain',  text:['DO NOT','FEED'],     ink:'#CBD5E0' },
 ];
-/* The mounds grow on the way in: two small, then bigger, then one the size of a
-   barn door right before the entrance. That escalation is the whole "wait, how
-   big is this thing" beat, and it only works if they are ORDERED. */
-const ANT_HILLS = [
-  { m: 600, art:'hill1', s:0.5 },  { m: 640, art:'hill1', s:0.55 },
-  { m: 676, art:'hill1', s:0.62 }, { m: 712, art:'hill2', s:0.62 },
-  { m: 748, art:'hill1', s:0.7 },  { m: 786, art:'hill2', s:0.78 },
-  { m: 822, art:'hill2', s:0.85 }, { m: 860, art:'hill3', s:0.8 },
-  { m: 900, art:'hill2', s:1.0 },  { m: 940, art:'hill3', s:1.0 },
-  { m: 980, art:'hill3', s:1.15 }, { m:1022, art:'hill3', s:1.3 },
-  { m:1062, art:'hill3', s:1.5 },  { m:1104, art:'hill3', s:1.75 },
-  { m:1142, art:'hill3', s:2.0 },
-];
-
 /* Lettering a blank board. Two lines at most, sized to fit the plank rather
    than a fixed point size, because the boards are four different widths. */
 function drawSignText(lines, w, h, ink){
@@ -8140,11 +8206,17 @@ function drawZoneScenery(){
     return { sx, w, h };
   };
 
-  // the mounds, and the great formation standing on the boundary itself
-  for(const q of ANT_HILLS){
-    if(q.m < left || q.m > right) continue;
-    put(ANTART[q.art], q.m, (GROUND/980)*0.62*q.s, 6);
-  }
+  /* THE MOUNDS USED TO STAND HERE AND THEY HAD TO GO.
+     Fifteen anthills placed by metre, drawn at CAMERA parallax in front of the
+     fence at full saturation -- which is the exact silhouette of a hazard: a
+     solid thing standing on the ground line, in the lane, moving at the speed
+     of the road. Reported as "they let the player think they are obstacles",
+     and that is the only thing scenery must never do.
+
+     The build-up they were there for is not lost, it has moved to the depth it
+     belongs at: the transition panels put the mounds in the MIDDLE DISTANCE,
+     where they shove the farm buildings over and grow toward the mouth. Same
+     beat, told by the background rather than by objects in the lane. */
 
   /* THE DOORWAYS. Each stands on its zone boundary, hiding the layer swap
      behind something the player is running into. */
@@ -9139,6 +9211,11 @@ function reviveOffer(){
   const el = $('#revive'); if(!el) return false;
   $('#rvScore').textContent = Math.floor(game.dist/UPM) + ' m';
   el.classList.add('show');
+  /* A tap anywhere is a retry once game.mode is 'dead', so without this the
+     one press a player is most likely to make -- impatience -- throws the
+     offer away and starts a new run. META.open is already the flag thrustOn
+     rejects on, so the offer raises it exactly the way the shop does. */
+  META.open = true;
   const fill = $('#rvFill');
   let t = REVIVE_SECS;
   fill.style.transition = 'none'; fill.style.width = '100%';
@@ -9152,12 +9229,14 @@ function reviveOffer(){
 }
 function reviveNo(){
   clearTimeout(rvTimer);
+  META.open = false;
   $('#revive').classList.remove('show');
   finishNow();
 }
 function reviveYes(){
   clearTimeout(rvTimer);
   rewardedAd().then(() => {
+    META.open = false;
     $('#revive').classList.remove('show');
     game.revived = true;
     /* CLEAR THE ROAD, THEN PUT HIM BACK ON IT. Reviving into the piece that
@@ -9323,6 +9402,7 @@ function boot(){
     startRun, startQuick, startIntro, toMenu, updatePlay, thrustOn, thrustOff,
     startRide, loseRide, spawnBasketDrop, dropClearAt, spawnElec, spawnPattern, spawnEggs,
     SAVE, SHOP, PERK, SKIN, SKINS, buy, buySkin, eggs, spend, earn, reviveOffer, reviveYes,
+    die, finish, finishNow, softSave, dailyClaim, dailyState, skinApply, shopDraw, META,
     layRideCourse, rideApex, rideRise, rideCeil, truckGeom, truckFrame,
     elecDist, riding, wireHot, smoke, spark, pop, updateParticles, render,
     worldSpeed, distSpeed, rideAir, rideImpulse, rideJump, UPM, LOAD,
