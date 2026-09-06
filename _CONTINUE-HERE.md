@@ -2624,6 +2624,117 @@ once**: after any edit here, check whether HEAD *already contains it* before
 assuming your work is uncommitted -- and check that every asset your commit
 references is tracked, because the game is built to hide exactly that failure.
 
+### The shell transacts now (2026-09-06, later)
+
+Eggs are spent, levels are owned, the perks reach into the run, a revive is
+offered at the death beat and the daily reward runs off a real clock. Search
+`THE ECONOMY`.
+
+**The two things that are not real are the two that cannot be.** There is no ad
+network and no billing on a static page, so `rewardedAd()` and `iapBuy()` are
+the seams: each shows the shape of the pause it makes, says on screen that it
+is a placeholder, and resolves. Wiring AdMob and Play Billing later is those
+two functions and nothing else in this file. Everything they gate --
+the revive, the daily claim, the egg bundles, remove-ads -- is written and
+tested against them.
+
+**`game.eggBank` stays the one live counter**, persisted to `dgh_eggs` exactly
+as the pickup code always did; `SAVE` (`dgh.save.v1`) holds levels, skins, the
+daily clock and the no-ads flag. Two stores rather than one on purpose: the run
+writes eggs on a hot path forty times a minute and should not be serialising a
+JSON blob to do it. SAVE is merged rather than replaced on load, so a save
+written before a perk existed still opens with that perk at zero.
+
+**Every pane is drawn from `SHOP`.** A price, a level and an owned state cannot
+be written into static markup and still be true after the first purchase, so
+the markup for the four panes is four empty divs and `shopDraw()` fills them.
+Adding an item is a row in the catalogue; adding a control is a `data-` name,
+because the whole shell runs off one delegated click listener.
+
+### `cost[n]` is the price to reach level n+1, and that bit me
+
+The trolley is the one thing you already own -- it starts at level 1 -- so
+every price was read one slot along: the first upgrade billed at the second
+upgrade's price, and the top level was unreachable because the array ran out
+before the levels did. **It was completely self-consistent on screen**: the
+button said 1,800, it charged 1,800, the level went up, the pips filled. Only
+counting the eggs against the catalogue caught it. That is why the test asserts
+the *amount*, not that something was spent.
+
+### What each perk actually reaches
+
+Everything the run reads comes out of `PERK`, four lines from the shop copy
+that describes it, so an effect and its promise cannot drift apart.
+
+| perk | where it lands |
+|---|---|
+| EGG MAGNET | `updateEggs` -- eggs lean in and accelerate; a snap would read as the counter ticking by itself |
+| HEAD START | `game.presetDist`, the same rail as `?dist` |
+| LUCKY EGG + trolley level | `PERK.dropRate()` multiplies both mystery-egg timers |
+| NERVES OF STEEL | the multiplier on `nearMiss`'s bonus |
+| SOFT LANDING | `softSave()`, called first thing in `die()` |
+| SECOND WIND | `reviveOffer()`, called first thing in `finish()` |
+| trolley level 3+ | `loseRide` absorbs one hit before the basket pops |
+
+**A refusal has to say why.** Not enough eggs dims the button, keeps the price
+visible and toasts `NOT ENOUGH EGGS`; it does not hide the item. "You need more
+eggs" is the single most useful thing a shop can say.
+
+### The revive, and the two places it had to be wired
+
+`finish()` now does one thing before anything else: offers. Everything below it
+writes the best score and flips `dgh.played`, and **a run that is about to carry
+on has not ended** -- so the original body is `finishNow()`, and decline or
+time out and it runs exactly as it always did.
+
+Two things had to be handled that are not obvious:
+
+- **A tap during the offer restarted the run.** Once `game.mode` is `'dead'`,
+  any press is a retry, so impatience threw the offer away and started a new
+  run. The offer raises `META.open`, which is already the flag `thrustOn`
+  rejects on.
+- **Reviving into the piece that killed you is not a revive.** Everything in
+  flight is cleared and he is replaced at `game.dist` -- the one position the
+  world and the odometer agree on, since the fix that made them advance
+  together -- with the 3-2-1 back on and 2.4s of invulnerability that BLINKS,
+  because a free hit nobody can see is a bug.
+
+### Appearance is a recolour, because the chicken is painted
+
+`drawChickenFrames` draws one image per frame and never touches the cosmetic
+slot rig: the snapback and the shades are IN THE ART. So hats were never going
+to show up in play, and a look is a recolour of all 36 frames instead.
+
+**The two regions were measured, not guessed.** Clustering the opaque pixels of
+`anim/*.webp` by HSV: the cap is hue 150-205 above 0.28 saturation and is ~5% of
+the bird; the body is hue 20-70 between 0.05 and 0.42 saturation above 0.60
+value, and is ~43%. Everything else -- the black outline, the orange beak, the
+red comb, the white shoes -- is left alone, and that is what keeps every look
+recognisably the same character rather than a palette swap.
+
+- **A swapped image, not a canvas filter.** A filter would run per draw, and
+  `hue-rotate` cannot tell the cap from the beak.
+- **Built a few frames per animation tick**, because two million pixels in one
+  task is a visible hitch on a phone. The partial map is safe to draw from:
+  `drawChickenFrames` falls back to the original for any frame not rebuilt yet,
+  so a look that is still building shows the default bird rather than nothing.
+- **One frame is recoloured per card**, so the shelf cannot disagree with the
+  bird.
+- **A skin card is a `<div>`.** It contains a buy button, and a button inside a
+  button is invalid -- the parser closes the outer one, so every price escaped
+  its card and stood up as a gold bar between them. It looked like a CSS bug and
+  was a markup one.
+
+`SPECTRE` is gated on `game.best >= 3000` before it can be bought at all, which
+is the one place the shop reads the run rather than the other way round.
+
+### The one thing still deliberately not for sale
+
+`CROP DUSTER` is in the catalogue with `dev:true` and renders as IN DEVELOPMENT.
+A button that takes 12,000 eggs for a vehicle that does not exist is worse than
+a button that does nothing, and the slot is worth more as a visible next thing
+than as a broken purchase.
+
 ## Next
 
 - **Nothing spends the eggs yet** -- the shop exists and none of it
