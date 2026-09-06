@@ -4705,21 +4705,31 @@ function startRun(){
    pattern is held off until it is behind him -- otherwise the spawner cheerfully
    drops a wagon on top of a pickup that was clear when it was chosen. */
 const DROP_CLEAR = 320;
+// seconds of clear road immediately before the pickup -- long enough to line
+// up and commit, short enough that a placement can actually be found
+const DROP_RUNUP = 1.15;
 function dropClearAt(x){
   for(const o of game.obstacles){
     const ow = (o.spec.hw != null ? o.spec.hw : o.w*0.42) + DROP_CLEAR;
     if(Math.abs(o.x - x) < ow) return false;
   }
-  /* AND NOTHING BETWEEN HERE AND THERE. Clearing the egg's own spot is not
-     enough: the player has to be able to GO for it, and an obstacle standing
-     in the approach turns the best pickup in the game into a choice between
-     the reward and staying alive. The run-up is everything from just ahead of
-     the player to the egg, so a piece already on screen counts -- which is the
-     case the old check missed, because it only looked at where the egg would
-     stand. */
+  /* AND A CLEAR RUN AT IT. Clearing the egg's own spot is not enough: an
+     obstacle standing right in front of it makes the best pickup in the game a
+     choice between the reward and staying alive.
+
+     THE WINDOW IS THE APPROACH, NOT THE WHOLE SCREEN. The first version of
+     this asked for nothing between the PLAYER and the egg, and the egg is
+     placed more than a screen ahead -- so there was essentially always
+     something in that span, all forty placement attempts failed, and the truck
+     stopped appearing entirely. Zero pickups in three minutes of play, and the
+     feature was simply gone.
+     What the player actually needs is the last stretch: enough road to line up
+     and commit. Anything further back is just the game, and dodging it on the
+     way to a reward is the good part. */
+  const runUp = game.speed * DROP_RUNUP;
   for(const o of game.obstacles){
     const ow = (o.spec.hw != null ? o.spec.hw : o.w*0.42);
-    if(o.x + ow > player.x + 120 && o.x - ow < x) return false;
+    if(o.x + ow > x - runUp && o.x - ow < x) return false;
   }
   return true;
 }
@@ -7248,7 +7258,7 @@ function boot(){
      behind the debug flag, so a shipped page still exposes nothing at all. */
   if(game.dbg) window.DGH = { game, player, cam, rag, OB, S, A, PROPS,
     startRun, startQuick, startIntro, toMenu, updatePlay, thrustOn, thrustOff,
-    startRide, loseRide, spawnBasketDrop, spawnElec, spawnPattern, spawnEggs,
+    startRide, loseRide, spawnBasketDrop, dropClearAt, spawnElec, spawnPattern, spawnEggs,
     layRideCourse, rideApex, rideRise, rideCeil, truckGeom, truckFrame,
     elecDist, riding, wireHot, smoke, spark, pop, updateParticles, render,
     worldSpeed, distSpeed, rideAir, rideImpulse, rideJump, UPM, LOAD,
@@ -7740,6 +7750,34 @@ function boot(){
         if(onDead){ bad++; out.push('WIRE STILL LETHAL in the truck'); }
         if(onLive && !onDead) out.push('ok     the grid goes down in the truck');
       }catch(e){ bad++; out.push('grid test THREW ' + e.message); }
+
+      /* CAN THE PICKUP EVEN BE PLACED?
+         Everything above tests the truck once you are IN it, and all of it
+         passed on a build where the mystery egg had stopped spawning entirely
+         -- `dropClearAt` had been tightened to demand nothing between the
+         player and the egg, the egg is placed more than a screen ahead, so all
+         forty placement attempts failed on every attempt and the whole ability
+         quietly left the game. Zero pickups in three minutes, and not one of
+         these checks noticed, because none of them asked whether you can GET
+         the thing they are testing.
+         So: run a real board and count. A feature that cannot be reached is
+         not a feature, and the test for it has to start before the feature
+         does. */
+      try{
+        startQuick();
+        for(let i=0;i<60*12;i++) updatePlay(1/60);       // fill the board
+        let clear = 0;
+        const lead = Math.max(1.9, (VW - PX + 260)/game.speed + 0.3);
+        for(let n = 0; n < 40; n++){
+          const x = player.x + game.speed*(lead + (n >> 2)*0.5);
+          if(dropClearAt(x)) clear++;
+        }
+        const okDrop = clear >= 6;
+        if(!okDrop) bad++;
+        out.push((okDrop ? 'ok     ' : 'UNREACHABLE  ') +
+                 'the pickup can be placed: ' + clear + '/40 spots clear' +
+                 (okDrop ? '' : ' -- THE TRUCK WILL NEVER APPEAR'));
+      }catch(e){ bad++; out.push('pickup test THREW ' + e.message); }
       /* And the lesson: a hop, then the whole arc, both laid out of the jump
          itself so neither can promise an egg the truck cannot reach. */
       try{

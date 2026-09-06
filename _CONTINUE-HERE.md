@@ -2242,6 +2242,40 @@ rather than fades in.
   knows the chicken's hop hears the truck's as the same verb done by something
   enormous.
 
+## I deleted the truck by tightening one guard (2026-09-06)
+
+Reported as "wheres the monster truck skill, you removed it!" and it was exactly
+that: **zero pickups in three minutes of play.**
+
+The ask was "don't put an obstacle in front of the mystery egg". I made
+`dropClearAt` demand nothing between the PLAYER and the egg. But the egg is
+placed more than a screen ahead -- `lead` is `(VW - PX + 260)/speed + 0.3` --
+and there is essentially always something in that span, so all forty placement
+attempts failed on every attempt and `spawnBasketDrop` returned false forever.
+The ability did not break; it stopped existing.
+
+The window that matters is **the approach**, not the screen: `DROP_RUNUP` (1.15s
+of road immediately before the egg) is enough to line up and commit. Anything
+further back is just the game, and dodging it on the way to a reward is the
+good part.
+
+### The real lesson is what the tests did not ask
+
+`?ridetest` passed cleanly on the broken build. Every check in it tests the
+truck once you are IN it -- jump windows, spacing, the grid going down -- and
+not one asked whether you can GET the thing they are testing. A feature that
+cannot be reached is not a feature.
+
+There is a check for it now, and it is **mutation-tested**, which is the only
+reason it is worth having: with the bug restored it reads
+
+    TRUCK: 1 PROBLEMS
+    UNREACHABLE  the pickup can be placed: 0/40 spots clear -- THE TRUCK WILL NEVER APPEAR
+
+and with the fix, 40/40. Generally: **when a guard is tightened, ask what it now
+refuses that it used to allow, and count.** A clearance rule with no upper bound
+on how much it clears will eventually clear everything.
+
 ## Next
 
 - Nothing spends the eggs yet.
