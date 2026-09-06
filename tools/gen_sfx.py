@@ -85,7 +85,11 @@ JOBS = [
      "cracking, midrange-forward with a savage exhaust rasp -- NOT a deep smooth "
      "bass rumble, the bite is in the middle and the top. Individual cylinder "
      "beats clearly audible while it is slow, blurring into a snarl as it opens "
-     "up. Tuned low, in the key of D, so it sits under a down-tuned heavy metal "
+     "up. "
+     "Recorded on a phone from about ten feet away outdoors, so it is thin and "
+     "bright and cutting with NO deep sub-bass at all -- all the energy is in "
+     "the midrange and the treble. "
+     "Tuned low, in the key of D, so it sits under a down-tuned heavy metal "
      "guitar riff. No speech, no music, no melody, no singing. It happens once, "
      "lasting about two seconds, then silence."),
 
@@ -93,7 +97,11 @@ JOBS = [
      "Monster truck ACCELERATION, as a short punchy MUSIC STING. A running V8 "
      "with the throttle stamped flat to "
      "the floor: revs climbing fast and hard, exhaust cracking and tearing as it "
-     "opens up, ending high and snarling. Close outside recording, raw and "
+     "opens up, ending high and snarling. "
+     "Recorded on a phone from about ten feet away outdoors, so it is thin and "
+     "bright and cutting with NO deep sub-bass at all -- all the energy is in "
+     "the midrange and the treble. "
+     "Close outside recording, raw and "
      "midrange-forward with heavy grit and bite -- NOT a deep smooth rumble. In "
      "the key of D so it sits under a down-tuned heavy metal riff. No speech, no "
      "music, no melody. It happens once, lasting about one second, then silence."),

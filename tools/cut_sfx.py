@@ -33,12 +33,18 @@ OUT = os.path.join(ROOT, 'audio', 'sfx')
 LIB = r"C:\Users\it\Desktop\Gemini Prompt Sender\dashboard\library"
 
 # name -> (words that must appear in the prompt, seconds to keep, target peak)
+# name -> (words that must appear in the prompt, seconds to keep, target peak)
+#
+# THE NEEDLES HAVE TO TRACK THE PROMPTS. They are how a render is found again
+# in the library, so a prompt rewrite silently orphans every take unless these
+# move with it -- which is exactly what happened when "cartoon" came out.
 JOBS = {
-    'vroom':     ('monster truck engine REV',        1.50, 0.90),
-    'truckjump': ('monster truck LAUNCH',            1.00, 0.90),
-    'kick':      ('KICK against a metal barred door', 0.90, 0.85),
-    'boom':      ('Cartoon BOOM',                    1.00, 0.95),
-    'megg':      ('magical PICKUP chime',            1.40, 0.80),
+    'vroom':      ('Monster truck IGNITION and REV',  2.00, 0.92),
+    'truckaccel': ('Monster truck ACCELERATION',      1.10, 0.92),
+    'truckjump':  ('monster truck LAUNCH',            1.00, 0.90),
+    'kick':       ('KICKING a heavy metal barred door', 0.90, 0.85),
+    'boom':       ('BOOM',                            1.00, 0.95),
+    'megg':       ('magical PICKUP chime',            1.40, 0.80),
 }
 LEAD = 0.030          # keep this much before the start, so the attack is whole
 FADE = 0.060          # out, so the cut cannot click

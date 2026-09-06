@@ -1169,7 +1169,17 @@ function playSample(name, vol, rate){
    noise in the network log and a lie in the asset count; the fallback is meant
    to be the SYNTH version, not a failed request.
    One line to edit when a new one lands: tools/cut_sfx.py prints the names. */
-const SMP_HAVE = ['megg', 'truckjump', 'boom'];
+/* MEASURED, NOT ASSUMED. A generated take only earns its place here if it
+   beats the synth on the reference numbers, and two did not:
+     truckjump  58% of its energy under 100Hz, 7% above 2kHz -- a sub thud
+                with no engine in it, and it was playing on EVERY jump. It is
+                the sound the user kept calling lame.
+     vroom      77% under 100Hz on one take, 70% hiss on the best window of
+                the next. Neither is an engine.
+   The references measure 0% under 100Hz and ~78% between 400Hz and 8kHz, and
+   the synth now matches that; these did not, so they do not ship. Add a name
+   back the moment tools/pick_sfx.py says a take scores better. */
+const SMP_HAVE = ['megg', 'boom'];
 function warmSamples(){ SMP_HAVE.forEach(loadSample); }
 
 let stepFoot = 0;                 // which foot
@@ -1517,7 +1527,6 @@ const S = {
        a fifth off the truck's own D onto A, the note the riff leans on
        hardest after the root. A rising fifth is the oldest trick there is for
        making something sound like it is going up. */
-    playSample('truckjump', 0.55);            // the suspension, under the roar
     tone(52, 0.18, 'sine', 0.20, 30);                        // the springs unloading
     vroom(0.60, RIFF_HZ*0.7, RIFF_HZ*1.5, 0.38, 0, {rise:0.35, drive:3.6})
   },
