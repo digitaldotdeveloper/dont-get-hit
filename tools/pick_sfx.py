@@ -68,7 +68,12 @@ def newest(needle):
     return out
 
 
-def mono(src, tmp, sr=22050):
+def mono(src, tmp, sr=44100):
+    """44.1k, NOT 22k. At 22050 the spectrum stops at 11kHz, so every band's
+    share is computed against a smaller total and the 2-8kHz band reads far
+    higher than it is -- a window that scored 42% here measured 70% once cut
+    at full rate. Scoring has to be done in the same units as the reference or
+    it is not scoring anything."""
     subprocess.run([FF, '-hide_banner', '-loglevel', 'error', '-y', '-i', src,
                     '-ac', '1', '-ar', str(sr), tmp], check=True)
     with wave.open(tmp, 'rb') as w:

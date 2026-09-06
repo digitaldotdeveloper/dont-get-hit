@@ -78,7 +78,9 @@ JOBS = [
     # cracking, midrange bark -- and explicitly rule out the deep smooth rumble
     # that "monster" otherwise pulls a generator straight towards.
     ('sfx_vroom',
-     "Monster truck IGNITION and REV, as a short punchy MUSIC STING. A huge V8 "
+     "Monster truck IGNITION and REV, as a short punchy MUSIC STING. A huge "
+     "UNMUFFLED V8 on open straight pipes -- no silencer at all, so it is all "
+     "hard crackle and tearing rasp rather than a smooth hum. A "
      "starter motor cranking a couple "
      "of heavy slow turns, the engine CATCHING with a hard bark, then revving up "
      "into a loud raspy roar that holds. Close outside recording: raw, violent, "
@@ -94,7 +96,8 @@ JOBS = [
      "lasting about two seconds, then silence."),
 
     ('sfx_truckaccel',
-     "Monster truck ACCELERATION, as a short punchy MUSIC STING. A running V8 "
+     "Monster truck ACCELERATION, as a short punchy MUSIC STING. A running "
+     "UNMUFFLED V8 on open straight pipes, no silencer, "
      "with the throttle stamped flat to "
      "the floor: revs climbing fast and hard, exhaust cracking and tearing as it "
      "opens up, ending high and snarling. "
