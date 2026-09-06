@@ -1246,8 +1246,18 @@ const ZONES = [
   /* Through the mouth. Daylight is gone, the wash is lantern-warm,
      and the layers are the city. */
   { id:'empire', name:'ANT EMPIRE', start:1180, layers:'ant', ants:1, indoors:true,
-    theme:{ id:'empire', name:'ANT EMPIRE', sunR:0, sunGlow:0, vig:0.48,
-      skyA:'#1A0E0A', skyB:'#2C1710', skyC:'#4A2617', skyD:'#7A4021', skyE:'#B4682E',
+    /* THE AIR YOU FLY IN IS NOT A HOLE. The top stops of this palette were
+       #1A0E0A and #2C1710 -- near black -- and the whole upper half of the
+       screen is where the bird actually lives, so the game's main play space
+       was an unlit void with a bright orange city underneath it. Reported as
+       "the empty top doesn't let us visually see" and "not comfortable to the
+       eye", and both are the same fault: a value range that runs from black to
+       full-chroma amber in one screen. Lifted into a warm gloom you can read
+       through, which also closes the gap to the lit chambers. Still plainly
+       underground -- the sun is off, the clouds are gone, the palette is earth
+       -- but lit like a cavern with lanterns in it rather than like a cave-in. */
+    theme:{ id:'empire', name:'ANT EMPIRE', sunR:0, sunGlow:0, vig:0.38,
+      skyA:'#3E2A1E', skyB:'#56382A', skyC:'#7A4B2E', skyD:'#9A6238', skyE:'#C9873F',
       sun:'#FFC46B', far:'#5A3520', mid:'#7A4726', near:'#93552B', prop:'#3E2415',
       road:'#8A5326', roadLine:'#6E401D', curb:'#5C3517', rim:'#C98B3E' } },
 
@@ -1255,8 +1265,8 @@ const ZONES = [
      things down here that ants have no business owning. */
   { id:'deep', name:'DEEP ANT EMPIRE', start:2100, layers:'deep', ants:1, indoors:true,
     cast:['antw','antt','antg'],
-    theme:{ id:'deep', name:'DEEP ANT EMPIRE', sunR:0, sunGlow:0, vig:0.50,
-      skyA:'#0D0A12', skyB:'#171326', skyC:'#2A1E33', skyD:'#4A2C3A', skyE:'#7A4438',
+    theme:{ id:'deep', name:'DEEP ANT EMPIRE', sunR:0, sunGlow:0, vig:0.42,
+      skyA:'#2A2230', skyB:'#3A2E44', skyC:'#4E3A4C', skyD:'#684250', skyE:'#96584A',
       sun:'#9FD8E8', far:'#3E2A2A', mid:'#5A3830', near:'#6E4534', prop:'#2A1A18',
       road:'#6E4426', roadLine:'#55341C', curb:'#472B16', rim:'#8FA8C0' } },
 
@@ -2377,8 +2387,27 @@ const S = {
      thing they chose rather than an accident.
      Exclusive, because the intro can be skipped and restarted faster than five
      seconds and two breaches over each other is a mess. */
-  gatebreach(){ playSample('gatebreach', 0.40, 1, 'gate'); },
-  cagerattle(){ noise(0.06, 1800, 900, 0.05, 4.0); tone(300,0.05,'square',0.035,240); },
+  /* THE GATE GOING. The user's own recording, and there is no synthesised
+     fallback under it on purpose: they had the synthesised cage break removed
+     entirely, so if this file is missing the kick is silent, which is the
+     thing they chose rather than an accident.
+
+     IT IS ALSO THE ONE SOUND WITH A DEADLINE. The kick is 1.15s after the
+     press that creates the AudioContext, so this is the only moment in the
+     game where a sound can be ASKED FOR BEFORE IT EXISTS -- and if that
+     happens the answer used to be silence, permanently, because nothing ever
+     asked again. The bytes are prefetched during the loading screen to make
+     that unlikely, and this makes it survivable: if the buffer is not there
+     yet, try again for a fifth of a second. Past that the door is long open
+     and a bang would be a mystery rather than a door, so it is dropped.
+     I could not reproduce the user's report of it going silent on reload --
+     three reloads, warm cache, immediate click, real autoplay policy, it
+     fired every time with its buffer ready -- so this is insurance against
+     the mechanism rather than a fix for a diagnosed fault. */
+  gatebreach(){
+    if(playSample('gatebreach', 0.40, 1, 'gate')) return;
+    game.gateWaitT = 0.20;
+  },
   bedcreak(){ wob(420, 180, 0.22, {type:'sawtooth', vol:0.055, depth:22, rate:9});
               noise(0.10, 900, 380, 0.035, 2.2); },
   thud(){ noise(0.18,170,45,0.2,1.0); tone(96,0.16,'sine',0.15,44); },
@@ -6307,7 +6336,7 @@ function startRun(){
   player.flapT=0; player.flapBeat=-1; player.flapLag=0;
   player.thrusting=false;                                   // never start a run mid-thrust
   player.state='run'; player.stateT=0; player.landT=0; player.stumbleT=0;
-  player.rideLand=0; player.rideJumps=0; game.boostT=0; stepBedOff();
+  player.rideLand=0; player.rideJumps=0; game.boostT=0; game.gateWaitT=0; stepBedOff();
   player.near=0; player.nearT=0; player.nearCool=0;
   player.beat=''; player.beatT=0;
   cam.x = player.x - PX;         // ...and the camera holds him at the play mark
@@ -6901,6 +6930,13 @@ function update(dt, rawDt){
 
   updateParticles(dt);
   musicTick(); trackTick(rawDt); engineBedTick(rawDt); stepBedTick(rawDt);
+  if(game.gateWaitT > 0){
+    game.gateWaitT -= rawDt;
+    if(SMP.buf['gatebreach']){
+      game.gateWaitT = 0;
+      playSample('gatebreach', 0.40, 1, 'gate');
+    }
+  }
   /* the delayed half of the jump. A timer rather than a setTimeout so it
      cannot fire into a dead run, a paused tab, or a ride that already ended. */
   if(game.boostT > 0 && (game.boostT -= rawDt) <= 0){
@@ -6993,10 +7029,11 @@ function updateIntro(dt){
     game.boomT += (game.rawDt||dt) / (game.introSlow||1);
 
   if(was < T_WIND && t >= T_WIND) S.cluck();            // he clocks the door
-  if(t > T_WIND && t < T_KICK){                         // winds up against the bars
-    game.rattleT -= dt;
-    if(game.rattleT <= 0){ game.rattleT = 0.10; S.cagerattle(); }
-  }
+  /* THE OLD DOOR IS GONE. cagerattle fired every 0.10s through the whole
+     wind-up -- seven synthesised metallic ticks leading straight into the
+     user's recording of a real gate going, which is the one sound this moment
+     is supposed to be. Removed at their request; the bars still shake on
+     screen, they just no longer announce it. */
   if(game.cheerT !== undefined && game.cheerT > 0){     // three clucks, staggered
     game.cheerT -= dt;
     if(game.cheerT <= 0){
@@ -7739,7 +7776,12 @@ const UNDER_SLOTS = [
      worlds draws a solid roof across exactly the space he is meant to use.
      Things that dangle say "there is a ceiling up there somewhere" while
      leaving the air between them free. */
-  { key:'hang', f:0.60, hf:0.300, top:true },
+  /* Longer than it was (0.300). The roots and lanterns are the only thing
+     framing the upper half, and at a third of the play band they hung as a
+     thin fringe with a wide empty gap under them. At 0.42 they reach into
+     that gap -- still hanging separately with air between them, because the
+     rule that the top stays flyable outranks how full it looks. */
+  { key:'hang', f:0.60, hf:0.420, top:true },
 ];
 /* A world declares only the slots it actually OWNS. The rest are inherited at
    draw time by slotFor(), which walks back through the zones behind it.
