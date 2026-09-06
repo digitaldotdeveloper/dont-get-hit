@@ -1636,7 +1636,8 @@ function vroom(len, rpm0, rpm1, vol, at, o){
 
    It idles on D one octave under the riff's root, so it agrees with the music
    for free. */
-const ENG_BED_VOL = 0.075;
+const ENG_BED_VOL = 0.075;   // the synth bed: four oscillators, thin
+const ENG_BED_SMP_VOL = 0.30;  // a real engine recording, which is not
 const ENG = { g:null, osc:null, nz:null, clf:null, bp:null, rev:0, rate:false };
 
 function engineBedOn(){
@@ -1646,9 +1647,15 @@ function engineBedOn(){
     const t = c.currentTime;
     const g = c.createGain();
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(ENG_BED_VOL, t + 0.35);
-    const hp = c.createBiquadFilter();          // no sub, same as the one-shots
-    hp.type = 'highpass'; hp.frequency.value = 120; hp.Q.value = 0.6;
+    g.gain.exponentialRampToValueAtTime(
+      SMP.buf['truckidle'] ? ENG_BED_SMP_VOL : ENG_BED_VOL, t + 0.35);
+    /* The highpass exists to keep the SYNTH bed out of the sub, where its
+       oscillator had far too much weight. A recording of a real engine is
+       already the shape it should be, and cutting 120Hz out of something that
+       is 34% below 100Hz would just make it thin. */
+    const hp = c.createBiquadFilter();
+    hp.type = 'highpass'; hp.Q.value = 0.6;
+    hp.frequency.value = SMP.buf['truckidle'] ? 35 : 120;
     hp.connect(g); g.connect(A.sfxGain);
 
     /* THE GENERATED LOOP GETS FIRST REFUSAL. The user asked for a seamless
@@ -1664,6 +1671,8 @@ function engineBedOn(){
     let osc;
     if(buf){
       osc = c.createBufferSource(); osc.buffer = buf; osc.loop = true;
+      const lb = loopBounds('truckidle', buf, c);
+      osc.loopStart = lb.s; osc.loopEnd = lb.e;
       ENG.rate = true;
       osc.connect(hp);
     } else {
@@ -1776,7 +1785,7 @@ function clipCurve(d){
    Decoded once and reused: decodeAudioData on every press would allocate a
    buffer per press and is the classic way to make a game stutter on its own
    sound effects. */
-const SMP = { buf:{}, want:{}, ext:null };
+const SMP = { buf:{}, want:{}, ext:null, voice:{}, loop:{} };
 function sampleExt(){
   if(SMP.ext) return SMP.ext;
   try{ SMP.ext = new Audio().canPlayType('audio/ogg; codecs=opus') ? '.ogg' : '.mp3'; }
@@ -1793,7 +1802,36 @@ function loadSample(name){
     .then(buf => { SMP.buf[name] = buf; })
     .catch(() => {});                       // silent: the synth fallback stands
 }
-function playSample(name, vol, rate){
+/* WHERE A LOOP ACTUALLY STARTS AND ENDS.
+   Encoders pad. LAME writes an encoder delay at the head and MP3 frames are
+   granular so there is usually a tail too, and Opus carries a pre-skip; a
+   decoder that ignores any of it hands back a buffer with silence welded to
+   both ends, and silence welded to both ends of a two-second engine loop is a
+   tick, twice a second, forever. ffmpeg strips it and reported this file
+   clean, but decodeAudioData is a different decoder in every browser and this
+   is the one place a few milliseconds are audible.
+   So the bounds are measured from the decoded buffer rather than trusted: the
+   first and last sample with any signal in them. On a clean decode it finds 0
+   and the whole buffer, and costs one pass over two seconds of audio, once. */
+function loopBounds(name, b, c){
+  if(SMP.loop[name]) return SMP.loop[name];
+  let a0 = 0, a1 = b.length;
+  try{
+    const d = b.getChannelData(0), eps = 0.002;
+    while(a0 < a1 && Math.abs(d[a0]) < eps) a0++;
+    while(a1 > a0 && Math.abs(d[a1-1]) < eps) a1--;
+    if(a1 - a0 < b.length*0.5){ a0 = 0; a1 = b.length; }   // nonsense: use it all
+  }catch(e){ a0 = 0; a1 = b.length; }
+  return SMP.loop[name] = { s: a0/b.sampleRate, e: a1/b.sampleRate };
+}
+
+/* `key` makes a sound EXCLUSIVE: starting it again stops the one already
+   running under that name. The truck needs it because the ignition is three
+   and a half seconds long and is now played on every jump as well as on the
+   pickup -- without this, two jumps in quick succession stack two engines and
+   a third arrives before either has finished, which is mud rather than power.
+   Stopped with a 20ms fade, because cutting a waveform dead is a click. */
+function playSample(name, vol, rate, key){
   const b = SMP.buf[name];
   if(!b) { loadSample(name); return false; }
   if(!A.started || !A.on) return true;      // "handled": do not double up
@@ -1802,7 +1840,21 @@ function playSample(name, vol, rate){
     const src = c.createBufferSource(); src.buffer = b;
     if(rate) src.playbackRate.value = rate;
     const g = c.createGain(); g.gain.value = vol === undefined ? 1 : vol;
-    src.connect(g); g.connect(A.sfxGain); src.start();
+    src.connect(g); g.connect(A.sfxGain);
+    if(key){
+      const old = SMP.voice[key];
+      if(old){
+        try{
+          old.g.gain.setTargetAtTime(0.0001, c.currentTime, 0.02);
+          old.src.stop(c.currentTime + 0.10);
+        }catch(e){}
+      }
+      SMP.voice[key] = { src, g };
+      src.onended = () => {
+        if(SMP.voice[key] && SMP.voice[key].src === src) SMP.voice[key] = null;
+      };
+    }
+    src.start();
   }catch(e){ A.err = e.message; }
   return true;
 }
@@ -1831,7 +1883,7 @@ function playSample(name, vol, rate){
    the landing fall back to the synth, which is what this list is for: a name
    here means a file exists, and a name missing means the synth carries it
    rather than the game asking for a 404 on every load. */
-const SMP_HAVE = ['megg', 'boom', 'truckget'];
+const SMP_HAVE = ['megg', 'boom', 'truckget', 'truckidle'];
 function warmSamples(){ SMP_HAVE.forEach(loadSample); }
 
 let stepFoot = 0;                 // which foot
@@ -2137,7 +2189,7 @@ const S = {
      climbs a long way, because this is the one moment the truck gets to be
      enormous before it has to be a game object. */
   truckget(){
-    if(playSample('truckget', 1.0)) return;                  // the generated engine
+    if(playSample('truckget', 1.0, 1, 'truck')) return;      // the user's recording
     /* THE IGNITION, IN THREE BEATS: the starter labours, it CATCHES, and it
        roars up onto D and sits there -- the note the riff that is about to
        start is built on, so the two lock instead of colliding. Then a second
@@ -2170,6 +2222,12 @@ const S = {
      with it. */
   truckboost(){
     if(playSample('truckboost', 0.9)) return;
+    /* THE SYNTH BOOST IS FALLBACK ONLY. It exists for the user's brief #4, the
+       airborne surge, and it is a synthesised engine -- so the moment a real
+       engine recording is carrying the jump, laying this over the top of it is
+       two engines, one of them fake. The real one wins and this stays quiet
+       until there is a recording for this moment too. */
+    if(SMP.buf['truckget']) return;
     // MORE SPEED, MORE POWER: the rate of the bangs climbing hard, and an
     // air-rush under it that opens as it goes
     vroom(0.55, RIFF_HZ, RIFF_HZ*2, 0.30, 0, {rise:0.55, drive:3.8});
@@ -2208,7 +2266,11 @@ const S = {
        a fifth off the truck's own D onto A, the note the riff leans on
        hardest after the root. A rising fifth is the oldest trick there is for
        making something sound like it is going up. */
-    if(playSample('truckjump', 0.95)) return;                // the generated launch
+    /* THE JUMP IS THE PICKUP SOUND AGAIN, at the user's instruction -- the
+       same engine recording that plays when the truck is collected. One key
+       for both, so a jump restarts the engine rather than layering a second
+       one over the one still running from the pickup. */
+    if(playSample('truckget', 0.9, 1, 'truck')) return;
     tone(52, 0.18, 'sine', 0.20, 30);                        // the springs unloading
     vroom(0.60, RIFF_HZ*0.7, RIFF_HZ*1.5, 0.38, 0, {rise:0.35, drive:3.6})
   },
@@ -7951,7 +8013,7 @@ const FARM_SCENES = [
   { m: 100, art:'f100_house',     s:1.05, lift:4 },   // somebody lives here
   { m: 200, art:'f200_pond',      s:0.92, lift:2 },
   { m: 300, art:'f300_tractor',   s:0.86, lift:4 },
-  { m: 400, art:'f400_scarecrow', s:0.72, lift:4 }   // tall and thin: trimmed,
+  { m: 400, art:'f400_scarecrow', s:0.72, lift:4 },  // tall and thin: trimmed
   { m: 500, art:'f500_silo',      s:1.10, lift:4 },
   /* From here the farm stops being the farmer's. The mounds are already
      growing through this stretch (ANT_HILLS, 600-1142), so these are what the
