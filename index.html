@@ -657,8 +657,9 @@
                 border:1.5px solid rgba(255,242,222,.15);cursor:default;
                 font:900 12px/1 'Archivo',sans-serif;letter-spacing:.1em;
                 font-variant-numeric:tabular-nums;padding:14px 24px}
-  .dcard .skip{font-size:9px;font-weight:900;letter-spacing:.16em;cursor:pointer;
-               color:rgba(255,242,222,.35);background:none;border:0;font-family:inherit}
+  .skip{font-size:9px;font-weight:900;letter-spacing:.16em;cursor:pointer;white-space:nowrap;
+        color:rgba(255,242,222,.35);background:none;border:0;font-family:inherit;padding:8px 6px}
+  .skip:hover{color:rgba(255,242,222,.6)}
   .xBtn{position:absolute;right:10px;top:9px;width:26px;height:26px;border-radius:9px;
         cursor:pointer;line-height:1;display:grid;place-items:center;
         border:1.5px solid rgba(255,242,222,.18);background:rgba(21,8,39,.5);
@@ -699,7 +700,7 @@
      bird. */
   .skins{flex:1;display:flex;gap:10px;overflow-x:auto;padding:9px 0 2px;min-height:0}
   .skins::-webkit-scrollbar{height:0}
-  .skin{flex:0 0 auto;width:calc((100% - 40px)/5);min-width:132px;border-radius:16px;
+  .skin{flex:0 0 auto;text-align:center;width:calc((100% - 40px)/5);min-width:132px;border-radius:16px;
         padding:9px 9px 10px;display:flex;flex-direction:column;gap:6px;min-height:0;
         cursor:pointer;font-family:inherit;color:inherit;position:relative;
         background:linear-gradient(180deg,rgba(61,31,85,.92),rgba(29,13,52,.96));
@@ -2290,7 +2291,7 @@ const S = {
     /* The user's own recording. Exclusive, like the engine: it runs 2.6s and
        two landings can be closer together than that, and an impact stacked on
        its own tail is mush where it should be a hit. */
-    const real = playSample('truckland', 0.33, 1, 'land');
+    const real = playSample('truckland', 0.44, 1, 'land');
     if(real){
       /* THE PHONE LAYER.
          The recording is 96% of its energy below 100Hz. On headphones or any
@@ -2305,10 +2306,10 @@ const S = {
          recording or fight it -- on good speakers it is a detail on top of
          the weight, and on a phone it IS the landing.
          Deliberately dry: no boing, no cartoon. The user threw those out. */
-      noise(0.085, 2100, 760,  0.330, 1.6);              // dirt and tyre
-      tone(215, 0.13, 'triangle', 0.230, 140, null, 0.01);  // the body thumping down
-      noise(0.19,  3300, 1150, 0.155, 2.2, 0.055);       // chassis rattling after
-      tone(430, 0.07, 'square',   0.092, 260, null, 0.02);  // and one clank in it
+      noise(0.085, 2100, 760,  0.440, 1.6);              // dirt and tyre
+      tone(215, 0.13, 'triangle', 0.305, 140, null, 0.01);  // the body thumping down
+      noise(0.19,  3300, 1150, 0.205, 2.2, 0.055);       // chassis rattling after
+      tone(430, 0.07, 'square',   0.122, 260, null, 0.02);  // and one clank in it
       return;
     }
     /* THE LOUDEST THING IN THE RUN, and it has to measure that way: rendered
@@ -2395,10 +2396,21 @@ function musicTick(){
 let TRACK = null, trackWanted = 0, TRACKS = [], trackIdx = 0;
 let MENU_TRACK = null, menuWanted = 0;
 let RIDE_TRACK = null, rideWanted = 0;
+const RIDE_TRACKS = [];
 /* Two long-form tracks, ~2.5 minutes each, so the soundtrack runs about five
    minutes before anything repeats. These come from the Pro model: everything
    generated on Flash comes back at 30.8s no matter what the prompt asks for. */
 const MOVEMENTS = ['spy_long', 'spy_long_b'];
+/* THE TRUCK HAS TWO RIFFS NOW, and which one you get is a coin toss. The run's
+   music already works this way -- MOVEMENTS is a list and nextTrack walks it --
+   and the ride was the one piece of music that could only ever be the same
+   thirty-two seconds. A power-up you might see several times in a session
+   should not sound identical every time.
+   Picked per pickup rather than cycled, because a ride is short and a player
+   may only get one: an order they cannot perceive is not worth keeping, and a
+   toss is the difference between "the truck music" and "one of the truck
+   tunes". */
+const RIDE_MOVEMENTS = ['ride', 'ride_b'];
 /* These two and music_menu are the whole soundtrack SHIPPED. Four other
    generated tracks and a second long one were carried for a while and never
    referenced by anything -- 6.1 MB of a game whose images are 2.8 -- so they
@@ -2450,9 +2462,28 @@ function initTrack(){
      a second and a half after a pickup rather than instantly, so it can afford
      to fetch on demand. A missed first bar is better than 245KB on every
      load. */
-  RIDE_TRACK = new Audio('audio/music_ride' + MUS_EXT);
-  RIDE_TRACK.loop = true; RIDE_TRACK.volume = 0; RIDE_TRACK.preload = 'none';
-  RIDE_TRACK.addEventListener('error', () => { RIDE_TRACK = null; });
+  RIDE_MOVEMENTS.forEach(n => {
+    const a = new Audio('audio/music_' + n + MUS_EXT);
+    a.loop = true; a.volume = 0; a.preload = 'none';
+    a.addEventListener('error', () => { a.dead = true; });   // dead, not gone
+    RIDE_TRACKS.push(a);
+  });
+  RIDE_TRACK = RIDE_TRACKS[0];
+}
+/* One of them, at random, whenever the ride's music is asked for. Skips any
+   that failed to load, and leaves RIDE_TRACK null only if none of them work --
+   the same bargain nextTrack makes, and the reason a missing file is a quieter
+   ride rather than a broken one. Whatever was playing is stopped first: two
+   riffs at once is the exact mud the ride exists to clear away. */
+function pickRideTrack(){
+  const live = RIDE_TRACKS.filter(a => !a.dead);
+  if(!live.length){ RIDE_TRACK = null; return; }
+  const next = live[(Math.random()*live.length)|0];
+  if(RIDE_TRACK && RIDE_TRACK !== next){
+    try{ RIDE_TRACK.pause(); RIDE_TRACK.currentTime = 0; }catch(e){}
+    RIDE_TRACK.volume = 0;
+  }
+  RIDE_TRACK = next;
 }
 /* The one place that decides what is playing. Everything else asks for a
    scene rather than setting volumes, so the two pieces can never overlap. */
@@ -2463,7 +2494,7 @@ function musicScene(which){
   /* The riff REPLACES the chase rather than sitting on top of it. Two pieces
      of music at once is mud, and the whole point of the ride is that everything
      else got out of the way. */
-  if(which === 'ride'){        menuWanted = 0;
+  if(which === 'ride'){        menuWanted = 0; pickRideTrack();
                                rideWanted = (game.rideMusicT||0) > 0 ? 0 : 0.60;
                                trackVol(0);    musicVol(0.10); }
   else if(which === 'play'){   menuWanted = 0; rideWanted = 0;
@@ -7713,7 +7744,12 @@ function drawLayerSlot(L, key, alpha, clipL, clipR){
   }
   if(alpha < 1) ctx.globalAlpha = alpha;
   for(let x = -off; x < VW + 1; x += g.W, seqK++){
-    const im = seq ? seq[((seqK % seq.length) + seq.length) % seq.length] : L.img;
+    /* Which metre this TILE stands at, not which metre the player does: a
+       layer scrolls at L.f of the camera, so the tile's own world position is
+       its layer position divided back out. Get that wrong and the approach
+       escalates at the wrong place -- or worse, changes panel under you while
+       you stand still. */
+    const im = seq ? midPanelAt((seqK*g.W/L.f)/UPM, seqK, [L.img]) : L.img;
     ctx.drawImage(im, x, g.y, g.W, g.H);
     /* The lookouts live on the watchtower painted into panel ZERO, so they
        ride that panel and no other -- drawn on every panel they would be three
@@ -9077,11 +9113,11 @@ function drawApp(){
                  : !ok  ? '<button class="s-buy dev" disabled>REACH ' + money(d.need) + ' m</button>'
                         : '<button class="s-buy' + (eggs() >= d.cost ? '' : ' no') + '" data-skin="' + d.id + '">' +
                           '<i class="e"></i>' + money(d.cost) + '</button>';
-      return '<button class="skin' + (on ? ' on' : '') + (own || ok ? '' : ' lk') + '">' +
+      return '<div class="skin' + (on ? ' on' : '') + (own || ok ? '' : ' lk') + '">' +
         '<span class="shot" data-shot="' + d.id + '"></span>' +
         '<h3>' + (own || ok ? d.name : '? ? ?') + '</h3>' +
         '<span class="swatch"><i style="background:' + d.sw[0] + '"></i><i style="background:' + d.sw[1] + '"></i></span>' +
-        foot + '</button>';
+        foot + '</div>';
     }).join('') + '</div>';
 }
 function drawStore(){
@@ -9412,7 +9448,9 @@ function boot(){
     ENG, engineBedTick, engineBedOn, engineBedOff, vroom, ENG_H,
     samples: () => Object.keys(SMP.buf),
     music: () => ({ now: musicNow,
-      ride: RIDE_TRACK ? { vol:+RIDE_TRACK.volume.toFixed(3), paused:RIDE_TRACK.paused } : null,
+      ride: RIDE_TRACK ? { vol:+RIDE_TRACK.volume.toFixed(3), paused:RIDE_TRACK.paused,
+                           src:(RIDE_TRACK.src||'').split('/').pop(),
+                           of:RIDE_TRACKS.length } : null,
       menu: MENU_TRACK ? { vol:+MENU_TRACK.volume.toFixed(3), paused:MENU_TRACK.paused } : null,
       chase: TRACK ? { vol:+TRACK.volume.toFixed(3), paused:TRACK.paused } : null }) };
   const it=/[?&]introt=([0-9.]+)/.exec(location.search);
