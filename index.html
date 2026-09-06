@@ -718,26 +718,6 @@
   .swatch i{width:11px;height:11px;border-radius:999px;
             border:1.5px solid rgba(21,8,39,.5)}
 
-  /* ---- the revive beat -------------------------------------------------
-     It sits BEFORE the score card, not on it: the card is the end of the run,
-     and this is the moment the run is not over yet. The ring is a clock and
-     it is short on purpose. */
-  #revive{background:radial-gradient(120% 80% at 50% 45%,rgba(36,16,67,.42) 0%,rgba(21,8,39,.88) 70%)}
-  .rvCard{width:min(440px,88%);border-radius:24px;padding:16px 22px 18px;text-align:center;
-          position:relative;box-shadow:var(--shadow);
-          background:linear-gradient(180deg,rgba(61,31,85,.97),rgba(29,13,52,.99));
-          border:2px solid rgba(255,213,74,.5);
-          animation:cardIn .28s cubic-bezier(.16,1.2,.3,1) both}
-  .rvCard h2{margin:0;font-family:'Bungee',cursive;font-size:19px;color:var(--gold);
-             text-shadow:0 3px 0 rgba(21,8,39,.6)}
-  .rvCard .sc{margin:3px 0 0;font-size:10px;font-weight:900;letter-spacing:.16em;
-              color:rgba(255,242,222,.5);font-variant-numeric:tabular-nums}
-  .rvRow{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:13px}
-  .rvBar{height:5px;border-radius:3px;background:rgba(255,242,222,.14);
-         margin:12px auto 0;width:78%;overflow:hidden}
-  .rvBar i{display:block;height:100%;width:100%;border-radius:3px;
-           background:linear-gradient(90deg,var(--amber),var(--gold))}
-
   /* ---- the ad placeholder ---------------------------------------------
      Deliberately ugly and deliberately labelled. There is no ad network on a
      static page; this is the shape of the pause a rewarded video makes, so
@@ -760,6 +740,79 @@
          background:linear-gradient(180deg,#FFE27A,var(--gold));box-shadow:0 4px 0 #B8681B}
   #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
   #toast.bad{background:linear-gradient(180deg,#FF8E77,var(--coral));box-shadow:0 4px 0 #A93A24}
+  /* ---- the death beat --------------------------------------------------
+     One card, one clock, and one question: carry on, or finish big? The two
+     are mutually exclusive at any single death -- reviving means the run is
+     not over, and the dynamite only means anything once it is -- so they sit
+     side by side and the timer makes you choose. */
+  #death{background:radial-gradient(120% 80% at 50% 45%,rgba(36,16,67,.38) 0%,rgba(21,8,39,.9) 70%)}
+  .dthCard{width:min(720px,95%);border-radius:22px;padding:12px 16px 12px;position:relative;
+           background:linear-gradient(180deg,rgba(61,31,85,.97),rgba(29,13,52,.99));
+           border:2px solid rgba(255,213,74,.42);box-shadow:var(--shadow);
+           animation:cardIn .26s cubic-bezier(.16,1.2,.3,1) both}
+  .dthTop{display:flex;align-items:baseline;justify-content:center;gap:12px}
+  .dthTop h2{margin:0;font-family:'Bungee',cursive;font-size:16px;color:var(--coral);
+             text-shadow:0 3px 0 rgba(21,8,39,.55)}
+  .dthTop p{margin:0;font-family:'Bungee',cursive;font-size:15px;color:rgba(255,242,222,.55);
+            font-variant-numeric:tabular-nums}
+  .dthTop p b{color:var(--cream)}
+  .dthCols{display:flex;gap:11px;margin-top:10px}
+  .dthCol{flex:1;border-radius:14px;padding:8px 9px 10px;min-width:0;
+          background:rgba(21,8,39,.45);border:1.5px solid rgba(255,242,222,.10)}
+  .dthCap{display:block;text-align:center;font-size:8.5px;font-weight:900;
+          letter-spacing:.18em;color:rgba(255,242,222,.45)}
+  .dthRow{display:flex;gap:7px;margin-top:7px}
+  .dthBtn{flex:1;min-width:0;border-radius:12px;padding:7px 4px 8px;cursor:pointer;
+          display:flex;flex-direction:column;align-items:center;gap:3px;
+          font-family:inherit;color:var(--cream);
+          background:linear-gradient(180deg,rgba(61,31,85,.9),rgba(29,13,52,.95));
+          border:1.5px solid rgba(255,242,222,.16);
+          transition:transform .07s ease}
+  .dthBtn:active{transform:translateY(3px)}
+  .dthBtn svg{width:19px;height:19px;fill:currentColor}
+  .dthBtn .lbl{font-size:8px;font-weight:900;letter-spacing:.1em;color:rgba(255,242,222,.62);
+               white-space:nowrap}
+  .dthBtn .cost{display:flex;align-items:center;gap:4px;font-family:'Bungee',cursive;
+                font-size:11px;line-height:1;white-space:nowrap}
+  .dthBtn .cost i{width:11px;height:14px;flex:0 0 auto;
+                  background:url(art/egg_icon.webp) center/contain no-repeat}
+  .dthBtn.heart{border-color:rgba(255,69,110,.55);color:var(--danger)}
+  .dthBtn.heart .cost{color:var(--gold)}
+  .dthBtn.ad{border-color:rgba(63,224,176,.5);color:var(--mint)}
+  .dthBtn.ad .cost{color:var(--mint)}
+  .dthBtn.tnt{border-color:rgba(255,180,71,.45);color:var(--amber)}
+  .dthBtn.tnt .cost{color:var(--gold)}
+  .dthBtn .m{font-family:'Bungee',cursive;font-size:12px;color:var(--cream)}
+  /* Can't afford is dimmed and still priced; already used is struck through and
+     says so. Two different refusals, drawn differently on purpose. */
+  .dthBtn.no{filter:grayscale(.6) brightness(.62);cursor:default}
+  .dthBtn.used{filter:grayscale(1) brightness(.5);cursor:default;border-style:dashed}
+  .dthBtn.used .cost{font-family:'Archivo',sans-serif;font-weight:900;font-size:9px;
+                     letter-spacing:.14em;color:rgba(255,242,222,.5)}
+  .dthFoot{display:flex;align-items:center;gap:12px;margin-top:10px}
+  .dthBar{flex:1;height:5px;border-radius:3px;background:rgba(255,242,222,.14);overflow:hidden}
+  .dthBar i{display:block;height:100%;width:100%;border-radius:3px;
+            background:linear-gradient(90deg,var(--amber),var(--gold))}
+
+  /* ---- the score card, laid out for a landscape screen -----------------
+     It was a portrait card in a letterbox window: a column of centred rows
+     with the number in the middle and a lot of air either side. Now the
+     number owns the left, the run owns the right, and the buttons are one
+     row -- so RETRY sits under the thumb instead of two thirds up. */
+  #over .card{width:min(600px,94%);padding:14px 18px 14px}
+  .overBody{display:flex;align-items:stretch;gap:16px;width:100%;margin:8px 0 12px}
+  .overNum{flex:0 0 44%;display:flex;flex-direction:column;justify-content:center;
+           align-items:center;border-right:1.5px solid rgba(255,242,222,.12)}
+  #over .cardScore{font-size:clamp(34px,9vw,48px)}
+  #over .stats{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:2px 0;
+               border:0;margin:0}
+  #over .stat{padding:6px 4px}
+  #over .stat + .stat{border-left:0}
+  #over .stat .v{font-size:16px}
+  .stat.gold .v{color:var(--gold)}
+  .stat.amber .v{color:var(--amber)}
+  .overFoot{display:flex;align-items:center;justify-content:center;gap:10px;width:100%}
+  .overFoot .big{padding:13px 40px 15px;font-size:clamp(18px,4.6vmin,26px);min-width:0}
 </style>
 </head>
 <body>
@@ -826,16 +879,24 @@
     <div class="card" id="card">
       <div class="ribbon">NEW BEST!</div>
       <div class="overTitle" id="overTitle">NUGGET DOWN!</div>
-      <div class="cardLabel">SCORE</div>
-      <div class="cardScore" id="finalScore">000000</div>
-      <div class="cardBest" id="finalBest">BEST 000000</div>
-      <div class="stats">
-        <div class="stat mint"><span class="v" id="stNear">0</span><span class="k">NEAR MISSES</span></div>
-        <div class="stat"><span class="v" id="stCombo">x0</span><span class="k">BEST COMBO</span></div>
-        <div class="stat"><span class="v" id="stDist">0m</span><span class="k">DISTANCE</span></div>
+      <div class="overBody">
+        <div class="overNum">
+          <div class="cardLabel">SCORE</div>
+          <div class="cardScore" id="finalScore">000000</div>
+          <div class="cardBest" id="finalBest">BEST 000000</div>
+        </div>
+        <div class="stats">
+          <div class="stat"><span class="v" id="stDist">0m</span><span class="k">DISTANCE</span></div>
+          <div class="stat gold"><span class="v" id="stEggs">0</span><span class="k">EGGS</span></div>
+          <div class="stat mint"><span class="v" id="stNear">0</span><span class="k">NEAR MISSES</span></div>
+          <div class="stat amber"><span class="v" id="stCombo">x0</span><span class="k">BEST COMBO</span></div>
+        </div>
       </div>
-      <button id="retry" class="big">RETRY</button>
-      <button id="tomenu" class="ghost">MAIN MENU</button>
+      <div class="overFoot">
+        <button id="tomenu" class="ghost">MENU</button>
+        <button id="retry" class="big">RETRY</button>
+        <button id="toshop" class="ghost" data-tab="pow">SHOP</button>
+      </div>
     </div>
   </div>
 
@@ -885,18 +946,38 @@
     </div>
   </div>
 
-  <!-- THE REVIVE BEAT. Before the score card, because the run is not over
-       yet. The ring is a clock, and it is short on purpose. -->
-  <div id="revive" class="screen" data-meta>
-    <div class="rvCard">
-      <h2>ONE MORE?</h2>
-      <p class="sc" id="rvScore">0 m</p>
-      <div class="rvRow">
-        <button class="skip" id="rvNo">NO THANKS</button>
-        <button class="claimBtn" id="rvYes"><i class="adg"></i>WATCH &amp; REVIVE</button>
-        <span class="skip" style="visibility:hidden" aria-hidden="true">NO THANKS</span>
+  <!-- THE DEATH BEAT. Before the score card, because the run is not over yet.
+       Two ways to keep it going and one way to end it bigger, each usable once
+       a run, and a clock that makes you pick. The tiers are generated so the
+       prices and the spent states can be true. -->
+  <div id="death" class="screen" data-meta>
+    <div class="dthCard">
+      <div class="dthTop"><h2 id="dthTitle">NUGGET DOWN</h2><p><b id="dthM">0</b> m</p></div>
+      <div class="dthCols">
+        <div class="dthCol">
+          <span class="dthCap">KEEP RUNNING</span>
+          <div class="dthRow">
+            <button class="dthBtn heart" id="dthHeart">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-8-5.1-8-10.4A4.6 4.6 0 0 1 12 7a4.6 4.6 0 0 1 8 3.6C20 15.9 12 21 12 21z"/></svg>
+              <span class="lbl">EXTRA LIFE</span>
+              <span class="cost"><i></i><span id="dthHeartCost">400</span></span>
+            </button>
+            <button class="dthBtn ad" id="dthAd">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+              <span class="lbl">EXTRA LIFE</span>
+              <span class="cost">WATCH</span>
+            </button>
+          </div>
+        </div>
+        <div class="dthCol">
+          <span class="dthCap">ONE LAST BANG</span>
+          <div class="dthRow" id="dthTnt"></div>
+        </div>
       </div>
-      <div class="rvBar"><i id="rvFill"></i></div>
+      <div class="dthFoot">
+        <div class="dthBar"><i id="dthFill"></i></div>
+        <button class="skip" id="dthSkip">NO THANKS</button>
+      </div>
     </div>
   </div>
 
@@ -6123,6 +6204,9 @@ function startRun(){
   game.presetDist = game.presetDist || PERK.head();
   game.dist=(game.presetDist||0)*UPM;            // ?dist=N starts the odometer there
   game.invuln=0; game.revived=false;
+  /* Each of the three is offered once a run and no more, which is what stops
+     the death beat becoming a wallet with a retry button attached. */
+  game.usedHeart=false; game.usedAd=false; game.usedTnt=false; game.blastM=0;
   game.softLeft = PERK.soft() ? 1 : 0;           // one clip taken, per run
   game.rideTough = PERK.trolleyTough() ? 1 : 0;  // the trolley's own free hit
   game.boost=1;                                  // no vehicle, so no boost to ease off
@@ -6689,7 +6773,7 @@ function finish(){
      writes the best score and flips dgh.played, and a run that is about to
      carry on has not ended. Decline or time out and finishNow() runs exactly
      as this function always did. */
-  if(reviveOffer()) return;
+  if(deathOffer()) return;
   finishNow();
 }
 function finishNow(){
@@ -6710,6 +6794,13 @@ function finishNow(){
   elNear.textContent = game.near;
   elCmb.textContent = 'x'+Math.max(1,game.comboBest);
   elDist.textContent = Math.floor(game.dist/UPM)+'m';
+  const eg = $('#stEggs'); if(eg) eg.textContent = game.runEggs || 0;
+  /* The dynamite only takes a slot on the card when it was actually used --
+     a permanent "+0m" row teaches the player it is there and does nothing. */
+  const cb = $('#stCombo');
+  if(cb) cb.parentNode.innerHTML = game.blastM
+    ? '<span class="v" id="stCombo">+' + money(game.blastM) + 'm</span><span class="k">DYNAMITE</span>'
+    : '<span class="v" id="stCombo">x'+Math.max(1,game.comboBest)+'</span><span class="k">BEST COMBO</span>';
   elOverTitle.textContent = overTxt;
   elCard.classList.toggle('best', game.newBest);
   elOver.classList.add('show');
@@ -6745,6 +6836,7 @@ function update(dt, rawDt){
   else if(game.mode==='play')  updatePlay(dt);
   else if(game.mode==='dying') updateDying(dt);
   else if(game.mode==='dead')  updateDead(dt, rawDt);
+  else if(game.mode==='blast') updateBlast(dt);
   if(game.door) updateDoor(dt);        // outside the chain: it flies on into play
   updateCrows(dt);                     // same: a crow already launched keeps coming
 
@@ -8731,7 +8823,7 @@ function render(){
     px = cageSX + cp.x; py = cp.y;
   }
   if(inCage || cageSX > -VW*1.3) drawCageBack(cageSX);
-  if(game.mode==='dying'){
+  if(game.mode==='dying' || game.mode==='blast'){
     drawPlayerShadow(rag.x - cam.x, Math.max(0, GROUND - rag.y - CK.standH));
     ctx.save(); ctx.translate(-cam.x, 0);
     rag.draw();
@@ -8906,7 +8998,7 @@ function gateStart(){
 const $$ = s => Array.prototype.slice.call(document.querySelectorAll(s));
 const SAVE_KEY = 'dgh.save.v1';
 const SAVE = (() => {
-  const d = { v:1, veh:{trolley:1}, pow:{revive:0,magnet:0,head:0,lucky:0,nerve:0,soft:0},
+  const d = { v:1, veh:{trolley:1}, pow:{bang:0,magnet:0,head:0,lucky:0,nerve:0,soft:0},
               skin:'nugget', skins:['nugget'], noAds:false, daily:{day:1,last:0} };
   try{
     const raw = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
@@ -8962,9 +9054,14 @@ const SHOP = {
       cost:[], says:[] }
   ],
   pow: [
-    { id:'revive', name:'SECOND WIND', art:'art/mystery_egg.webp', hero:true,
-      eff:'One revive per run, offered the moment you go down.',
-      cost:[1500], says:['', 'One revive a run'] },
+    /* SECOND WIND used to live here and sold a revive. The death beat gives
+       everybody one of those for an ad, so a paid one was selling what the
+       screen hands out; this sells the OTHER half of that screen instead. */
+    { id:'bang', name:'BIGGER BANG', art:'art/mystery_egg.webp', hero:true,
+      eff:'Every stick of dynamite throws you further. Stacks on whichever one you buy.',
+      cost:[1500, 3000, 6000],
+      says:['', 'Dynamite goes 25% further', 'Dynamite goes 50% further',
+            'Dynamite goes twice as far'] },
     { id:'magnet', name:'EGG MAGNET', art:'art/egg_icon.webp',
       eff:'Eggs lean in and come to you. Each level widens the reach.',
       cost:[600, 1400, 2600], says:['', 'A wingspan', 'Two wingspans', 'Most of the lane'] },
@@ -8995,7 +9092,7 @@ const PERK = {
   head:    () => [0, 150, 300, 500][lvl('pow','head')] || 0,
   nerve:   () => lvl('pow','nerve') ? 2 : 1,
   soft:    () => lvl('pow','soft') > 0,
-  revive:  () => lvl('pow','revive') > 0,
+  bang:    () => [1, 1.25, 1.5, 2][lvl('pow','bang')] || 1,
   trolleyTough: () => lvl('veh','trolley') >= 3,
   // both of these make the mystery egg arrive sooner, so they multiply
   dropRate: () => ([1, 0.82, 0.66, 0.45][lvl('pow','lucky')] || 1) *
@@ -9326,67 +9423,181 @@ function dailyDraw(){
   }
 }
 
-/* ---- the revive beat -----------------------------------------------------
-   Offered BEFORE anything about the run is recorded, because a run that is
-   about to carry on has not ended. Decline, or let the ring run out, and
-   finishNow() runs exactly as finish() always did. */
-const REVIVE_SECS = 6;
-let rvTimer = 0;
-function reviveOffer(){
-  if(!PERK.revive() || game.revived) return false;
-  if(game.dist / UPM < 150) return false;      // not in the opening seconds
-  const el = $('#revive'); if(!el) return false;
-  $('#rvScore').textContent = Math.floor(game.dist/UPM) + ' m';
+/* ---- THE DEATH BEAT ------------------------------------------------------
+   Offered BEFORE anything about the run is recorded, because a run that might
+   carry on has not ended. Decline, or let the clock run out, and finishNow()
+   runs exactly as finish() always did.
+
+   Three offers, each once a run:
+     EXTRA LIFE for eggs  -- the paid revive
+     EXTRA LIFE for an ad -- the free one, and the one most players take
+     DYNAMITE             -- Jetpack Joyride's final blast: you are dead, and
+                             the only thing left to improve is the number
+   The first two continue the run and the third ends it, so they are mutually
+   exclusive at any single death and the card puts them side by side rather
+   than in a sequence of two screens.
+
+   `game.blastM` is what the last blast added, kept so the score card can show
+   it. Everything else is a boolean, reset in startRun. */
+const DEATH_SECS = 8;
+const HEART_COST = 400;
+const TNT = [ {m:500, cost:250}, {m:750, cost:450}, {m:1000, cost:700} ];
+let dthTimer = 0;
+
+function deathOffer(){
+  const el = $('#death'); if(!el) return false;
+  if(game.dist / UPM < 100) return false;        // not in the opening seconds
+  if(game.usedHeart && game.usedAd && game.usedTnt) return false;   // nothing left to sell
+  $('#dthM').textContent = money(Math.floor(game.dist/UPM));
+  /* "SO CLOSE" is what you say to somebody who nearly beat their best, so it
+     needs a best to be near -- the same rule the score card's own lines already
+     follow. Without the guard it fires on every early run, when the best is 0
+     and every score beats it. */
+  const bst = game.best || 0;
+  $('#dthTitle').textContent = (bst > 0 && game.score >= bst*0.85) ? 'SO CLOSE' : 'NUGGET DOWN';
+  deathDraw();
   el.classList.add('show');
-  /* A tap anywhere is a retry once game.mode is 'dead', so without this the
-     one press a player is most likely to make -- impatience -- throws the
-     offer away and starts a new run. META.open is already the flag thrustOn
-     rejects on, so the offer raises it exactly the way the shop does. */
+  /* Any press is a retry once game.mode is 'dead', so without this the one
+     press an impatient player makes throws the offer away and starts a new
+     run. META.open is already the flag thrustOn rejects on. */
   META.open = true;
-  const fill = $('#rvFill');
-  let t = REVIVE_SECS;
+  const fill = $('#dthFill');
   fill.style.transition = 'none'; fill.style.width = '100%';
   requestAnimationFrame(() => {
-    fill.style.transition = 'width ' + REVIVE_SECS + 's linear';
+    fill.style.transition = 'width ' + DEATH_SECS + 's linear';
     fill.style.width = '0%';
   });
-  clearTimeout(rvTimer);
-  rvTimer = setTimeout(reviveNo, REVIVE_SECS * 1000);
+  clearTimeout(dthTimer);
+  dthTimer = setTimeout(deathSkip, DEATH_SECS * 1000);
   return true;
 }
-function reviveNo(){
-  clearTimeout(rvTimer);
-  META.open = false;
-  $('#revive').classList.remove('show');
-  finishNow();
+function deathDraw(){
+  const heart = $('#dthHeart'), ad = $('#dthAd');
+  const cost = HEART_COST;
+  heart.className = 'dthBtn heart' + (game.usedHeart ? ' used' : (eggs() < cost ? ' no' : ''));
+  /* The whole cost node is rebuilt, never half-edited. Writing 'USED' into it
+     with textContent removed the price span living inside it, and the NEXT
+     death then threw on a null before the card was ever shown -- so one spent
+     life silently took the offer away for the rest of the session. */
+  heart.querySelector('.cost').innerHTML = game.usedHeart ? 'USED' : '<i></i>' + money(cost);
+  ad.className = 'dthBtn ad' + (game.usedAd ? ' used' : '');
+  ad.querySelector('.cost').innerHTML = game.usedAd ? 'USED' : 'WATCH';
+  const mul = PERK.bang();
+  $('#dthTnt').innerHTML = TNT.map((t, i) => {
+    const m = Math.round(t.m * mul);
+    const cls = game.usedTnt ? ' used' : (eggs() < t.cost ? ' no' : '');
+    return '<button class="dthBtn tnt' + cls + '" data-tnt="' + i + '">' +
+      '<span class="m">+' + money(m) + '</span><span class="lbl">METRES</span>' +
+      '<span class="cost">' + (game.usedTnt ? 'USED'
+        : '<i></i>' + money(t.cost)) + '</span></button>';
+  }).join('');
 }
-function reviveYes(){
-  clearTimeout(rvTimer);
-  rewardedAd().then(() => {
-    META.open = false;
-    $('#revive').classList.remove('show');
-    game.revived = true;
-    /* CLEAR THE ROAD, THEN PUT HIM BACK ON IT. Reviving into the piece that
-       killed you is not a revive, and the ragdoll has carried him somewhere
-       the run does not know about -- so everything in flight goes and he is
-       replaced at the odometer, which is the one position the world and the
-       counter both agree on. */
-    game.obstacles.length = 0; game.crows.length = 0; game.parts.length = 0;
-    game.drop = null; game.crowWait = 0; game.crowN = 0;
-    rag.alive = false;
-    player.x = game.dist; player.y = 0; player.vy = 0; player.onGround = true;
-    player.state = 'run'; player.stateT = 0; player.thrusting = false;
-    player.landT = 0; player.stumbleT = 0; player.near = 0; player.nearT = 0;
-    game.mode = 'play';
-    game.freeze = 0; game.timeScale = 1; game.tsTarget = 1; game.shake = 0;
-    game.invuln = 2.4;                       // and it blinks, so it is visible
-    game.goT = GO_TIME;                      // the 3-2-1, not straight into a fence
-    game.spawnT = Math.max(game.spawnT, GO_TIME + 1.2);
-    game.crowT  = Math.max(game.crowT,  GO_TIME + 4);
-    game.dropT  = Math.max(game.dropT || 0, 6);
-    elHud.classList.add('on'); elOver.classList.remove('show');
-    S.cheer(); musicScene('play');
-  });
+function deathClose(){ clearTimeout(dthTimer); META.open = false; $('#death').classList.remove('show'); }
+function deathSkip(){ deathClose(); finishNow(); }
+
+/* Both revives land here. The only difference is what was paid. */
+function reviveNow(){
+  deathClose();
+  game.revived = true;
+  /* CLEAR THE ROAD, THEN PUT HIM BACK ON IT. Reviving into the piece that
+     killed you is not a revive, and the ragdoll has carried him somewhere the
+     run does not know about -- so everything in flight goes and he is replaced
+     at the odometer, the one position the world and the counter agree on. */
+  game.obstacles.length = 0; game.crows.length = 0; game.parts.length = 0;
+  game.drop = null; game.crowWait = 0; game.crowN = 0;
+  rag.alive = false;
+  player.x = game.dist; player.y = 0; player.vy = 0; player.onGround = true;
+  player.state = 'run'; player.stateT = 0; player.thrusting = false;
+  player.landT = 0; player.stumbleT = 0; player.near = 0; player.nearT = 0;
+  game.mode = 'play';
+  game.freeze = 0; game.timeScale = 1; game.tsTarget = 1; game.shake = 0;
+  game.invuln = 2.4;                       // and it blinks, so it is visible
+  game.goT = GO_TIME;                      // the 3-2-1, not straight into a fence
+  game.spawnT = Math.max(game.spawnT, GO_TIME + 1.2);
+  game.crowT  = Math.max(game.crowT,  GO_TIME + 4);
+  game.dropT  = Math.max(game.dropT || 0, 6);
+  elHud.classList.add('on'); elOver.classList.remove('show');
+  S.cheer(); musicScene('play');
+}
+function deathHeart(){
+  if(game.usedHeart) return;
+  if(!spend(HEART_COST)){ toast('NOT ENOUGH EGGS', true); S.bonk(); return; }
+  game.usedHeart = true; reviveNow();
+}
+function deathAd(){
+  if(game.usedAd) return;
+  clearTimeout(dthTimer);                  // the clock stops while the ad runs
+  rewardedAd().then(() => { game.usedAd = true; reviveNow(); });
+}
+function deathTnt(i){
+  if(game.usedTnt) return;
+  const t = TNT[i]; if(!t) return;
+  if(!spend(t.cost)){ toast('NOT ENOUGH EGGS', true); S.bonk(); return; }
+  game.usedTnt = true;
+  deathClose();
+  startBlast(Math.round(t.m * PERK.bang()));
+}
+
+/* ---- the blast -----------------------------------------------------------
+   He is dead and the run is over; the only thing left to improve is the
+   number, so the number is what moves. The distance is driven along an
+   ease-out rather than by the ragdoll's own physics: a body thrown a thousand
+   metres by a spring is a body that lands in three different places depending
+   on the frame rate, and the whole point of this beat is that you bought a
+   specific number of metres and got them.
+
+   The world scrolls because game.dist and cam.x advance together, which is the
+   same agreement the odometer fix established -- so a long enough blast can
+   carry you across a zone boundary, and that is a feature. */
+const BLAST_T = 2.3;
+function startBlast(metres){
+  game.mode = 'blast';
+  game.blastT = 0; game.blastM = metres; game.blastDone = 0;
+  game.spawnT = 1e9; game.crowT = 1e9; game.dropT = 1e9;
+  game.obstacles.length = 0; game.crows.length = 0; game.drop = null;
+  game.freeze = 0.09; game.timeScale = 1; game.tsTarget = 1;
+  addShake(34); game.flash = 1;
+  S.zap(); S.hit(); S.timber();
+  const gy = GROUND - (rag.alive ? rag.y : player.y);
+  spark(rag.x, gy - 60, 42, {col:C.amber, s0:260,s1:900, l0:0.4,l1:1.0, r0:5,r1:14});
+  spark(rag.x, gy - 60, 26, {col:C.coral, s0:180,s1:700, l0:0.4,l1:0.9, r0:6,r1:16});
+  smoke(rag.x, GROUND - 8, 22, {a0:Math.PI*0.75, a1:Math.PI*2.1, s0:180, s1:520,
+                                r0:26, r1:56, l0:0.6, l1:1.3});
+  featherBurst(rag.x, gy - 60, 26, 520);
+  rag.vy = -520; rag.vrot = 9;
+  if(navigator.vibrate) try{ navigator.vibrate([40,60,90]); }catch(e){}
+  elHud.classList.add('on');
+}
+function updateBlast(dt){
+  game.blastT += dt;
+  const t = Math.min(1, game.blastT / BLAST_T);
+  const p = 1 - Math.pow(1 - t, 2.2);              // fast out of the blast, easing down
+  const want = game.blastM * p;
+  const step = want - game.blastDone;
+  game.blastDone = want;
+  const units = step * UPM;
+  game.dist  += units;
+  game.score += step * SCORE_PER_M;
+  player.x   += units;
+  rag.x      += units;
+  /* An arc, not a fall: he goes up out of the explosion and comes down as the
+     metres run out, so the landing and the last metre happen together. */
+  rag.y  = Math.max(0, Math.sin(t * Math.PI) * 260 * (1 - t*0.35));
+  rag.rot += 8.5 * dt * (1 - t*0.6);
+  cam.x = player.x - PX;
+  if(Math.random() < dt*44) smoke(rag.x - 30, GROUND - 6, 1,
+      {a0:Math.PI*0.9, a1:Math.PI*1.6, s0:90, s1:280, r0:14, r1:34, l0:0.4, l1:0.9});
+  if(Math.random() < dt*18) spark(rag.x, GROUND - rag.y - 40, 2,
+      {col:C.amber, s0:120,s1:340, l0:0.2,l1:0.5, r0:3,r1:7, g:700});
+  setScore(game.score);
+  if(t >= 1){
+    addShake(12); S.thud();
+    smoke(rag.x, GROUND - 6, 10, {a0:Math.PI*0.85, a1:Math.PI*2.15, s0:120, s1:340,
+                                  r0:20, r1:44, l0:0.5, l1:1.0});
+    game.mode = 'dead'; game.deadT = 0; game.recover = 0;
+    player.recX = rag.x; player.state = 'sit';
+    finishNow();
+  }
 }
 
 /* ============================================================
@@ -9477,8 +9688,13 @@ function metaBind(){
   $('#dayX').addEventListener('click', closeDaily);
   $('#dayLater').addEventListener('click', closeDaily);
   $('#dayClaim').addEventListener('click', dailyClaim);
-  $('#rvYes').addEventListener('click', reviveYes);
-  $('#rvNo').addEventListener('click', reviveNo);
+  $('#dthHeart').addEventListener('click', deathHeart);
+  $('#dthAd').addEventListener('click', deathAd);
+  $('#dthSkip').addEventListener('click', deathSkip);
+  $('#death').addEventListener('click', e => {
+    const t = e.target.closest('[data-tnt]');
+    if(t && !t.classList.contains('used')) deathTnt(+t.dataset.tnt);
+  });
   window.addEventListener('keydown', e => {
     if(e.key === 'Escape' && META.open) META.hide();
   });
@@ -9528,7 +9744,8 @@ function boot(){
   if(game.dbg) window.DGH = { game, player, cam, rag, OB, S, A, PROPS,
     startRun, startQuick, startIntro, toMenu, updatePlay, thrustOn, thrustOff,
     startRide, loseRide, spawnBasketDrop, dropClearAt, spawnElec, spawnPattern, spawnEggs,
-    SAVE, SHOP, PERK, SKIN, SKINS, buy, buySkin, eggs, spend, earn, reviveOffer, reviveYes,
+    SAVE, SHOP, PERK, SKIN, SKINS, buy, buySkin, eggs, spend, earn,
+    deathOffer, deathHeart, deathAd, deathTnt, deathSkip, startBlast, TNT, HEART_COST,
     die, finish, finishNow, softSave, dailyClaim, dailyState, skinApply, shopDraw, META,
     layRideCourse, rideApex, rideRise, rideCeil, truckGeom, truckFrame,
     elecDist, riding, wireHot, smoke, spark, pop, updateParticles, render,
