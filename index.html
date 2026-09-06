@@ -843,40 +843,63 @@ function noise(dur, f0, f1, vol, q, at){
 /* ============================================================
    THE ENGINE
    ============================================================
-   AN ENGINE IS A PULSE TRAIN, NOT A TONE WITH VIBRATO. The first version was
-   built out of `wob`, which bends an oscillator's PITCH -- and a wavering
-   pitch is a siren, not a motor, which is why it never sounded like one
-   however loud it got. A four-stroke is a series of BANGS: what rises when it
-   revs is the RATE of the bangs. So this gates the sound in AMPLITUDE at the
-   firing rate, and everything else falls out of that -- the lumpiness is real
-   rather than added, and at high rates the pulses fuse into the flat snarl a
-   truck makes at speed.
+   THIS IS THE THIRD ENGINE. The first bent an oscillator's PITCH, which is a
+   siren, not a motor. The second gated a saw at the firing rate, which is the
+   right IDEA -- an engine is a series of bangs and what rises when it revs is
+   the RATE of the bangs -- and still sounded, in the user's words, lame. This
+   one is built from measurements of three real monster-truck recordings the
+   user supplied as reference, and the measurements said the second version was
+   wrong in a way no amount of tweaking would have found:
 
-   THEN THE USER SAID IT WAS LAME AND SHOULD FIT THE HEAVY METAL. That is not
-   a vague note, it is a measurable one, and it turned out to be two concrete
-   things the engine was getting wrong:
+     band        drive   accel   what the game had
+     <100Hz        0%      0%    a fat sub sine, the loudest thing in it
+     100-400      15%     17%
+     400-2000     39%     41%    a lowpass sitting on top of it
+     2000-8000    40%     37%    essentially nothing
+     harmonics:  1st 0.06, 3rd 0.70, 5th 1.00, and 6-12 all still ~0.4
 
-   1. IT WAS IN THE WRONG KEY. An FFT of audio/music_ride puts its strongest
-      partial at 74Hz -- D2 -- with G1/G3 and A1 under it: a drop-D riff. The
-      engine was sweeping to 62 and 88 bangs per second, which are nothing, so
-      it sat a semitone-and-a-bit off the root and read as noise fighting the
-      music. Now it LANDS ON D (see RIFF_HZ) and the rev resolves into the
-      riff instead of arguing with it. A rev has a pitch whether you chose one
-      or not; choosing one is free.
-   2. IT WAS CLEAN. Distorted guitars are all harmonics, and a pure gated saw
-      underneath them sounds thin and polite by comparison -- "lame" is
-      exactly the right word for it. The body now goes through a soft-clip
-      shaper, which is what a guitar pedal is, so the engine has the same
-      texture as the thing it plays against.
+   A BIG ENGINE HEARD FROM OUTSIDE HAS ALMOST NO BASS. Its fundamental is
+   nearly absent and its FIFTH HARMONIC is the loudest thing in it; what you
+   feel as enormous is a dense stack of upper harmonics, and the ear infers the
+   low pitch it never actually hears. The old version was the exact inverse --
+   a 37Hz sub with a lowpass over it, which is a distant lorry, not a monster
+   truck standing next to you.
+
+   So the waveform is no longer a saw pretending. ENG_H is the measured
+   harmonic series, handed to createPeriodicWave, which means the oscillator
+   emits the reference's spectrum by construction rather than by adjustment.
+   Everything below 110Hz is then filtered off, because the references have
+   nothing there and the sub was the single biggest thing making it sound
+   small.
+
+   IT IS STILL TUNED TO THE MUSIC. An FFT of the ride track puts its strongest
+   partial at 74Hz -- D2, a drop-D riff -- so the firing rate is D: RIFF_HZ/2
+   at idle, up to RIFF_HZ or its fifth under throttle. A rev has a pitch
+   whether you choose one or not; choosing one is free, and it is why the
+   engine sits in the riff instead of arguing with it.
 
    And a rev that slides forever sounds out of control, so it RISES AND THEN
-   HOLDS: `o.rise` is the fraction of the length spent climbing, and the rest
-   sits on the target snarling. Arriving somewhere is what makes it sound
-   powerful rather than panicked.
-
-   Built out of raw nodes rather than tone/wob/noise because none of those
-   expose a gain to modulate, and that gain is the entire idea. */
+   HOLDS: `o.rise` is the fraction of the length spent climbing and the rest
+   sits on the target snarling. Arriving somewhere is what sounds powerful. */
 const RIFF_HZ = 73.42;   // D2, measured off the ride track. The truck's home note.
+
+/* The measured fingerprint. Past the 12th the recordings run out of usable
+   resolution, so it continues as a slow 1/sqrt(k) decay -- chosen because it
+   puts ~50% of the remaining energy in 400-2000 and ~50% above it, which is
+   the split the references actually have. 220 terms so the series still
+   reaches 8kHz when the engine is idling; the oscillator band-limits itself
+   at higher rates, so this cannot alias. */
+const ENG_H = [0.06, 0.10, 0.70, 0.22, 1.00, 0.36, 0.34, 0.43, 0.34, 0.46, 0.51, 0.50];
+const ENG_TERMS = 220;
+let engWave = null, engWaveFor = null;
+function engineWave(c){
+  if(engWave && engWaveFor === c) return engWave;
+  const re = new Float32Array(ENG_TERMS + 1), im = new Float32Array(ENG_TERMS + 1);
+  for(let k = 1; k <= ENG_TERMS; k++)
+    im[k] = k <= ENG_H.length ? ENG_H[k-1] : 0.45*Math.sqrt(ENG_H.length/k);
+  engWaveFor = c;
+  return engWave = c.createPeriodicWave(re, im);
+}
 
 function vroom(len, rpm0, rpm1, vol, at, o){
   if(!A.started || !A.on) return;
@@ -887,95 +910,181 @@ function vroom(len, rpm0, rpm1, vol, at, o){
   const crank = o.crank || 0;              // starter motor before it catches
   const t = t0 + crank;                    // when the engine itself begins
   const rise = t + len*(o.rise === undefined ? 0.55 : o.rise);
+  const end = t + len;
+
   const out = c.createGain();
   out.gain.setValueAtTime(0.0001, t0);
   out.gain.exponentialRampToValueAtTime(vol, t + 0.03);
-  out.gain.setValueAtTime(vol, t + len*0.75);
-  out.gain.exponentialRampToValueAtTime(0.0001, t + len);
-  out.connect(A.sfxGain);
+  out.gain.setValueAtTime(vol, t + len*0.78);
+  out.gain.exponentialRampToValueAtTime(0.0001, end);
+  /* NOTHING BELOW 110Hz. The references have 0% of their energy there and the
+     sub that used to live here is what made the old engine sound like a
+     distant lorry instead of a machine standing next to you. */
+  const hp = c.createBiquadFilter();
+  hp.type = 'highpass'; hp.frequency.value = 110; hp.Q.value = 0.6;
+  hp.connect(out); out.connect(A.sfxGain);
 
   /* THE STARTER. Optional, and it is the whole reason a pickup reads as an
-     IGNITION rather than a rev: a labouring low whirr that turns the motor
-     over a few times before it fires. Cheap -- filtered noise with its own
-     slow gate -- and it buys the moment its entire shape. */
+     IGNITION rather than a rev: a labouring low whirr turning the motor over
+     a few times before it fires. The ignition reference is the one recording
+     WITH low energy in it (12% under 100Hz) and a strong fundamental, because
+     a starter is slow and loaded -- so this one is allowed its weight. */
   if(crank > 0){
     const cg = c.createGain(); cg.gain.value = 0; cg.connect(out);
     const clfo = c.createOscillator(); clfo.type = 'sawtooth';
-    clfo.frequency.setValueAtTime(7.5, t0);
-    clfo.frequency.linearRampToValueAtTime(11, t);
-    const csh = c.createWaveShaper(); csh.curve = pulseCurve(0.35);
-    const cAmt = c.createGain(); cAmt.gain.value = 0.7;
+    clfo.frequency.setValueAtTime(6.5, t0);
+    clfo.frequency.linearRampToValueAtTime(10, t);
+    const csh = c.createWaveShaper(); csh.curve = pulseCurve(0.30);
+    const cAmt = c.createGain(); cAmt.gain.value = 0.8;
     clfo.connect(csh); csh.connect(cAmt); cAmt.connect(cg.gain);
     const cn = c.createBufferSource(); cn.buffer = noiseBuffer(c); cn.loop = true;
     const cbp = c.createBiquadFilter(); cbp.type = 'bandpass';
-    cbp.frequency.setValueAtTime(320, t0);
-    cbp.frequency.linearRampToValueAtTime(520, t);
-    cbp.Q.value = 3.5;
-    const cw = c.createOscillator(); cw.type = 'square';   // the starter's whine
-    cw.frequency.setValueAtTime(180, t0);
-    cw.frequency.linearRampToValueAtTime(300, t);
-    const cwg = c.createGain(); cwg.gain.value = 0.16;
+    cbp.frequency.setValueAtTime(340, t0);
+    cbp.frequency.linearRampToValueAtTime(560, t);
+    cbp.Q.value = 2.2;
+    const cw = c.createOscillator(); cw.type = 'sawtooth';   // the starter's whine
+    cw.frequency.setValueAtTime(165, t0);
+    cw.frequency.linearRampToValueAtTime(280, t);
+    const cwg = c.createGain(); cwg.gain.value = 0.22;
     cn.connect(cbp); cbp.connect(cg); cw.connect(cwg); cwg.connect(cg);
     clfo.start(t0); cn.start(t0); cw.start(t0);
     clfo.stop(t + 0.02); cn.stop(t + 0.02); cw.stop(t + 0.02);
-    noise(0.10, 1800, 400, vol*0.55, 0.8, (at||0) + crank);   // it catches
+    noise(0.11, 2200, 500, vol*0.7, 0.75, (at || 0) + crank);   // it catches
   }
 
-  /* the firing pulse: a saw through a shaper that is flat for most of its
-     range and spikes near the top -- one short bang per revolution, and the
-     duty cycle stays put as the rate climbs. */
-  const lfo = c.createOscillator(); lfo.type = 'sawtooth';
-  lfo.frequency.setValueAtTime(rpm0, t);
-  lfo.frequency.exponentialRampToValueAtTime(Math.max(1, rpm1), rise);
-  lfo.frequency.setValueAtTime(Math.max(1, rpm1), t + len);   // ...and hold there
-  const shape = c.createWaveShaper(); shape.curve = pulseCurve(0.45);
-  const gate = c.createGain(); gate.gain.value = 0;
-  lfo.connect(shape); shape.connect(gate.gain);
-
-  // body: a saw an octave under the firing rate, so it has a pitch to it
-  const saw = c.createOscillator(); saw.type = 'sawtooth';
-  saw.frequency.setValueAtTime(rpm0*0.5, t);
-  saw.frequency.exponentialRampToValueAtTime(Math.max(20, rpm1*0.5), rise);
-  saw.frequency.setValueAtTime(Math.max(20, rpm1*0.5), t + len);
-  const sawG = c.createGain(); sawG.gain.value = 0.5;
-
-  // and a fifth over it -- what a V8's uneven bank actually gives you, and
-  // the interval this particular riff is built on
-  const fif = c.createOscillator(); fif.type = 'square';
-  fif.frequency.setValueAtTime(rpm0*0.75, t);
-  fif.frequency.exponentialRampToValueAtTime(Math.max(20, rpm1*0.75), rise);
-  fif.frequency.setValueAtTime(Math.max(20, rpm1*0.75), t + len);
-  const fifG = c.createGain(); fifG.gain.value = 0.2;
-
-  // grit: broadband, opened up by a filter that climbs with the revs
-  const nz = c.createBufferSource(); nz.buffer = noiseBuffer(c); nz.loop = true;
-  const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 0.9;
-  lp.frequency.setValueAtTime(rpm0*14, t);
-  lp.frequency.exponentialRampToValueAtTime(Math.max(200, rpm1*16), rise);
-  const nzG = c.createGain(); nzG.gain.value = 0.7;
+  // the engine itself: the measured spectrum, at the firing rate
+  const osc = c.createOscillator();
+  osc.setPeriodicWave(engineWave(c));
+  osc.frequency.setValueAtTime(rpm0, t);
+  osc.frequency.exponentialRampToValueAtTime(Math.max(8, rpm1), rise);
+  osc.frequency.setValueAtTime(Math.max(8, rpm1), end);   // ...and hold there
+  const oscG = c.createGain(); oscG.gain.value = 0.85;
 
   /* THE PEDAL. Soft clip, so the engine is made of harmonics like the guitars
-     are. Post-gate, so it saturates the bangs themselves. */
+     it plays over are, and so the stack compresses into a snarl rather than
+     staying a polite stack of sine waves. */
   const drv = c.createWaveShaper();
   drv.curve = clipCurve(o.drive === undefined ? 2.6 : o.drive);
   drv.oversample = '2x';
+  osc.connect(oscG); oscG.connect(drv); drv.connect(hp);
 
-  saw.connect(sawG); sawG.connect(gate);
-  fif.connect(fifG); fifG.connect(gate);
-  nz.connect(lp); lp.connect(nzG); nzG.connect(gate);
-  gate.connect(drv); drv.connect(out);
+  /* THE RASP. The references are only 0.1-0.4 periodic -- a real engine is
+     half noise -- so a band of it rides on top, opened up with the revs and
+     chopped at the firing rate so it breathes with the cylinders rather than
+     hissing over them. */
+  const nz = c.createBufferSource(); nz.buffer = noiseBuffer(c); nz.loop = true;
+  const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.55;
+  bp.frequency.setValueAtTime(Math.max(300, rpm0*22), t);
+  bp.frequency.exponentialRampToValueAtTime(Math.max(600, rpm1*28), rise);
+  const chop = c.createGain(); chop.gain.value = 0.45;    // never fully shut
+  const clf = c.createOscillator(); clf.type = 'sawtooth';
+  clf.frequency.setValueAtTime(rpm0, t);
+  clf.frequency.exponentialRampToValueAtTime(Math.max(8, rpm1), rise);
+  const csh2 = c.createWaveShaper(); csh2.curve = pulseCurve(0.4);
+  const cAmt2 = c.createGain(); cAmt2.gain.value = 0.55;
+  clf.connect(csh2); csh2.connect(cAmt2); cAmt2.connect(chop.gain);
+  const nzG = c.createGain(); nzG.gain.value = 0.55;
+  nz.connect(bp); bp.connect(chop); chop.connect(nzG); nzG.connect(hp);
 
-  // chest: the sub, untouched by the gate so it is a solid floor under the lumps
-  const sub = c.createOscillator(); sub.type = 'sine';
-  sub.frequency.setValueAtTime(rpm0*0.5, t);
-  sub.frequency.exponentialRampToValueAtTime(Math.max(20, rpm1*0.5), rise);
-  const subG = c.createGain(); subG.gain.value = 0.55;
-  sub.connect(subG); subG.connect(out);
-
-  const stopAt = t + len + 0.05;
-  [lfo, saw, fif, nz, sub].forEach(n => { n.start(t); n.stop(stopAt); });
+  const stopAt = end + 0.05;
+  [osc, nz, clf].forEach(n => { n.start(t); n.stop(stopAt); });
   }catch(e){ A.err = e.message; }
 }
+/* ============================================================
+   THE ENGINE BED  --  it is running the whole time you are driving it
+   ============================================================
+   The user supplied a DRIVING recording alongside the ignition and the
+   acceleration, and that third reference is a design note as much as a sound:
+   a monster truck that is silent between jumps is not a monster truck, it is a
+   sprite. Every other loud thing in this game is an event, so the truck had
+   nothing at all under it -- you heard it arrive, then nothing until you
+   jumped, which is most of the ride.
+
+   So this is the same measured engine as `vroom`, held open at idle for as
+   long as the ride lasts. Three things keep it from becoming a nuisance,
+   because a drone under a metal riff very easily is one:
+
+     * IT IS QUIET. ENG_BED_VOL is a bed, not a part -- felt rather than
+       listened to, and mixed to sit under the riff instead of beside it.
+     * IT MOVES. A drone at a fixed pitch stops registering within seconds.
+       The revs lift while the wheels are off the ground, exactly as a real one
+       does when the load comes off, and settle back on landing -- which also
+       means the sound is telling you something true about the game state.
+     * IT IS ONE VOICE, built once when the ride starts and stopped when it
+       ends. Not a per-frame one-shot: that would allocate an oscillator every
+       frame and is the classic way to make a game stutter on its own audio.
+
+   It idles on D one octave under the riff's root, so it agrees with the music
+   for free. */
+const ENG_BED_VOL = 0.075;
+const ENG = { g:null, osc:null, nz:null, clf:null, bp:null, rev:0 };
+
+function engineBedOn(){
+  if(ENG.g || !A.started || !A.on) return;
+  const c = actx(); if(!c) return;
+  try{
+    const t = c.currentTime;
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(ENG_BED_VOL, t + 0.35);
+    const hp = c.createBiquadFilter();          // no sub, same as the one-shots
+    hp.type = 'highpass'; hp.frequency.value = 120; hp.Q.value = 0.6;
+    hp.connect(g); g.connect(A.sfxGain);
+
+    const osc = c.createOscillator();
+    osc.setPeriodicWave(engineWave(c));
+    osc.frequency.value = RIFF_HZ*0.5;           // D, an octave under the riff
+    const drv = c.createWaveShaper();
+    drv.curve = clipCurve(2.4); drv.oversample = '2x';
+    osc.connect(drv); drv.connect(hp);
+
+    const nz = c.createBufferSource(); nz.buffer = noiseBuffer(c); nz.loop = true;
+    const bp = c.createBiquadFilter(); bp.type = 'bandpass';
+    bp.frequency.value = 900; bp.Q.value = 0.5;
+    const chop = c.createGain(); chop.gain.value = 0.4;
+    const clf = c.createOscillator(); clf.type = 'sawtooth';
+    clf.frequency.value = RIFF_HZ*0.5;
+    const sh = c.createWaveShaper(); sh.curve = pulseCurve(0.4);
+    const amt = c.createGain(); amt.gain.value = 0.5;
+    clf.connect(sh); sh.connect(amt); amt.connect(chop.gain);
+    const nzG = c.createGain(); nzG.gain.value = 0.4;
+    nz.connect(bp); bp.connect(chop); chop.connect(nzG); nzG.connect(hp);
+
+    osc.start(t); nz.start(t); clf.start(t);
+    ENG.g = g; ENG.osc = osc; ENG.nz = nz; ENG.clf = clf; ENG.bp = bp; ENG.rev = 0;
+  }catch(e){ A.err = e.message; }
+}
+
+function engineBedOff(){
+  if(!ENG.g) return;
+  const c = actx();
+  try{
+    const t = c ? c.currentTime : 0;
+    ENG.g.gain.cancelScheduledValues(t);
+    ENG.g.gain.setValueAtTime(Math.max(0.0001, ENG.g.gain.value), t);
+    ENG.g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+    [ENG.osc, ENG.nz, ENG.clf].forEach(n => { try{ n.stop(t + 0.30); }catch(e){} });
+  }catch(e){ A.err = e.message; }
+  ENG.g = ENG.osc = ENG.nz = ENG.clf = ENG.bp = null;
+}
+
+/* Revs follow the wheels: up off the ground, back down on the landing. */
+function engineBedTick(dt){
+  const want = riding() && A.started && A.on && game.mode === 'play';
+  if(want && !ENG.g) engineBedOn();
+  else if(!want && ENG.g) engineBedOff();
+  if(!ENG.g) return;
+  const tgt = player.onGround ? 0 : 1;
+  ENG.rev += (tgt - ENG.rev) * Math.min(1, dt*6);
+  const f = RIFF_HZ*0.5*(1 + 0.42*ENG.rev);
+  const c = actx(); if(!c) return;
+  try{
+    ENG.osc.frequency.setTargetAtTime(f, c.currentTime, 0.05);
+    ENG.clf.frequency.setTargetAtTime(f, c.currentTime, 0.05);
+    ENG.bp.frequency.setTargetAtTime(700 + 700*ENG.rev, c.currentTime, 0.08);
+  }catch(e){}
+}
+
 /* one bang per cycle: flat, then a spike near the top of the saw's travel */
 function pulseCurve(thr){
   const n = 257, k = new Float32Array(n);
@@ -1373,8 +1482,12 @@ const S = {
        blip up to the fifth, because nobody fires a big engine and drives off
        on one rev. rpm is BANGS PER SECOND, not pitch. */
     noise(0.10, 240, 80, 0.20, 0.9);                         // the door
-    vroom(1.25, 19, RIFF_HZ, 0.40, 0.04, {crank:0.30, rise:0.42, drive:3.2});
-    vroom(0.60, RIFF_HZ, RIFF_HZ*1.5, 0.24, 1.05, {rise:0.5, drive:3.4})
+    /* THE IGNITION, IN THREE BEATS: the starter labours, it CATCHES, and it
+       roars up onto D and sits there -- the note the riff about to start is
+       built on. Then a blip onto the fifth, because nobody fires an engine
+       that size and drives off on one rev. */
+    vroom(1.30, 21, RIFF_HZ, 0.42, 0.04, {crank:0.34, rise:0.40, drive:3.0});
+    vroom(0.60, RIFF_HZ*0.8, RIFF_HZ*1.5, 0.26, 1.15, {rise:0.45, drive:3.4})
   },
 
   /* THE TRUCK LEAVING THE GROUND. The suspension lets go first -- that is the
@@ -1404,9 +1517,9 @@ const S = {
        a fifth off the truck's own D onto A, the note the riff leans on
        hardest after the root. A rising fifth is the oldest trick there is for
        making something sound like it is going up. */
-    playSample('truckjump', 0.75);
+    playSample('truckjump', 0.55);            // the suspension, under the roar
     tone(52, 0.18, 'sine', 0.20, 30);                        // the springs unloading
-    vroom(0.55, RIFF_HZ*0.85, RIFF_HZ*1.5, 0.34, 0, {rise:0.4, drive:3.4})
+    vroom(0.60, RIFF_HZ*0.7, RIFF_HZ*1.5, 0.38, 0, {rise:0.35, drive:3.6})
   },
 };
 /* music: a light 8-step groove that speeds up with the run */
@@ -5224,6 +5337,7 @@ function smash(o){
 }
 function loseRide(o){
   game.ride = 0; game.rideGrace = RIDE_GRACE;
+  engineBedOff();       // the engine goes with it, not on the next frame
   addShake(16); game.flash = 0.35; S.hit();
   const gy = GROUND - player.y;
   featherBurst(player.x, gy - 120, 8, 240);
@@ -5542,7 +5656,7 @@ function update(dt, rawDt){
   updateCrows(dt);                     // same: a crow already launched keeps coming
 
   updateParticles(dt);
-  musicTick(); trackTick(rawDt);
+  musicTick(); trackTick(rawDt); engineBedTick(rawDt);
 }
 
 /* The escape. It waits on the menu for the first press, then runs 1.52s and
@@ -7612,6 +7726,7 @@ function boot(){
     /* the music, as a function rather than a value: musicNow changes and a
        captured copy would be a lie the moment the scene did */
     musicFor, musicScene, trackTick, playSample, loadSample,
+    ENG, engineBedTick, engineBedOn, engineBedOff, vroom, ENG_H,
     samples: () => Object.keys(SMP.buf),
     music: () => ({ now: musicNow,
       ride: RIDE_TRACK ? { vol:+RIDE_TRACK.volume.toFixed(3), paused:RIDE_TRACK.paused } : null,
