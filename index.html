@@ -6257,6 +6257,27 @@ function drawBgLayers(keys){
 
     const A = slotFor(z.a, key), B = slotFor(z.b, key);
     if((same || seam > VW + 2) || A === B){ drawLayerSlot(A, key, 1); continue; }
+
+    /* CUT WHAT THE DOORWAY COVERS; FADE WHAT IT DOES NOT.
+       Every slot used to cut at the seam, and that is right for the two the
+       player is looking at -- the middle distance and the floor -- because a
+       cross-fade there is a double exposure and the gateway sprite is standing
+       on the join anyway.
+       It is wrong for the haze and the ceiling. The ant empire's gate is a
+       root mound tall enough to hide the whole column, so nobody saw it. The
+       lab's door is WIDE AND LOW: above it the hanging pipes and the far haze
+       ended at a hard vertical line with a different world on each side, which
+       is the "not synced with the last map" -- one seam, visible only in the
+       layers nothing was covering.
+       So `far` and `hang` dissolve across a screen's width of travel instead.
+       They are low-contrast atmosphere; a dissolve there reads as distance,
+       where the same dissolve in the mid reads as a ghost. */
+    if(key === 'far' || key === 'hang'){
+      const u = clamp(1 - seam/VW, 0, 1);         // 0 approaching, 1 once past
+      drawLayerSlot(A, key, 1 - u);
+      drawLayerSlot(B, key, u);
+      continue;
+    }
     /* EVERY slot uses the spatial seam, including the distance.
        This was built as a cross-fade for far and mid first, on the reasoning
        that distance changes by haze and the seam is only about a second of
