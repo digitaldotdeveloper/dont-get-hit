@@ -1636,8 +1636,15 @@ function vroom(len, rpm0, rpm1, vol, at, o){
 
    It idles on D one octave under the riff's root, so it agrees with the music
    for free. */
+/* LEVELS FOR A REAL ENGINE. Pulled down about a quarter across the truck on
+   2026-09-06 -- "lower the sfx of the monster truck sounds a bit". A recording
+   is far denser than the synth it replaced and went in at the synth's
+   headroom, which made it the loudest thing in the game rather than the
+   biggest. Dropping it also does the job the longer music delay was doing:
+   the engine and the riff stop fighting because one of them got out of the
+   way, not because they were separated in time. */
 const ENG_BED_VOL = 0.075;   // the synth bed: four oscillators, thin
-const ENG_BED_SMP_VOL = 0.30;  // a real engine recording, which is not
+const ENG_BED_SMP_VOL = 0.21;  // a real engine recording, which is not
 const ENG = { g:null, osc:null, nz:null, clf:null, bp:null, rev:0, rate:false };
 
 function engineBedOn(){
@@ -2189,7 +2196,7 @@ const S = {
      climbs a long way, because this is the one moment the truck gets to be
      enormous before it has to be a game object. */
   truckget(){
-    if(playSample('truckget', 1.0, 1, 'truck')) return;      // the user's recording
+    if(playSample('truckget', 0.72, 1, 'truck')) return;     // the user's recording
     /* THE IGNITION, IN THREE BEATS: the starter labours, it CATCHES, and it
        roars up onto D and sits there -- the note the riff that is about to
        start is built on, so the two lock instead of colliding. Then a second
@@ -2270,7 +2277,7 @@ const S = {
        same engine recording that plays when the truck is collected. One key
        for both, so a jump restarts the engine rather than layering a second
        one over the one still running from the pickup. */
-    if(playSample('truckget', 0.9, 1, 'truck')) return;
+    if(playSample('truckget', 0.66, 1, 'truck')) return;
     tone(52, 0.18, 'sine', 0.20, 30);                        // the springs unloading
     vroom(0.60, RIFF_HZ*0.7, RIFF_HZ*1.5, 0.38, 0, {rise:0.35, drive:3.6})
   },
@@ -2419,14 +2426,14 @@ function musicScene(which){
    the whole gag: the engine catches, and THEN the music kicks in -- which is
    how every good power-up in the genre is staged, and it costs nothing but a
    number.
-   That number went from 0.85 to 1.70 when the user supplied a real 3.54s
-   ignition recording. At 0.85 the riff arrived while the engine was still
-   starting, and the two live in the same octave -- the ignition is 68% of its
-   energy between 100 and 400Hz and so is a drop-D guitar, so they were not
-   sharing the space, they were masking each other. 1.70 lets the ignition
-   land before the riff comes up underneath it. It is not silence in the
-   meantime; it is three and a half seconds of engine. */
-const RIDE_MUSIC_WAIT = 1.70;
+   0.85 was too early once the user supplied a real 3.54s ignition: the riff
+   arrived while the engine was still starting, and the two live in the same
+   octave -- the ignition is 68% of its energy between 100 and 400Hz, and so
+   is a drop-D guitar, so they were masking each other rather than sharing the
+   space. 1.70 fixed that and the user found it too long to wait, which is the
+   more important complaint of the two: a second of engine is enough to read
+   as "it started", and the masking is handled by level instead. */
+const RIDE_MUSIC_WAIT = 1.00;
 function nextTrack(){
   if(!TRACKS.length) return;
   const vol = TRACK ? TRACK.volume : 0;
