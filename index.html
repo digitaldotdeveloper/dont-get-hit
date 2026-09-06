@@ -1890,7 +1890,11 @@ function playSample(name, vol, rate, key){
    the landing fall back to the synth, which is what this list is for: a name
    here means a file exists, and a name missing means the synth carries it
    rather than the game asking for a 404 on every load. */
-const SMP_HAVE = ['megg', 'boom', 'truckget', 'truckidle'];
+/* WHAT IS LEFT ARE THE USER'S OWN RECORDINGS. `megg` and `boom` were the last
+   two generated sounds in the game and both of their moments are silent now at
+   the user's request, so the names, the entries in S and the files are all
+   gone rather than left behind to be fetched and never played. */
+const SMP_HAVE = ['truckget', 'truckidle'];
 function warmSamples(){ SMP_HAVE.forEach(loadSample); }
 
 let stepFoot = 0;                 // which foot
@@ -2105,24 +2109,6 @@ const S = {
   cagerattle(){ noise(0.06, 1800, 900, 0.05, 4.0); tone(300,0.05,'square',0.035,240); },
   bedcreak(){ wob(420, 180, 0.22, {type:'sawtooth', vol:0.055, depth:22, rate:9});
               noise(0.10, 900, 380, 0.035, 2.2); },
-  doorbreak(){
-    if(playSample('boom', 1.0)) return;       // the generated cartoon boom                              // a steel door losing an argument
-    tone(90,  0.44, 'sawtooth', 0.30, 32);                     // the weight of it
-    noise(0.40, 1100, 70, 0.34, 0.6);                          // the tear
-    tone(1400, 0.09, 'square', 0.16, 240);                     // the clang
-    wob(240, 70, 0.36, {type:'square', vol:0.19, depth:70, rate:13});
-    noise(0.22, 3200, 1200, 0.13, 2.6, 0.03);                  // shrapnel
-    tone(1800, 0.07, 'sine', 0.10, 2600, null, 0.02);          // the lock pings off
-    tone(120, 0.16, 'square', 0.11, 70, null, 0.30);           // it lands
-  },
-  cagebreak(){
-    if(playSample('kick', 0.95)) return;      // the generated kick                              // the door leaves the building
-    tone(120, 0.30, 'sawtooth', 0.24, 40);
-    noise(0.34, 1500, 120, 0.30, 0.7);                       // splintering
-    wob(300, 90, 0.30, {type:'square', vol:0.16, depth:60, rate:15});
-    noise(0.16, 3000, 1400, 0.10, 2.4, 0.02);                // shrapnel
-    tone(700, 0.10, 'square', 0.10, 1200, null, 0.05);
-  },
   thud(){ noise(0.18,170,45,0.2,1.0); tone(96,0.16,'sine',0.15,44); },
   near(){ noise(0.24,2000,320,0.095,1.8); tone(1040,0.08,'sine',0.045,1560); },
   /* Electrocution, played UNDER hit() rather than instead of it: a hard AC
@@ -2177,16 +2163,6 @@ const S = {
      the egg streak already walks that ladder, so this lands as the same world
      rather than a new instrument, and there is no interval in it that can
      sound wrong against the music underneath. */
-  megg(){
-    if(playSample('megg', 0.85)) return;           // generated; synth below is the fallback
-    const lad = [784, 988, 1175, 1568];            // G5 B5 D6 G6
-    lad.forEach((f, i) => {
-      tone(f, 0.16 - i*0.018, 'triangle', 0.13, null, null, i*0.055);
-      tone(f*2, 0.07, 'sine', 0.035, null, null, i*0.055);   // the sparkle on top
-    });
-    tone(392, 0.85, 'sine', 0.10, null, null, 0.16);         // the bell it lands on
-    noise(0.30, 5200, 9000, 0.020, 3.2, 0.02);               // a breath of glitter
-  },
 
   /* THE TRUCK ARRIVING. Heavy first, bright second: a dead clunk of metal,
      then the engine catching and rising, then a stab on top so it reads as
@@ -6273,7 +6249,11 @@ function updateRide(dt){
     else {
       const dy = (GROUND - player.y - 90) - (GROUND - d.y);
       if(Math.abs(d.x - player.x) < 90 && Math.abs(dy) < 130){
-        S.megg();            // the egg first: ting -- then the truck lands on it
+        /* NO CHIME ON THE MYSTERY EGG, removed 2026-09-06 at the user's
+           request. The moment is not quiet without it: startRide() is on the
+           very next line and brings the power-down, a real engine and the
+           riff with it, and a ting in front of all that was announcing an
+           announcement. */
         startRide();
       }
     }
@@ -6627,7 +6607,10 @@ function updateIntro(dt){
   else { q.sx = damp(q.sx, 1, 9, dt); q.sy = damp(q.sy, 1, 9, dt); }
 
   if(was < T_KICK && t >= T_KICK){                       // THE KICK
-    S.doorbreak();
+    /* AND NO SOUND ON THE CAGE BREAK EITHER, same request. Everything else
+       about this beat stays -- the shake, the flash, the freeze, the slow-mo,
+       the phone buzzing in your hand -- so it still lands; it lands as
+       impact rather than as noise. */
     breakCage(game.cageX - cam.x);
     game.boomT = 0;                                     // and the blast over the doorway
     game.doorBow = 0;
