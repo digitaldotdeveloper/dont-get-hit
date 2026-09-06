@@ -549,7 +549,7 @@ const ZONES = [
   /* Through the mouth. Daylight is gone, the wash is lantern-warm,
      and the layers are the city. */
   { id:'empire', name:'ANT EMPIRE', start:1180, layers:'ant', ants:1, indoors:true,
-    theme:{ id:'empire', name:'ANT EMPIRE', sunR:0, sunGlow:0, vig:0.72,
+    theme:{ id:'empire', name:'ANT EMPIRE', sunR:0, sunGlow:0, vig:0.48,
       skyA:'#1A0E0A', skyB:'#2C1710', skyC:'#4A2617', skyD:'#7A4021', skyE:'#B4682E',
       sun:'#FFC46B', far:'#5A3520', mid:'#7A4726', near:'#93552B', prop:'#3E2415',
       road:'#8A5326', roadLine:'#6E401D', curb:'#5C3517', rim:'#C98B3E' } },
@@ -558,7 +558,7 @@ const ZONES = [
      things down here that ants have no business owning. */
   { id:'deep', name:'DEEP ANT EMPIRE', start:2100, layers:'deep', ants:1, indoors:true,
     cast:['antw','antt','antg'],
-    theme:{ id:'deep', name:'DEEP ANT EMPIRE', sunR:0, sunGlow:0, vig:0.80,
+    theme:{ id:'deep', name:'DEEP ANT EMPIRE', sunR:0, sunGlow:0, vig:0.50,
       skyA:'#0D0A12', skyB:'#171326', skyC:'#2A1E33', skyD:'#4A2C3A', skyE:'#7A4438',
       sun:'#9FD8E8', far:'#3E2A2A', mid:'#5A3830', near:'#6E4534', prop:'#2A1A18',
       road:'#6E4426', roadLine:'#55341C', curb:'#472B16', rim:'#8FA8C0' } },
@@ -566,7 +566,7 @@ const ZONES = [
   /* The joke lands here: it was never a cave. */
   { id:'lab', name:'SECRET ANT LAB', start:3000, layers:'lab', ants:1, indoors:true,
     cast:['antsci','antg','antt'],
-    theme:{ id:'lab', name:'SECRET ANT LAB', sunR:0, sunGlow:0, vig:0.86,
+    theme:{ id:'lab', name:'SECRET ANT LAB', sunR:0, sunGlow:0, vig:0.52,
       skyA:'#04080C', skyB:'#071620', skyC:'#0C2733', skyD:'#123A46', skyE:'#1C5462',
       sun:'#7FF2E0', far:'#16323C', mid:'#1E4450', near:'#265563', prop:'#0E2129',
       road:'#26424C', roadLine:'#1A2F37', curb:'#152730', rim:'#57E6D2' } },
@@ -903,8 +903,12 @@ const S = {
      rather than scoring the whole run. Removing it took the last thing out of
      the middle of a flight, and the flight needed something there. */
   glide(){
-    noise(0.34, 1500, 800, 0.034, 1.4);                    // was 620->300 at 0.075:
-    noise(0.20, 3200, 1900, 0.020, 2.2, 0.08);             // a draught, not a wind tunnel
+    /* Raised on request. These levels were mixed to sit UNDER the wind bed;
+       with the bed gone it was carrying the middle of a flight on its own at
+       peak 0.012 -- about a third of a footstep. Roughly doubled, which puts
+       it near `near` and `step` and makes it a sound rather than a suspicion. */
+    noise(0.34, 1500, 800, 0.070, 1.4);                    // was 0.034
+    noise(0.20, 3200, 1900, 0.040, 2.2, 0.08);             // was 0.020
   },
   /* The sky is a ceiling and he can hit it. Soft, feathery, no impact. */
   ceiling(){
@@ -2744,14 +2748,15 @@ function postWire(x, y0, y1){ return [x, y0+6, x, y1-6, 1]; }
    you -- lose the timber and the farm goes with it. So the post version is a
    thread with the same colour, the same flicker and the same arcs, at about a
    third the weight. */
-function drawWire(x0,y0,x1,y1, t, seed, thin){
+function drawWire(x0,y0,x1,y1, t, seed, thin, force){
   /* `game.gridT` is 1 with the power on and 0 with it off, and BETWEEN the two
      it is not a fade -- each wire independently stutters on and off against
      the level, so the half second after the pickup reads as a substation
      tripping rather than a crossfade. Dead, the wire is a slack grey cable
      with the same ink rim as everything else: still a rope strung between two
      posts, plainly not carrying anything. */
-  let lv = (game.gridT === undefined) ? 1 : game.gridT;
+  let lv = force !== undefined ? force
+         : (game.gridT === undefined) ? 1 : game.gridT;
   if(lv > 0.02 && lv < 0.98 && hash(seed*0.7 + Math.floor(t*22)*4.31) > lv) lv *= 0.10;
   const dx=x1-x0, dy=y1-y0, L=Math.hypot(dx,dy)||1;
   const nx=-dy/L, ny=dx/L, ux=dx/L, uy=dy/L;
@@ -2858,12 +2863,22 @@ function elecSpec(def){
    Only the WIRES go. Posts, bales and a parked hay wagon are still solid, so a
    dead grid is not an empty screen -- it is a different obstacle set made of
    the same board, which is exactly what the ride's own roster is built to be. */
-const wireHot = () => !riding();
+/* Live or dead, PER PIECE. It used to be one global answer -- the truck cut
+   the power and every wire in the world went out with it -- and the ride's
+   own barriers cannot work that way: they are the things you are dodging
+   WHILE you drive, so they have to stay on while the farm's grid is off.
+
+   That turns out to be the clearer rule rather than a compromise. The player
+   learns ONE thing -- blue and crackling kills, grey and slack does not -- and
+   taking the truck now reads as "the farm's wires went dark and these did
+   not", which says more about the barriers than any amount of new art could.
+   `alwaysHot` is what a piece sets to opt out of the blackout. */
+const wireHot = (o) => (o && o.spec && o.spec.alwaysHot) ? true : !riding();
 function elecDist(o, l, r, b, t){
   const p = o.spec.build(o, game.t);
   const L=l-o.x, R=r-o.x;
   let d = 1e9;
-  if(wireHot()) for(const w of p.wires)  d = Math.min(d, segBoxDist(w[0],w[1],w[2],w[3], L,b,R,t) - WIRE_R);
+  if(wireHot(o)) for(const w of p.wires)  d = Math.min(d, segBoxDist(w[0],w[1],w[2],w[3], L,b,R,t) - WIRE_R);
   if(p.solids) for(const q of p.solids) d = Math.min(d, boxBoxDist(q[0],q[1],q[2],q[3], L,b,R,t));
   if(p.discs)  for(const c of p.discs)  d = Math.min(d, discBoxDist(c[0],c[1],c[2], L,b,R,t));
   return d;
@@ -2916,7 +2931,8 @@ function drawElec(o, t){
   }
   for(let i=0;i<p.wires.length;i++){
     const w = p.wires[i];
-    drawWire(w[0],w[1],w[2],w[3], t, (o.seed||0) + i*13.7, w[4]);
+    drawWire(w[0],w[1],w[2],w[3], t, (o.seed||0) + i*13.7, w[4],
+             o.spec.alwaysHot ? 1 : undefined);
   }
   /* The swept circle, drawn as hard as the wires are. A rotor kills over its
      whole disc, so a faint ring next to a wire that crackles would be telling
@@ -3066,47 +3082,78 @@ Object.assign(OB, {
    piece that answers `hit` and `gapTo` for its own parts -- and they simply
    hand it an empty wire list. `wired:false` is what keeps the electrocution
    sound and the white flash off a stack of hay. */
-function roadblock(o){
+/* ============================================================
+   THE RIDE'S BARRIERS
+   ============================================================
+   These were painted farm junk -- tyres, a trough, crates, bales, drums, a hay
+   wagon -- and the problem with that was not how they looked, it was what they
+   TAUGHT. The rest of the game says one thing very clearly: blue and crackling
+   kills you. Then the truck arrives and suddenly a stack of wooden boxes is
+   lethal too, and the player has to learn a second rule for one ability.
+
+   So the ride's roster is now the same language as everything else: a live
+   blue barrier between two posts. One rule for the whole game -- if it
+   crackles, do not touch it -- and the ride becomes a test of the thing the
+   player already knows rather than a new vocabulary.
+
+   THREE THINGS ARE KEPT EXACTLY. The tiers, the widths and the heights are
+   unchanged, so the spacing algorithm, the difficulty ramp and the jump
+   arithmetic all still hold -- `?ridetest` measured the window at 270-450px
+   and these are the same boxes it measured. Only the skin and the liveness
+   changed.
+
+   AND NOTHING SMASHES ANY MORE. Crates and drums used to be driven through,
+   which was a good beat and is not available to a fence: "some electric
+   barriers can be rammed" is exactly the ambiguity this change exists to
+   remove. Every barrier is jumped.
+
+   `alwaysHot` keeps them live through the blackout the truck causes -- see
+   wireHot. The farm's wires going dark AROUND a barrier that stays lit is the
+   clearest possible way to say which is which. */
+function barrier(o){
+  const hw = o.w*0.5;
   const spec = elecSpec({
-    tier:o.tier, hw:o.w*0.5 + 12, top:o.h, h:o.h, art:o.art,
-    build(){ return { hw:o.parts, solids:o.solids, shadow:o.w*0.46,
-                      hazard:o.w*0.5, wires:[] }; },
+    tier:o.tier, hw:hw + 12, top:o.h, h:o.h, art:['e_post','e_posttall'],
+    build(){
+      /* Posts at the ends, rails of live wire between them. `rails` is how many
+         horizontal runs, spread from just off the road to the top -- a low
+         barrier is one rail, a tall one is a ladder of them, which is what
+         makes height read at a glance from the far side of the screen. */
+      const hwArt = [], wires = [], solids = [];
+      const postA = o.h > 190 ? 'e_posttall' : 'e_post';
+      hwArt.push({ a:postA, x:-hw, y:0, h:o.h });
+      hwArt.push({ a:postA, x: hw, y:0, h:o.h });
+      // the posts themselves are solid: a post is a pole, and a pole is a wall
+      solids.push([-hw-14, 0, -hw+14, o.h*0.96]);
+      solids.push([ hw-14, 0,  hw+14, o.h*0.96]);
+      const n = o.rails;
+      for(let k=0;k<n;k++){
+        const y = o.h*(n === 1 ? 0.62 : 0.30 + 0.66*k/(n-1));
+        wires.push([-hw, y, hw, y]);
+      }
+      return { hw:hwArt, solids, wires, shadow:o.w*0.46, hazard:o.w*0.5 };
+    },
     free(ob, band){ return [[o.h + 40, band]]; } });
-  spec.wired = false;                  // wood and rubber: no zap, no flash
-  spec.smash = !!o.smash;              // and some of it comes apart
+  spec.wired = true;                   // it crackles, it flashes, it kills
+  spec.alwaysHot = true;               // and the truck does not switch it off
   return spec;
 }
 Object.assign(OB, {
-  /* Two tractor tyres. The lowest thing on the board and the one that teaches
-     the jump, the way e_fence teaches the wire. */
-  r_tyres: roadblock({ tier:0, w:214, h:164, art:['tractorwheel'],
-    parts:[{a:'tractorwheel',x:-50,y:0,h:164},{a:'tractorwheel',x:50,y:0,h:164}],
-    solids:[[-104,0,104,160]] }),
+  /* The lowest thing on the road and the one that teaches the jump, the way
+     e_fence teaches the wire. One rail, close to the ground. */
+  r_tyres: barrier({ tier:0, w:214, h:164, rails:1 }),
   /* Long and low: nothing much to clear, but a lot of ground to be off. */
-  r_trough: roadblock({ tier:0, w:240, h:126, art:['trough','milkcan'],
-    parts:[{a:'trough',x:0,y:0,h:104},{a:'milkcan',x:56,y:102,h:64}],
-    solids:[[-116,0,116,102],[30,102,82,124]] }),
-  /* Crates go THROUGH. Light, wooden, stacked by somebody in a hurry -- the
-     thing the key art promises a monster truck does to a pile of boxes. */
-  r_crates: roadblock({ tier:1, w:230, h:250, art:['crates'], smash:true,
-    parts:[{a:'crates',x:-52,y:0,h:250},{a:'crates',x:52,y:0,h:190}],
-    solids:[[-110,0,110,244]] }),
-  /* Three bales, two down one up. Tall enough to want the jump early. */
-  r_bales: roadblock({ tier:1, w:274, h:238, art:['haybale'],
-    parts:[{a:'haybale',x:-58,y:0,h:120},{a:'haybale',x:58,y:0,h:120},
-           {a:'haybale',x:0,y:118,h:118}],
-    solids:[[-136,0,136,118],[-76,118,76,234]] }),
-  /* Empty drums, so they go through too -- and they are the smashable one you
-     meet at speed, where the crates are the one you meet standing still. */
-  r_drums: roadblock({ tier:2, w:248, h:176, art:['drum'], smash:true,
-    parts:[{a:'drum',x:-62,y:0,h:168},{a:'drum',x:0,y:0,h:176},{a:'drum',x:62,y:0,h:168}],
-    solids:[[-122,0,122,172]] }),
-  /* The wagon: high AND wide, which is a different question from high. It is
-     the only piece that needs the jump started before you can see the far
-     side of it. */
-  r_wagon: roadblock({ tier:2, w:302, h:230, art:['haywagon'],
-    parts:[{a:'haywagon',x:0,y:0,h:224}],
-    solids:[[-150,0,150,220]] }),
+  r_trough: barrier({ tier:0, w:240, h:126, rails:1 }),
+  /* Waist high with two rails -- the first one that has to be READ rather
+     than just cleared. */
+  r_crates: barrier({ tier:1, w:230, h:250, rails:2 }),
+  /* Tall enough to want the jump started early. */
+  r_bales: barrier({ tier:1, w:274, h:238, rails:2 }),
+  /* Wide, and met at speed. */
+  r_drums: barrier({ tier:2, w:248, h:176, rails:2 }),
+  /* High AND wide, which is a different question from high. The only piece
+     that needs the jump started before you can see the far side of it. */
+  r_wagon: barrier({ tier:2, w:302, h:230, rails:3 }),
 });
 
 /* --- the pieces you go THROUGH -------------------------------------------
@@ -4180,19 +4227,31 @@ const PAT = [
    a jump commits -- once he is in the air the only thing he can do about the
    next one is have left earlier -- and because the vehicle is meant to be the
    part of the run where the game breathes out. */
+/* EVERY BARRIER IS A JUMP NOW, and that changed what this table is allowed to
+   say. Crates and drums used to be driven THROUGH, so a pair containing one of
+   them only had to leave time to SEE the next piece. An electric barrier
+   cannot be rammed, so every gap between two of them has to cover a whole arc
+   -- and an arc takes 2.88s.
+
+   ?ridetest caught this the moment the smashables went: the tier-2 pair sat
+   at 1.35s, which is two jumps in the time there is room for one, and no way
+   through. The spacing below is the arc plus a beat, and the barrier-to-barrier
+   gaps are the numbers that moved. `#corn` is still smashable, so gaps that
+   only have to clear corn stay short -- that is what keeps the table from
+   becoming one slow metronome. */
 const RIDE_PAT = [
   mkPat(0, [2.10,2.60], ['r_tyres']),
   mkPat(0, [2.05,2.55], ['#corn']),
   mkPat(0, [2.05,2.50], ['r_trough']),
-  mkPat(0, [2.00,2.45], ['r_tyres', 1.45, '#corn']),
+  mkPat(0, [2.00,2.45], ['r_tyres', 1.45, '#corn']),      // corn is driven through
   mkPat(1, [2.00,2.45], ['r_crates']),
   mkPat(1, [1.95,2.40], ['r_bales']),
-  mkPat(1, [1.95,2.40], ['#corn', 1.40, 'r_tyres']),
-  mkPat(2, [1.90,2.35], ['r_drums', 1.35, 'r_bales']),
+  mkPat(1, [1.95,2.40], ['#corn', 1.40, 'r_tyres']),      // ...and so is this one
+  mkPat(2, [2.10,2.55], ['r_drums', 3.20, 'r_bales']),    // was 1.35: two arcs now
   mkPat(2, [1.95,2.40], ['r_wagon']),
-  mkPat(2, [1.90,2.35], ['r_tyres', 1.80, 'r_wagon']),
-  mkPat(3, [1.90,2.35], ['r_bales', 1.80, 'r_bales']),
-  mkPat(3, [1.85,2.30], ['#corn', 1.30, 'r_wagon', 1.55, 'r_crates']),
+  mkPat(2, [2.05,2.50], ['r_tyres', 3.10, 'r_wagon']),    // was 1.80
+  mkPat(3, [2.05,2.50], ['r_bales', 3.20, 'r_bales']),    // was 1.80
+  mkPat(3, [2.00,2.45], ['#corn', 1.30, 'r_wagon', 3.25, 'r_crates']),   // was 1.55
 ];
 function spawnPattern(){
   const tier = tierNow();
@@ -5791,11 +5850,31 @@ Object.keys(LAYERSETS).forEach(k => LAYERSETS[k].forEach(L => { L.set = k; }));
 .forEach(([set, dir]) => {
   set.forEach(L => {
     L.img = new Image();
-    L.img.onload = () => { L.ready = true; if(SCALE) buildLayers(); };
+    L.img.onload = () => { L.ready = true; warmDecode(L.img); if(SCALE) buildLayers(); };
     L.img.onerror = () => { L.ready = false; };
     L.img.src = dir + L.key + '.webp';
   });
 });
+/* FORCE THE DECODE AT LOAD, NOT AT FIRST DRAW.
+   `load` only means the bytes arrived; a browser is free to defer the actual
+   decode until something paints the image. For most art that is invisible --
+   the pieces are small and arrive long before they are needed. For these it is
+   not: a world's four layers are up to a thousand pixels wide, nothing paints
+   them until the seam, and the seam is the one moment that must not stutter.
+
+   Measured on desktop the swap is clean (838 frames, worst 23.3ms, nothing
+   over 33) -- but desktop decodes these in well under a frame and a phone does
+   not, and "it loads when the map changes" is exactly what a deferred decode
+   feels like. `decode()` is the right tool and is not everywhere, so the
+   fallback paints one pixel of it, which forces the same work. */
+function warmDecode(img){
+  try{
+    if(img.decode) { img.decode().catch(()=>{}); return; }
+    const c = document.createElement('canvas');
+    c.width = c.height = 1;
+    c.getContext('2d').drawImage(img, 0, 0, 1, 1);
+  }catch(e){}
+}
 function bgReady(){ return BG.every(L => L.ready); }
 const setReady = set => set.every(L => L.ready);
 function bgGeom(L){
@@ -6835,6 +6914,12 @@ function render(){
   // vignette + warm bloom
   // The prison wants the corners crushed. A bright farm under a blue sky does
   // not -- at 0.5 it looked like the sun had gone in.
+  /* KEEP THIS LOW. It is a radial gradient -- clear in the middle, `vig` at the
+     edge -- so it darkens the SCREEN, not the world. Pushed to 0.72-0.86 to
+     make the underground feel enclosed it produced exactly what it says on the
+     tin: a circle of light with everything outside it too dark to read, which
+     is unplayable rather than atmospheric. The palette is what makes a cave
+     dark; this only frames it. */
   const vigK = (()=>{ const v = themeNow().vig; return v === undefined ? 0.5 : v; })();
   ctx.drawImage(surface('vignette|'+vigK, VW, VH, false, (g) => {
     const vg = g.createRadialGradient(VW*0.5,VH*0.5,VH*0.30, VW*0.5,VH*0.5,VH*0.85);
@@ -7373,7 +7458,12 @@ function boot(){
                      (w1 >= MIN_WIN ? '' : '  double:' + w2 + 'px');
         if(Math.max(w1, w2) < MIN_WIN){ bad++; out.push('TIGHT  ' + line); }
         else out.push('ok     ' + line);
-        if(spec.wired !== false){ bad++; out.push(key + ' IS WIRED -- roadblocks must not be'); }
+        /* The ride's pieces ARE wired now -- deliberately, so the whole game
+           speaks one hazard language. What must still be true is that they
+           stay live through the blackout the truck causes, because a barrier
+           that switched off with the farm's grid would be a barrier that is
+           not there. */
+        if(!spec.alwaysHot){ bad++; out.push(key + ' IS NOT alwaysHot -- the truck would switch it off'); }
       }
       /* Two pieces in one pattern are a different question from one piece.
          Each is jumpable on its own; what decides whether the PAIR is fair is
