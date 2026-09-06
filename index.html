@@ -1826,7 +1826,7 @@ function playSample(name, vol, rate){
    The references measure 0% under 100Hz and ~78% between 400Hz and 8kHz, and
    the synth now matches that; these did not, so they do not ship. Add a name
    back the moment tools/pick_sfx.py says a take scores better. */
-const SMP_HAVE = ['megg', 'boom', 'truckjump'];
+const SMP_HAVE = ['megg', 'boom', 'truckjump', 'truckget'];
 function warmSamples(){ SMP_HAVE.forEach(loadSample); }
 
 let stepFoot = 0;                 // which foot
@@ -3688,8 +3688,78 @@ function drawRoofHens(sx){
 }
 /* the barred door, in front of him, until he removes it */
 function drawCageFront(sx){
-  if(game.doorGone) return;
+  if(game.doorGone){ drawCageWreck(sx); return; }
   drawCageDoor(sx);
+}
+/* WHAT A KICKED-OUT DOOR LEAVES BEHIND.
+   The doorway used to go simply EMPTY once the door had tumbled away, and an
+   empty hole does not say "he came through here" -- it says the barn never had
+   a door. The one thing the player did in the opening is the thing the scene
+   should still be carrying a minute later.
+
+   So the frame keeps its evidence: two hinge plates still bolted to the jamb,
+   one bar hanging off the top hinge and bent into the opening, stubs snapped
+   off top and bottom where the rest tore away, the cut chain, and splinters
+   down both jambs. All of it drawn INSIDE the doorway rect that CAGE measures
+   off the art, so it lands in the hole rather than near it -- the same rule
+   the door itself obeys.
+
+   Nothing here is random per frame: the jitter is hashed off fixed seeds, so
+   the wreck is the same wreck every time you look at it. A doorway that
+   reshuffles its own splinters as it scrolls past reads as static, not damage. */
+function drawCageWreck(sx){
+  const g = cageGeom();
+  const x = sx + g.x + g.dx0*g.w, y = g.y + g.dy0*g.h;
+  const w = (g.dx1-g.dx0)*g.w, h = (g.dy1-g.dy0)*g.h;
+  if(x > VW + 40 || x + w < -40) return;          // it is behind you almost at once
+  const INK='#08131A', IRON='#5E7A86', WOOD='#8E6534', SPLINT='#C79A5E';
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.lineCap='round'; ctx.lineJoin='round';
+
+  // the stubs: what is left of the bars, top and bottom, snapped short
+  const stub = (fx, fromTop, len) => {
+    const bx = w*fx, y0 = fromTop ? 0 : h, y1 = fromTop ? h*len : h*(1-len);
+    ctx.beginPath(); ctx.moveTo(bx, y0); ctx.lineTo(bx + (fromTop? w*0.02 : -w*0.02), y1);
+    ctx.strokeStyle=INK;  ctx.lineWidth=Math.max(3, w*0.075); ctx.stroke();
+    ctx.strokeStyle=IRON; ctx.lineWidth=Math.max(1.5, w*0.042); ctx.stroke();
+  };
+  stub(0.30, true, 0.17); stub(0.52, true, 0.10); stub(0.74, true, 0.21);
+  stub(0.41, false, 0.09); stub(0.66, false, 0.14);
+
+  // the hinges, still bolted on, and the one bar still hanging from the top one
+  ctx.fillStyle = INK;
+  [0.17, 0.70].forEach(fy => {
+    ctx.beginPath(); ctx.rect(-w*0.03, h*fy, w*0.15, h*0.085); ctx.fill();
+  });
+  ctx.beginPath();
+  ctx.moveTo(w*0.05, h*0.20); ctx.lineTo(w*0.20, h*0.44); ctx.lineTo(w*0.46, h*0.66);
+  ctx.strokeStyle=INK;  ctx.lineWidth=Math.max(4, w*0.085); ctx.stroke();
+  ctx.strokeStyle=IRON; ctx.lineWidth=Math.max(2, w*0.048); ctx.stroke();
+
+  // the chain, cut, hanging from where the lock was
+  ctx.strokeStyle=INK; ctx.lineWidth=Math.max(2.5, w*0.055);
+  ctx.beginPath();
+  ctx.moveTo(w*0.10, h*0.12);
+  ctx.quadraticCurveTo(w*0.14, h*0.24, w*0.09, h*0.33);
+  ctx.stroke();
+  ctx.strokeStyle='#7E8C94'; ctx.lineWidth=Math.max(1.2, w*0.026); ctx.stroke();
+
+  // splinters down both jambs, hashed so they never move
+  for(let i=0;i<7;i++){
+    const fy = 0.08 + i*0.13 + hash(i*7.7)*0.04;
+    const left = i % 2 === 0;
+    const bx = left ? 0 : w, dir = left ? 1 : -1;
+    const len = w*(0.07 + hash(i*3.1)*0.13), tall = h*(0.03 + hash(i*5.3)*0.045);
+    ctx.beginPath();
+    ctx.moveTo(bx, h*fy);
+    ctx.lineTo(bx + dir*len, h*fy + tall*0.5);
+    ctx.lineTo(bx, h*fy + tall);
+    ctx.closePath();
+    ctx.fillStyle = i % 3 ? WOOD : SPLINT; ctx.fill();
+    ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.stroke();
+  }
+  ctx.restore();
 }
 /* The door is its own object so it can buckle, then leave. It is drawn to fill
    the doorway measured out of the painted scene, so it sits in the hole rather
@@ -5779,7 +5849,14 @@ function startRun(){
   game.crows.length=0; game.crowT=5*CROW_GAP; game.crowN=0; game.crowWait=0;
   game.freeze=0; game.timeScale=1; game.tsTarget=1; game.shake=0; game.zoom=1; game.zoomT=1;
   game.camY=0; game.camYT=0; game.deadT=0; game.newBest=false;
-  game.door=null; game.doorGone=false; game.lockGone=false; game.doorBow=0;
+  /* THE DOOR IS ALREADY GONE, UNLESS THE ESCAPE IS ABOUT TO HAPPEN.
+     This used to reset to doorGone=false for every run, and the barn is parked
+     CAGE_RUNOUT behind the play mark -- so a retry, a ?dist run, any start
+     that skips the escape, opened with the intact chained door hanging in the
+     doorway a few strides behind him. He kicked it out; it cannot be back.
+     startIntro sets this false again, because it is the one caller that is
+     going to break it on screen. Default to the state the story is in. */
+  game.door=null; game.doorGone=true; game.lockGone=true; game.doorBow=0;
   game.cageX = -CAGE_RUNOUT;             // the barn stays put and the world leaves it
   /* THE ODOMETER AND THE WORLD START AT THE SAME PLACE.
      `?dist=N` used to move game.dist and nothing else, so the run began with
@@ -6406,6 +6483,8 @@ function startIntro(){
      released there. */
   if(game.presetDist){ startQuick(); return; }
   startRun();
+  /* ...and this is the one run that still has a door to kick out. */
+  game.doorGone = false; game.lockGone = false;
   elHud.classList.remove('on');
   elTut.classList.remove('show');
   game.mode = 'intro';
@@ -7825,6 +7904,49 @@ const ANT_HILLS = [
   { m:1142, art:'hill3', s:2.0 },
 ];
 
+/* ============================================================
+   THE FARM'S SET-PIECES — one thing to run past every 100 m
+   ============================================================
+   THE FIRST KILOMETRE WAS A TREADMILL. Three tiles, the widest about half a
+   screen, so the same barn, silo, windmill and coop came round every few
+   seconds for as long as you survived: the odometer climbed and the view did
+   not. Looping layers are the right substrate and the wrong landmark.
+
+   So the layers keep looping and these stand ON TOP of them at fixed metres,
+   the same mechanism as ANT_HILLS and ANT_SIGNS: placed by world position, not
+   spawned, so the tractor at 300m is at 300m in every run and you can never
+   pass the same one twice. That is the difference between distance and repeat.
+
+   THEY ARE SCENERY AND MUST READ AS SCENERY. Nothing here is in
+   game.obstacles, nothing here collides. Three things keep them honest:
+   they stand on the ground line the way the mounds do, they are drawn at
+   camera speed like every other landmark (a landmark at any other parallax
+   is not AT the metre it claims), and none of them is blue -- the hazards own
+   that colour now, and a set-piece is the last place to spend it.
+
+   A missing image draws nothing at all, which is the same bargain the props
+   make: unmade art costs an empty stretch of farm, never a hole. */
+const FARM_ART = {};
+const FARM_SCENES = [
+  { m: 100, art:'f100_house',     s:1.05, lift:4 },   // somebody lives here
+  { m: 200, art:'f200_pond',      s:0.92, lift:2 },
+  { m: 300, art:'f300_tractor',   s:0.86, lift:4 },
+  { m: 400, art:'f400_scarecrow', s:0.94, lift:4 },
+  { m: 500, art:'f500_silo',      s:1.10, lift:4 },
+  /* From here the farm stops being the farmer's. The mounds are already
+     growing through this stretch (ANT_HILLS, 600-1142), so these are what the
+     ants have got INTO -- and the escalation is the point of the ordering. */
+  { m: 600, art:'f600_hives',     s:0.88, lift:3 },
+  { m: 700, art:'f700_windmill',  s:1.15, lift:4 },
+  { m: 800, art:'f800_pickup',    s:0.95, lift:3 },
+  { m: 900, art:'f900_shanty',    s:0.98, lift:3 },
+  { m:1000, art:'f1000_spill',    s:1.00, lift:2 },
+];
+FARM_SCENES.forEach(q => {
+  const im = new Image();
+  imqLoad(im, 'art/farm100/' + q.art + '.webp', ()=>{ FARM_ART[q.art] = im; }, ()=>{}, 'gp');
+});
+
 /* Lettering a blank board. Two lines at most, sized to fit the plank rather
    than a fixed point size, because the boards are four different widths. */
 function drawSignText(lines, w, h, ink){
@@ -7852,6 +7974,14 @@ function drawZoneScenery(){
     ctx.drawImage(im, sx - w/2, GROUND + (lift||0) - h, w, h);
     return { sx, w, h };
   };
+
+  /* The farm's set-pieces go FIRST, so a mound growing at 600m stands in
+     front of the beehives rather than behind them -- the ants are arriving,
+     and what arrives is nearer. */
+  for(const q of FARM_SCENES){
+    if(q.m < left || q.m > right) continue;
+    put(FARM_ART[q.art], q.m, (GROUND/980)*0.62*q.s, q.lift);
+  }
 
   // the mounds, and the great formation standing on the boundary itself
   for(const q of ANT_HILLS){
