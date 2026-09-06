@@ -733,7 +733,6 @@ const A = {
 };
 function audioInit(){
   lockLandscape();          // first gesture: ask the phone to stay landscape
-  setTimeout(windStart, 0); // the flight's air layer, once A.ctx exists
   initTrack();
   if(A.started) return;
   const AC = window.AudioContext||window.webkitAudioContext; if(!AC) return;
@@ -818,30 +817,25 @@ let stepFoot = 0;                 // which foot
    Level and brightness are pushed from updatePlay every frame, both through
    setTargetAtTime so nothing ever steps. Mute still works for free: it lives
    under A.sfxGain -> A.master, and mute takes A.master to zero. */
+/* THE AIR LAYER IS GONE. It was one looping noise source through a bandpass
+   with its level and cutoff pushed from airspeed every frame, and it was
+   written up as "the thing that made flying sound like flying".
+
+   The user asked for the flying sound removed twice. The first time I measured
+   the roof contact firing 35 times a second and fixed that, which was a real
+   bug but was not what they meant. What they meant was this: a bed of noise
+   that is present for the whole run and rises exactly when you are doing the
+   thing the game is about. A sound you cannot stop hearing is a sound you stop
+   being able to like, and holding is not an occasional action here -- it is
+   the entire input.
+
+   Everything is kept as no-op stubs rather than deleted, because windSet is
+   called from the run loop, the menu and the intro, and a half-removed audio
+   node that still has callers is how you get a silent crash in a try/catch.
+   Restoring it is putting the bodies back; nothing else has to change. */
 const WIND = { src:null, bp:null, g:null };
-function windStart(){
-  if(WIND.src || !A.started || !A.ctx) return;
-  try{
-    const c = A.ctx;
-    WIND.src = c.createBufferSource(); WIND.src.buffer = noiseBuffer(c); WIND.src.loop = true;
-    WIND.bp  = c.createBiquadFilter(); WIND.bp.type = 'bandpass';
-    /* Q was 0.55 at 400Hz, and a band that broad that low has skirts reaching
-       into the rumble -- which is most of why flying sounded like blowing
-       rather than like speed. Higher and a little tighter is thinner air. */
-    WIND.bp.Q.value = 0.85; WIND.bp.frequency.value = 900;
-    WIND.g   = c.createGain(); WIND.g.gain.value = 0;
-    WIND.src.connect(WIND.bp); WIND.bp.connect(WIND.g); WIND.g.connect(A.sfxGain);
-    WIND.src.start();
-  }catch(e){ A.err = e.message; }
-}
-function windSet(level, bright){
-  if(!WIND.g || !A.ctx) return;
-  const t = A.ctx.currentTime;
-  try{
-    WIND.g.gain.setTargetAtTime(A.on ? level : 0, t, 0.10);
-    WIND.bp.frequency.setTargetAtTime(bright, t, 0.16);
-  }catch(e){}
-}
+function windStart(){}
+function windSet(level, bright){}
 /* One cartoon voice for the whole game. Everything HE does is a short bright
    shape with a bend in it; everything the world does TO him is blunt and low.
    All of it kept deliberately quiet apart from the hit, so that the hit lands. */
@@ -898,12 +892,13 @@ const S = {
      from anywhere -- including a caller added later -- is a no-op rather than a
      crash; the two flight call sites are gone, so nothing routine reaches it. */
   flap(){},
-  /* Wings out, not beating. Played on a cooldown while he falls, so a long
-     drop is not silence between flaps. */
-  glide(){
-    noise(0.34, 1500, 800, 0.034, 1.4);                    // was 620->300 at 0.075:
-    noise(0.20, 3200, 1900, 0.020, 2.2, 0.08);             // a draught, not a wind tunnel
-  },
+  /* SILENT, with the wind bed and for the same reason. This was the sound of
+     the wings being out while he falls, on a 0.42s cooldown -- which measured
+     at TWELVE firings in ten seconds of ordinary hold-and-release flying, or
+     one every eight tenths of a second forever. Between it and the bed there
+     was no moment in the air without a rustle in it.
+     Kept as a stub so a caller added later is a no-op and not a crash. */
+  glide(){},
   /* The sky is a ceiling and he can hit it. Soft, feathery, no impact. */
   ceiling(){
     noise(0.16, 700, 240, 0.05, 1.0);
@@ -4948,7 +4943,6 @@ function update(dt, rawDt){
   else if(game.mode==='play')  updatePlay(dt);
   else if(game.mode==='dying') updateDying(dt);
   else if(game.mode==='dead')  updateDead(dt, rawDt);
-  if(game.mode !== 'play') windSet(0, 700);   // no run, no air
   if(game.door) updateDoor(dt);        // outside the chain: it flies on into play
   updateCrows(dt);                     // same: a crow already launched keeps coming
 
@@ -5389,15 +5383,8 @@ function updatePlay(dt){
      he is off it -- and the cutoff rises with it, because fast air is thin and
      slow air is not. Pushed every frame rather than triggered, because this is
      the one sound in the game that is a state and not an event. */
-  const air = clamp(speedT*0.5 + (p.onGround ? 0 : 0.25 + Math.abs(p.vy)/1100), 0, 1);
-  /* 260->1760Hz at up to 0.059 was a low roar under everything. Lifted clear of
-     the rumble and quieter, so it reads as air going past rather than a fan.
-     And it DUCKS while he is holding: the wing beats are the thing to hear when
-     you are flying, and they were competing with a bed of noise that rises at
-     exactly the moment they start. It comes back as soon as he stops -- the
-     0.10s smoothing on windSet means the duck is a swell, not a switch. */
-  const duck = p.thrusting ? 0.22 : 1;
-  windSet((0.003 + air*0.038)*duck, 640 + air*2500);
+  /* The airspeed that used to drive the wind bed is no longer computed: the
+     bed is gone (see WIND) and this ran every frame of every run to feed it. */
 
   // HUD
   setScore(game.score);
@@ -7129,8 +7116,7 @@ function boot(){
       const sr = 44100, n = Math.ceil(sr*(secs||1.2));
       const OC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
       const keep = { ctx:A.ctx, master:A.master, sfxGain:A.sfxGain,
-                     started:A.started, on:A.on, nb:noiseBuf,
-                     w:{src:WIND.src, bp:WIND.bp, g:WIND.g} };
+                     started:A.started, on:A.on, nb:noiseBuf };
       const oc = new OC(1, n, sr);
       A.ctx = oc;
       A.master  = oc.createGain(); A.master.gain.value = 0.9;
@@ -7140,16 +7126,11 @@ function boot(){
       A.started = true; A.on = true;
       noiseBuf = null;                       // the old buffer belongs to the old context
       try{
-        if(name === 'wind'){                 // a state, not an event: sweep it
-          WIND.src = WIND.bp = WIND.g = null;
-          windStart();
-          windSet(0.006, 700);
-          for(let i=1;i<=10;i++){
-            const k = i/10, t = k*(secs||1.2)*0.92;
-            WIND.g.gain.setTargetAtTime(0.004 + k*0.055, t, 0.10);
-            WIND.bp.frequency.setTargetAtTime(260 + k*1500, t, 0.16);
-          }
-        } else S[name](arg);                 // one sound; runs are joined outside
+        /* The 'wind' case used to build the bed here and sweep it, because it
+           was a STATE and every other entry is an event. The bed is gone, so
+           it renders like anything else -- as silence, which is the correct
+           report and is what tools/sfx.py will flag it as. */
+        S[name](arg);                        // one sound; runs are joined outside
       }catch(e){ rej(e.message); return; }
       oc.startRendering().then(buf=>{
         const d = buf.getChannelData(0);
@@ -7171,7 +7152,6 @@ function boot(){
           bin += String.fromCharCode.apply(null, b.subarray(i, i+8192));
         A.ctx=keep.ctx; A.master=keep.master; A.sfxGain=keep.sfxGain;
         A.started=keep.started; A.on=keep.on; noiseBuf=keep.nb;
-        WIND.src=keep.w.src; WIND.bp=keep.w.bp; WIND.g=keep.w.g;
         res(JSON.stringify({ name, peak:+peak.toFixed(4), wav: btoa(bin) }));
       }, e => rej(String(e)));
     });

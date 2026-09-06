@@ -2082,6 +2082,47 @@ around two and a half minutes of clean flying to reach the lab, which is a long
 way — the flags exist because nobody should have to earn it to look at it.
 
 
+## The flight is silent now (2026-09-06)
+
+User asked twice. The first time I measured the roof contact firing 35 times a
+second and fixed that -- a real bug, but not what they meant. What they meant
+was everything that makes a noise *while airborne*, and measured over ten
+seconds of ordinary hold-and-release flying that was:
+
+    glide  x12     the wings-out rustle, on a 0.42s cooldown
+    + the wind bed, continuous, the whole run
+
+**Both are gone.** The bed was one looping noise source through a bandpass with
+its level and cutoff pushed from airspeed every frame, and it was written up
+here as "the thing that made flying sound like flying" -- which is exactly why
+it had to go. Holding is not an occasional action in this game, it is the entire
+input, so a layer that rises whenever you do the thing the game is about is a
+sound you cannot stop hearing.
+
+What is left in the air is the SHAPE of a flight and nothing between: `takeoff`
+when he leaves the ground, `ceiling` once on arrival at the roof, `land` and
+`scuff` when he comes down. The wingbeat has been silent since 2026-09-05.
+
+**Kept as no-op stubs, not deleted.** `windStart`/`windSet`/`S.glide` still
+exist and do nothing, because they are called from the run loop, the menu and
+the intro, and a half-removed audio node with live callers is how you get a
+silent failure inside a try/catch. Restoring any of them is putting the body
+back; no call site has to change.
+
+**Proved, not assumed.** Counting calls cannot show silence -- a no-op stub is
+still called. `tools/sfx.py` renders every entry in `S` offline and reports its
+peak, and that is the check: **glide 0.000, everything else unchanged**
+(takeoff 0.100, land 0.183, hit 0.217). Two things in that tool also had to go,
+because they asked for a sound that no longer makes one: `wind` was in its
+inventory (it threw `S[name] is not a function`) and under its flight montage.
+The montage is now takeoff / roof / takeoff / land, which is worth keeping
+precisely because it is mostly silence -- a flight with nothing in the middle
+only works if its edges are crisp.
+
+There was also a dead line waiting to throw: the offline renderer saved and
+restored the wind's audio nodes around each render, and its restore still read
+`keep.w.src` after `keep.w` stopped existing.
+
 ## Next
 
 - Nothing spends the eggs yet.

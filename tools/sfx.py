@@ -13,7 +13,7 @@ It also joins the runs that only make sense as runs: eight footsteps at a walk
 and at a sprint, the alert tracking then locking, and a twelve-egg streak, which
 is the only way to hear whether the pentatonic ladder actually lands anywhere.
 There is no wingbeat here -- the flap is silent by design, so the flight montage
-is the wind bed, the glide, and the two ends of it.
+is now only the two ENDS of it -- takeoff, the roof, and the landing.
 """
 import base64, io, json, os, socket, struct, subprocess, sys, time, urllib.request
 import websocket
@@ -32,7 +32,6 @@ ONE = [
     ("crowpass", True, 0.55), ("crowhit", None, 0.90),
     ("hit",      None, 1.00), ("egg", 1, 0.35),
     ("eggrun",   5,    0.60), ("near", None, 0.50),
-    ("wind",     None, 3.00),
 ]
 # name, [args], gap between them, seconds each
 RUNS = [
@@ -42,18 +41,23 @@ RUNS = [
 ]
 
 # The four things worth listening to as a whole, because none of them is one
-# sound: (label, [(at_seconds, name, arg, secs)], total_seconds). `wind` is laid
-# under the flight one at its own level, which is the only way to tell whether
-# the wingbeats still cut through it.
+# sound: (label, [(at_seconds, name, arg, secs)], total_seconds).
+#
+# THE FLIGHT MONTAGE IS MOSTLY SILENCE NOW, and that is the point of keeping it.
+# It used to be a wind bed with wingbeats over it; the bed and the glide were
+# both removed on request, so what is left is takeoff, the roof and the landing
+# with air between them. Rendering it is how you check that the ENDS still land
+# -- a flight with nothing in the middle only works if its edges are crisp.
 MONTAGE = [
     ("montage_running", 6.0, [(0.15 + i*0.30, "step", 0.05, 0.35) for i in range(8)] +
                              [(3.2 + i*0.17, "step", 0.95, 0.35) for i in range(9)] +
                              [(5.1, "scuff", 0.8, 0.6)]),
-    # no flap: the wingbeat is silent by design, so the flight is the bed, the
-    # glide and the two ends of it
-    ("montage_flying",  7.5, [(0.0, "wind", None, 7.5), (0.30, "takeoff", None, 0.6),
-                              (3.1, "glide", None, 0.8), (4.0, "glide", None, 0.8),
-                              (5.0, "ceiling", None, 0.5), (6.2, "land", None, 0.6)]),
+    # no flap, no bed, no glide -- all three are deliberately silent, so this
+    # is the shape of a flight: leave the ground, touch the roof, come down
+    ("montage_flying",  7.5, [(0.30, "takeoff", None, 0.6),
+                              (2.6, "ceiling", None, 0.5),
+                              (4.4, "takeoff", None, 0.6),
+                              (6.2, "land", None, 0.6)]),
     ("montage_crow",    7.0, [(0.0 + i*0.27, "alert", False, 0.35) for i in range(7)] +
                              [(1.95 + i*0.13, "alert", True, 0.35) for i in range(4)] +
                              [(2.55, "caw", None, 0.7), (3.5, "crowpass", True, 0.6),
