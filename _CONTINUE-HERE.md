@@ -2735,6 +2735,73 @@ A button that takes 12,000 eggs for a vehicle that does not exist is worse than
 a button that does nothing, and the slot is worth more as a visible next thing
 than as a broken purchase.
 
+### The death beat, and the score card that follows it (2026-09-06, later)
+
+The score card used to arrive the instant the ragdoll settled. A timed card
+comes first now and asks the only question a dead run has left: **carry on, or
+finish bigger?** Search `THE DEATH BEAT`.
+
+- **EXTRA LIFE for eggs** (`HEART_COST`, 400) and **EXTRA LIFE for an ad** both
+  continue the run. Both land in `reviveNow()`; the only difference is what was
+  paid.
+- **DYNAMITE** ends it instead -- Jetpack Joyride's final blast, +500/750/1000 m
+  from `TNT`, multiplied by `PERK.bang()`.
+- **Each of the three is offered once a run and no more.** That is what stops
+  the beat becoming a wallet with a retry button attached, and it is why they
+  are three booleans on `game` reset in `startRun` rather than anything cleverer.
+- Eight seconds on the clock. Decline or let it run out and `finishNow()` runs
+  exactly as `finish()` always did.
+
+**The two halves are mutually exclusive at any one death** -- reviving means the
+run is not over, and the dynamite only means anything once it is -- so they are
+side by side on one card rather than two screens in a row.
+
+`SECOND WIND` is gone from the shop and `BIGGER BANG` replaces it. A paid revive
+was selling what this screen now hands out for an ad; the replacement sells the
+other half of the screen.
+
+### The blast is solved, not thrown
+
+`updateBlast` drives the distance along an ease-out. The ragdoll's own physics
+would have been the obvious way and it is the wrong one: **a body launched a
+thousand metres by a spring lands somewhere different at every frame rate**, and
+the whole point of the beat is that you bought a specific number of metres and
+got them. The arc is `sin(t*PI)`, so the landing and the last metre happen
+together.
+
+`game.dist` and `cam.x` advance together -- the same agreement the odometer fix
+established -- so the world genuinely scrolls, and **a long enough blast carries
+you across a zone boundary**. A 1,000 m stick from the farm lands you in the ant
+empire, which was not designed and is the best thing about it.
+
+### `deathDraw` destroyed the element it needed next time
+
+It wrote `'USED'` into the `.cost` node with `textContent`, and the price span
+lived *inside* that node -- so one spent life removed `#dthHeartCost`, and the
+next death threw on a null **before the card was ever shown**. One revive
+silently took the whole offer away for the rest of the session, and the run
+carried on looking normal. The node is rebuilt now, never half-edited.
+
+**Generally: never write text into a node that contains an element you look up
+later.** The failure is invisible at the moment it happens and surfaces
+somewhere unrelated.
+
+`S.doorbreak` was also gone by the time the blast called it -- the sound rework
+removed `doorbreak`, `cagebreak` and `megg`. Nothing else still calls them, but
+check `S` before reaching for a sound you remember.
+
+### The score card is laid out for a landscape window now
+
+It was a portrait card in a letterbox: a column of centred rows with the number
+in the middle and a lot of air either side. The number owns the left, the run
+owns the right in a 2x2, the buttons are one row so RETRY sits under the thumb,
+and there is a SHOP door on it -- the death screen is the highest-intent moment
+a player has.
+
+It gained the eggs collected, and a DYNAMITE row **that only appears when
+dynamite was used**. A permanent `+0m` teaches the player the feature exists and
+does nothing, which is worse than not mentioning it.
+
 ## Next
 
 - **Nothing spends the eggs yet** -- the shop exists and none of it
