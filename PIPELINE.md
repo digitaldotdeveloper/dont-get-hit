@@ -44,6 +44,10 @@ C:\Users\it\Desktop\Gemini Prompt Sender\dashboard\dgh\
     sheets/v4   the crows
     ref/        the key art, and the references attached to prompts
     audio/      the 192 kbps music masters
+                (the truck, footstep and gate SOUNDS are not generated at
+                 all any more -- they are recordings the user supplies;
+                 see _CONTINUE-HERE.md, "The sound is the user's own
+                 recordings now")
     concept/    the pre-pivot human-runner concepts (kept for history)
     frames/     early sprite contact sheets
     anim_src/   pre-cut character frames
@@ -207,6 +211,7 @@ check Settings before queueing a pack.
 | `title_art.py` | extends the 16:9 key art into portrait title art |
 | `to_webp.py` | lossless WebP + proves nothing changed (lossy rings on ink outlines and alpha edges) |
 | `opt_audio.py` / `loop_menu.py` | Opus 64k + MP3 96k; cut the menu track to one loop of itself |
+| `opt_audio_sfx.py` | **run this for every sound that is added.** Picks the bitrate by measuring: encodes each candidate, decodes it, compares to the source across eleven bands, smallest under 0.5dB wins. Has floors, because band energy is what a codec preserves best and the metric alone will pass a music track at 24kbps |
 
 **Prove it** — because "it loads without throwing" is not "it is right".
 
@@ -218,7 +223,8 @@ check Settings before queueing a pack.
 | `clip.py` | a real-time GIF over `Page.startScreencast` — keeps the game's actual timing, which screenshot-per-frame does not |
 | `shot.py` | CDP screenshot with real device metrics (`--screenshot` crops) |
 | `prof.py` | ms/frame per draw section |
-| `sfx.py` | renders every sound to WAV through `?sfx=1` and flags silent/clipping ones |
+| `sfx.py` | renders every sound to WAV through `?sfx=1` and flags silent/clipping ones. **The peaks it prints are the level table** — set a new sound against `hit`, never by ear |
+| `pick_sfx.py` | scores windows of a long generated take against a spectral profile — only needed while generating, which has stopped |
 | `audio_report.py` | what is actually inside an MP3, with no ffmpeg on the box |
 
 ---

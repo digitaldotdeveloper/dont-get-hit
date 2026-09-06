@@ -2218,6 +2218,11 @@ finishing the sample path and synthesising the three, rather than defaulting.
 
 ## How a sound gets made (2026-09-06) -- THE RULE
 
+> **SUPERSEDED.** See **The sound is the user's own recordings now**. Kept as
+> an accurate record of what was tried and why, not as the current rule: the
+> truck, the footsteps and the gate are recordings the user supplies, and
+> generation is stopped.
+
 **Every sound in this game is SYNTHESISED in WebAudio, in `S`.** A few
 oscillators and a noise burst per entry. That is why the game is one HTML file
 with no audio assets, why every sound starts on the exact frame it is asked
@@ -2394,6 +2399,9 @@ an asset check.
 
 ## Sounds are GENERATED again, and the riff that never played (2026-09-06)
 
+> **SUPERSEDED for the sounds** -- see **The sound is the user's own
+> recordings now**. The riff half is still true and still load-bearing.
+
 **The rule reversed, at the user's instruction:** "all sounds i ask you about
 should be gemini studio generated, even the kick of the cage and the Boom".
 The earlier "synthesise them" note is superseded. `tools/gen_sfx.py` makes
@@ -2444,6 +2452,62 @@ entry in `S` falls back to its synth version until the sample lands. One line
 to edit when a new one arrives.
 
 **Landed so far: megg, truckjump. Still failing: vroom, kick, boom.**
+
+## Three things that were still the farm (2026-09-06)
+
+All three are the same shape as the ones already written up under **Things that
+were quietly still the farm**: a value read ONCE PER RUN in a world that changes
+with DISTANCE. That family is not finished -- when you add anything that picks a
+colour, a flag or a position at the top of a run, ask what it says at 3000m.
+
+### The canvas was cleared to the farm's blue, underground
+
+`render()` cleared to `C.skyA`, and `C` is stamped by `applyTheme()` from the
+theme the run STARTED in. Below ground that is a bright daylight blue behind
+everything the sky surface does not cover -- and it covers from y=0 down, while
+`game.camY` lifts to **+90** as he climbs. So a band the height of the camera
+lift is bare canvas, and it is not a corner case: it is what the top of the
+screen looks like every time you fly high.
+
+Measured at 2170m with camY 82, the top row read `0D64CB`. It reads `0E0A15`
+now, which is the deep zone's own `skyA` under the vignette. One word:
+`themeNow().skyA`.
+
+### `?dist` and `?zone` moved the odometer and left the world behind
+
+**The two flags built to look at the map were the only things that could never
+show you a boundary.** `startRun` set `game.dist` from the preset and then
+`player.x = 0; cam.x = -PX`. Everything that reads DISTANCE jumped -- the zone,
+the palette, the layer set -- and everything placed by WORLD POSITION stayed at
+metre zero: the gateways, the signs, the mounds, and `drawBgLayers`'s own seam,
+all of which are drawn at `m*UPM - cam.x`. Measured: `?dist=2000` gave
+`dist 2005.7m` against `cam.x -4.3m`.
+
+That is why the empire's root formation and the lab door had never been seen
+except by playing to them. `?dist=1120` now runs you into the tunnel mouth with
+the farm still on the left of the screen.
+
+**The escape had to be dealt with, and the interesting part is which way.** The
+handover at `T_OUT` does `player.x = cageExitX()`, and the whole escape is
+measured from world zero -- the cage parked at `-CAGE_RUNOUT`, `camIntroX`
+framing that spot. So it put the last pose at world 0 with the odometer 2000m
+away, restoring the bug one line after the fix. Moving the CAGE to the preset
+was the other option and it is the worse one: those positions are a mix of world
+and screen space (`breakCage` and the feather burst both take `game.cageX`
+through `cam.x`), and anchoring the scene 70,000 units out multiplies every one
+of those by the distance. So a preset run is a RETRY -- `startIntro` hands
+straight to `startQuick` when `game.presetDist` is set. You cannot be kicked out
+of a barn 2000 metres from the barn, and "start me there" never meant "release
+me there". A plain run still opens with the escape; `?dist=0` and `?zone=farm`
+still do too, because the guard is on a truthy preset.
+
+### The sky birds flew through the ant lab
+
+Clouds and the sun multiply by `outdoor()`; the three bird silhouettes did not,
+so they glided through a sealed city at farm strength. Multiplied, not gated,
+for the same reason as the rest: a bird that pops out of existence between two
+frames is worse than one that should not be there.
+
 
 ## The shell around the game (2026-09-06)
 
@@ -2801,6 +2865,183 @@ a player has.
 It gained the eggs collected, and a DYNAMITE row **that only appears when
 dynamite was used**. A permanent `+0m` teaches the player the feature exists and
 does nothing, which is worse than not mentioning it.
+
+## The sound is the user's own recordings now (2026-09-06/07)
+
+**This supersedes "How a sound gets made -- THE RULE" and "Sounds are GENERATED
+again" above.** Both are kept because they are an accurate record of what was
+tried, not because they still describe the game. The order went: synthesised ->
+generated in Gemini Studio -> and now, for everything the truck and the chicken
+do, RECORDINGS THE USER SUPPLIES. Generation is stopped; they said so directly.
+
+What ships as a sample, and where it came from:
+
+| sample | source | plays |
+|---|---|---|
+| `truckget` | `engine-ignition.wav` | the pickup AND every jump |
+| `truckidle` | `engine-idle-loop.wav`, cut from 0:06 | loops the whole ride |
+| `truckland` | `truck-land-14.wav` | the truck touching down |
+| `step` | `step-4.wav`, trimmed to 0.24s | loops while running on the ground |
+| `gatebreach` | `gate-breach-42.wav`, trimmed to 5s | the kick in the intro |
+
+`SMP_HAVE` is still the one line to edit when a file arrives or leaves: a name
+in it means the file exists, a name missing means the synth carries it and the
+game never asks for a 404.
+
+### What was DELETED, and do not put it back
+
+- the mystery-egg chime, the cage break, `cagerattle`
+- every generated truck sound (`vroom`, the old `truckjump`, `boom`, `megg`)
+- the riff's sidechain duck on jumps
+- the per-footfall `S.step()` in the run cycle
+
+Each was removed on request, and each had a reason worth keeping: the egg chime
+was announcing an announcement (`startRide()` is on the next line and brings an
+engine and a riff with it); the duck was making room for an engine that had
+since been made quiet three times; the footfall trigger would double every step
+now that the loop covers it. `S.step` survives ONLY as an impact, for the corn
+and the cage.
+
+### Set levels against the game, never by ear
+
+Two rounds of "quieter" by feel failed. Then `tools/sfx.py` rendered the whole
+table and the answer was not subtle: the truck was **more than twice the level
+of `hit`**, the cue that tells the player they are dead. A recording is far
+denser than the oscillators it replaced and it went in at their headroom, which
+made it the loudest thing in the game rather than the biggest thing in it.
+
+Where it sits now, and the shape to keep:
+
+```
+hit  0.24   <- the ceiling; nothing routine should pass it
+truckland 0.22   truckget 0.26   gatebreach 0.30   land 0.19
+truckjump 0.045  <- deliberately tiny: see below
+```
+
+`truckjump` looks wrong as a number and is right as a sound. It is LAYERED over
+the driving bed, so its peak is not what you hear, and the user asked for it at
+the bed's level and then below it. Worth knowing why "the same as driving" was
+not enough: **equal rms is not equal loudness when one sound is a steady bed and
+the other is a transient.** A bed is a floor the ear stops hearing; an event at
+the floor's own energy still stands well above it.
+
+### The three measuring tools, and what each is for
+
+- `tools/sfx.py` -- renders every entry in `S` offline through the REAL
+  functions and prints peaks. This is the level table. It now warms the samples
+  before rendering, because it used to render the first sound that wanted one
+  with its synth fallback and every later one with the real file, which showed
+  the ignition at twice its shipping level and got acted on.
+- `tools/pick_sfx.py` -- scores windows of a generated take against a spectral
+  profile. Only useful while generating, which has stopped, but it is also the
+  record of three ways a cutter can lie: `-ss` before `-i` silently landing on
+  silence, `dynaudnorm` reshaping the balance being scored, and a 30ms lead
+  moving a clip from 32/29/29 to 47/18/26 all by itself.
+- `tools/opt_audio_sfx.py` -- **run this when any sound is added.** It encodes
+  each candidate bitrate, decodes it, compares to the SOURCE across eleven
+  bands, and takes the smallest file under 0.5dB. Everything had gone in near
+  the encoder defaults: 129kbps for mono engine recordings that are 96% below
+  400Hz. It saved 33%. It has FLOORS, and they matter -- band energy is what a
+  codec works hardest to preserve, so left alone the script passed a 36-second
+  stereo music track at 24kbps. Music is floored to what the soundtrack already
+  ships at; a loop is floored like music, because an artefact you hear once is
+  a texture and one you hear every second is a fault.
+
+**Re-check levels after any re-encode.** It moves the very peaks every gain was
+set against. Last time: peaks within 4%, rms within 1%.
+
+### When the user gives a reference, MEASURE it
+
+Three monster-truck clips turned "it sounds lame" into numbers no amount of
+tweaking would have found: a big engine heard from outside has ~0% of its
+energy below 100Hz, its fundamental is nearly absent, and **its fifth harmonic
+is the loudest thing in it**. The game had the exact inverse -- a 37Hz sub under
+a lowpass, which is a distant lorry. Nothing from a reference ever ships; only
+the numbers do.
+
+That rebuilt `vroom` as a `createPeriodicWave` from the measured series (`ENG_H`)
+with everything under 110Hz filtered off, tuned to D because an FFT of the ride
+track puts its strongest partial at 74Hz. It matched the references to two
+decimal places -- **and it is now only a fallback**, because the user supplied a
+real engine the same day. Leave it: a fallback has to match the level of the
+thing it stands in for, or the one player whose fetch fails gets an ignition
+nobody else does.
+
+### The two beds: engine and footsteps
+
+Both are ONE long-lived voice built when the state starts and torn down when it
+ends -- never a per-frame one-shot, which allocates an oscillator per frame and
+is the classic way to stutter a game on its own audio.
+
+- **`ENG`** loops `truckidle` while riding, revving up when the wheels leave the
+  ground. It can UPGRADE MID-RIDE: it used to choose its source once, so a ride
+  that started before the file decoded ran on the synth for its whole length
+  with the recording sitting in memory. Adding a third sample to fetch was
+  enough to make that happen.
+- **`STEPB`** loops `step` while on the ground, and this one is not free-running.
+  An engine idles at its own rate and nothing contradicts it; a footstep that
+  does not land when the foot lands is wrong twice a stride. Its playback rate
+  comes from the animation's own numbers -- `STEP_LEN*2*game.speed/strideLen` --
+  so the clip is stretched to exactly one step per half phase-cycle, which is
+  where the run cycle puts a foot down. Measured in the running game: the legs
+  want 4.31 steps a second and the loop delivers 4.31. It fades in 60ms, not the
+  engine's 300ms, because leaving the ground has to be crisp.
+
+### Fetching does not need a gesture; decoding does
+
+The kick is **1.15s after the press that creates the AudioContext**, so the
+biggest sound in the opening was racing a fetch and a decode it could lose --
+and losing it meant silence, permanently, because nothing asked again. So the
+BYTES are pulled during the loading screen (`prefetchSamples`, fired when the
+art gate drains so it never competes with the images the gate is waiting for)
+and the decode runs from memory on the first touch. Measured: all five in
+memory before any tap, decoded 74ms after it, breach fires at 1169ms against a
+kick at 1150 with its buffer ready. `S.gatebreach` also retries for 0.2s if the
+buffer is somehow still missing, then gives up -- past that the door is long
+open and a bang is a mystery rather than a door.
+
+## The barn intro was skipped on every desktop play (2026-09-07)
+
+`bindDown` attached BOTH `pointerdown` and `mousedown`, and a browser fires both
+for one click. So a single press arrived TWICE, and the two presses were not
+harmless -- they were read as two taps. On the menu that is: press one starts
+the intro, press two lands in the intro's own handler, which exists to let an
+impatient player skip ahead to the kick.
+
+**The door, the run-up and the boot going in were gone in a frame, on every
+mouse play of this game, for as long as that binding existed.** Nobody noticed
+because a phone binds only `touchstart` and was always fine.
+
+Measured before the fix: one press, `downFrom` called twice, `introT` at 1.441
+within 400ms with the kick due at 1.15. After: one press, one `downFrom`, intro
+intact.
+
+Two guards, because there were two duplications:
+
+- one pointer source, `pointerdown` where `PointerEvent` exists and `mousedown`
+  only as a fallback for a browser that somehow lacks it;
+- `if(e === game.lastDownEv) return;` in `downFrom`, because `bindDown` is
+  called for the window AND the canvas, both in the capture phase, so one press
+  walks past two listeners holding the same event object. Comparing the object
+  is exact -- no timing window to tune, and a real double-tap is two objects and
+  still gets through.
+
+**This is the shape to look for elsewhere.** It was found only because a
+user-supplied sound "would not play": it fired 48ms after the press, before it
+could possibly be decoded, and reading that as "the sample loads too slowly"
+would have been the wrong fix to the wrong problem. `game.rawDown` counts calls
+and is the fastest way to check it has not come back.
+
+### Still unreproduced
+
+The user reports the gate breach going silent after a reload. Three reloads in
+one profile, warm cache, clicking as fast as the harness can, and with the REAL
+autoplay policy rather than the permissive flag the harness had been hiding
+behind: it fired every time, context running, buffer ready, and the live site
+serves the file and the current `index.html`. The retry above is insurance
+against the mechanism, not a fix for a diagnosed fault. If it recurs, the
+question that splits it is whether the OTHER samples go quiet at the same time
+-- all of them means the audio context, only the gate means the timing race.
 
 ## Next
 

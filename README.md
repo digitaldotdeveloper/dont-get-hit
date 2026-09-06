@@ -27,8 +27,10 @@ Open `index.html`. No build step, no dependencies.
     ?ob=KEY     park one hazard on screen
     ?hit=1      draw the lethal shapes over the art
     ?ride=1     start already in the truck
-    ?dist=N     start a run N metres in
+    ?dist=N     start a run N metres in — the world too, not just the odometer,
+                so the gateways, signs and the layer seam are where they belong
     ?zone=ID    jump to a world: farm terr empire deep lab
+                (either flag skips the barn escape: a preset run is a retry)
     ?obtest=1   check openings, spacing and transits
     ?sfx=1      render the sounds offline instead of playing them
     ?noboot=1   skip the loading gate (harnesses that drive runs directly)
