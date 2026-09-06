@@ -263,6 +263,417 @@
     .big.pulse,#tut.show{animation:none}
     .card,.ribbon{animation-duration:.01ms}
   }
+  /* ============================================================
+     THE META SHELL
+     ============================================================
+     Five destinations went onto a menu that had one button, and PLAY did not
+     move. Three rules keep it that way, and everything below is one of them:
+
+     - FILLED GOLD IS RESERVED. Only PLAY and the daily claim are filled. Every
+       other new control is an outline, including the two that sell things, so
+       nothing on this screen out-shouts the button the player came for.
+     - GOLD MEANS CURRENCY, CREAM MEANS SCORE. The egg count is gold; BEST is
+       cream and a different shape, so a glance can never read one as the other.
+     - THE EGGS DO NOT MOVE. They sit in the corner #hudTL already puts them in
+       during a run, so the number stays put when the game starts.
+
+     There is a fourth, about where a thumb is: this game is landscape, so the
+     bottom-right corner is the dominant thumb (PLAY and the three doors) and
+     the bottom-left is the other one (the daily card). The top strip is
+     status, and almost none of it is tappable. */
+
+  /* --- the strip -------------------------------------------------------
+     One bar. Left: the eggs. Centre: BEST on the menu, the tab bar in the
+     shop. Right: the two things that are settings rather than game.
+     #mute is deliberately NOT in here -- it stays in #hud so it is still
+     reachable mid-run -- so the menu's copy pads its right end to clear it. */
+  .strip{position:absolute;left:0;right:0;top:0;height:46px;z-index:6;
+         display:flex;align-items:center;gap:9px;pointer-events:none;
+         padding:0 calc(env(safe-area-inset-right,0px) + 12px)
+                 0 calc(env(safe-area-inset-left,0px) + 12px);
+         background:linear-gradient(180deg,rgba(21,8,39,.66),rgba(21,8,39,0))}
+  #menu .strip{padding-right:calc(env(safe-area-inset-right,0px) + 64px)}
+  .strip > *, .strip .mid > *{pointer-events:auto}
+  .strip .mid{flex:1;display:flex;justify-content:center;align-items:center;
+              min-width:0;pointer-events:none}
+
+  .eggPill{display:flex;align-items:center;gap:7px;padding:5px 6px 5px 9px;
+           border-radius:999px;background:rgba(21,8,39,.78);
+           border:1.5px solid rgba(255,213,74,.34);box-shadow:0 3px 10px rgba(21,8,39,.5)}
+  .eggPill .ic{width:14px;height:18px;
+               background:url(art/egg_icon.webp) center/contain no-repeat;
+               filter:drop-shadow(0 0 6px rgba(255,213,74,.55))}
+  .eggPill .n{font-family:'Bungee',cursive;font-size:15px;color:var(--gold);
+              text-shadow:0 2px 0 #241043;font-variant-numeric:tabular-nums;line-height:1}
+  .eggPill .plus{width:20px;height:20px;border-radius:999px;display:grid;place-items:center;
+                 background:linear-gradient(180deg,#FFE27A,var(--gold));color:#2A1206;
+                 font:900 14px/1 'Archivo',sans-serif;box-shadow:0 2px 0 #B8681B;
+                 border:0;padding:0;cursor:pointer}
+  .bestPlate{display:flex;align-items:center;gap:8px;padding:5px 14px 6px;margin-top:-8px;
+             border-radius:0 0 12px 12px;background:rgba(21,8,39,.66);
+             border:1.5px solid rgba(255,242,222,.16);border-top:0}
+  .bestPlate svg{width:13px;height:13px;fill:rgba(255,242,222,.5)}
+  .bestPlate .k{font-size:9px;font-weight:900;letter-spacing:.2em;color:rgba(255,242,222,.5)}
+  .bestPlate .v{font-weight:900;font-size:15px;color:var(--cream);line-height:1;
+                font-variant-numeric:tabular-nums}
+  .bestPlate .u{font-size:9px;font-weight:900;color:rgba(255,242,222,.45);
+                align-self:flex-end;margin-bottom:1px}
+  .noads{display:flex;align-items:center;gap:6px;padding:6px 11px;border-radius:999px;
+         background:rgba(21,8,39,.6);border:1.5px solid rgba(255,242,222,.26);
+         cursor:pointer;font-family:inherit}
+  .noads .t{font-size:9px;font-weight:900;letter-spacing:.13em;color:rgba(255,242,222,.82)}
+  .noads .p{font-size:10px;font-weight:900;color:var(--mint)}
+  .backBtn{width:34px;height:34px;border-radius:11px;flex:0 0 auto;padding:0;cursor:pointer;
+           border:1.5px solid rgba(255,242,222,.22);background:rgba(36,16,67,.5);
+           color:var(--cream);display:grid;place-items:center}
+  .backBtn svg{width:16px;height:16px;fill:currentColor}
+
+  /* --- the menu, re-laid for a bottom row -------------------------------
+     The spacer used to be 4px of breathing room; making it the flexible one
+     puts the logo at the top of the column and the whole action block at the
+     bottom, without restructuring the markup. */
+  body:not(.poster) #menu{padding-top:calc(env(safe-area-inset-top,0px) + 50px)}
+  body:not(.poster) #menu .spacer{flex:1 1 auto}
+  body:not(.poster) #menu .logo .l1{font-size:clamp(19px,5.4vmin,44px)}
+  body:not(.poster) #menu .logo .l2{font-size:clamp(26px,7.9vmin,66px)}
+  body:not(.poster) #menu .tag{margin-top:7px}
+  .menuFoot{gap:9px}
+
+  /* --- the three doors --------------------------------------------------
+     Every icon is art the game already ships: the trolley, the mystery egg,
+     and the bucket hat cut down by tools/cut_hats.py. They are CSS
+     backgrounds rather than <img>, so the loading gate's count stays exactly
+     the game's own 186 requests. */
+  .doors{display:flex;gap:9px}
+  .door{width:82px;height:62px;border-radius:15px;cursor:pointer;padding:3px 0 0;
+        background:linear-gradient(180deg,rgba(61,31,85,.94),rgba(29,13,52,.97));
+        border:1.5px solid rgba(255,242,222,.16);position:relative;
+        box-shadow:0 5px 0 rgba(15,6,28,.75),0 8px 18px rgba(21,8,39,.5);
+        display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+        font-family:inherit;color:inherit;
+        transition:transform .07s ease,box-shadow .07s ease}
+  .door .art{height:30px;width:52px;background-position:center bottom;
+             background-repeat:no-repeat;background-size:contain;
+             filter:drop-shadow(0 2px 3px rgba(21,8,39,.6))}
+  .door .lb{font-size:8px;font-weight:900;letter-spacing:.11em;color:rgba(255,242,222,.78)}
+  .door .dot{position:absolute;right:-3px;top:-3px;width:15px;height:15px;line-height:1;
+             border-radius:999px;background:var(--danger);border:2px solid var(--ink-2);
+             font-size:8px;font-weight:900;color:#fff;display:grid;place-items:center}
+  .door:active{transform:translateY(4px);box-shadow:0 1px 0 rgba(15,6,28,.75)}
+  .door:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+
+  /* --- the daily card ---------------------------------------------------
+     The only thing on the menu that changes with time, so the only one drawn
+     as a state: a ring while it is ready, a clock while it is not. */
+  #daily{position:absolute;z-index:6;width:180px;cursor:pointer;text-align:left;
+         left:calc(env(safe-area-inset-left,0px) + 12px);
+         bottom:calc(env(safe-area-inset-bottom,0px) + 12px);
+         border-radius:16px;padding:9px 11px 10px;font-family:inherit;color:inherit;
+         background:linear-gradient(180deg,rgba(61,31,85,.95),rgba(29,13,52,.97));
+         border:2px solid var(--gold);animation:dailyRing 2.4s ease-out infinite}
+  @keyframes dailyRing{
+    0%{box-shadow:0 0 0 0 rgba(255,213,74,.55),0 8px 20px rgba(21,8,39,.6)}
+    70%{box-shadow:0 0 0 12px rgba(255,213,74,0),0 8px 20px rgba(21,8,39,.6)}
+    100%{box-shadow:0 0 0 0 rgba(255,213,74,0),0 8px 20px rgba(21,8,39,.6)}}
+  #daily.locked{border-color:rgba(255,242,222,.16);animation:none;
+                box-shadow:0 8px 20px rgba(21,8,39,.6)}
+  #daily .hd{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  #daily .ttl{font-size:9px;font-weight:900;letter-spacing:.16em;color:rgba(255,242,222,.62)}
+  #daily .day{font-family:'Bungee',cursive;font-size:11px;color:var(--gold)}
+  #daily.locked .day{color:rgba(255,242,222,.5)}
+  #daily .row{display:flex;align-items:center;gap:8px;margin-top:7px}
+  #daily .egg{width:22px;height:28px;flex:0 0 auto;
+              background:url(art/egg_icon.webp) center/contain no-repeat;
+              filter:drop-shadow(0 0 8px rgba(255,213,74,.5))}
+  #daily.locked .egg{filter:grayscale(1) opacity(.45)}
+  #daily .cta{flex:1;text-align:center;font-family:'Bungee',cursive;font-size:11px;
+              color:#2A1206;border-radius:10px;padding:7px 4px 8px;
+              background:linear-gradient(180deg,#FFE27A,var(--gold));box-shadow:0 3px 0 #B8681B}
+  #daily.locked .cta{background:rgba(255,242,222,.10);color:rgba(255,242,222,.62);
+              box-shadow:none;font-family:'Archivo',sans-serif;font-weight:900;
+              font-variant-numeric:tabular-nums;letter-spacing:.06em}
+  .adg{display:inline-block;width:0;height:0;margin-right:6px;vertical-align:-1px;
+       border-left:7px solid #2A1206;border-top:5px solid transparent;
+       border-bottom:5px solid transparent}
+
+  /* --- first run --------------------------------------------------------
+     Nothing has been earned, nothing can be bought, nothing is customisable
+     and no ad has been seen -- so none of it is drawn. The first session is
+     the menu this game already had, which is the point: adding a shop must
+     not cost anything before the player's first run. It arrives on the
+     second visit, when it means something. */
+  body.firstrun .doors, body.firstrun #daily, body.firstrun #menu .strip{display:none}
+  /* ...and the two rule chips and the hint are the other half of that trade:
+     they are the room the doors needed, and a returning player has already
+     been told how to fly. */
+  body:not(.firstrun) #menu .rules, body:not(.firstrun) #menu .hint{display:none}
+
+  /* --- the loading screen IS the menu, unlit ----------------------------
+     Same logo, same tagline, same seat: the bar is PLAY's box, in PLAY's
+     place, in PLAY's gold. It fills, and then it is the button -- the
+     crossfade between the two screens does the morph for free.
+
+     boot() calls toMenu() and starts the frame loop BEFORE gateStart(), so
+     the farm is already being drawn underneath. Dropping the backdrop from
+     opaque to a wash lets it arrive behind the screen that is waiting for
+     it, and the handover becomes a sunrise rather than a cut. */
+  #boot{flex-direction:row;align-items:stretch;justify-content:flex-end;gap:0;text-align:right;
+        padding:0 max(4vw,18px) calc(env(safe-area-inset-bottom,0px) + 12px) 44vw;
+        background:linear-gradient(172deg,rgba(19,40,76,.93),rgba(61,31,85,.90) 58%,rgba(21,8,39,.96))}
+  .bootCol{display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-start;
+           gap:9px;padding-top:calc(env(safe-area-inset-top,0px) + 50px)}
+  #boot .spacer{flex:1 1 auto}
+  #boot .logo{transform:rotate(-2.5deg)}
+  #boot .logo .l1{font-size:clamp(19px,5.4vmin,44px)}
+  #boot .logo .l2{font-size:clamp(26px,7.9vmin,66px)}
+  /* PLAY and the bar are one box specified once, so they cannot drift apart.
+     min-width is what makes them the same width whatever the label says. */
+  .big, .bootBar{min-width:clamp(170px,40vmin,230px)}
+  .bootBar{position:relative;overflow:hidden;display:grid;place-items:center;
+           width:auto;height:auto;padding:18px 54px 20px;border-radius:22px;
+           font-family:'Bungee',cursive;font-size:clamp(20px,5.2vmin,32px);line-height:1;
+           background:rgba(21,8,39,.5);border:2px solid rgba(255,213,74,.42);
+           box-shadow:0 8px 0 rgba(15,6,28,.62),0 16px 28px rgba(21,8,39,.5)}
+  /* The fill is the FULL button, clipped -- not a narrow bar that grows. That
+     is what lets the ink-coloured copy of the number sit exactly on top of
+     the cream one, so the figure is legible at every percentage instead of
+     going pale the moment the gold reaches it. */
+  #bootFill{position:absolute;inset:0;width:auto;height:auto;border-radius:0;
+            background:linear-gradient(180deg,#FFE27A 0%,var(--gold) 46%,#F5A93A 100%);
+            clip-path:inset(0 100% 0 0);transition:clip-path .25s ease}
+  .bootBar .bootPct{position:absolute;inset:0;display:grid;place-items:center;margin:0;
+                    font-family:'Bungee',cursive;font-size:inherit;letter-spacing:.02em;
+                    color:var(--cream);text-shadow:0 2px 0 rgba(21,8,39,.55)}
+  #bootFill .bootPct{color:#2A1206;text-shadow:none}
+  #boot .bootWhat{height:62px;margin:0;display:flex;align-items:center;
+                  font-size:9px;font-weight:900;letter-spacing:.18em;
+                  color:rgba(255,242,222,.55)}
+  body.booting #menu, body.booting #hud{visibility:hidden}
+  .bootTip{position:absolute;z-index:2;max-width:38%;margin:0;text-align:left;
+           left:calc(env(safe-area-inset-left,0px) + 14px);
+           bottom:calc(env(safe-area-inset-bottom,0px) + 14px);
+           font-size:9px;font-weight:800;letter-spacing:.08em;line-height:1.7;
+           color:rgba(255,242,222,.45)}
+  .bootTip b{color:rgba(255,213,74,.8)}
+
+  /* --- the shop: one screen, four tabs ----------------------------------
+     Three doors and the egg pill all land here. Two new surfaces in total
+     rather than five, because a menu that grows five destinations stops
+     being a menu. Everything inside is prefixed s- because .card, .stat and
+     .rule are already taken by the game-over card and the menu chips. */
+  #shop{padding:0;align-items:stretch;justify-content:flex-start;text-align:left;
+        background:radial-gradient(120% 90% at 26% 18%,rgba(110,42,107,.55) 0%,rgba(21,8,39,0) 62%),
+                   linear-gradient(168deg,#2A1348,#150827 70%)}
+  #shop .strip{background:linear-gradient(180deg,rgba(21,8,39,.5),rgba(21,8,39,0))}
+  .tabs{display:flex;gap:2px;align-items:center;overflow-x:auto;max-width:100%}
+  .tabs::-webkit-scrollbar{height:0}
+  .tab{font:900 10px/1 'Archivo',sans-serif;letter-spacing:.14em;white-space:nowrap;
+       color:rgba(255,242,222,.42);padding:9px 12px 8px;cursor:pointer;
+       position:relative;background:none;border:0}
+  .tab.on{color:var(--gold)}
+  .tab.on::after{content:'';position:absolute;left:10px;right:10px;bottom:2px;height:2.5px;
+                 border-radius:2px;background:var(--gold)}
+  .tab:focus-visible{outline:2px solid var(--gold);outline-offset:1px;border-radius:8px}
+  .shopBody{position:absolute;left:0;right:0;top:46px;bottom:0;display:flex;
+            flex-direction:column;min-height:0;
+            padding:2px calc(env(safe-area-inset-right,0px) + 12px)
+                      calc(env(safe-area-inset-bottom,0px) + 12px)
+                      calc(env(safe-area-inset-left,0px) + 12px)}
+  .pane{display:none;flex:1;flex-direction:column;min-height:0}
+  .pane.on{display:flex}
+  .blurb{margin:0 0 6px;font-size:9px;font-weight:800;letter-spacing:.05em;line-height:1.5;
+         color:rgba(255,242,222,.5)}
+  .blurb b{color:rgba(255,213,74,.85)}
+  .s-rail{display:flex;gap:10px;overflow-x:auto;flex:1;align-items:stretch;
+          padding:9px 0 2px;min-height:0}
+  .s-rail::-webkit-scrollbar{height:0}
+  .s-card{flex:0 0 auto;width:calc((100% - 20px)/3);min-width:196px;border-radius:16px;
+          padding:9px 10px 10px;position:relative;display:flex;flex-direction:column;min-height:0;
+          background:linear-gradient(180deg,rgba(61,31,85,.92),rgba(29,13,52,.96));
+          border:1.5px solid rgba(255,242,222,.13);box-shadow:0 6px 16px rgba(21,8,39,.5)}
+  .s-card.eq{border-color:var(--mint);
+             box-shadow:0 0 0 1px rgba(63,224,176,.35),0 6px 16px rgba(21,8,39,.5)}
+  .s-flag{position:absolute;left:10px;top:-8px;z-index:2;padding:3px 8px 4px;border-radius:999px;
+          font-size:8px;font-weight:900;letter-spacing:.12em;background:var(--mint);color:#0C2A22}
+  .s-flag.hot{background:var(--coral);color:#2A1206}
+  .s-flag.dim{background:rgba(255,242,222,.16);color:rgba(255,242,222,.7)}
+  .s-card h3{margin:0;font-family:'Bungee',cursive;font-size:12px;color:var(--cream)}
+  .s-eff{margin:3px 0 0;font-size:9px;font-weight:700;line-height:1.45;color:rgba(255,242,222,.6)}
+  .s-pic{flex:1;min-height:0;margin-bottom:6px;
+         background-position:center;background-repeat:no-repeat;background-size:contain;
+         filter:drop-shadow(0 4px 6px rgba(21,8,39,.6))}
+  .lock .s-pic{filter:brightness(0) opacity(.3)}
+  .s-pips{display:flex;gap:3px;margin:8px 0 0}
+  .s-pips i{flex:1;height:4px;border-radius:2px;background:rgba(255,242,222,.14)}
+  .s-pips i.f{background:var(--mint)}
+  .s-lvl{margin:5px 0 7px;font-size:8px;font-weight:900;letter-spacing:.12em;
+         color:rgba(255,242,222,.45)}
+  .s-lvl b{color:var(--mint);font-weight:900}
+  .s-buy{display:flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;
+         border-radius:11px;padding:8px 10px 9px;cursor:pointer;border:0;
+         font-family:'Bungee',cursive;font-size:11px;color:#2A1206;
+         background:linear-gradient(180deg,#FFE27A,var(--gold));box-shadow:0 3px 0 #B8681B}
+  .s-buy .e{width:12px;height:15px;flex:0 0 auto;
+            background:url(art/egg_icon.webp) center/contain no-repeat}
+  .s-buy.soon{background:none;box-shadow:none;color:rgba(255,242,222,.38);
+              border:1.5px dashed rgba(255,242,222,.22);
+              font:900 9px/1 'Archivo',sans-serif;letter-spacing:.14em;padding:10px}
+  /* Vehicles are few and big; power-ups are many and scanned, so they are rows
+     in two columns rather than five tall cards with dead air in them. */
+  .s-grid{flex:1;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;
+          gap:8px 10px;min-height:0;padding-top:9px}
+  .s-row{position:relative;display:flex;align-items:center;gap:10px;min-height:0;
+         border-radius:14px;padding:8px 10px;
+         background:linear-gradient(180deg,rgba(61,31,85,.92),rgba(29,13,52,.96));
+         border:1.5px solid rgba(255,242,222,.13)}
+  .s-row.hero{border-color:rgba(242,104,79,.55)}
+  .s-row .ic{width:52px;height:100%;flex:0 0 auto;
+             background-position:center;background-repeat:no-repeat;background-size:contain;
+             filter:drop-shadow(0 3px 5px rgba(21,8,39,.6))}
+  .s-row.lock .ic{filter:brightness(0) opacity(.3)}
+  .s-row .txt{flex:1;min-width:0}
+  .s-row h3{margin:0;font-family:'Bungee',cursive;font-size:11px;color:var(--cream)}
+  .s-row p{margin:2px 0 0;font-size:8.5px;font-weight:700;line-height:1.4;
+           color:rgba(255,242,222,.55)}
+  .s-row .s-pips{margin-top:5px;width:76px}
+  .s-row .s-buy{flex:0 0 auto;font-size:10px;padding:7px 10px 8px}
+  /* Appearance: the five slots the rig already has, and he changes on the
+     left as you tap -- the cosmetic registry is runtime-swappable already. */
+  .appWrap{flex:1;display:flex;gap:12px;min-height:0;padding-top:2px}
+  .preview{width:30%;border-radius:16px;position:relative;overflow:hidden;
+           border:1.5px solid rgba(255,242,222,.12);display:grid;place-items:center;
+           background:radial-gradient(80% 70% at 50% 60%,rgba(110,42,107,.75),rgba(21,8,39,.9))}
+  .preview .who{width:72%;height:72%;background:center/contain no-repeat;
+                filter:drop-shadow(0 10px 14px rgba(21,8,39,.7))}
+  .preview .nm{position:absolute;left:0;right:0;bottom:7px;text-align:center;
+               font-family:'Bungee',cursive;font-size:11px;color:rgba(255,242,222,.7)}
+  .preview .own{position:absolute;left:0;right:0;top:8px;text-align:center;
+                font-size:8px;font-weight:900;letter-spacing:.16em;color:rgba(255,242,222,.4)}
+  .slots{flex:1;display:flex;flex-direction:column;gap:4px;min-width:0;
+         justify-content:space-between}
+  .slotRow{display:flex;align-items:center;gap:9px}
+  .slotName{width:48px;flex:0 0 auto;text-align:right;
+            font-size:8px;font-weight:900;letter-spacing:.13em;color:rgba(255,242,222,.42)}
+  .chips{display:flex;gap:6px;overflow-x:auto;flex:1;padding:2px 0}
+  .chips::-webkit-scrollbar{height:0}
+  .chip{flex:0 0 auto;width:54px;height:54px;border-radius:12px;position:relative;
+         cursor:pointer;overflow:hidden;padding:0;
+         background:rgba(21,8,39,.6);border:1.5px solid rgba(255,242,222,.13);
+         display:grid;place-items:center;font-family:inherit;color:inherit}
+  .chip .th{width:80%;height:72%;background:center/contain no-repeat}
+  .chip.eq{border-color:var(--mint);background:rgba(63,224,176,.13)}
+  .chip.lk .th{filter:brightness(0) opacity(.32)}
+  /* A padlock means not drawn yet; a silhouette with a price means buyable.
+     Two states that look the same if you draw them the same way. */
+  .chip.soon{border-style:dashed;border-color:rgba(255,242,222,.16)}
+  .chip .padl{width:16px;height:16px;opacity:.32;fill:var(--cream)}
+  .chip.lk .padl{opacity:.5;margin-bottom:6px}
+  .chip .px{position:absolute;left:0;right:0;bottom:0;padding:2px 0;text-align:center;
+            font-size:7.5px;font-weight:900;background:rgba(21,8,39,.85);color:var(--gold)}
+  .chip .none{font-size:8px;font-weight:900;letter-spacing:.1em;color:rgba(255,242,222,.35)}
+  .chip .tick{position:absolute;right:3px;top:3px;width:13px;height:13px;border-radius:999px;
+              background:var(--mint);color:#0C2A22;font-size:9px;font-weight:900;
+              display:grid;place-items:center}
+  /* Store. CORAL is real money and nothing else, so a cash price can never be
+     mistaken for something eggs will buy. */
+  .offers{display:flex;gap:10px;flex:0 0 46%;padding-top:9px}
+  .offer{flex:1;position:relative;border-radius:15px;padding:11px 12px;display:flex;
+         flex-direction:column;justify-content:center;gap:8px;
+         background:linear-gradient(180deg,rgba(61,31,85,.95),rgba(29,13,52,.97));
+         border:1.5px solid rgba(255,242,222,.14)}
+  .offer.best{border-color:var(--gold);
+              background:linear-gradient(180deg,rgba(110,42,107,.85),rgba(45,18,70,.97))}
+  .offer h4{margin:0;font-family:'Bungee',cursive;font-size:12px;color:var(--cream)}
+  .offer p{margin:0;font-size:8.5px;font-weight:700;line-height:1.5;color:rgba(255,242,222,.55)}
+  .offer p b{color:var(--mint)}
+  .offer .price{align-self:flex-start;margin-top:auto;cursor:pointer;border:0;
+                font-family:'Bungee',cursive;font-size:13px;color:#2A1206;border-radius:10px;
+                padding:8px 16px 9px;box-shadow:0 3px 0 #A93A24;
+                background:linear-gradient(180deg,#FF8E77,var(--coral))}
+  .offer.best .price{background:linear-gradient(180deg,#FFE27A,var(--gold));
+                     box-shadow:0 3px 0 #B8681B}
+  .bundles{display:flex;gap:9px;flex:1;margin:10px 0 22px;min-height:0}
+  .bundle{flex:1;position:relative;border-radius:14px;padding:9px 8px 10px;cursor:pointer;
+          display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+          background:linear-gradient(180deg,rgba(61,31,85,.9),rgba(29,13,52,.96));
+          border:1.5px solid rgba(255,242,222,.12);font-family:inherit;color:inherit}
+  .bundle .eggs{display:flex;gap:2px;align-items:flex-end;justify-content:center;height:38px}
+  .bundle .eggs i{display:block;filter:drop-shadow(0 0 6px rgba(255,213,74,.35));
+                  background:url(art/egg_icon.webp) center bottom/contain no-repeat}
+  .bundle .n{font-family:'Bungee',cursive;font-size:14px;color:var(--gold);line-height:1}
+  .bundle .p{width:100%;padding:6px 0;border-radius:8px;text-align:center;
+             font-size:11px;font-weight:900;color:var(--cream);background:rgba(255,242,222,.1)}
+  .bundle .tagx{position:absolute;right:6px;top:6px;padding:3px 7px 4px;border-radius:999px;
+                font-size:7px;font-weight:900;letter-spacing:.1em;
+                background:var(--mint);color:#0C2A22}
+  .restore{position:absolute;right:14px;bottom:14px;font-size:8px;font-weight:900;
+           letter-spacing:.14em;color:rgba(255,242,222,.3)}
+
+  /* --- the daily ladder -------------------------------------------------
+     Seven rungs, and the last one is not eggs: a ladder is sold by its end,
+     so the reason to come back on day four has to be visible on day one. */
+  #dailyM{background:radial-gradient(120% 80% at 50% 45%,rgba(36,16,67,.5) 0%,rgba(21,8,39,.86) 70%)}
+  .dcard{width:min(600px,90%);border-radius:22px;padding:14px 20px 16px;text-align:center;
+         position:relative;box-shadow:var(--shadow);
+         background:linear-gradient(180deg,rgba(61,31,85,.97),rgba(29,13,52,.99));
+         border:2px solid rgba(255,242,222,.14);
+         animation:cardIn .34s cubic-bezier(.16,1.2,.3,1) both}
+  .dcard h2{margin:0;font-family:'Bungee',cursive;font-size:16px;color:var(--gold);
+            text-shadow:0 3px 0 rgba(21,8,39,.6)}
+  .dcard .sub{margin:4px 0 12px;font-size:9px;font-weight:800;letter-spacing:.14em;
+              color:rgba(255,242,222,.45)}
+  .ladder{display:flex;gap:7px;justify-content:center}
+  .dday{flex:1;min-width:0;border-radius:12px;padding:7px 3px 8px;position:relative;
+        background:rgba(21,8,39,.55);border:1.5px solid rgba(255,242,222,.1);
+        display:flex;flex-direction:column;align-items:center;gap:3px}
+  .dday .d{font-size:7.5px;font-weight:900;letter-spacing:.1em;color:rgba(255,242,222,.4)}
+  .dday .e{width:17px;height:22px;background:url(art/egg_icon.webp) center/contain no-repeat}
+  .dday .v{font-family:'Bungee',cursive;font-size:9px;color:rgba(255,242,222,.65)}
+  .dday.done{opacity:.5}
+  .dday.done .e{filter:grayscale(.7) opacity(.6)}
+  .dday.done .tick{position:absolute;right:4px;top:4px;width:13px;height:13px;line-height:1;
+                   border-radius:999px;background:var(--mint);color:#0C2A22;
+                   font-size:9px;font-weight:900;display:grid;place-items:center}
+  .dday.now{transform:scale(1.13);z-index:2;border-color:var(--gold);
+            background:linear-gradient(180deg,rgba(255,213,74,.22),rgba(255,180,71,.08));
+            box-shadow:0 0 18px rgba(255,213,74,.32)}
+  .dday.now .v, .dday.now .d{color:var(--gold)}
+  .dday.last{border-color:rgba(242,104,79,.5)}
+  .dday.last .v{color:var(--coral);font-size:8px}
+  .dday.lk .e{filter:grayscale(1) opacity(.4)}
+  .dcard .foot{margin-top:14px;display:flex;align-items:center;justify-content:center;gap:14px}
+  .claimBtn{display:flex;align-items:center;gap:2px;white-space:nowrap;border:0;cursor:pointer;
+            font-family:'Bungee',cursive;font-size:14px;color:#2A1206;
+            padding:12px 24px 13px;border-radius:15px;
+            background:linear-gradient(180deg,#FFE27A 0%,var(--gold) 46%,#F5A93A 100%);
+            box-shadow:0 6px 0 #B8681B,0 12px 22px rgba(21,8,39,.5)}
+  .claimBtn .e{width:14px;height:18px;margin:0 5px 0 9px;
+               background:url(art/egg_icon.webp) center/contain no-repeat}
+  /* A locked button with no clock reads as broken, so the clock IS the button. */
+  .claimBtn.off{background:rgba(255,242,222,.09);color:rgba(255,242,222,.55);box-shadow:none;
+                border:1.5px solid rgba(255,242,222,.15);cursor:default;
+                font:900 12px/1 'Archivo',sans-serif;letter-spacing:.1em;
+                font-variant-numeric:tabular-nums;padding:14px 24px}
+  .dcard .skip{font-size:9px;font-weight:900;letter-spacing:.16em;cursor:pointer;
+               color:rgba(255,242,222,.35);background:none;border:0;font-family:inherit}
+  .xBtn{position:absolute;right:10px;top:9px;width:26px;height:26px;border-radius:9px;
+        cursor:pointer;line-height:1;display:grid;place-items:center;
+        border:1.5px solid rgba(255,242,222,.18);background:rgba(21,8,39,.5);
+        color:rgba(255,242,222,.6);font-size:13px;font-weight:900;font-family:inherit}
+
+  /* Landscape is short. Below ~380 css px of height the doors and the daily
+     card would start eating the picture, so they step down together. */
+  @media (max-height:380px){
+    .door{width:74px;height:54px}
+    .door .art{height:24px}
+    #daily{width:160px;padding:7px 9px 8px}
+    .strip{height:40px}
+    .shopBody{top:40px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    #daily{animation:none}
+    .dcard{animation-duration:.01ms}
+  }
 </style>
 </head>
 <body>
@@ -287,6 +698,26 @@
   </div>
 
   <div id="menu" class="screen show">
+    <!-- THE STRIP. Eggs left (the corner the run already uses), BEST centre,
+         the things that are settings right. data-meta marks everything the
+         press filter must let through instead of turning into a flap. -->
+    <div class="strip" data-meta>
+      <div class="eggPill"><i class="ic"></i><span class="n" id="mEggs">0</span
+        ><button class="plus" id="mEggPlus" data-tab="store" aria-label="Get more eggs">+</button></div>
+      <div class="mid">
+        <div class="bestPlate">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 4h3v3a4 4 0 0 1-4 4h-.4A5 5 0 0 1 13 14.9V17h3v3H8v-3h3v-2.1A5 5 0 0 1 7.4 11H7a4 4 0 0 1-4-4V4h3V2h12v2zm0 2v3a2 2 0 0 0 2-2V6h-2zM4 6v1a2 2 0 0 0 2 2V6H4z"/></svg>
+          <span class="k">BEST</span><span class="v" id="mBest">0</span><span class="u">m</span>
+        </div>
+      </div>
+      <button class="noads" id="mNoAds"><span class="t">NO ADS</span><span class="p">$1.99</span></button>
+    </div>
+
+    <!-- The daily card. Bottom-left is the other thumb in landscape. -->
+    <button id="daily" data-meta>
+      <span class="hd"><span class="ttl">DAILY EGGS</span><span class="day" id="dayNo">DAY 3</span></span>
+      <span class="row"><i class="egg"></i><span class="cta" id="dayCta"><i class="adg"></i>CLAIM 250</span></span>
+    </button>
     <div class="logo"><span class="l1">DON'T GET</span><span class="l2">HIT</span></div>
     <p class="tag">ONE BUTTON. ONE CHICKEN.</p>
     <div class="spacer"></div>
@@ -297,6 +728,11 @@
       </div>
       <button id="play" class="big pulse">PLAY</button>
       <p class="hint">HOLD ANYWHERE &nbsp;•&nbsp; SPACE</p>
+      <div class="doors" data-meta>
+        <button class="door" data-tab="veh"><i class="art" style="background-image:url(art/truck_drive.webp)"></i><span class="lb">VEHICLES</span></button>
+        <button class="door" data-tab="pow"><i class="art" style="background-image:url(art/mystery_egg.webp)"></i><span class="lb">POWER-UPS</span><span class="dot">1</span></button>
+        <button class="door" data-tab="app"><i class="art" style="background-image:url(art/shop/hat_bucket.webp)"></i><span class="lb">APPEARANCE</span></button>
+      </div>
     </div>
   </div>
 
@@ -317,6 +753,169 @@
     </div>
   </div>
 
+  <!-- ============================================================
+       THE SHOP. One screen, four tabs, reached from three doors and from the
+       egg counter. Nothing here transacts yet: it is the layout and the
+       states, so the shape can be judged before the economy is written.
+       Every price and level below is placeholder copy.
+       ============================================================ -->
+  <div id="shop" class="screen" data-meta>
+    <div class="strip">
+      <button class="backBtn" id="shopBack" aria-label="Back to menu"><svg viewBox="0 0 24 24"><path d="M15.4 4.6 13.9 3 5 12l8.9 9 1.5-1.6L8.1 12z"/></svg></button>
+      <div class="eggPill"><i class="ic"></i><span class="n" id="sEggs">0</span
+        ><button class="plus" data-tab="store" aria-label="Get more eggs">+</button></div>
+      <div class="mid"><div class="tabs">
+        <button class="tab" data-tab="veh">VEHICLES</button>
+        <button class="tab" data-tab="pow">POWER-UPS</button>
+        <button class="tab" data-tab="app">APPEARANCE</button>
+        <button class="tab" data-tab="store">STORE</button>
+      </div></div>
+      <button class="noads" data-tab="store"><span class="t">NO ADS</span><span class="p">$1.99</span></button>
+    </div>
+
+    <div class="shopBody">
+      <!-- VEHICLES ------------------------------------------------------ -->
+      <div class="pane" data-pane="veh">
+        <p class="blurb">A vehicle is <b>found in the run</b>, never equipped. What you buy here is what it does when you find it.</p>
+        <div class="s-rail">
+          <div class="s-card eq">
+            <span class="s-flag">OWNED</span>
+            <i class="s-pic" style="background-image:url(art/truck_drive.webp)"></i>
+            <h3>MONSTER TROLLEY</h3>
+            <p class="s-eff">Cuts the farm's power on pickup. Drives through crates and drums. A hit takes the trolley, not the run.</p>
+            <div class="s-pips"><i class="f"></i><i class="f"></i><i class="f"></i><i></i><i></i></div>
+            <p class="s-lvl">LVL 3 / 5 &nbsp;&middot;&nbsp; NEXT: <b>TURNS UP TWICE AS OFTEN</b></p>
+            <button class="s-buy"><i class="e"></i>850</button>
+          </div>
+          <div class="s-card lock">
+            <span class="s-flag hot">NOT OWNED</span>
+            <i class="s-pic" style="background-image:url(art/truck_drive.webp)"></i>
+            <h3>CROP DUSTER</h3>
+            <p class="s-eff">Flies over the wires instead of under them &mdash; the air vehicle to the trolley's ground one.</p>
+            <div class="s-pips"><i></i><i></i><i></i><i></i><i></i></div>
+            <p class="s-lvl">UNLOCK TO RIDE IT</p>
+            <button class="s-buy"><i class="e"></i>12,000</button>
+          </div>
+          <div class="s-card lock">
+            <span class="s-flag dim">LOCKED</span>
+            <i class="s-pic" style="background-image:url(art/mystery_egg.webp)"></i>
+            <h3>? ? ?</h3>
+            <p class="s-eff">Something is riding around down in the ant empire. You have not been deep enough to see it yet.</p>
+            <div class="s-pips"><i></i><i></i><i></i><i></i><i></i></div>
+            <p class="s-lvl">REACH 3,000 m TO REVEAL</p>
+            <button class="s-buy soon">COMING SOON</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- POWER-UPS ----------------------------------------------------- -->
+      <div class="pane" data-pane="pow">
+        <div class="s-grid">
+          <div class="s-row hero">
+            <span class="s-flag hot">NEW</span>
+            <i class="ic" style="background-image:url(art/mystery_egg.webp)"></i>
+            <div class="txt"><h3>SECOND WIND</h3><p>One revive per run, offered the moment you go down.</p>
+              <div class="s-pips"><i></i><i></i><i></i></div></div>
+            <button class="s-buy"><i class="e"></i>1,500</button>
+          </div>
+          <div class="s-row">
+            <i class="ic" style="background-image:url(art/egg_icon.webp)"></i>
+            <div class="txt"><h3>EGG MAGNET</h3><p>Eggs come to you. Each level widens the reach.</p>
+              <div class="s-pips"><i class="f"></i><i class="f"></i><i></i></div></div>
+            <button class="s-buy"><i class="e"></i>600</button>
+          </div>
+          <div class="s-row">
+            <i class="ic" style="background-image:url(anim/run0.webp)"></i>
+            <div class="txt"><h3>HEAD START</h3><p>Begin the run at 300 m, past the quiet opening.</p>
+              <div class="s-pips"><i class="f"></i><i></i><i></i></div></div>
+            <button class="s-buy"><i class="e"></i>400</button>
+          </div>
+          <div class="s-row">
+            <i class="ic" style="background-image:url(art/mystery_egg.webp)"></i>
+            <div class="txt"><h3>LUCKY EGG</h3><p>Mystery eggs turn up more often &mdash; so the trolley does too.</p>
+              <div class="s-pips"><i class="f"></i><i></i><i></i></div></div>
+            <button class="s-buy"><i class="e"></i>900</button>
+          </div>
+          <div class="s-row lock">
+            <i class="ic" style="background-image:url(art/cos-shades.webp)"></i>
+            <div class="txt"><h3>NERVES OF STEEL</h3><p>Doubles the near-miss bonus the run already counts.</p>
+              <div class="s-pips"><i></i><i></i><i></i></div></div>
+            <button class="s-buy"><i class="e"></i>2,000</button>
+          </div>
+          <div class="s-row lock">
+            <i class="ic" style="background-image:url(anim/fly2.webp)"></i>
+            <div class="txt"><h3>SOFT LANDING</h3><p>The first wire you clip stuns instead of killing.</p>
+              <div class="s-pips"><i></i><i></i><i></i></div></div>
+            <button class="s-buy"><i class="e"></i>3,500</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- APPEARANCE ---------------------------------------------------- -->
+      <div class="pane" data-pane="app">
+        <p class="blurb">The five slots the character rig <b>already has</b>. Equipping is live &mdash; he changes on the left as you tap.</p>
+        <div class="appWrap">
+          <div class="preview">
+            <span class="own">7 OF 19 OWNED</span>
+            <i class="who" style="background-image:url(anim/run0.webp)"></i>
+            <span class="nm">NUGGET</span>
+          </div>
+          <div class="slots">
+            <div class="slotRow"><span class="slotName">HAT</span><div class="chips"><button class="chip"><span class="none">NONE</span></button><button class="chip eq"><i class="th" style="background-image:url(art/shop/hat_snapback.webp)"></i><span class="tick">✓</span></button><button class="chip"><i class="th" style="background-image:url(art/shop/hat_bucket.webp)"></i></button><button class="chip lk"><i class="th" style="background-image:url(art/shop/hat_fedora.webp)"></i><span class="px">1,200</span></button><button class="chip lk"><i class="th" style="background-image:url(art/shop/hat_beanie.webp)"></i><span class="px">800</span></button><button class="chip soon"><svg class="padl" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a5 5 0 0 0-5 5v3H5v13h14V9h-2V6a5 5 0 0 0-5-5zm3 8H9V6a3 3 0 0 1 6 0v3z"/></svg></button><button class="chip soon"><svg class="padl" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a5 5 0 0 0-5 5v3H5v13h14V9h-2V6a5 5 0 0 0-5-5zm3 8H9V6a3 3 0 0 1 6 0v3z"/></svg></button></div></div>
+            <div class="slotRow"><span class="slotName">FACE</span><div class="chips"><button class="chip"><span class="none">NONE</span></button><button class="chip eq"><i class="th" style="background-image:url(art/cos-shades.webp)"></i><span class="tick">✓</span></button><button class="chip lk"><i class="th" style="background-image:url(art/cos-shades.webp)"></i><span class="px">600</span></button><button class="chip soon"><svg class="padl" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a5 5 0 0 0-5 5v3H5v13h14V9h-2V6a5 5 0 0 0-5-5zm3 8H9V6a3 3 0 0 1 6 0v3z"/></svg></button><button class="chip soon"><svg class="padl" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a5 5 0 0 0-5 5v3H5v13h14V9h-2V6a5 5 0 0 0-5-5zm3 8H9V6a3 3 0 0 1 6 0v3z"/></svg></button></div></div>
+            <div class="slotRow"><span class="slotName">NECK</span><div class="chips"><button class="chip"><span class="none">NONE</span></button><button class="chip"><i class="th" style="background-image:url(art/cos-scarf.webp)"></i></button><button class="chip lk"><i class="th" style="background-image:url(art/cos-scarf.webp)"></i><span class="px">950</span></button><button class="chip soon"><svg class="padl" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a5 5 0 0 0-5 5v3H5v13h14V9h-2V6a5 5 0 0 0-5-5zm3 8H9V6a3 3 0 0 1 6 0v3z"/></svg></button></div></div>
+            <div class="slotRow"><span class="slotName">BODY</span><div class="chips"><button class="chip"><span class="none">NONE</span></button><button class="chip lk"><svg class="padl" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a5 5 0 0 0-5 5v3H5v13h14V9h-2V6a5 5 0 0 0-5-5zm3 8H9V6a3 3 0 0 1 6 0v3z"/></svg><span class="px">1,500</span></button><button class="chip soon"><svg class="padl" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a5 5 0 0 0-5 5v3H5v13h14V9h-2V6a5 5 0 0 0-5-5zm3 8H9V6a3 3 0 0 1 6 0v3z"/></svg></button><button class="chip soon"><svg class="padl" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a5 5 0 0 0-5 5v3H5v13h14V9h-2V6a5 5 0 0 0-5-5zm3 8H9V6a3 3 0 0 1 6 0v3z"/></svg></button></div></div>
+            <div class="slotRow"><span class="slotName">BACK</span><div class="chips"><button class="chip"><span class="none">NONE</span></button><button class="chip lk"><svg class="padl" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a5 5 0 0 0-5 5v3H5v13h14V9h-2V6a5 5 0 0 0-5-5zm3 8H9V6a3 3 0 0 1 6 0v3z"/></svg><span class="px">2,400</span></button><button class="chip soon"><svg class="padl" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a5 5 0 0 0-5 5v3H5v13h14V9h-2V6a5 5 0 0 0-5-5zm3 8H9V6a3 3 0 0 1 6 0v3z"/></svg></button></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STORE --------------------------------------------------------- -->
+      <div class="pane" data-pane="store">
+        <div class="offers">
+          <div class="offer">
+            <h4>NO FORCED ADS</h4>
+            <p>Kills the ads between runs. <b>Rewarded videos stay on</b>, so you keep your revive and your daily eggs.</p>
+            <button class="price">$1.99</button>
+          </div>
+          <div class="offer best">
+            <span class="s-flag">BEST VALUE</span>
+            <h4>NO ADS + 5,000 EGGS</h4>
+            <p>The same, and the eggs to spend on the first three upgrades.</p>
+            <button class="price">$3.99</button>
+          </div>
+          <div class="offer">
+            <h4>EGG DOUBLER</h4>
+            <p>Every egg you ever pick up, twice over. Forever.</p>
+            <button class="price">$4.99</button>
+          </div>
+        </div>
+        <div class="bundles">
+          <button class="bundle"><span class="eggs"><i style="width:16px;height:21px"></i></span><span class="n">1,000</span><span class="p">$0.99</span></button>
+          <button class="bundle"><span class="eggs"><i style="width:16px;height:21px"></i><i style="width:21px;height:27px"></i></span><span class="n">5,500</span><span class="p">$3.99</span></button>
+          <button class="bundle"><span class="tagx">+20%</span><span class="eggs"><i style="width:17px;height:22px"></i><i style="width:24px;height:31px"></i><i style="width:17px;height:22px"></i></span><span class="n">12,000</span><span class="p">$7.99</span></button>
+          <button class="bundle"><span class="tagx">+45%</span><span class="eggs"><i style="width:19px;height:24px"></i><i style="width:29px;height:37px"></i><i style="width:19px;height:24px"></i></span><span class="n">30,000</span><span class="p">$19.99</span></button>
+        </div>
+        <span class="restore">RESTORE PURCHASES</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- The daily ladder. Two states, one card: the claim, and the clock. -->
+  <div id="dailyM" class="screen" data-meta>
+    <div class="dcard">
+      <button class="xBtn" id="dayX" aria-label="Close">&times;</button>
+      <h2>DAILY EGGS</h2>
+      <p class="sub" id="daySub">ONE A DAY &nbsp;&middot;&nbsp; THE NEXT RUNG OPENS IN 24 HOURS</p>
+      <div class="ladder" id="ladder"></div>
+      <div class="foot">
+        <button class="skip" id="dayLater">NOT NOW</button>
+        <button class="claimBtn" id="dayClaim"><i class="adg"></i>WATCH &amp; CLAIM<i class="e"></i>250</button>
+        <span class="skip" style="visibility:hidden" aria-hidden="true">NOT NOW</span>
+      </div>
+    </div>
+  </div>
+
   <div id="rotate">
     <div class="phone"></div>
     <h2>TURN YOUR PHONE</h2>
@@ -327,10 +926,20 @@
        #menu but UNDER #rotate, because a player holding the phone upright
        should be told to turn it before being told to wait. -->
   <div id="boot">
-    <div class="logo"><span class="l1">DON'T GET</span><span class="l2">HIT</span></div>
-    <div class="bootBar"><i id="bootFill"></i></div>
-    <p class="bootPct" id="bootPct">0%</p>
-    <p class="bootWhat" id="bootWhat">WAKING THE FARM</p>
+    <div class="bootCol">
+      <div class="logo"><span class="l1">DON'T GET</span><span class="l2">HIT</span></div>
+      <p class="tag">ONE BUTTON. ONE CHICKEN.</p>
+      <div class="spacer"></div>
+      <!-- PLAY's box, in PLAY's seat. The number is drawn twice -- cream
+           underneath, ink inside the fill -- so it reads at every percentage
+           instead of going pale the moment the gold reaches it. -->
+      <div class="bootBar">
+        <p class="bootPct" id="bootPct">0%</p>
+        <i id="bootFill"><p class="bootPct" id="bootPct2">0%</p></i>
+      </div>
+      <p class="bootWhat" id="bootWhat">WAKING THE FARM</p>
+    </div>
+    <p class="bootTip">TIP &nbsp;·&nbsp; <b>HOLD</b> TO CLIMB. LET GO TO DROP.<br>THE ROOF IS SAFE. THE WIRES ARE NOT.</p>
   </div>
 
   <pre id="selftest" style="position:fixed;left:0;top:0;z-index:99;color:#0f0;font:11px monospace;background:#000;margin:0;display:none"></pre>
@@ -464,12 +1073,23 @@ let C = {
    THEME object plus a builder, not as a timer that swaps the world out from
    under the player.
 
-   The sky colours are sampled off the painted panels so the sky the game draws
-   and the sky in the art are the same blue -- the panels fade into it rather
-   than sitting on it. */
+   THE SKY IS NOT BLUE, AND THAT IS A GAMEPLAY DECISION, NOT A MOOD.
+   It was: five stops sampled off the painted panels, 0B7CF5 up to BEE6FF. But
+   EVERY HAZARD IN THIS GAME IS A CYAN WIRE, and the largest object on screen
+   was a field of light blue -- the lowest-contrast pairing available, on the
+   one pairing that decides whether you live. The wire already carries an ink
+   rim for this reason; that was treating the symptom. Parked a zapper against
+   each candidate and looked: on the blue it is a pale line you hunt for, on
+   the gold it is the loudest thing in the frame.
+
+   So the farm runs a warm harvest gold, and the approach to the mound (terr,
+   below) is the same gold gone dustier, which still gives the light somewhere
+   to dim to. Blue now appears in exactly one place in this game: the thing
+   that kills you. The layers do not care -- their sky is keyed out and the
+   game draws this one behind them. */
 const THEME = {
   id:'farm', name:'CLUCK COUNTY', sunR:0.42, sunGlow:0.34, vig:0.42,
-  skyA:'#0B7CF5', skyB:'#1C87F2', skyC:'#3C9BEC', skyD:'#79C2F6', skyE:'#BEE6FF',
+  skyA:'#D89A2A', skyB:'#E4AC3C', skyC:'#EDC05A', skyD:'#F6D889', skyE:'#FDF0C6',
   sun:'#FFF3A8', far:'#7FB463', mid:'#5C9A48', near:'#3E7A34', prop:'#2F5A28',
   road:'#BB7D33', roadLine:'#9A6528', curb:'#8E5C24', rim:'#8CC24E'
 };
@@ -542,7 +1162,7 @@ const ZONES = [
      farm's own layers rather than getting a set of its own. */
   { id:'terr', name:'ANT TERRITORY', start:560, layers:'farm', ants:0.45,
     theme:{ id:'terr', name:'ANT TERRITORY', sunR:0.42, sunGlow:0.30, vig:0.46,
-      skyA:'#0E72DA', skyB:'#2280DC', skyC:'#4B95D2', skyD:'#8FBEDA', skyE:'#D8DCC6',
+      skyA:'#B77A24', skyB:'#C48A30', skyC:'#D09C46', skyD:'#DFBC7C', skyE:'#EEDCAE',
       sun:'#FFEDA0', far:'#7FA85E', mid:'#5E8F44', near:'#4A6E31', prop:'#33532A',
       road:'#B0722E', roadLine:'#8F5C23', curb:'#835420', rim:'#8CB44E' } },
 
@@ -1017,7 +1637,7 @@ function vroom(len, rpm0, rpm1, vol, at, o){
    It idles on D one octave under the riff's root, so it agrees with the music
    for free. */
 const ENG_BED_VOL = 0.075;
-const ENG = { g:null, osc:null, nz:null, clf:null, bp:null, rev:0 };
+const ENG = { g:null, osc:null, nz:null, clf:null, bp:null, rev:0, rate:false };
 
 function engineBedOn(){
   if(ENG.g || !A.started || !A.on) return;
@@ -1031,26 +1651,47 @@ function engineBedOn(){
     hp.type = 'highpass'; hp.frequency.value = 120; hp.Q.value = 0.6;
     hp.connect(g); g.connect(A.sfxGain);
 
-    const osc = c.createOscillator();
-    osc.setPeriodicWave(engineWave(c));
-    osc.frequency.value = RIFF_HZ*0.5;           // D, an octave under the riff
-    const drv = c.createWaveShaper();
-    drv.curve = clipCurve(2.4); drv.oversample = '2x';
-    osc.connect(drv); drv.connect(hp);
+    /* THE GENERATED LOOP GETS FIRST REFUSAL. The user asked for a seamless
+       driving loop specifically, and a real recording of an engine will always
+       beat a synthesised one at holding still for thirty seconds -- a synth
+       bed is the same cycle forever and the ear finds the repeat. When the
+       file is there this is a looping buffer and the revs move it by
+       PLAYBACK RATE; when it is not, the synth below carries it. Either way
+       everything downstream -- the gain, the highpass, the tick that moves the
+       revs -- is identical, so there is one bed with two sources rather than
+       two beds. */
+    const buf = SMP.buf['truckidle'];
+    let osc;
+    if(buf){
+      osc = c.createBufferSource(); osc.buffer = buf; osc.loop = true;
+      ENG.rate = true;
+      osc.connect(hp);
+    } else {
+      osc = c.createOscillator();
+      osc.setPeriodicWave(engineWave(c));
+      osc.frequency.value = RIFF_HZ*0.5;         // D, an octave under the riff
+      const drv = c.createWaveShaper();
+      drv.curve = clipCurve(2.4); drv.oversample = '2x';
+      osc.connect(drv); drv.connect(hp);
+      ENG.rate = false;
+    }
 
-    const nz = c.createBufferSource(); nz.buffer = noiseBuffer(c); nz.loop = true;
-    const bp = c.createBiquadFilter(); bp.type = 'bandpass';
-    bp.frequency.value = 900; bp.Q.value = 0.5;
-    const chop = c.createGain(); chop.gain.value = 0.4;
-    const clf = c.createOscillator(); clf.type = 'sawtooth';
-    clf.frequency.value = RIFF_HZ*0.5;
-    const sh = c.createWaveShaper(); sh.curve = pulseCurve(0.4);
-    const amt = c.createGain(); amt.gain.value = 0.5;
-    clf.connect(sh); sh.connect(amt); amt.connect(chop.gain);
-    const nzG = c.createGain(); nzG.gain.value = 0.4;
-    nz.connect(bp); bp.connect(chop); chop.connect(nzG); nzG.connect(hp);
+    let nz = null, clf = null, bp = null;
+    if(!ENG.rate){                     // the rasp is the synth's, not the loop's
+      nz = c.createBufferSource(); nz.buffer = noiseBuffer(c); nz.loop = true;
+      bp = c.createBiquadFilter(); bp.type = 'bandpass';
+      bp.frequency.value = 900; bp.Q.value = 0.5;
+      const chop = c.createGain(); chop.gain.value = 0.4;
+      clf = c.createOscillator(); clf.type = 'sawtooth';
+      clf.frequency.value = RIFF_HZ*0.5;
+      const sh = c.createWaveShaper(); sh.curve = pulseCurve(0.4);
+      const amt = c.createGain(); amt.gain.value = 0.5;
+      clf.connect(sh); sh.connect(amt); amt.connect(chop.gain);
+      const nzG = c.createGain(); nzG.gain.value = 0.4;
+      nz.connect(bp); bp.connect(chop); chop.connect(nzG); nzG.connect(hp);
+    }
 
-    osc.start(t); nz.start(t); clf.start(t);
+    [osc, nz, clf].forEach(n => { if(n) n.start(t); });
     ENG.g = g; ENG.osc = osc; ENG.nz = nz; ENG.clf = clf; ENG.bp = bp; ENG.rev = 0;
   }catch(e){ A.err = e.message; }
 }
@@ -1063,7 +1704,7 @@ function engineBedOff(){
     ENG.g.gain.cancelScheduledValues(t);
     ENG.g.gain.setValueAtTime(Math.max(0.0001, ENG.g.gain.value), t);
     ENG.g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
-    [ENG.osc, ENG.nz, ENG.clf].forEach(n => { try{ n.stop(t + 0.30); }catch(e){} });
+    [ENG.osc, ENG.nz, ENG.clf].forEach(n => { try{ if(n) n.stop(t + 0.30); }catch(e){} });
   }catch(e){ A.err = e.message; }
   ENG.g = ENG.osc = ENG.nz = ENG.clf = ENG.bp = null;
 }
@@ -1079,9 +1720,15 @@ function engineBedTick(dt){
   const f = RIFF_HZ*0.5*(1 + 0.42*ENG.rev);
   const c = actx(); if(!c) return;
   try{
-    ENG.osc.frequency.setTargetAtTime(f, c.currentTime, 0.05);
-    ENG.clf.frequency.setTargetAtTime(f, c.currentTime, 0.05);
-    ENG.bp.frequency.setTargetAtTime(700 + 700*ENG.rev, c.currentTime, 0.08);
+    if(ENG.rate){
+      // a recording revs by playing faster; 1.0 -> 1.28 is audible without
+      // turning the engine into a chipmunk
+      ENG.osc.playbackRate.setTargetAtTime(1 + 0.28*ENG.rev, c.currentTime, 0.05);
+    } else {
+      ENG.osc.frequency.setTargetAtTime(f, c.currentTime, 0.05);
+      if(ENG.clf) ENG.clf.frequency.setTargetAtTime(f, c.currentTime, 0.05);
+      if(ENG.bp) ENG.bp.frequency.setTargetAtTime(700 + 700*ENG.rev, c.currentTime, 0.08);
+    }
   }catch(e){}
 }
 
@@ -1179,7 +1826,7 @@ function playSample(name, vol, rate){
    The references measure 0% under 100Hz and ~78% between 400Hz and 8kHz, and
    the synth now matches that; these did not, so they do not ship. Add a name
    back the moment tools/pick_sfx.py says a take scores better. */
-const SMP_HAVE = ['megg', 'boom'];
+const SMP_HAVE = ['megg', 'boom', 'truckjump'];
 function warmSamples(){ SMP_HAVE.forEach(loadSample); }
 
 let stepFoot = 0;                 // which foot
@@ -1485,7 +2132,7 @@ const S = {
      climbs a long way, because this is the one moment the truck gets to be
      enormous before it has to be a game object. */
   truckget(){
-    if(playSample('vroom', 1.0)) return;                     // the generated engine
+    if(playSample('truckget', 1.0)) return;                  // the generated engine
     /* THE IGNITION, IN THREE BEATS: the starter labours, it CATCHES, and it
        roars up onto D and sits there -- the note the riff that is about to
        start is built on, so the two lock instead of colliding. Then a second
@@ -1510,6 +2157,35 @@ const S = {
      player hears the truck arrive once and then hears the same voice on every
      press, so the jump is the truck doing something rather than a new noise.
      The springs go under it because the weight is what you feel. */
+  /* THE JUMP IS TWO SOUNDS, because the user briefed it as two: the LAUNCH off
+     the road, and then the airborne acceleration climbing after it. There is
+     no second input to hang the boost on -- the truck gets exactly one jump,
+     from the ground -- so the boost is fired on a short delay instead, which
+     is also what it should sound like: the surge arrives after the shove, not
+     with it. */
+  truckboost(){
+    if(playSample('truckboost', 0.9)) return;
+    // MORE SPEED, MORE POWER: the rate of the bangs climbing hard, and an
+    // air-rush under it that opens as it goes
+    vroom(0.55, RIFF_HZ, RIFF_HZ*2, 0.30, 0, {rise:0.55, drive:3.8});
+    noise(0.42, 420, 2100, 0.085, 0.8, 0.02);
+  },
+
+  /* THE TRUCK COMING DOWN. It used to call S.land() -- the CHICKEN's landing,
+     a small scuff -- under two tonnes of tractor tyre, which is the sort of
+     mismatch that is invisible in code and obvious the moment you hear it. */
+  truckland(){
+    if(playSample('truckland', 0.95)) return;
+    /* THE LOUDEST THING IN THE RUN, and it has to measure that way: rendered
+       at 0.19 against the jump's 0.44 it was the quietest of the five, which
+       is the wrong order for two tonnes hitting a road. */
+    tone(58, 0.22, 'sine', 0.52, 32);                        // the slam
+    tone(41, 0.26, 'sine', 0.34, 24);                        // and the floor under it
+    noise(0.17, 380, 90, 0.30, 1.4);                         // dirt
+    tone(96, 0.17, 'triangle', 0.15, 62, null, 0.11);        // suspension coming back
+    noise(0.22, 2600, 900, 0.075, 2.0, 0.10);                // and the rattle after it
+  },
+
   truckjump(){
     /* DUCK THE RIFF FOR A QUARTER SECOND. Making the engine louder or brighter
        is guesswork against a moving target -- the riff is a full mix and the
@@ -1527,6 +2203,7 @@ const S = {
        a fifth off the truck's own D onto A, the note the riff leans on
        hardest after the root. A rising fifth is the oldest trick there is for
        making something sound like it is going up. */
+    if(playSample('truckjump', 0.95)) return;                // the generated launch
     tone(52, 0.18, 'sine', 0.20, 30);                        // the springs unloading
     vroom(0.60, RIFF_HZ*0.7, RIFF_HZ*1.5, 0.38, 0, {rise:0.35, drive:3.6})
   },
@@ -4899,6 +5576,9 @@ function thrustOn(){
      press, which is the one that starts everything -- a run begun against a
      half-loaded atlas is exactly the thing the gate exists to prevent. */
   if(!LOAD.ready) return;
+  /* And nothing while the shell is up. Covers the keyboard too, which no
+     amount of pointer filtering would have. */
+  if(META.open) return;
   inputDown = true;
   game.tapCount = (game.tapCount||0) + 1;        // counted at entry, for ?dbg=1
   if(game.mode==='menu'){ startIntro(); return; }
@@ -4919,6 +5599,7 @@ function thrustOn(){
     if(player.onGround){
       player.vy = -rideJump(); player.onGround = false;
       player.rideJumps = 1; S.truckjump(); addShake(5);
+      game.boostT = 0.19;                  // ...and the surge, a beat later
       /* A WALL OF DUST off the back tyres, thrown backwards and up. Sparks
          alone read as a spell being cast; what leaves the ground when two
          tonnes of tractor tyre launches off a dirt road is dirt. */
@@ -4971,7 +5652,7 @@ const TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints||0) > 0;
    behaviour we want anyway. */
 function onBtn(e){
   const t = e.target;
-  return !!(t && t.closest && t.closest('#mute'));
+  return !!(t && t.closest && t.closest('#mute,[data-meta]'));
 }
 function downFrom(e){
   game.rawDown = (game.rawDown||0) + 1;
@@ -4984,11 +5665,15 @@ const ACT = {passive:false, capture:true};      // active: may preventDefault
 function touchDown(e){
   game.lastEv = 'start';
   const btn = e.target && e.target.closest ? e.target.closest('button') : null;
+  /* The meta shell -- the strip, the doors, the daily card, the whole shop --
+     swallows a press exactly the way the mute button always has. PLAY and
+     RETRY still fly as well as start, which is the behaviour we want. */
+  const meta = e.target && e.target.closest ? e.target.closest('#mute,[data-meta]') : null;
   // Keeping the touch alive is the whole point: without preventDefault the
   // browser's long-press handling ends it and sends touchend by itself.
   // Buttons are left alone so their click still works.
-  if(!btn && e.cancelable) e.preventDefault();
-  if(btn && btn.id === 'mute') return;
+  if(!btn && !meta && e.cancelable) e.preventDefault();
+  if(meta) return;
   downFrom(e);
 }
 function bindDown(el){
@@ -5071,6 +5756,7 @@ function toMenu(){
   player.y=0; player.vy=0; player.onGround=true;
   rag.alive=false;
   elMenu.classList.add('show'); elOver.classList.remove('show');
+  if(typeof META !== 'undefined'){ META.hide(); metaSync(); }
   elHud.classList.remove('on'); elTut.classList.remove('show');
   if(A.started) musicScene('menu');       // silent until the first gesture
 }
@@ -5111,7 +5797,7 @@ function startRun(){
   player.flapT=0; player.flapBeat=-1; player.flapLag=0;
   player.thrusting=false;                                   // never start a run mid-thrust
   player.state='run'; player.stateT=0; player.landT=0; player.stumbleT=0;
-  player.rideLand=0; player.rideJumps=0;
+  player.rideLand=0; player.rideJumps=0; game.boostT=0;
   player.near=0; player.nearT=0; player.nearCool=0;
   player.beat=''; player.beatT=0;
   cam.x = player.x - PX;         // ...and the camera holds him at the play mark
@@ -5666,6 +6352,12 @@ function update(dt, rawDt){
 
   updateParticles(dt);
   musicTick(); trackTick(rawDt); engineBedTick(rawDt);
+  /* the delayed half of the jump. A timer rather than a setTimeout so it
+     cannot fire into a dead run, a paused tab, or a ride that already ended. */
+  if(game.boostT > 0 && (game.boostT -= rawDt) <= 0){
+    game.boostT = 0;
+    if(riding() && !player.onGround && game.mode === 'play') S.truckboost();
+  }
 }
 
 /* The escape. It waits on the menu for the first press, then runs 1.52s and
@@ -6014,7 +6706,7 @@ function updatePlay(dt){
            the exhaust is not still roaring from a jump that has landed. */
         p.rideLand = 0.26;
         p.rideJumps = 0;
-        S.land(); addShake(clamp(impact/(150*PACE), 5, 16)); game.camYT = 22;
+        S.truckland(); addShake(clamp(impact/(150*PACE), 5, 16)); game.camYT = 22;
         smoke(p.x - 26, GROUND - 4, 20,
               {s0:170, s1:460, r0:22, r1:42, l0:0.45, l1:1.05});
         smoke(p.x + 130, GROUND - 4, 8, {s0:110, s1:300, r0:16, r1:32});
@@ -7666,9 +8358,12 @@ function gateStart(){
   const el   = document.getElementById('boot');
   const fill = document.getElementById('bootFill');
   const pct  = document.getElementById('bootPct');
+  const pct2 = document.getElementById('bootPct2');
+  const setPct = t => { pct.textContent = t; if(pct2) pct2.textContent = t; };
   const what = document.getElementById('bootWhat');
   if(!el) { LOAD.ready = true; return; }
   if(/[?&]noboot/.test(location.search)){ LOAD.ready = true; el.remove(); return; }
+  document.body.classList.add('booting');
 
   /* What it says while you wait. Not a lie about phases -- the queue is one
      pool and finishes in whatever order the network allows -- but the bands
@@ -7685,8 +8380,11 @@ function gateStart(){
        executing, so a raw ratio can step backwards, and a loading bar that
        goes backwards looks broken even when it is telling the truth. */
     shown = Math.max(shown, f);
-    fill.style.width = (shown * 100).toFixed(1) + '%';
-    pct.textContent  = Math.round(shown * 100) + '%';
+    /* The fill is the whole button, clipped from the right -- not a bar
+       that grows -- so the ink copy of the number lands exactly on the
+       cream one underneath it. */
+    fill.style.clipPath = 'inset(0 ' + (100 - shown * 100).toFixed(1) + '% 0 0)';
+    setPct(Math.round(shown * 100) + '%');
     what.textContent = say(shown);
 
     const drained = LOAD.total > 0 && LOAD.done >= LOAD.total;
@@ -7696,7 +8394,8 @@ function gateStart(){
       LOAD.waitMs  = waited;
       LOAD.timedOut = !drained;
       LOAD.gaveUpOn = drained ? null : (stalled ? 'stall' : 'ceiling');
-      fill.style.width = '100%'; pct.textContent = '100%';
+      fill.style.clipPath = 'inset(0 0% 0 0)'; setPct('100%');
+      document.body.classList.remove('booting');   // revealed under the fade
       el.classList.add('gone');
       setTimeout(()=>{ el.style.display = 'none'; }, 500);
       return;
@@ -7705,9 +8404,137 @@ function gateStart(){
   })();
 }
 
+/* ============================================================
+   THE META SHELL
+   ============================================================
+   The shop, the daily ladder and the numbers in the strip. NOTHING HERE
+   TRANSACTS: no egg is spent, no purchase is made, no ad is played. It is the
+   layout and the states, built so the shape can be judged and the economy
+   written against a screen that already exists.
+
+   What IS real: the two numbers. The egg count and the best distance come
+   straight out of the same state the run uses, so the strip is never a lie
+   about what you have.
+
+   `META.open` is read by thrustOn, which is why it is a flag rather than a
+   query of the DOM: a press must be cheap to reject. */
+const META = {
+  open: false,
+  tab: 'veh',
+  el: null,
+  show(tab){
+    if(!this.el) return;
+    this.tab = tab || this.tab;
+    elMenu.classList.remove('show');
+    this.el.classList.add('show');
+    $$('#shop .tab').forEach(b => b.classList.toggle('on', b.dataset.tab === this.tab));
+    $$('#shop .pane').forEach(p => p.classList.toggle('on', p.dataset.pane === this.tab));
+    this.open = true;
+    thrustOff();                       // a press that opened this must not linger
+  },
+  hide(){
+    if(!this.el) return;
+    this.el.classList.remove('show');
+    if(game.mode === 'menu') elMenu.classList.add('show');
+    this.open = false;
+  }
+};
+const $$ = s => Array.prototype.slice.call(document.querySelectorAll(s));
+
+/* The daily ladder. Seven rungs, and the seventh is not eggs -- a ladder is
+   sold by its end, so the reason to come back on day four has to be visible
+   on day one. The state shown here is fixed: wiring it to a real clock is the
+   next change, and it belongs with the economy rather than with the layout. */
+const DAILY = { day: 3, claimed: false, rungs: [100, 150, 250, 400, 600, 900, 'A HAT'] };
+function dailyDraw(){
+  const lad = $('#ladder'); if(!lad) return;
+  lad.innerHTML = DAILY.rungs.map((v, i) => {
+    const n = i + 1;
+    const done = n < DAILY.day || (n === DAILY.day && DAILY.claimed);
+    const now  = n === DAILY.day && !DAILY.claimed;
+    const cls  = ['dday', done ? 'done' : (now ? 'now' : 'lk'),
+                  i === 6 ? 'last' : ''].filter(Boolean).join(' ');
+    return '<div class="' + cls + '"><span class="d">DAY ' + n + '</span>' +
+           '<i class="e"></i><span class="v">' + v + '</span>' +
+           (done ? '<span class="tick">\u2713</span>' : '') + '</div>';
+  }).join('');
+
+  const claim = $('#dayClaim'), sub = $('#daySub'), card = $('#daily');
+  if(DAILY.claimed){
+    /* A locked button with no clock reads as broken, so the clock IS the
+       button -- and nothing else on the card moves between the two states. */
+    claim.className = 'claimBtn off';
+    claim.textContent = 'DAY ' + (DAILY.day + 1) + ' IN 06:41:22';
+    sub.innerHTML = 'DAY ' + DAILY.day + ' CLAIMED &nbsp;&middot;&nbsp; DAY ' + (DAILY.day + 1) + ' IS WAITING';
+    if(card){
+      card.classList.add('locked');
+      $('#dayNo').textContent = 'DAY ' + (DAILY.day + 1);
+      $('#dayCta').textContent = '06:41:22';
+    }
+  } else {
+    claim.className = 'claimBtn';
+    claim.innerHTML = '<i class="adg"></i>WATCH &amp; CLAIM<i class="e"></i>' + DAILY.rungs[DAILY.day - 1];
+    sub.innerHTML = 'ONE A DAY &nbsp;&middot;&nbsp; THE NEXT RUNG OPENS IN 24 HOURS';
+    if(card){
+      card.classList.remove('locked');
+      $('#dayNo').textContent = 'DAY ' + DAILY.day;
+      $('#dayCta').innerHTML = '<i class="adg"></i>CLAIM ' + DAILY.rungs[DAILY.day - 1];
+    }
+  }
+}
+
+/* The strip's two numbers, and whether the shell is drawn at all.
+   firstRun is re-read rather than cached, because `dgh.played` is written the
+   first time you die and the menu you come back to is the second-visit one. */
+function metaSync(){
+  try{ game.firstRun = !localStorage.getItem('dgh.played'); }catch(e){}
+  document.body.classList.toggle('firstrun', !!game.firstRun);
+  const n = (game.eggBank || 0).toLocaleString('en-US');
+  const e1 = $('#mEggs'), e2 = $('#sEggs'), b = $('#mBest');
+  if(e1) e1.textContent = n;
+  if(e2) e2.textContent = n;
+  if(b)  b.textContent = Math.round(game.best || 0).toLocaleString('en-US');
+  dailyDraw();
+}
+
+function metaBind(){
+  META.el = $('#shop');
+  if(!META.el) return;
+  /* One listener for every door, tab and plus: they all say where to go. */
+  document.addEventListener('click', e => {
+    const t = e.target && e.target.closest ? e.target.closest('[data-tab]') : null;
+    if(!t) return;
+    S.click(); META.show(t.dataset.tab);
+  });
+  $('#shopBack').addEventListener('click', ()=>{ S.click(); META.hide(); });
+  $('#mNoAds').addEventListener('click', ()=>{ S.click(); META.show('store'); });
+  const dm = $('#dailyM');
+  const openDaily  = ()=>{ S.click(); elMenu.classList.remove('show');
+                           dm.classList.add('show'); META.open = true; thrustOff(); };
+  const closeDaily = ()=>{ S.click(); dm.classList.remove('show');
+                           if(game.mode === 'menu') elMenu.classList.add('show');
+                           META.open = false; };
+  $('#daily').addEventListener('click', openDaily);
+  $('#dayX').addEventListener('click', closeDaily);
+  $('#dayLater').addEventListener('click', closeDaily);
+  /* Nothing is spent, so claiming only advances the card's own state -- which
+     is enough to show both halves of the design without inventing an economy. */
+  $('#dayClaim').addEventListener('click', ()=>{
+    if(DAILY.claimed) return;
+    S.egg(); DAILY.claimed = true; dailyDraw();
+  });
+  window.addEventListener('keydown', e => {
+    if(e.key === 'Escape' && META.open){ META.hide(); dm.classList.remove('show');
+                                         if(game.mode==='menu') elMenu.classList.add('show');
+                                         META.open = false; }
+  });
+  metaSync();
+}
+
 function boot(){
   document.body.classList.toggle('poster', POSTER_TITLE);
   resize();
+  metaBind();
   toMenu();
   gateStart();
   requestAnimationFrame(frame);

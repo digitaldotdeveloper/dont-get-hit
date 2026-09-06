@@ -36,7 +36,8 @@ ONE = [
     # the three pickups, synthesised like the rest
     ("megg",     None, 1.30), ("truckget", None, 2.00),
     ("powerdown", None, 1.20),
-    ("truckjump", None, 1.00),
+    ("truckjump", None, 1.00), ("truckboost", None, 0.90),
+    ("truckland", None, 0.90),
 ]
 # name, [args], gap between them, seconds each
 RUNS = [
