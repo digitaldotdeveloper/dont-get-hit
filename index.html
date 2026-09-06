@@ -1816,17 +1816,22 @@ function playSample(name, vol, rate){
    noise in the network log and a lie in the asset count; the fallback is meant
    to be the SYNTH version, not a failed request.
    One line to edit when a new one lands: tools/cut_sfx.py prints the names. */
-/* MEASURED, NOT ASSUMED. A generated take only earns its place here if it
-   beats the synth on the reference numbers, and two did not:
-     truckjump  58% of its energy under 100Hz, 7% above 2kHz -- a sub thud
-                with no engine in it, and it was playing on EVERY jump. It is
-                the sound the user kept calling lame.
-     vroom      77% under 100Hz on one take, 70% hiss on the best window of
-                the next. Neither is an engine.
-   The references measure 0% under 100Hz and ~78% between 400Hz and 8kHz, and
-   the synth now matches that; these did not, so they do not ship. Add a name
-   back the moment tools/pick_sfx.py says a take scores better. */
-const SMP_HAVE = ['megg', 'boom', 'truckjump', 'truckget'];
+/* WHERE THE TRUCK'S SOUNDS COME FROM NOW: the user is supplying real
+   recordings. `truckget` is their engine-ignition.wav, used as given -- not
+   cut, not re-balanced, not judged against the profile the generated takes
+   were judged against, because it is a chosen file rather than a candidate.
+
+   THE GENERATED TRUCK SOUNDS ARE GONE, files and all, at their instruction.
+   They were asked for as cartoonish and came back cartoonish, and that turned
+   out to be the wrong call for a machine this size; a real recording of a real
+   engine is what the moment wants. `megg` and `boom` are still generated --
+   a chime and an explosion, neither of which the user has objected to.
+
+   Two more recordings are coming. Until they arrive the jump, the boost and
+   the landing fall back to the synth, which is what this list is for: a name
+   here means a file exists, and a name missing means the synth carries it
+   rather than the game asking for a 404 on every load. */
+const SMP_HAVE = ['megg', 'boom', 'truckget'];
 function warmSamples(){ SMP_HAVE.forEach(loadSample); }
 
 let stepFoot = 0;                 // which foot
@@ -2349,10 +2354,17 @@ function musicScene(which){
 }
 /* THE RIFF WAITS FOR THE ENGINE. Starting both on the pickup frame put a
    loud guitar over the one sound the moment exists to deliver. The order is
-   the whole gag: clunk, VROOM, and THEN the music kicks in -- which is how
-   every good power-up in the genre is staged, and it costs nothing but a
-   number. */
-const RIDE_MUSIC_WAIT = 0.85;
+   the whole gag: the engine catches, and THEN the music kicks in -- which is
+   how every good power-up in the genre is staged, and it costs nothing but a
+   number.
+   That number went from 0.85 to 1.70 when the user supplied a real 3.54s
+   ignition recording. At 0.85 the riff arrived while the engine was still
+   starting, and the two live in the same octave -- the ignition is 68% of its
+   energy between 100 and 400Hz and so is a drop-D guitar, so they were not
+   sharing the space, they were masking each other. 1.70 lets the ignition
+   land before the riff comes up underneath it. It is not silence in the
+   meantime; it is three and a half seconds of engine. */
+const RIDE_MUSIC_WAIT = 1.70;
 function nextTrack(){
   if(!TRACKS.length) return;
   const vol = TRACK ? TRACK.volume : 0;
@@ -7927,11 +7939,19 @@ const ANT_HILLS = [
    A missing image draws nothing at all, which is the same bargain the props
    make: unmade art costs an empty stretch of farm, never a hole. */
 const FARM_ART = {};
+/* HOW BIG A LANDMARK HAS TO BE. The mounds use 0.62 of the reference height and
+   that is right for them -- they are a rising drumbeat, not the subject. A
+   set-piece is the subject: it exists so that this 100 metres is not the last
+   100 metres, and at 0.62 the pond came out 183 screen pixels wide, tucked
+   behind the bird, reading as a puddle. At 1.30 a piece is roughly 40% of the
+   screen -- about half a barn, which is the size the eye stops for. Per-piece
+   `s` trims from here; it is not the place to fix the base. */
+const FARM_SCENE_S = 1.30;
 const FARM_SCENES = [
   { m: 100, art:'f100_house',     s:1.05, lift:4 },   // somebody lives here
   { m: 200, art:'f200_pond',      s:0.92, lift:2 },
   { m: 300, art:'f300_tractor',   s:0.86, lift:4 },
-  { m: 400, art:'f400_scarecrow', s:0.94, lift:4 },
+  { m: 400, art:'f400_scarecrow', s:0.72, lift:4 }   // tall and thin: trimmed,
   { m: 500, art:'f500_silo',      s:1.10, lift:4 },
   /* From here the farm stops being the farmer's. The mounds are already
      growing through this stretch (ANT_HILLS, 600-1142), so these are what the
@@ -7980,7 +8000,7 @@ function drawZoneScenery(){
      and what arrives is nearer. */
   for(const q of FARM_SCENES){
     if(q.m < left || q.m > right) continue;
-    put(FARM_ART[q.art], q.m, (GROUND/980)*0.62*q.s, q.lift);
+    put(FARM_ART[q.art], q.m, (GROUND/980)*FARM_SCENE_S*q.s, q.lift);
   }
 
   // the mounds, and the great formation standing on the boundary itself
