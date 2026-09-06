@@ -2235,7 +2235,27 @@ const S = {
     /* The user's own recording. Exclusive, like the engine: it runs 2.6s and
        two landings can be closer together than that, and an impact stacked on
        its own tail is mush where it should be a hit. */
-    if(playSample('truckland', 0.33, 1, 'land')) return;
+    const real = playSample('truckland', 0.33, 1, 'land');
+    if(real){
+      /* THE PHONE LAYER.
+         The recording is 96% of its energy below 100Hz. On headphones or any
+         real speaker that is exactly right -- it is the weight of the thing.
+         On a phone it very nearly does not exist: a handset speaker is a
+         centimetre across and rolls off hard below a few hundred hertz, so
+         the biggest moment in the ride would arrive as a faint click on the
+         device most people will play this on.
+         So this adds the part the recording has none of, and ONLY that part:
+         a short dry crunch and the chassis ringing after it, up where a phone
+         can actually move air. Nothing below 200Hz, so it cannot muddy the
+         recording or fight it -- on good speakers it is a detail on top of
+         the weight, and on a phone it IS the landing.
+         Deliberately dry: no boing, no cartoon. The user threw those out. */
+      noise(0.085, 2100, 760,  0.330, 1.6);              // dirt and tyre
+      tone(215, 0.13, 'triangle', 0.230, 140, null, 0.01);  // the body thumping down
+      noise(0.19,  3300, 1150, 0.155, 2.2, 0.055);       // chassis rattling after
+      tone(430, 0.07, 'square',   0.092, 260, null, 0.02);  // and one clank in it
+      return;
+    }
     /* THE LOUDEST THING IN THE RUN, and it has to measure that way: rendered
        at 0.19 against the jump's 0.44 it was the quietest of the five, which
        is the wrong order for two tonnes hitting a road. */
@@ -2267,13 +2287,16 @@ const S = {
        same engine recording that plays when the truck is collected. One key
        for both, so a jump restarts the engine rather than layering a second
        one over the one still running from the pickup. */
-    /* THE JUMP SITS AT THE DRIVING LEVEL, at the user's request -- not near
-       it, at it. Worked out rather than dialled: the bed plays the idle loop
-       (rms 0.313) at 0.11, so it runs at rms 0.034; the ignition file is rms
-       0.418, so 0.034/0.418 = 0.082 puts the jump at exactly the same energy
-       as the engine already running underneath it. It was 0.33, which is four
-       times that -- which is why every jump jumped out of the mix. */
-    if(playSample('truckget', 0.082, 1, 'truck')) return;
+    /* THE JUMP, QUIETER THAN THE DRIVING BED RATHER THAN EQUAL TO IT.
+       0.082 was the arithmetic answer -- the bed plays the idle loop (rms
+       0.313) at 0.11, so it runs at rms 0.034, and the ignition file is rms
+       0.418. Matching energy exactly still read as too loud, and that is not
+       the user being imprecise: EQUAL RMS IS NOT EQUAL LOUDNESS when one
+       sound is a steady bed and the other is a transient. The bed is a floor
+       the ear stops hearing within seconds; a jump is an event, arriving
+       against that floor, and an event at the floor's own energy stands well
+       above it. Halved again, to sit under the engine it is layered over. */
+    if(playSample('truckget', 0.040, 1, 'truck')) return;
     tone(52, 0.18, 'sine', 0.20, 30);                        // the springs unloading
     vroom(0.60, RIFF_HZ*0.7, RIFF_HZ*1.5, 0.38, 0, {rise:0.35, drive:3.6})
   },
@@ -7609,9 +7632,13 @@ function drawLayerSlot(L, key, alpha, clipL, clipR){
     ctx.beginPath(); ctx.rect(clipL, 0, clipR - clipL, VH); ctx.clip();
   }
   if(alpha < 1) ctx.globalAlpha = alpha;
-  for(let x = -off; x < VW + 1; x += g.W){
-    ctx.drawImage(L.img, x, g.y, g.W, g.H);
-    if(key === 'mid' && L.set === 'farm') drawSpyPigeons(x, g.y, g.W, g.H);
+  for(let x = -off; x < VW + 1; x += g.W, seqK++){
+    const im = seq ? seq[((seqK % seq.length) + seq.length) % seq.length] : L.img;
+    ctx.drawImage(im, x, g.y, g.W, g.H);
+    /* The lookouts live on the watchtower painted into panel ZERO, so they
+       ride that panel and no other -- drawn on every panel they would be three
+       pigeons standing on a hay barn. */
+    if(key === 'mid' && L.set === 'farm' && im === L.img) drawSpyPigeons(x, g.y, g.W, g.H);
   }
   if(alpha < 1 || clipped) ctx.restore();
   return true;
@@ -9295,6 +9322,7 @@ function boot(){
   if(game.dbg) window.DGH = { game, player, cam, rag, OB, S, A, PROPS,
     startRun, startQuick, startIntro, toMenu, updatePlay, thrustOn, thrustOff,
     startRide, loseRide, spawnBasketDrop, dropClearAt, spawnElec, spawnPattern, spawnEggs,
+    SAVE, SHOP, PERK, SKIN, SKINS, buy, buySkin, eggs, spend, earn, reviveOffer, reviveYes,
     layRideCourse, rideApex, rideRise, rideCeil, truckGeom, truckFrame,
     elecDist, riding, wireHot, smoke, spark, pop, updateParticles, render,
     worldSpeed, distSpeed, rideAir, rideImpulse, rideJump, UPM, LOAD,
