@@ -674,6 +674,88 @@
     #daily{animation:none}
     .dcard{animation-duration:.01ms}
   }
+  /* ---- the economy's own furniture ------------------------------------ */
+  /* A card the player cannot afford is not hidden and not removed -- it is
+     dimmed and its price goes coral, because "you need more eggs" is the
+     single most useful thing a shop can say. */
+  .s-buy.no{filter:grayscale(.55) brightness(.72);cursor:default}
+  .s-buy.no .e{opacity:.5}
+  .s-buy.max{background:none;box-shadow:none;color:var(--mint);
+             border:1.5px solid rgba(63,224,176,.45);
+             font:900 9px/1 'Archivo',sans-serif;letter-spacing:.14em;padding:10px}
+  .s-buy.eq{background:none;box-shadow:none;color:var(--mint);
+            border:1.5px solid rgba(63,224,176,.45);
+            font:900 9px/1 'Archivo',sans-serif;letter-spacing:.14em;padding:10px}
+  .s-buy.dev{background:none;box-shadow:none;color:rgba(255,242,222,.38);
+             border:1.5px dashed rgba(255,242,222,.22);
+             font:900 9px/1 'Archivo',sans-serif;letter-spacing:.12em;padding:10px}
+  .s-row.owned{border-color:rgba(63,224,176,.4)}
+
+  /* Skins. A look is one card, and the card IS the look -- the swatch is the
+     same colour map the frames get, so the shelf cannot disagree with the
+     bird. */
+  .skins{flex:1;display:flex;gap:10px;overflow-x:auto;padding:9px 0 2px;min-height:0}
+  .skins::-webkit-scrollbar{height:0}
+  .skin{flex:0 0 auto;width:calc((100% - 40px)/5);min-width:132px;border-radius:16px;
+        padding:9px 9px 10px;display:flex;flex-direction:column;gap:6px;min-height:0;
+        cursor:pointer;font-family:inherit;color:inherit;position:relative;
+        background:linear-gradient(180deg,rgba(61,31,85,.92),rgba(29,13,52,.96));
+        border:1.5px solid rgba(255,242,222,.13)}
+  .skin.on{border-color:var(--mint);box-shadow:0 0 0 1px rgba(63,224,176,.35)}
+  .skin .shot{flex:1;min-height:0;border-radius:11px;overflow:hidden;
+              display:flex;align-items:center;justify-content:center;
+              background:radial-gradient(70% 70% at 50% 60%,rgba(110,42,107,.6),rgba(21,8,39,.85))}
+  .skin .shot canvas{max-width:88%;max-height:96%;
+                     filter:drop-shadow(0 5px 7px rgba(21,8,39,.65))}
+  .skin.lk .shot{filter:grayscale(1) brightness(.5)}
+  .skin h3{margin:0;font-family:'Bungee',cursive;font-size:10.5px;color:var(--cream);
+           text-align:center}
+  .swatch{display:flex;gap:3px;justify-content:center}
+  .swatch i{width:11px;height:11px;border-radius:999px;
+            border:1.5px solid rgba(21,8,39,.5)}
+
+  /* ---- the revive beat -------------------------------------------------
+     It sits BEFORE the score card, not on it: the card is the end of the run,
+     and this is the moment the run is not over yet. The ring is a clock and
+     it is short on purpose. */
+  #revive{background:radial-gradient(120% 80% at 50% 45%,rgba(36,16,67,.42) 0%,rgba(21,8,39,.88) 70%)}
+  .rvCard{width:min(440px,88%);border-radius:24px;padding:16px 22px 18px;text-align:center;
+          position:relative;box-shadow:var(--shadow);
+          background:linear-gradient(180deg,rgba(61,31,85,.97),rgba(29,13,52,.99));
+          border:2px solid rgba(255,213,74,.5);
+          animation:cardIn .28s cubic-bezier(.16,1.2,.3,1) both}
+  .rvCard h2{margin:0;font-family:'Bungee',cursive;font-size:19px;color:var(--gold);
+             text-shadow:0 3px 0 rgba(21,8,39,.6)}
+  .rvCard .sc{margin:3px 0 0;font-size:10px;font-weight:900;letter-spacing:.16em;
+              color:rgba(255,242,222,.5);font-variant-numeric:tabular-nums}
+  .rvRow{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:13px}
+  .rvBar{height:5px;border-radius:3px;background:rgba(255,242,222,.14);
+         margin:12px auto 0;width:78%;overflow:hidden}
+  .rvBar i{display:block;height:100%;width:100%;border-radius:3px;
+           background:linear-gradient(90deg,var(--amber),var(--gold))}
+
+  /* ---- the ad placeholder ---------------------------------------------
+     Deliberately ugly and deliberately labelled. There is no ad network on a
+     static page; this is the shape of the pause a rewarded video makes, so
+     the flow around it can be judged and so nobody mistakes it for one. */
+  #adFake{background:rgba(8,4,16,.94);z-index:70}
+  .adBox{width:min(420px,86%);border-radius:18px;padding:20px 22px;text-align:center;
+         border:2px dashed rgba(255,242,222,.28);background:rgba(21,8,39,.7)}
+  .adBox h3{margin:0;font-family:'Bungee',cursive;font-size:15px;color:rgba(255,242,222,.75)}
+  .adBox p{margin:8px 0 0;font-size:10px;font-weight:800;letter-spacing:.1em;line-height:1.7;
+           color:rgba(255,242,222,.42)}
+  .adBox .cd{margin-top:12px;font-family:'Bungee',cursive;font-size:26px;color:var(--gold);
+             font-variant-numeric:tabular-nums}
+
+  /* ---- toast: what just happened, where the thing that happened is ----- */
+  #toast{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 56px);
+         transform:translateX(-50%) translateY(-8px);z-index:40;pointer-events:none;
+         opacity:0;transition:opacity .18s,transform .18s;
+         font-family:'Bungee',cursive;font-size:12px;color:#2A1206;
+         padding:8px 16px 9px;border-radius:999px;white-space:nowrap;
+         background:linear-gradient(180deg,#FFE27A,var(--gold));box-shadow:0 4px 0 #B8681B}
+  #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+  #toast.bad{background:linear-gradient(180deg,#FF8E77,var(--coral));box-shadow:0 4px 0 #A93A24}
 </style>
 </head>
 <body>
@@ -774,130 +856,13 @@
     </div>
 
     <div class="shopBody">
-      <!-- VEHICLES ------------------------------------------------------ -->
-      <div class="pane" data-pane="veh">
-        <p class="blurb">A vehicle is <b>found in the run</b>, never equipped. What you buy here is what it does when you find it.</p>
-        <div class="s-rail">
-          <div class="s-card eq">
-            <span class="s-flag">OWNED</span>
-            <i class="s-pic" style="background-image:url(art/truck_drive.webp)"></i>
-            <h3>MONSTER TROLLEY</h3>
-            <p class="s-eff">Cuts the farm's power on pickup. Drives through crates and drums. A hit takes the trolley, not the run.</p>
-            <div class="s-pips"><i class="f"></i><i class="f"></i><i class="f"></i><i></i><i></i></div>
-            <p class="s-lvl">LVL 3 / 5 &nbsp;&middot;&nbsp; NEXT: <b>TURNS UP TWICE AS OFTEN</b></p>
-            <button class="s-buy"><i class="e"></i>850</button>
-          </div>
-          <div class="s-card lock">
-            <span class="s-flag hot">NOT OWNED</span>
-            <i class="s-pic" style="background-image:url(art/truck_drive.webp)"></i>
-            <h3>CROP DUSTER</h3>
-            <p class="s-eff">Flies over the wires instead of under them &mdash; the air vehicle to the trolley's ground one.</p>
-            <div class="s-pips"><i></i><i></i><i></i><i></i><i></i></div>
-            <p class="s-lvl">UNLOCK TO RIDE IT</p>
-            <button class="s-buy"><i class="e"></i>12,000</button>
-          </div>
-          <div class="s-card lock">
-            <span class="s-flag dim">LOCKED</span>
-            <i class="s-pic" style="background-image:url(art/mystery_egg.webp)"></i>
-            <h3>? ? ?</h3>
-            <p class="s-eff">Something is riding around down in the ant empire. You have not been deep enough to see it yet.</p>
-            <div class="s-pips"><i></i><i></i><i></i><i></i><i></i></div>
-            <p class="s-lvl">REACH 3,000 m TO REVEAL</p>
-            <button class="s-buy soon">COMING SOON</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- POWER-UPS ----------------------------------------------------- -->
-      <div class="pane" data-pane="pow">
-        <div class="s-grid">
-          <div class="s-row hero">
-            <span class="s-flag hot">NEW</span>
-            <i class="ic" style="background-image:url(art/mystery_egg.webp)"></i>
-            <div class="txt"><h3>SECOND WIND</h3><p>One revive per run, offered the moment you go down.</p>
-              <div class="s-pips"><i></i><i></i><i></i></div></div>
-            <button class="s-buy"><i class="e"></i>1,500</button>
-          </div>
-          <div class="s-row">
-            <i class="ic" style="background-image:url(art/egg_icon.webp)"></i>
-            <div class="txt"><h3>EGG MAGNET</h3><p>Eggs come to you. Each level widens the reach.</p>
-              <div class="s-pips"><i class="f"></i><i class="f"></i><i></i></div></div>
-            <button class="s-buy"><i class="e"></i>600</button>
-          </div>
-          <div class="s-row">
-            <i class="ic" style="background-image:url(anim/run0.webp)"></i>
-            <div class="txt"><h3>HEAD START</h3><p>Begin the run at 300 m, past the quiet opening.</p>
-              <div class="s-pips"><i class="f"></i><i></i><i></i></div></div>
-            <button class="s-buy"><i class="e"></i>400</button>
-          </div>
-          <div class="s-row">
-            <i class="ic" style="background-image:url(art/mystery_egg.webp)"></i>
-            <div class="txt"><h3>LUCKY EGG</h3><p>Mystery eggs turn up more often &mdash; so the trolley does too.</p>
-              <div class="s-pips"><i class="f"></i><i></i><i></i></div></div>
-            <button class="s-buy"><i class="e"></i>900</button>
-          </div>
-          <div class="s-row lock">
-            <i class="ic" style="background-image:url(art/cos-shades.webp)"></i>
-            <div class="txt"><h3>NERVES OF STEEL</h3><p>Doubles the near-miss bonus the run already counts.</p>
-              <div class="s-pips"><i></i><i></i><i></i></div></div>
-            <button class="s-buy"><i class="e"></i>2,000</button>
-          </div>
-          <div class="s-row lock">
-            <i class="ic" style="background-image:url(anim/fly2.webp)"></i>
-            <div class="txt"><h3>SOFT LANDING</h3><p>The first wire you clip stuns instead of killing.</p>
-              <div class="s-pips"><i></i><i></i><i></i></div></div>
-            <button class="s-buy"><i class="e"></i>3,500</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- APPEARANCE ---------------------------------------------------- -->
-      <div class="pane" data-pane="app">
-        <p class="blurb">The five slots the character rig <b>already has</b>. Equipping is live &mdash; he changes on the left as you tap.</p>
-        <div class="appWrap">
-          <div class="preview">
-            <span class="own">7 OF 19 OWNED</span>
-            <i class="who" style="background-image:url(anim/run0.webp)"></i>
-            <span class="nm">NUGGET</span>
-          </div>
-          <div class="slots">
-            <div class="slotRow"><span class="slotName">HAT</span><div class="chips"><button class="chip"><span class="none">NONE</span></button><button class="chip eq"><i class="th" style="background-image:url(art/shop/hat_snapback.webp)"></i><span class="tick">✓</span></button><button class="chip"><i class="th" style="background-image:url(art/shop/hat_bucket.webp)"></i></button><button class="chip lk"><i class="th" style="background-image:url(art/shop/hat_fedora.webp)"></i><span class="px">1,200</span></button><button class="chip lk"><i class="th" style="background-image:url(art/shop/hat_beanie.webp)"></i><span class="px">800</span></button><button class="chip soon"><svg class="padl" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a5 5 0 0 0-5 5v3H5v13h14V9h-2V6a5 5 0 0 0-5-5zm3 8H9V6a3 3 0 0 1 6 0v3z"/></svg></button><button class="chip soon"><svg class="padl" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a5 5 0 0 0-5 5v3H5v13h14V9h-2V6a5 5 0 0 0-5-5zm3 8H9V6a3 3 0 0 1 6 0v3z"/></svg></button></div></div>
-            <div class="slotRow"><span class="slotName">FACE</span><div class="chips"><button class="chip"><span class="none">NONE</span></button><button class="chip eq"><i class="th" style="background-image:url(art/cos-shades.webp)"></i><span class="tick">✓</span></button><button class="chip lk"><i class="th" style="background-image:url(art/cos-shades.webp)"></i><span class="px">600</span></button><button class="chip soon"><svg class="padl" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a5 5 0 0 0-5 5v3H5v13h14V9h-2V6a5 5 0 0 0-5-5zm3 8H9V6a3 3 0 0 1 6 0v3z"/></svg></button><button class="chip soon"><svg class="padl" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a5 5 0 0 0-5 5v3H5v13h14V9h-2V6a5 5 0 0 0-5-5zm3 8H9V6a3 3 0 0 1 6 0v3z"/></svg></button></div></div>
-            <div class="slotRow"><span class="slotName">NECK</span><div class="chips"><button class="chip"><span class="none">NONE</span></button><button class="chip"><i class="th" style="background-image:url(art/cos-scarf.webp)"></i></button><button class="chip lk"><i class="th" style="background-image:url(art/cos-scarf.webp)"></i><span class="px">950</span></button><button class="chip soon"><svg class="padl" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a5 5 0 0 0-5 5v3H5v13h14V9h-2V6a5 5 0 0 0-5-5zm3 8H9V6a3 3 0 0 1 6 0v3z"/></svg></button></div></div>
-            <div class="slotRow"><span class="slotName">BODY</span><div class="chips"><button class="chip"><span class="none">NONE</span></button><button class="chip lk"><svg class="padl" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a5 5 0 0 0-5 5v3H5v13h14V9h-2V6a5 5 0 0 0-5-5zm3 8H9V6a3 3 0 0 1 6 0v3z"/></svg><span class="px">1,500</span></button><button class="chip soon"><svg class="padl" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a5 5 0 0 0-5 5v3H5v13h14V9h-2V6a5 5 0 0 0-5-5zm3 8H9V6a3 3 0 0 1 6 0v3z"/></svg></button><button class="chip soon"><svg class="padl" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a5 5 0 0 0-5 5v3H5v13h14V9h-2V6a5 5 0 0 0-5-5zm3 8H9V6a3 3 0 0 1 6 0v3z"/></svg></button></div></div>
-            <div class="slotRow"><span class="slotName">BACK</span><div class="chips"><button class="chip"><span class="none">NONE</span></button><button class="chip lk"><svg class="padl" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a5 5 0 0 0-5 5v3H5v13h14V9h-2V6a5 5 0 0 0-5-5zm3 8H9V6a3 3 0 0 1 6 0v3z"/></svg><span class="px">2,400</span></button><button class="chip soon"><svg class="padl" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a5 5 0 0 0-5 5v3H5v13h14V9h-2V6a5 5 0 0 0-5-5zm3 8H9V6a3 3 0 0 1 6 0v3z"/></svg></button></div></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- STORE --------------------------------------------------------- -->
-      <div class="pane" data-pane="store">
-        <div class="offers">
-          <div class="offer">
-            <h4>NO FORCED ADS</h4>
-            <p>Kills the ads between runs. <b>Rewarded videos stay on</b>, so you keep your revive and your daily eggs.</p>
-            <button class="price">$1.99</button>
-          </div>
-          <div class="offer best">
-            <span class="s-flag">BEST VALUE</span>
-            <h4>NO ADS + 5,000 EGGS</h4>
-            <p>The same, and the eggs to spend on the first three upgrades.</p>
-            <button class="price">$3.99</button>
-          </div>
-          <div class="offer">
-            <h4>EGG DOUBLER</h4>
-            <p>Every egg you ever pick up, twice over. Forever.</p>
-            <button class="price">$4.99</button>
-          </div>
-        </div>
-        <div class="bundles">
-          <button class="bundle"><span class="eggs"><i style="width:16px;height:21px"></i></span><span class="n">1,000</span><span class="p">$0.99</span></button>
-          <button class="bundle"><span class="eggs"><i style="width:16px;height:21px"></i><i style="width:21px;height:27px"></i></span><span class="n">5,500</span><span class="p">$3.99</span></button>
-          <button class="bundle"><span class="tagx">+20%</span><span class="eggs"><i style="width:17px;height:22px"></i><i style="width:24px;height:31px"></i><i style="width:17px;height:22px"></i></span><span class="n">12,000</span><span class="p">$7.99</span></button>
-          <button class="bundle"><span class="tagx">+45%</span><span class="eggs"><i style="width:19px;height:24px"></i><i style="width:29px;height:37px"></i><i style="width:19px;height:24px"></i></span><span class="n">30,000</span><span class="p">$19.99</span></button>
-        </div>
-        <span class="restore">RESTORE PURCHASES</span>
-      </div>
+      <!-- Every pane is filled by shopDraw() from the SHOP catalogue: a price,
+           a level and an owned state cannot be written into static markup and
+           still be true after the first purchase. -->
+      <div class="pane" data-pane="veh"></div>
+      <div class="pane" data-pane="pow"></div>
+      <div class="pane" data-pane="app"></div>
+      <div class="pane" data-pane="store"></div>
     </div>
   </div>
 
@@ -915,6 +880,33 @@
       </div>
     </div>
   </div>
+
+  <!-- THE REVIVE BEAT. Before the score card, because the run is not over
+       yet. The ring is a clock, and it is short on purpose. -->
+  <div id="revive" class="screen" data-meta>
+    <div class="rvCard">
+      <h2>ONE MORE?</h2>
+      <p class="sc" id="rvScore">0 m</p>
+      <div class="rvRow">
+        <button class="skip" id="rvNo">NO THANKS</button>
+        <button class="claimBtn" id="rvYes"><i class="adg"></i>WATCH &amp; REVIVE</button>
+        <span class="skip" style="visibility:hidden" aria-hidden="true">NO THANKS</span>
+      </div>
+      <div class="rvBar"><i id="rvFill"></i></div>
+    </div>
+  </div>
+
+  <!-- The shape of the pause a rewarded video makes. Labelled, because it is
+       not one: there is no ad network on a static page. -->
+  <div id="adFake" class="screen">
+    <div class="adBox">
+      <h3>AD PLACEHOLDER</h3>
+      <p>A REWARDED VIDEO GOES HERE.<br>NOTHING IS BEING SHOWN AND NOTHING IS BEING SENT.</p>
+      <p class="cd" id="adCd">3</p>
+    </div>
+  </div>
+
+  <div id="toast"></div>
 
   <div id="rotate">
     <div class="phone"></div>
@@ -1744,6 +1736,15 @@ function engineBedTick(dt){
   if(want && !ENG.g) engineBedOn();
   else if(!want && ENG.g) engineBedOff();
   if(!ENG.g) return;
+  /* UPGRADE MID-RIDE IF THE RECORDING TURNS UP LATE.
+     The bed chose its source once, when the ride started, and never looked
+     again -- so a ride that began before truckidle finished decoding ran on
+     the synth for its whole length with the real file sitting in memory. That
+     is not hypothetical: adding a third sample to fetch was enough to make it
+     happen in the test harness. One swap, at the next frame, and only ever in
+     this direction. */
+  if(!ENG.rate && SMP.buf['truckidle']){ engineBedOff(); engineBedOn(); }
+  if(!ENG.g) return;
   const tgt = player.onGround ? 0 : 1;
   ENG.rev += (tgt - ENG.rev) * Math.min(1, dt*6);
   const f = RIFF_HZ*0.5*(1 + 0.42*ENG.rev);
@@ -1907,7 +1908,7 @@ function playSample(name, vol, rate, key){
    two generated sounds in the game and both of their moments are silent now at
    the user's request, so the names, the entries in S and the files are all
    gone rather than left behind to be fetched and never played. */
-const SMP_HAVE = ['truckget', 'truckidle'];
+const SMP_HAVE = ['truckget', 'truckidle', 'truckland'];
 function warmSamples(){ SMP_HAVE.forEach(loadSample); }
 
 let stepFoot = 0;                 // which foot
@@ -2231,7 +2232,10 @@ const S = {
      a small scuff -- under two tonnes of tractor tyre, which is the sort of
      mismatch that is invisible in code and obvious the moment you hear it. */
   truckland(){
-    if(playSample('truckland', 0.95)) return;
+    /* The user's own recording. Exclusive, like the engine: it runs 2.6s and
+       two landings can be closer together than that, and an impact stacked on
+       its own tail is mush where it should be a hit. */
+    if(playSample('truckland', 0.33, 1, 'land')) return;
     /* THE LOUDEST THING IN THE RUN, and it has to measure that way: rendered
        at 0.19 against the jump's 0.44 it was the quietest of the five, which
        is the wrong order for two tonnes hitting a road. */
@@ -2263,7 +2267,13 @@ const S = {
        same engine recording that plays when the truck is collected. One key
        for both, so a jump restarts the engine rather than layering a second
        one over the one still running from the pickup. */
-    if(playSample('truckget', 0.33, 1, 'truck')) return;
+    /* THE JUMP SITS AT THE DRIVING LEVEL, at the user's request -- not near
+       it, at it. Worked out rather than dialled: the bed plays the idle loop
+       (rms 0.313) at 0.11, so it runs at rms 0.034; the ignition file is rms
+       0.418, so 0.034/0.418 = 0.082 puts the jump at exactly the same energy
+       as the engine already running underneath it. It was 0.33, which is four
+       times that -- which is why every jump jumped out of the mix. */
+    if(playSample('truckget', 0.082, 1, 'truck')) return;
     tone(52, 0.18, 'sine', 0.20, 30);                        // the springs unloading
     vroom(0.60, RIFF_HZ*0.7, RIFF_HZ*1.5, 0.38, 0, {rise:0.35, drive:3.6})
   },
@@ -3035,13 +3045,21 @@ function drawChickenFrames(x, y, p){
   const [set, idx] = pickFrame(p);
   const list = FRAME_DATA[set]; if(!list) return false;
   const fr = list[Math.min(idx, list.length-1)];
-  const im = FR.img[fr.f]; if(!im || !im.complete || !im.naturalWidth) return false;
+  /* THE SKIN IS A SWAPPED IMAGE, NOT A FILTER. SKIN.map holds a recoloured
+     copy of every frame, built once on equip; a canvas filter would have to
+     run per draw, and hue-rotate cannot tell the cap from the beak. Falls back
+     to the original the instant a frame has not been rebuilt yet, so a skin
+     that is still building draws the default bird rather than nothing. */
+  const im = (SKIN.map && SKIN.map[fr.f]) || FR.img[fr.f];
+  if(!im || (im.complete !== undefined && (!im.complete || !im.naturalWidth))) return false;
   const w = fr.w * SPR, h = fr.h * SPR;
   const ay = (fr.ay !== undefined ? fr.ay : fr.h + (fr.lift||0)) * SPR;
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(p.rot);
   ctx.scale(p.sx, p.sy);
+  // invulnerable, and it has to SAY so -- a free hit nobody can see is a bug
+  if(game.invuln > 0) ctx.globalAlpha = 0.45 + 0.55*Math.abs(Math.sin(game.t*26));
   ctx.drawImage(im, -w*0.46, -ay, w, h);
   ctx.restore();
   return true;
@@ -5067,6 +5085,19 @@ function updateEggs(dt){
       if(e.got >= 1){ game.eggs.splice(i,1); continue; }
       continue;
     }
+    /* THE MAGNET, and it pulls rather than teleports. An egg that snaps to the
+       bird reads as the counter ticking by itself; one that leans in and
+       accelerates reads as a magnet, and it is the same two lines. The pull is
+       eased by distance so the far edge of the radius is a drift, not a jump. */
+    const mR = PERK.magnet();
+    if(mR > 0){
+      const dx = p.x - e.x, dy = (p.y+74) - e.y, d = Math.hypot(dx, dy);
+      if(d < mR && d > 1){
+        const k = (1 - d/mR);
+        e.x += dx/d * (620*k*k + 90) * dt;
+        e.y += dy/d * (620*k*k + 90) * dt;
+      }
+    }
     if(Math.abs(e.x - p.x) < EGG_R+46 && Math.abs(e.y - (p.y+74)) < EGG_R+62){
       e.got = 0.001;
       game.runEggs++; game.eggBank++;
@@ -5901,7 +5932,15 @@ function startRun(){
   game.runCount = (game.runCount||0) + 1;
   applyTheme();
   game.mode='play'; game.runT=game.presetRunT||0; game.score=0;
+  /* HEAD START rides the same rail as ?dist, and that is why the perk is sold
+     as "skip the barn". A preset run hands straight to startQuick (see
+     startIntro), because the escape is measured from world zero and you cannot
+     be kicked out of a barn three hundred metres from the barn. */
+  game.presetDist = game.presetDist || PERK.head();
   game.dist=(game.presetDist||0)*UPM;            // ?dist=N starts the odometer there
+  game.invuln=0; game.revived=false;
+  game.softLeft = PERK.soft() ? 1 : 0;           // one clip taken, per run
+  game.rideTough = PERK.trolleyTough() ? 1 : 0;  // the trolley's own free hit
   game.boost=1;                                  // no vehicle, so no boost to ease off
   game.leg=Math.floor(game.dist/UPM/SPEED_STEP_M);   // ...and ?dist does not announce
 
@@ -5912,7 +5951,7 @@ function startRun(){
   game.ride=game.forceRide?RIDE_ON:0; game.rideGrace=0; game.drop=null; game.npcHit={};
   game.rideDuck=0; game.rideMusicT=0;
   game.gridT=1; game.rideTeach=0;        // the power is on again at the top of a run
-  game.dropT=game.forceRide?1e9:rnd(9, 14);
+  game.dropT=game.forceRide?1e9:rnd(9, 14)*PERK.dropRate();
   game.crows.length=0; game.crowT=5*CROW_GAP; game.crowN=0; game.crowWait=0;
   game.freeze=0; game.timeScale=1; game.tsTarget=1; game.shake=0; game.zoom=1; game.zoomT=1;
   game.camY=0; game.camYT=0; game.deadT=0; game.newBest=false;
@@ -6175,6 +6214,19 @@ function smash(o){
   game.score += 25;
 }
 function loseRide(o){
+  /* LEVEL 4 BUYS THE TROLLEY ONE HIT. It has to be spent here rather than in
+     die(), because losing the vehicle is already its own outcome -- the run
+     survives either way, so an invulnerability charge would be spent on
+     nothing. */
+  if(game.rideTough > 0){
+    game.rideTough = 0;
+    if(o) o.hitBy = true;
+    addShake(10); game.flash = 0.22; S.bonk();
+    pop(player.x, GROUND - player.y - 230, 'HELD!', C.mint, 40, -60);
+    spark(player.x, GROUND - player.y - 150, 14,
+          {col:C.mint, s0:160,s1:420, l0:0.25,l1:0.6, r0:3,r1:8});
+    return;
+  }
   game.ride = 0; game.rideGrace = RIDE_GRACE;
   engineBedOff();       // the engine goes with it, not on the next frame
   addShake(16); game.flash = 0.35; S.hit();
@@ -6271,7 +6323,7 @@ function updateRide(dt){
   }
   game.dropT = (game.dropT||0) - dt;
   if(game.dropT <= 0 && game.runT > 6){
-    game.dropT = rnd(RIDE_EVERY[0], RIDE_EVERY[1]);
+    game.dropT = rnd(RIDE_EVERY[0], RIDE_EVERY[1])*PERK.dropRate();
     spawnBasketDrop();
   }
 }
@@ -6403,6 +6455,12 @@ function drawDrop(){
 }
 function die(o){
   if(game.mode!=='play') return;
+  /* Two things can refuse a death before anything else happens. Invulnerability
+     is what a revive and a soft landing both hand out, and it has to be checked
+     HERE rather than at each collision test, because there are four of those
+     and they all end up in this one function. */
+  if((game.invuln||0) > 0) return;
+  if(softSave(o)) return;
   elTut.classList.remove('show');   // the prompt has no business over the score card
   game.mode='dying'; game.dyingT=0;
   game.freeze = 0.11; addShake(30); game.flash=0.75;
@@ -6443,6 +6501,14 @@ function overLine(){
   return pick(OVER_LINES);
 }
 function finish(){
+  /* THE OFFER COMES FIRST, and that is not a style choice: everything below
+     writes the best score and flips dgh.played, and a run that is about to
+     carry on has not ended. Decline or time out and finishNow() runs exactly
+     as this function always did. */
+  if(reviveOffer()) return;
+  finishNow();
+}
+function finishNow(){
   game.mode='dead'; game.deadT=0;
   game.newBest = game.score > game.best;
   /* Chosen here, because finish() is about to overwrite game.best -- pick the
@@ -6703,6 +6769,7 @@ function updatePlay(dt){
   game.boost = damp(game.boost === undefined ? 1 : game.boost,
                     riding() ? RIDE_BOOST : 1, 5.5, dt);
   game.speed = worldSpeed() * game.boost;
+  if(game.invuln > 0) game.invuln = Math.max(0, game.invuln - dt);
   const speedT = game.diff;
 
   p.x += game.speed*dt;
@@ -6983,7 +7050,7 @@ function nearMiss(o){
   game.near++;
   game.combo++; game.comboT = 3.4;
   game.comboBest = Math.max(game.comboBest, game.combo);
-  const bonus = 60*game.combo;
+  const bonus = Math.round(60*game.combo*PERK.nerve());
   game.score += bonus;
   S.near(); if(game.combo>1) S.combo(game.combo);
   addShake(4); slowmo(0.42, 0.13);
@@ -7491,10 +7558,50 @@ function drawField(alpha){
    drawn at all. It also paid for the two big layers twice a frame. */
 /* One slot of one layer set, tiled across the screen at its own parallax rate.
    `alpha` and `clip` are what the zone change is built out of. */
+/* A SLOT MAY BE A SEQUENCE OF PANELS, NOT ONE TILE REPEATED.
+
+   The farm's middle distance was one 830x240 painting tiled forever, so the
+   same barn, silo, windmill and water tower came round every 1170 world units
+   -- about every 75 metres of travel at this layer's parallax -- for as long as
+   the run lasted. The odometer climbed and the view did not, which is the
+   difference between distance and a treadmill.
+
+   THE VARIETY HAS TO BE IN THE LAYER, and this is the one place it can be.
+   Putting cut-out set-pieces on top at camera parallax was tried first and it
+   is a different KIND of art: full-saturation props crossing in front of the
+   fence, moving faster than the buildings behind them, reading as stickers on
+   a photograph rather than as the farm. A middle distance is made of middle
+   distance.
+
+   So the mid slot walks a list. Panel n is chosen by the tile's own index in
+   layer space, so it is a property of WHERE YOU ARE -- the same metre shows
+   the same panel on every run -- and the set only repeats after the whole list
+   has gone by. Every panel is the same pixel size, which is what lets one
+   `g.W` place all of them and what makes their ground lines meet.
+
+   A panel that has not been made yet is simply not in the list; the run then
+   cycles whatever exists. The game never waits for art. */
+const MID_PANELS = { farm: {} };            // index -> Image, sparse while loading
+const MID_SEQ = { farm: [] };               // dense, rebuilt as they arrive
+function midPanel(i, src){
+  const im = new Image();
+  imqLoad(im, src, () => {
+    MID_PANELS.farm[i] = im;
+    MID_SEQ.farm = Object.keys(MID_PANELS.farm).sort((a,b)=>a-b).map(k => MID_PANELS.farm[k]);
+  }, ()=>{}, 'gp');
+}
+[1,2,3,4,5,6,7,8].forEach(i => midPanel(i, 'art/bg/mid' + i + '.webp'));
+
 function drawLayerSlot(L, key, alpha, clipL, clipR){
   if(!L || !L.ready || alpha <= 0.004) return false;
   const g = bgGeom(L);
   const off = ((cam.x*L.f) % g.W + g.W) % g.W;
+  /* The farm's mid slot is the one that travels; every other slot is a tile.
+     mid.webp itself is panel zero, so a run always opens on the painting the
+     rest were matched to. */
+  const seq = (key === 'mid' && L.set === 'farm' && MID_SEQ.farm.length)
+              ? [L.img].concat(MID_SEQ.farm) : null;
+  let seqK = seq ? Math.floor(cam.x*L.f/g.W) : 0;
   const clipped = clipL !== undefined;
   if(alpha < 1 || clipped) ctx.save();
   if(clipped){
@@ -7978,57 +8085,6 @@ const ANT_HILLS = [
   { m:1142, art:'hill3', s:2.0 },
 ];
 
-/* ============================================================
-   THE FARM'S SET-PIECES — one thing to run past every 100 m
-   ============================================================
-   THE FIRST KILOMETRE WAS A TREADMILL. Three tiles, the widest about half a
-   screen, so the same barn, silo, windmill and coop came round every few
-   seconds for as long as you survived: the odometer climbed and the view did
-   not. Looping layers are the right substrate and the wrong landmark.
-
-   So the layers keep looping and these stand ON TOP of them at fixed metres,
-   the same mechanism as ANT_HILLS and ANT_SIGNS: placed by world position, not
-   spawned, so the tractor at 300m is at 300m in every run and you can never
-   pass the same one twice. That is the difference between distance and repeat.
-
-   THEY ARE SCENERY AND MUST READ AS SCENERY. Nothing here is in
-   game.obstacles, nothing here collides. Three things keep them honest:
-   they stand on the ground line the way the mounds do, they are drawn at
-   camera speed like every other landmark (a landmark at any other parallax
-   is not AT the metre it claims), and none of them is blue -- the hazards own
-   that colour now, and a set-piece is the last place to spend it.
-
-   A missing image draws nothing at all, which is the same bargain the props
-   make: unmade art costs an empty stretch of farm, never a hole. */
-const FARM_ART = {};
-/* HOW BIG A LANDMARK HAS TO BE. The mounds use 0.62 of the reference height and
-   that is right for them -- they are a rising drumbeat, not the subject. A
-   set-piece is the subject: it exists so that this 100 metres is not the last
-   100 metres, and at 0.62 the pond came out 183 screen pixels wide, tucked
-   behind the bird, reading as a puddle. At 1.30 a piece is roughly 40% of the
-   screen -- about half a barn, which is the size the eye stops for. Per-piece
-   `s` trims from here; it is not the place to fix the base. */
-const FARM_SCENE_S = 1.30;
-const FARM_SCENES = [
-  { m: 100, art:'f100_house',     s:1.05, lift:4 },   // somebody lives here
-  { m: 200, art:'f200_pond',      s:0.92, lift:2 },
-  { m: 300, art:'f300_tractor',   s:0.86, lift:4 },
-  { m: 400, art:'f400_scarecrow', s:0.72, lift:4 },  // tall and thin: trimmed
-  { m: 500, art:'f500_silo',      s:1.10, lift:4 },
-  /* From here the farm stops being the farmer's. The mounds are already
-     growing through this stretch (ANT_HILLS, 600-1142), so these are what the
-     ants have got INTO -- and the escalation is the point of the ordering. */
-  { m: 600, art:'f600_hives',     s:0.88, lift:3 },
-  { m: 700, art:'f700_windmill',  s:1.15, lift:4 },
-  { m: 800, art:'f800_pickup',    s:0.95, lift:3 },
-  { m: 900, art:'f900_shanty',    s:0.98, lift:3 },
-  { m:1000, art:'f1000_spill',    s:1.00, lift:2 },
-];
-FARM_SCENES.forEach(q => {
-  const im = new Image();
-  imqLoad(im, 'art/farm100/' + q.art + '.webp', ()=>{ FARM_ART[q.art] = im; }, ()=>{}, 'gp');
-});
-
 /* Lettering a blank board. Two lines at most, sized to fit the plank rather
    than a fixed point size, because the boards are four different widths. */
 function drawSignText(lines, w, h, ink){
@@ -8056,14 +8112,6 @@ function drawZoneScenery(){
     ctx.drawImage(im, sx - w/2, GROUND + (lift||0) - h, w, h);
     return { sx, w, h };
   };
-
-  /* The farm's set-pieces go FIRST, so a mound growing at 600m stands in
-     front of the beehives rather than behind them -- the ants are arriving,
-     and what arrives is nearer. */
-  for(const q of FARM_SCENES){
-    if(q.m < left || q.m > right) continue;
-    put(FARM_ART[q.art], q.m, (GROUND/980)*FARM_SCENE_S*q.s, q.lift);
-  }
 
   // the mounds, and the great formation standing on the boundary itself
   for(const q of ANT_HILLS){
@@ -8617,17 +8665,500 @@ function gateStart(){
 }
 
 /* ============================================================
-   THE META SHELL
+   THE ECONOMY
    ============================================================
-   The shop, the daily ladder and the numbers in the strip. NOTHING HERE
-   TRANSACTS: no egg is spent, no purchase is made, no ad is played. It is the
-   layout and the states, built so the shape can be judged and the economy
-   written against a screen that already exists.
+   The shell transacts now. Eggs are spent, levels are owned, perks reach into
+   the run, a revive is offered at the death beat and the daily reward runs off
+   a real clock.
 
-   What IS real: the two numbers. The egg count and the best distance come
-   straight out of the same state the run uses, so the strip is never a lie
-   about what you have.
+   THE TWO THINGS THAT ARE NOT REAL ARE THE TWO THAT CANNOT BE. There is no ad
+   network and no billing on a static page, so `rewardedAd()` and `iapBuy()`
+   are the seams -- each one shows the shape of the pause it makes, resolves,
+   and is labelled on screen as a placeholder. Wiring AdMob and Play Billing
+   later is those two functions and nothing else in this file.
 
+   `game.eggBank` stays the one live counter, persisted to `dgh_eggs` exactly
+   as the pickup code already did; SAVE holds everything else. Two stores
+   rather than one, on purpose: the run writes eggs on a hot path forty times a
+   minute, and it should not be serialising a JSON blob to do it.
+   ============================================================ */
+
+const $$ = s => Array.prototype.slice.call(document.querySelectorAll(s));
+const SAVE_KEY = 'dgh.save.v1';
+const SAVE = (() => {
+  const d = { v:1, veh:{trolley:1}, pow:{revive:0,magnet:0,head:0,lucky:0,nerve:0,soft:0},
+              skin:'nugget', skins:['nugget'], noAds:false, daily:{day:1,last:0} };
+  try{
+    const raw = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+    if(raw && raw.v === 1){
+      // merged rather than replaced, so a save written before a perk existed
+      // still opens and simply has that perk at zero
+      d.veh = Object.assign(d.veh, raw.veh||{});
+      d.pow = Object.assign(d.pow, raw.pow||{});
+      d.daily = Object.assign(d.daily, raw.daily||{});
+      d.skin = raw.skin || d.skin;
+      d.skins = Array.isArray(raw.skins) && raw.skins.length ? raw.skins : d.skins;
+      d.noAds = !!raw.noAds;
+    }
+  }catch(e){}
+  return d;
+})();
+function saveNow(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE)); }catch(e){} }
+
+function eggs(){ return game.eggBank|0; }
+function eggsSet(n){
+  game.eggBank = Math.max(0, Math.round(n));
+  try{ localStorage.setItem('dgh_eggs', String(game.eggBank)); }catch(e){}
+  if(elEggCount) elEggCount.textContent = game.eggBank;
+  metaNums();
+}
+function spend(n){ if(eggs() < n) return false; eggsSet(eggs() - n); return true; }
+function earn(n){ eggsSet(eggs() + n); }
+
+/* ---- the catalogue -------------------------------------------------------
+   One table. A price, a level and an owned state cannot be written into static
+   markup and still be true after the first purchase, so the panes are drawn
+   from this and nothing is hard-coded twice.
+
+   `cost[n]` is what it costs to go from level n to level n+1, so cost.length
+   is the number of upgrades and `max` falls out of it. `says[n]` is what
+   level n actually does, and it is shown as the NEXT line while you are
+   deciding -- a price with no consequence attached is a number, not an offer. */
+const SHOP = {
+  veh: [
+    { id:'trolley', name:'MONSTER TROLLEY', art:'art/truck_drive.webp', owned:true,
+      eff:"Cuts the farm's power on pickup. Drives through crates and drums. A hit takes the trolley, not the run.",
+      cost:[850, 1800, 3200, 5000],
+      says:['', 'Turns up as often as it always did', 'Turns up 30% more often',
+            'Survives one hit before it pops', 'Turns up twice as often'] },
+    { id:'duster', name:'CROP DUSTER', art:'art/truck_drive.webp', dev:true,
+      eff:'Flies over the wires instead of under them. Not built yet, so it is not for sale -- a button that takes 12,000 eggs for nothing is worse than one that does nothing.',
+      cost:[], says:[] }
+  ],
+  pow: [
+    { id:'revive', name:'SECOND WIND', art:'art/mystery_egg.webp', hero:true,
+      eff:'One revive per run, offered the moment you go down.',
+      cost:[1500], says:['', 'One revive a run'] },
+    { id:'magnet', name:'EGG MAGNET', art:'art/egg_icon.webp',
+      eff:'Eggs lean in and come to you. Each level widens the reach.',
+      cost:[600, 1400, 2600], says:['', 'A wingspan', 'Two wingspans', 'Most of the lane'] },
+    { id:'head', name:'HEAD START', art:'anim/run0.webp',
+      eff:'Skip the barn and start further down the road. The escape is measured from the barn, so a head start trades it away.',
+      cost:[400, 1100, 2400], says:['', 'Start at 150 m', 'Start at 300 m', 'Start at 500 m'] },
+    { id:'lucky', name:'LUCKY EGG', art:'art/mystery_egg.webp',
+      eff:'Mystery eggs turn up more often -- so the trolley does too.',
+      cost:[900, 2000, 3800], says:['', '20% more often', '40% more often', '70% more often'] },
+    { id:'nerve', name:'NERVES OF STEEL', art:'art/cos-shades.webp',
+      eff:'Doubles the near-miss bonus the run already counts.',
+      cost:[2000], says:['', 'Near misses pay double'] },
+    { id:'soft', name:'SOFT LANDING', art:'anim/fly2.webp',
+      eff:'The first thing you clip each run stuns instead of killing.',
+      cost:[3500], says:['', 'One clip taken, once a run'] }
+  ]
+};
+const shopItem = (kind, id) => SHOP[kind].find(x => x.id === id);
+const lvl = (kind, id) => (kind === 'veh' ? SAVE.veh : SAVE.pow)[id] || 0;
+function setLvl(kind, id, n){ (kind === 'veh' ? SAVE.veh : SAVE.pow)[id] = n; saveNow(); }
+
+/* ---- what a level actually DOES ------------------------------------------
+   Every number the run reads comes from here, so a perk's effect and its shop
+   copy sit four lines apart and cannot drift. Index by level, so level 0 is
+   always the no-op. */
+const PERK = {
+  magnet:  () => [0, 210, 340, 520][lvl('pow','magnet')] || 0,
+  head:    () => [0, 150, 300, 500][lvl('pow','head')] || 0,
+  nerve:   () => lvl('pow','nerve') ? 2 : 1,
+  soft:    () => lvl('pow','soft') > 0,
+  revive:  () => lvl('pow','revive') > 0,
+  trolleyTough: () => lvl('veh','trolley') >= 3,
+  // both of these make the mystery egg arrive sooner, so they multiply
+  dropRate: () => ([1, 0.82, 0.66, 0.45][lvl('pow','lucky')] || 1) *
+                  ([1, 1, 0.78, 0.78, 0.55][lvl('veh','trolley')] || 1)
+};
+
+/* ---- skins ---------------------------------------------------------------
+   THE CHICKEN IN A RUN IS A PAINTED SPRITE. `drawChickenFrames` draws one
+   image per frame and never touches the cosmetic slot rig, which is why hats
+   were never going to show up in play: the snapback and the shades are in the
+   art. So a look is a RECOLOUR of the shipped frames -- a hue remap over two
+   measured regions, applied once on equip and cached.
+
+   The two regions were measured, not guessed (`anim/*.webp`, clustered by
+   HSV): the cap is hue 150-205 above 0.28 saturation and is 5% of the bird;
+   the body is hue 20-70 between 0.05 and 0.42 saturation and above 0.60
+   value, and is 43%. Everything else -- the black outline, the orange beak,
+   the red comb, the white shoes -- is left alone, which is what keeps every
+   look recognisably the same character. */
+const SKIN_SETS = ['run','fly','fall','jump','land','hit','kick'];
+const SK_CAP  = {h0:150, h1:205, s0:0.28, s1:1, v0:0.10, v1:1};
+const SK_BODY = {h0:20,  h1:70,  s0:0.05, s1:0.42, v0:0.60, v1:1};
+const rule = (reg, o) => Object.assign({}, reg, o);
+const SKINS = [
+  { id:'nugget', name:'NUGGET', cost:0, sw:['#F1E4C3','#2E9E9E'], map:null },
+  { id:'midnight', name:'MIDNIGHT', cost:1200, sw:['#AEB9DF','#7A4BD6'],
+    map:[rule(SK_CAP,{hue:268}), rule(SK_BODY,{hue:227, sMul:2.2, vMul:0.90})] },
+  { id:'gold', name:'GOLD RUSH', cost:2400, sw:['#F2C64B','#F6F2E6'],
+    map:[rule(SK_CAP,{hue:45, sMul:0.14, vMul:1.18}), rule(SK_BODY,{hue:43, sMul:3.2})] },
+  { id:'mint', name:'MINT', cost:3600, sw:['#B6ECD3','#23407F'],
+    map:[rule(SK_CAP,{hue:222, sMul:1.6, vMul:0.76}), rule(SK_BODY,{hue:152, sMul:2.4})] },
+  { id:'ghost', name:'SPECTRE', cost:6000, need:3000, sw:['#DCD3F2','#E24BC0'],
+    map:[rule(SK_CAP,{hue:312, sMul:1.2}), rule(SK_BODY,{hue:276, sMul:1.5, vMul:1.04})] }
+];
+const skinDef = id => SKINS.find(x => x.id === id) || SKINS[0];
+const skinOwned = id => SAVE.skins.indexOf(id) >= 0;
+const skinReady = d => !d.need || (game.best || 0) >= d.need;
+
+function hsv2rgb(h, s, v){
+  const c = v*s, x = c*(1 - Math.abs(((h/60)%2) - 1)), m = v - c;
+  let r=0,g=0,b=0;
+  if(h < 60){ r=c; g=x; } else if(h <120){ r=x; g=c; }
+  else if(h <180){ g=c; b=x; } else if(h <240){ g=x; b=c; }
+  else if(h <300){ r=x; b=c; } else { r=c; b=x; }
+  return [Math.round((r+m)*255), Math.round((g+m)*255), Math.round((b+m)*255)];
+}
+function recolour(im, rules){
+  const c = document.createElement('canvas');
+  c.width = im.naturalWidth; c.height = im.naturalHeight;
+  const g = c.getContext('2d', {willReadFrequently:true});
+  g.drawImage(im, 0, 0);
+  const d = g.getImageData(0, 0, c.width, c.height), a = d.data;
+  for(let i = 0; i < a.length; i += 4){
+    if(a[i+3] < 12) continue;
+    const r = a[i]/255, gg = a[i+1]/255, b = a[i+2]/255;
+    const mx = Math.max(r,gg,b), mn = Math.min(r,gg,b), dl = mx - mn;
+    const v = mx, sat = mx ? dl/mx : 0;
+    let h = 0;
+    if(dl > 1e-6){
+      h = (mx === r) ? ((gg-b)/dl)%6 : (mx === gg) ? (b-r)/dl+2 : (r-gg)/dl+4;
+      h *= 60; if(h < 0) h += 360;
+    }
+    for(let k = 0; k < rules.length; k++){
+      const q = rules[k];
+      if(sat < q.s0 || sat > q.s1 || v < q.v0 || v > q.v1) continue;
+      if(h < q.h0 || h > q.h1) continue;
+      const ns = Math.max(0, Math.min(1, sat*(q.sMul === undefined ? 1 : q.sMul)));
+      const nv = Math.max(0, Math.min(1, v*(q.vMul === undefined ? 1 : q.vMul)));
+      const o = hsv2rgb(q.hue, ns, nv);
+      a[i] = o[0]; a[i+1] = o[1]; a[i+2] = o[2];
+      break;
+    }
+  }
+  g.putImageData(d, 0, 0);
+  return c;
+}
+const SKIN = { id:'nugget', map:null, building:0 };
+function skinFrames(){
+  const out = [];
+  SKIN_SETS.forEach(k => (FRAME_DATA[k]||[]).forEach(f => out.push(f.f)));
+  return out;
+}
+/* Built a few frames per tick rather than all 36 in one task: the whole set is
+   about two million pixels, which is a visible hitch on a phone, and the
+   partial map is safe to draw from because drawChickenFrames falls back to the
+   original for any frame that is not rebuilt yet. */
+function skinApply(id){
+  const def = skinDef(id);
+  SKIN.id = id;
+  if(!def.map){ SKIN.map = null; SKIN.building = 0; return; }
+  const keys = skinFrames(), out = {};
+  let i = 0; SKIN.building = 1; SKIN.map = out;
+  (function step(){
+    const t0 = (performance && performance.now) ? performance.now() : Date.now();
+    while(i < keys.length){
+      const im = FR.img[keys[i++]];
+      if(im && im.complete && im.naturalWidth){
+        try{ out[keys[i-1]] = recolour(im, def.map); }catch(e){ game.skinErr = e.message; }
+      }
+      const t1 = (performance && performance.now) ? performance.now() : Date.now();
+      if(t1 - t0 > 7) break;
+    }
+    if(i < keys.length) requestAnimationFrame(step); else SKIN.building = 0;
+  })();
+}
+function skinEquip(id){
+  SAVE.skin = id; saveNow(); skinApply(id);
+}
+
+/* ---- the two seams ------------------------------------------------------- */
+/* THE ONLY PLACE AN AD IS ASKED FOR. It resolves after the length of pause a
+   rewarded video makes, and says on screen that it is not one. Replace the
+   body with the network's callback and every caller keeps working. */
+function rewardedAd(){
+  return new Promise(resolve => {
+    const el = $('#adFake'), cd = $('#adCd');
+    let n = 3; cd.textContent = n; el.classList.add('show');
+    const t = setInterval(() => {
+      n--; cd.textContent = Math.max(0, n);
+      if(n <= 0){ clearInterval(t); el.classList.remove('show'); resolve(true); }
+    }, 700);
+  });
+}
+/* And the only place money is asked for. Same shape, same reason. */
+function iapBuy(sku, label){
+  return rewardedAd().then(() => { toast('PLACEHOLDER: ' + label); return true; });
+}
+
+let toastT = 0;
+function toast(msg, bad){
+  const el = $('#toast'); if(!el) return;
+  el.textContent = msg; el.classList.toggle('bad', !!bad); el.classList.add('on');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.remove('on'), 1500);
+}
+
+/* ---- buying -------------------------------------------------------------- */
+function buy(kind, id){
+  const it = shopItem(kind, id); if(!it || it.dev) return;
+  const n = lvl(kind, id), cost = it.cost[n];
+  if(cost === undefined){ return; }
+  if(!spend(cost)){ toast('NOT ENOUGH EGGS', true); S.bonk(); return; }
+  setLvl(kind, id, n + 1);
+  S.best(); toast((it.says[n+1] || it.name).toUpperCase());
+  shopDraw();
+}
+function buySkin(id){
+  const d = skinDef(id);
+  if(skinOwned(id)){ skinEquip(id); S.click(); shopDraw(); return; }
+  if(!skinReady(d)){ toast('REACH ' + d.need.toLocaleString('en-US') + ' m FIRST', true); return; }
+  if(!spend(d.cost)){ toast('NOT ENOUGH EGGS', true); S.bonk(); return; }
+  SAVE.skins.push(id); saveNow(); skinEquip(id);
+  S.best(); toast(d.name + ' UNLOCKED'); shopDraw();
+}
+
+/* ---- the shop, drawn from the catalogue ---------------------------------- */
+const pipRow = (n, max) => '<div class="s-pips">' +
+  Array.from({length:max}, (_, i) => '<i class="' + (i < n ? 'f' : '') + '"></i>').join('') + '</div>';
+const money = n => n.toLocaleString('en-US');
+
+function buyBtn(kind, it){
+  const n = lvl(kind, it.id), max = it.cost.length;
+  if(it.dev)   return '<button class="s-buy dev" disabled>IN DEVELOPMENT</button>';
+  if(n >= max) return '<button class="s-buy max" disabled>FULLY UPGRADED</button>';
+  const cost = it.cost[n], can = eggs() >= cost;
+  return '<button class="s-buy' + (can ? '' : ' no') + '" data-buy="' + kind + ':' + it.id + '">' +
+         '<i class="e"></i>' + money(cost) + '</button>';
+}
+function nextLine(kind, it){
+  const n = lvl(kind, it.id), max = it.cost.length;
+  if(it.dev)   return 'NOT FOR SALE';
+  if(n >= max) return 'LVL ' + n + ' / ' + max;
+  if(n === 0)  return 'NOT OWNED &nbsp;&middot;&nbsp; <b>' + (it.says[1]||'') + '</b>';
+  return 'LVL ' + n + ' / ' + max + ' &nbsp;&middot;&nbsp; NEXT: <b>' + (it.says[n+1]||'') + '</b>';
+}
+function drawVeh(){
+  return '<p class="blurb">A vehicle is <b>found in the run</b>, never equipped. What you buy here is what it does when you find it.</p>' +
+    '<div class="s-rail">' + SHOP.veh.map(it => {
+      const n = lvl('veh', it.id), max = Math.max(1, it.cost.length);
+      return '<div class="s-card' + (n ? ' eq' : ' lock') + '">' +
+        '<span class="s-flag' + (it.dev ? ' dim' : (n ? '' : ' hot')) + '">' +
+          (it.dev ? 'NOT BUILT' : (n ? 'OWNED' : 'NOT OWNED')) + '</span>' +
+        '<i class="s-pic" style="background-image:url(' + it.art + ')"></i>' +
+        '<h3>' + it.name + '</h3><p class="s-eff">' + it.eff + '</p>' +
+        pipRow(n, max) + '<p class="s-lvl">' + nextLine('veh', it) + '</p>' +
+        buyBtn('veh', it) + '</div>';
+    }).join('') + '</div>';
+}
+function drawPow(){
+  return '<div class="s-grid">' + SHOP.pow.map(it => {
+    const n = lvl('pow', it.id), max = it.cost.length;
+    return '<div class="s-row' + (it.hero && !n ? ' hero' : '') + (n ? ' owned' : ' lock') + '">' +
+      (it.hero && !n ? '<span class="s-flag hot">THE ONE THAT PAYS</span>' : '') +
+      '<i class="ic" style="background-image:url(' + it.art + ')"></i>' +
+      '<div class="txt"><h3>' + it.name + '</h3><p>' + it.eff + '</p>' + pipRow(n, max) + '</div>' +
+      buyBtn('pow', it) + '</div>';
+  }).join('') + '</div>';
+}
+function drawApp(){
+  return '<p class="blurb">The chicken in a run is painted art, so a look is a <b>recolour of every frame</b> ' +
+    '&mdash; cap and body, applied on equip. He changes in the menu, the escape and the run at once.</p>' +
+    '<div class="skins">' + SKINS.map(d => {
+      const own = skinOwned(d.id), on = SAVE.skin === d.id, ok = skinReady(d);
+      const foot = on   ? '<button class="s-buy eq" disabled>EQUIPPED</button>'
+                 : own  ? '<button class="s-buy max" data-skin="' + d.id + '">EQUIP</button>'
+                 : !ok  ? '<button class="s-buy dev" disabled>REACH ' + money(d.need) + ' m</button>'
+                        : '<button class="s-buy' + (eggs() >= d.cost ? '' : ' no') + '" data-skin="' + d.id + '">' +
+                          '<i class="e"></i>' + money(d.cost) + '</button>';
+      return '<button class="skin' + (on ? ' on' : '') + (own || ok ? '' : ' lk') + '">' +
+        '<span class="shot" data-shot="' + d.id + '"></span>' +
+        '<h3>' + (own || ok ? d.name : '? ? ?') + '</h3>' +
+        '<span class="swatch"><i style="background:' + d.sw[0] + '"></i><i style="background:' + d.sw[1] + '"></i></span>' +
+        foot + '</button>';
+    }).join('') + '</div>';
+}
+function drawStore(){
+  const gone = SAVE.noAds;
+  return '<div class="offers">' +
+    '<div class="offer"><h4>NO FORCED ADS</h4>' +
+      '<p>Kills the ads between runs. <b>Rewarded videos stay on</b>, so you keep your revive and your daily eggs.</p>' +
+      (gone ? '<button class="s-buy eq" disabled>OWNED</button>'
+            : '<button class="price" data-iap="noads">$1.99</button>') + '</div>' +
+    '<div class="offer best"><span class="s-flag">BEST VALUE</span><h4>NO ADS + 5,000 EGGS</h4>' +
+      '<p>The same, and the eggs to spend on the first three upgrades.</p>' +
+      '<button class="price" data-iap="bundle">$3.99</button></div>' +
+    '<div class="offer"><h4>EGG DOUBLER</h4>' +
+      '<p>Every egg you ever pick up, twice over. Forever.</p>' +
+      '<button class="price" data-iap="doubler">$4.99</button></div>' +
+    '</div><div class="bundles">' +
+    [[1000,'$0.99',null,[21]],[5500,'$3.99',null,[21,27]],
+     [12000,'$7.99','+20%',[22,31,22]],[30000,'$19.99','+45%',[24,37,24]]]
+      .map(b => '<button class="bundle" data-eggs="' + b[0] + '">' +
+        (b[2] ? '<span class="tagx">' + b[2] + '</span>' : '') +
+        '<span class="eggs">' + b[3].map(h =>
+          '<i style="width:' + Math.round(h*0.78) + 'px;height:' + h + 'px"></i>').join('') + '</span>' +
+        '<span class="n">' + money(b[0]) + '</span><span class="p">' + b[1] + '</span></button>').join('') +
+    '</div><span class="restore">RESTORE PURCHASES</span>';
+}
+function shopDraw(){
+  const pane = $('#shop .pane[data-pane="' + META.tab + '"]'); if(!pane) return;
+  pane.innerHTML = META.tab === 'veh' ? drawVeh() : META.tab === 'pow' ? drawPow()
+                 : META.tab === 'app' ? drawApp() : drawStore();
+  if(META.tab === 'app') skinShots();
+  metaNums();
+}
+/* One frame per look, recoloured once and kept. The card IS the look, so the
+   shelf cannot disagree with the bird. */
+const SHOT_CACHE = {};
+function skinShots(){
+  const fr = (FRAME_DATA.run||[])[0]; if(!fr) return;
+  const base = FR.img[fr.f]; if(!base || !base.complete || !base.naturalWidth) return;
+  $$('#shop [data-shot]').forEach(box => {
+    const id = box.dataset.shot, d = skinDef(id);
+    if(!SHOT_CACHE[id]){
+      try{ SHOT_CACHE[id] = d.map ? recolour(base, d.map) : base; }catch(e){ return; }
+    }
+    const k = document.createElement('canvas');
+    k.width = base.naturalWidth; k.height = base.naturalHeight;
+    k.getContext('2d').drawImage(SHOT_CACHE[id], 0, 0);
+    box.innerHTML = ''; box.appendChild(k);
+  });
+}
+
+/* ---- the daily reward, on a real clock -----------------------------------
+   24 hours from the CLAIM, not from local midnight: midnight rollover invites
+   clock-changing and punishes a late player for being twenty minutes early.
+   Nothing resets on a missed day -- resetting a streak punishes exactly the
+   lapsed player you are trying to win back, so the ladder simply waits. */
+const DAY_MS = 864e5;
+const RUNGS = [100, 150, 250, 400, 600, 900, 'A LOOK'];
+function dailyState(){
+  const last = SAVE.daily.last || 0;
+  const left = last ? Math.max(0, DAY_MS - (Date.now() - last)) : 0;
+  return { ready: left <= 0, left: left, day: Math.min(7, Math.max(1, SAVE.daily.day|0)) };
+}
+const hhmmss = ms => {
+  const t = Math.max(0, Math.floor(ms/1000));
+  const p = n => (n < 10 ? '0' : '') + n;
+  return p(Math.floor(t/3600)) + ':' + p(Math.floor(t/60)%60) + ':' + p(t%60);
+};
+function dailyClaim(){
+  const st = dailyState(); if(!st.ready) return;
+  rewardedAd().then(() => {
+    const r = RUNGS[st.day - 1];
+    if(typeof r === 'number'){ earn(r); toast('+' + money(r) + ' EGGS'); }
+    else {
+      // day seven is a look, because a ladder is sold by its last rung
+      const give = SKINS.find(x => !skinOwned(x.id)) || SKINS[0];
+      if(!skinOwned(give.id)){ SAVE.skins.push(give.id); skinEquip(give.id); }
+      toast(give.name + ' UNLOCKED');
+    }
+    SAVE.daily.last = Date.now();
+    SAVE.daily.day = st.day >= 7 ? 1 : st.day + 1;
+    saveNow(); S.best(); dailyDraw();
+  });
+}
+function dailyDraw(){
+  const st = dailyState(), lad = $('#ladder');
+  if(lad) lad.innerHTML = RUNGS.map((v, i) => {
+    const n = i + 1;
+    const done = n < st.day || (n === st.day && !st.ready);
+    const now  = n === st.day && st.ready;
+    return '<div class="dday ' + (done ? 'done' : now ? 'now' : 'lk') + (i === 6 ? ' last' : '') + '">' +
+      '<span class="d">DAY ' + n + '</span><i class="e"></i><span class="v">' +
+      (typeof v === 'number' ? money(v) : v) + '</span>' +
+      (done ? '<span class="tick">\u2713</span>' : '') + '</div>';
+  }).join('');
+  const claim = $('#dayClaim'), sub = $('#daySub'), card = $('#daily');
+  const r = RUNGS[st.day - 1];
+  if(claim){
+    if(st.ready){
+      claim.className = 'claimBtn';
+      claim.innerHTML = '<i class="adg"></i>WATCH &amp; CLAIM' +
+        (typeof r === 'number' ? '<i class="e"></i>' + money(r) : '');
+      sub.innerHTML = 'ONE A DAY &nbsp;&middot;&nbsp; THE NEXT RUNG OPENS IN 24 HOURS';
+    } else {
+      claim.className = 'claimBtn off';
+      claim.textContent = 'DAY ' + st.day + ' IN ' + hhmmss(st.left);
+      sub.innerHTML = 'CLAIMED &nbsp;&middot;&nbsp; DAY ' + st.day + ' IS WAITING';
+    }
+  }
+  if(card){
+    card.classList.toggle('locked', !st.ready);
+    $('#dayNo').textContent = 'DAY ' + st.day;
+    $('#dayCta').innerHTML = st.ready
+      ? '<i class="adg"></i>CLAIM' + (typeof r === 'number' ? ' ' + money(r) : '')
+      : hhmmss(st.left);
+  }
+}
+
+/* ---- the revive beat -----------------------------------------------------
+   Offered BEFORE anything about the run is recorded, because a run that is
+   about to carry on has not ended. Decline, or let the ring run out, and
+   finishNow() runs exactly as finish() always did. */
+const REVIVE_SECS = 6;
+let rvTimer = 0;
+function reviveOffer(){
+  if(!PERK.revive() || game.revived) return false;
+  if(game.dist / UPM < 150) return false;      // not in the opening seconds
+  const el = $('#revive'); if(!el) return false;
+  $('#rvScore').textContent = Math.floor(game.dist/UPM) + ' m';
+  el.classList.add('show');
+  const fill = $('#rvFill');
+  let t = REVIVE_SECS;
+  fill.style.transition = 'none'; fill.style.width = '100%';
+  requestAnimationFrame(() => {
+    fill.style.transition = 'width ' + REVIVE_SECS + 's linear';
+    fill.style.width = '0%';
+  });
+  clearTimeout(rvTimer);
+  rvTimer = setTimeout(reviveNo, REVIVE_SECS * 1000);
+  return true;
+}
+function reviveNo(){
+  clearTimeout(rvTimer);
+  $('#revive').classList.remove('show');
+  finishNow();
+}
+function reviveYes(){
+  clearTimeout(rvTimer);
+  rewardedAd().then(() => {
+    $('#revive').classList.remove('show');
+    game.revived = true;
+    /* CLEAR THE ROAD, THEN PUT HIM BACK ON IT. Reviving into the piece that
+       killed you is not a revive, and the ragdoll has carried him somewhere
+       the run does not know about -- so everything in flight goes and he is
+       replaced at the odometer, which is the one position the world and the
+       counter both agree on. */
+    game.obstacles.length = 0; game.crows.length = 0; game.parts.length = 0;
+    game.drop = null; game.crowWait = 0; game.crowN = 0;
+    rag.alive = false;
+    player.x = game.dist; player.y = 0; player.vy = 0; player.onGround = true;
+    player.state = 'run'; player.stateT = 0; player.thrusting = false;
+    player.landT = 0; player.stumbleT = 0; player.near = 0; player.nearT = 0;
+    game.mode = 'play';
+    game.freeze = 0; game.timeScale = 1; game.tsTarget = 1; game.shake = 0;
+    game.invuln = 2.4;                       // and it blinks, so it is visible
+    game.goT = GO_TIME;                      // the 3-2-1, not straight into a fence
+    game.spawnT = Math.max(game.spawnT, GO_TIME + 1.2);
+    game.crowT  = Math.max(game.crowT,  GO_TIME + 4);
+    game.dropT  = Math.max(game.dropT || 0, 6);
+    elHud.classList.add('on'); elOver.classList.remove('show');
+    S.cheer(); musicScene('play');
+  });
+}
+
+/* ============================================================
+   THE SHELL ITSELF
+   ============================================================
    `META.open` is read by thrustOn, which is why it is a flag rather than a
    query of the DOM: a press must be cheap to reject. */
 const META = {
@@ -8641,87 +9172,70 @@ const META = {
     this.el.classList.add('show');
     $$('#shop .tab').forEach(b => b.classList.toggle('on', b.dataset.tab === this.tab));
     $$('#shop .pane').forEach(p => p.classList.toggle('on', p.dataset.pane === this.tab));
+    shopDraw();
     this.open = true;
     thrustOff();                       // a press that opened this must not linger
   },
   hide(){
     if(!this.el) return;
     this.el.classList.remove('show');
+    $('#dailyM').classList.remove('show');
     if(game.mode === 'menu') elMenu.classList.add('show');
     this.open = false;
   }
 };
-const $$ = s => Array.prototype.slice.call(document.querySelectorAll(s));
 
-/* The daily ladder. Seven rungs, and the seventh is not eggs -- a ladder is
-   sold by its end, so the reason to come back on day four has to be visible
-   on day one. The state shown here is fixed: wiring it to a real clock is the
-   next change, and it belongs with the economy rather than with the layout. */
-const DAILY = { day: 3, claimed: false, rungs: [100, 150, 250, 400, 600, 900, 'A HAT'] };
-function dailyDraw(){
-  const lad = $('#ladder'); if(!lad) return;
-  lad.innerHTML = DAILY.rungs.map((v, i) => {
-    const n = i + 1;
-    const done = n < DAILY.day || (n === DAILY.day && DAILY.claimed);
-    const now  = n === DAILY.day && !DAILY.claimed;
-    const cls  = ['dday', done ? 'done' : (now ? 'now' : 'lk'),
-                  i === 6 ? 'last' : ''].filter(Boolean).join(' ');
-    return '<div class="' + cls + '"><span class="d">DAY ' + n + '</span>' +
-           '<i class="e"></i><span class="v">' + v + '</span>' +
-           (done ? '<span class="tick">\u2713</span>' : '') + '</div>';
-  }).join('');
-
-  const claim = $('#dayClaim'), sub = $('#daySub'), card = $('#daily');
-  if(DAILY.claimed){
-    /* A locked button with no clock reads as broken, so the clock IS the
-       button -- and nothing else on the card moves between the two states. */
-    claim.className = 'claimBtn off';
-    claim.textContent = 'DAY ' + (DAILY.day + 1) + ' IN 06:41:22';
-    sub.innerHTML = 'DAY ' + DAILY.day + ' CLAIMED &nbsp;&middot;&nbsp; DAY ' + (DAILY.day + 1) + ' IS WAITING';
-    if(card){
-      card.classList.add('locked');
-      $('#dayNo').textContent = 'DAY ' + (DAILY.day + 1);
-      $('#dayCta').textContent = '06:41:22';
-    }
-  } else {
-    claim.className = 'claimBtn';
-    claim.innerHTML = '<i class="adg"></i>WATCH &amp; CLAIM<i class="e"></i>' + DAILY.rungs[DAILY.day - 1];
-    sub.innerHTML = 'ONE A DAY &nbsp;&middot;&nbsp; THE NEXT RUNG OPENS IN 24 HOURS';
-    if(card){
-      card.classList.remove('locked');
-      $('#dayNo').textContent = 'DAY ' + DAILY.day;
-      $('#dayCta').innerHTML = '<i class="adg"></i>CLAIM ' + DAILY.rungs[DAILY.day - 1];
-    }
-  }
+/* The strip's numbers. Cheap enough to call after every transaction. */
+function metaNums(){
+  const n = money(eggs());
+  const a = $('#mEggs'), b = $('#sEggs'), c = $('#mBest');
+  if(a) a.textContent = n;
+  if(b) b.textContent = n;
+  if(c) c.textContent = money(Math.round(game.best || 0));
+  const noads = $('#mNoAds');
+  if(noads) noads.style.display = SAVE.noAds ? 'none' : '';
 }
-
-/* The strip's two numbers, and whether the shell is drawn at all.
-   firstRun is re-read rather than cached, because `dgh.played` is written the
-   first time you die and the menu you come back to is the second-visit one. */
 function metaSync(){
   try{ game.firstRun = !localStorage.getItem('dgh.played'); }catch(e){}
   document.body.classList.toggle('firstrun', !!game.firstRun);
-  const n = (game.eggBank || 0).toLocaleString('en-US');
-  const e1 = $('#mEggs'), e2 = $('#sEggs'), b = $('#mBest');
-  if(e1) e1.textContent = n;
-  if(e2) e2.textContent = n;
-  if(b)  b.textContent = Math.round(game.best || 0).toLocaleString('en-US');
+  metaNums();
   dailyDraw();
 }
 
 function metaBind(){
   META.el = $('#shop');
   if(!META.el) return;
-  /* One listener for every door, tab and plus: they all say where to go. */
+  skinApply(SAVE.skin);
+  /* One listener for the whole shell: every control says what it is in a data
+     attribute, so adding one is a row in the catalogue and nothing else. */
   document.addEventListener('click', e => {
-    const t = e.target && e.target.closest ? e.target.closest('[data-tab]') : null;
+    const t = e.target && e.target.closest ? e.target.closest(
+      '[data-tab],[data-buy],[data-skin],[data-iap],[data-eggs]') : null;
     if(!t) return;
-    S.click(); META.show(t.dataset.tab);
+    e.stopPropagation();
+    if(t.dataset.tab){ S.click(); META.show(t.dataset.tab); return; }
+    if(t.dataset.buy){ const p = t.dataset.buy.split(':'); buy(p[0], p[1]); return; }
+    if(t.dataset.skin){ buySkin(t.dataset.skin); return; }
+    if(t.dataset.eggs){
+      const n = +t.dataset.eggs;
+      iapBuy('eggs' + n, money(n) + ' EGGS').then(() => { earn(n); shopDraw(); });
+      return;
+    }
+    if(t.dataset.iap){
+      const k = t.dataset.iap;
+      iapBuy(k, k === 'noads' ? 'NO ADS' : k === 'bundle' ? 'NO ADS + 5,000' : 'EGG DOUBLER')
+        .then(() => {
+          if(k === 'noads' || k === 'bundle'){ SAVE.noAds = true; saveNow(); }
+          if(k === 'bundle') earn(5000);
+          if(k === 'doubler'){ SAVE.doubler = true; saveNow(); }
+          shopDraw();
+        });
+    }
   });
   $('#shopBack').addEventListener('click', ()=>{ S.click(); META.hide(); });
   $('#mNoAds').addEventListener('click', ()=>{ S.click(); META.show('store'); });
   const dm = $('#dailyM');
-  const openDaily  = ()=>{ S.click(); elMenu.classList.remove('show');
+  const openDaily  = ()=>{ S.click(); dailyDraw(); elMenu.classList.remove('show');
                            dm.classList.add('show'); META.open = true; thrustOff(); };
   const closeDaily = ()=>{ S.click(); dm.classList.remove('show');
                            if(game.mode === 'menu') elMenu.classList.add('show');
@@ -8729,18 +9243,31 @@ function metaBind(){
   $('#daily').addEventListener('click', openDaily);
   $('#dayX').addEventListener('click', closeDaily);
   $('#dayLater').addEventListener('click', closeDaily);
-  /* Nothing is spent, so claiming only advances the card's own state -- which
-     is enough to show both halves of the design without inventing an economy. */
-  $('#dayClaim').addEventListener('click', ()=>{
-    if(DAILY.claimed) return;
-    S.egg(); DAILY.claimed = true; dailyDraw();
-  });
+  $('#dayClaim').addEventListener('click', dailyClaim);
+  $('#rvYes').addEventListener('click', reviveYes);
+  $('#rvNo').addEventListener('click', reviveNo);
   window.addEventListener('keydown', e => {
-    if(e.key === 'Escape' && META.open){ META.hide(); dm.classList.remove('show');
-                                         if(game.mode==='menu') elMenu.classList.add('show');
-                                         META.open = false; }
+    if(e.key === 'Escape' && META.open) META.hide();
   });
+  // the corner card counts down while you look at it
+  setInterval(() => { if(game.mode === 'menu' && !dailyState().ready) dailyDraw(); }, 1000);
   metaSync();
+}
+
+/* THE FREE HIT. Spent here rather than at each collision test, because every
+   one of them ends up in die(). It hands out invulnerability rather than
+   simply ignoring the hit, or he stands inside the wire and dies on the frame
+   after this one. */
+function softSave(o){
+  if((game.softLeft||0) <= 0) return false;
+  game.softLeft = 0;
+  game.invuln = 1.6;
+  if(o) o.hitBy = true;
+  addShake(14); game.flash = 0.4; S.bonk(); S.stumble();
+  player.stumbleT = 0.5;
+  featherBurst(player.x, GROUND - player.y - 60, 10, 240);
+  pop(player.x, GROUND - player.y - 210, 'SHAKEN OFF!', C.mint, 42, -70);
+  return true;
 }
 
 function boot(){
