@@ -39,6 +39,15 @@ JOBS = [
      'atrim=start=1.0,asetpts=N/SR/TB', 1, 'loop'),
     ('audio/sfx/truckland', os.path.join(DESK, 'truck-land-14.wav'),
      'atrim=start=0.009,asetpts=N/SR/TB', 1, 'sfx'),
+    # THE FOOTSTEP IS TRIMMED HARD, and not to save the 8KB. The recording runs
+    # a full second, but it is down to 5% of its peak by 0.21s and the rest is
+    # a room tail -- and at a sprint the game asks for a step every 0.17s. Left
+    # whole, three of them would be overlapping at all times and a run would
+    # turn to porridge. 0.24s with a fade keeps the whole body of it and lets
+    # each step end before the next two arrive.
+    ('audio/sfx/step', os.path.join(DESK, 'step-4.wav'),
+     'atrim=start=0:duration=0.24,asetpts=N/SR/TB,afade=t=out:st=0.195:d=0.045',
+     1, 'sfx'),
     ('audio/music_ride_b',
      os.path.join(DESK, 'monster-truck-ignition-and-rev-as-a-short-punc-1788718695372-1.mp3'),
      'atrim=start=6.0:duration=36.0,asetpts=N/SR/TB,volume=0.865', 2, 'music'),

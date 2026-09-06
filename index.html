@@ -1818,6 +1818,89 @@ function engineBedTick(dt){
   }catch(e){}
 }
 
+/* ============================================================
+   THE RUNNING LOOP
+   ============================================================
+   The user supplied one footstep and asked for it LOOPED while the chicken is
+   on the ground, rather than fired per footfall. That is a different thing
+   from the engine bed it is modelled on, and the difference is the whole
+   problem: an engine idles at its own rate and nothing on screen contradicts
+   it, but a footstep that does not land when the foot lands is instantly
+   wrong, and it is wrong twice a stride.
+
+   So the loop is not free-running. Its PLAYBACK RATE is derived from the same
+   two numbers the animation uses -- game.speed and strideLen -- so the sample
+   is stretched to exactly one step per half phase-cycle, which is where the
+   legs put one. The run cycle advances `phase` by speed*dt/strideLen and a
+   foot lands at 0.0 and 0.5, so a step is due every strideLen/(2*speed)
+   seconds; the clip is STEP_LEN long, so the rate that fits it into that gap
+   is STEP_LEN*2*speed/strideLen. Speed up and the feet and the sound speed up
+   together, because they are reading the same clock.
+
+   The old per-footfall trigger is gone with it -- keeping both would play
+   every step twice. S.step survives for the two places that use it as an
+   IMPACT rather than as a gait: smashing a corn plant, and the cage. */
+const STEP_LEN = 0.24;          // the trimmed clip, in seconds
+/* Matched to the footsteps it replaces rather than picked: the old
+   synthesised step rendered at a peak of 0.031 slow and 0.042 sprinting, and
+   0.060 against this recording's 0.861 peak lands in the middle of that. It is
+   a loop, but it is not a drone -- the clip is one step and a decay, so peak
+   is the right thing to match. */
+const STEP_VOL = 0.060;
+const STEPB = { g:null, src:null };
+
+function stepBedOn(){
+  if(STEPB.g || !A.started || !A.on) return;
+  const b = SMP.buf['step']; if(!b) return;      // no file: the synth still ticks
+  const c = actx(); if(!c) return;
+  try{
+    const t = c.currentTime;
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(STEP_VOL, t + 0.06);   // quick: a foot is not a fade
+    g.connect(A.sfxGain);
+    const src = c.createBufferSource();
+    src.buffer = b; src.loop = true;
+    const lb = loopBounds('step', b, c);
+    src.loopStart = lb.s; src.loopEnd = lb.e;
+    src.connect(g); src.start(t);
+    STEPB.g = g; STEPB.src = src;
+  }catch(e){ A.err = e.message; }
+}
+
+function stepBedOff(){
+  if(!STEPB.g) return;
+  const c = actx();
+  try{
+    const t = c ? c.currentTime : 0;
+    STEPB.g.gain.cancelScheduledValues(t);
+    STEPB.g.gain.setValueAtTime(Math.max(0.0001, STEPB.g.gain.value), t);
+    /* 60ms, not 300. Leaving the ground is the one moment this has to be
+       CRISP -- a run that keeps running for a third of a second after the
+       chicken is airborne is the sound telling the player something the
+       screen is not. */
+    STEPB.g.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
+    STEPB.src.stop(t + 0.10);
+  }catch(e){ A.err = e.message; }
+  STEPB.g = STEPB.src = null;
+}
+
+function stepBedTick(dt){
+  const p = player;
+  const want = game.mode === 'play' && p.onGround && !riding()
+               && A.started && A.on && game.speed > 40;
+  if(want && !STEPB.g) stepBedOn();
+  else if(!want && STEPB.g) stepBedOff();
+  if(!STEPB.g) return;
+  const c = actx(); if(!c) return;
+  try{
+    // the animation's own numbers: one clip per half stride
+    const strideLen = lerp(300, 420, clamp(game.diff, 0, 1));
+    const rate = clamp(STEP_LEN*2*game.speed/strideLen, 0.45, 2.6);
+    STEPB.src.playbackRate.setTargetAtTime(rate, c.currentTime, 0.05);
+  }catch(e){}
+}
+
 /* one bang per cycle: flat, then a spike near the top of the saw's travel */
 function pulseCurve(thr){
   const n = 257, k = new Float32Array(n);
@@ -1964,7 +2047,7 @@ function playSample(name, vol, rate, key){
    two generated sounds in the game and both of their moments are silent now at
    the user's request, so the names, the entries in S and the files are all
    gone rather than left behind to be fetched and never played. */
-const SMP_HAVE = ['truckget', 'truckidle', 'truckland'];
+const SMP_HAVE = ['truckget', 'truckidle', 'truckland', 'step'];
 function warmSamples(){ SMP_HAVE.forEach(loadSample); }
 
 let stepFoot = 0;                 // which foot
@@ -6081,7 +6164,7 @@ function startRun(){
   player.flapT=0; player.flapBeat=-1; player.flapLag=0;
   player.thrusting=false;                                   // never start a run mid-thrust
   player.state='run'; player.stateT=0; player.landT=0; player.stumbleT=0;
-  player.rideLand=0; player.rideJumps=0; game.boostT=0;
+  player.rideLand=0; player.rideJumps=0; game.boostT=0; stepBedOff();
   player.near=0; player.nearT=0; player.nearCool=0;
   player.beat=''; player.beatT=0;
   cam.x = player.x - PX;         // ...and the camera holds him at the play mark
@@ -6666,7 +6749,7 @@ function update(dt, rawDt){
   updateCrows(dt);                     // same: a crow already launched keeps coming
 
   updateParticles(dt);
-  musicTick(); trackTick(rawDt); engineBedTick(rawDt);
+  musicTick(); trackTick(rawDt); engineBedTick(rawDt); stepBedTick(rawDt);
   /* the delayed half of the jump. A timer rather than a setTimeout so it
      cannot fire into a dead run, a paused tab, or a ride that already ended. */
   if(game.boostT > 0 && (game.boostT -= rawDt) <= 0){
@@ -7056,7 +7139,9 @@ function updatePlay(dt){
     const a = prev - Math.floor(prev), b = p.phase - Math.floor(p.phase);
     const crossed = (x)=> (a < x && (b > x || b < a));
     if(crossed(0.0) || crossed(0.5)){
-      S.step(speedT);
+      /* No S.step() here any more: stepBedTick loops the recording instead,
+         stretched to land on exactly these crossings. Both would be every
+         step played twice. The dust still puffs per footfall. */
       spark(p.x-24, GROUND, 3, {col:'rgba(255,242,222,.45)', a0:Math.PI*1.1,a1:Math.PI*1.85, s0:50,s1:150, l0:0.18,l1:0.4, r0:2,r1:5, g:420});
     }
   }
@@ -8867,8 +8952,8 @@ const SHOP = {
          thing you already own -- it starts at 1, so cost[0] is the slot for a
          vehicle you have to buy and is simply never charged here. Getting this
          off by one billed the first upgrade at the second upgrade's price and
-         left the top level unreachable, and it was self-consistent enough on
-         screen that only counting the eggs caught it. */
+         left level 5 unreachable, and it was self-consistent enough on screen
+         that only counting the eggs caught it. */
       cost:[0, 850, 1800, 3200],
       says:['', 'As it always was', 'Turns up 30% more often',
             'Survives one hit before it pops', 'Turns up twice as often'] },
@@ -9452,6 +9537,7 @@ function boot(){
        captured copy would be a lie the moment the scene did */
     musicFor, musicScene, trackTick, playSample, loadSample,
     ENG, engineBedTick, engineBedOn, engineBedOff, vroom, ENG_H,
+    STEPB, stepBedTick, stepBedOn, stepBedOff, STEP_LEN,
     samples: () => Object.keys(SMP.buf),
     music: () => ({ now: musicNow,
       ride: RIDE_TRACK ? { vol:+RIDE_TRACK.volume.toFixed(3), paused:RIDE_TRACK.paused,
