@@ -496,11 +496,42 @@ unconditionally and toggles `body.portrait`, which shows the `#rotate` gate.
 The run is **frozen** behind that gate (`frame()` renders but does not update),
 so turning the phone mid-run never costs a life.
 
-`lockLandscape()` runs on the first gesture, from `audioInit`. It is
-best-effort and every failure is swallowed: a phone only honours an orientation
-lock from inside fullscreen and only off a user gesture, and desktop is left
-alone entirely (`TOUCH` guard). The `#rotate` gate is what actually guarantees
-landscape; the lock is a convenience.
+### Fullscreen on the turn
+
+Turning the phone sideways is the whole gesture: `onOrient()` calls
+`goImmersive()`, which asks for fullscreen on `<html>` and chains
+`screen.orientation.lock('landscape')` onto it. **The request is made
+synchronously inside the orientation handler.** The Fullscreen spec allows a
+request triggered by *a user generated orientation change* as well as one
+triggered by a user gesture, and that permission is spent the moment you defer
+it — putting the call behind the `setTimeout(resize, 120)` that handler already
+had would throw it away. The resizes stay deferred (twice: 120ms for the
+viewport, 450ms for the fullscreen transition landing); only the request is
+immediate.
+
+`isLandscape()` reads `screen.orientation.type` **before** falling back to
+`innerWidth > innerHeight`. This is not defensive padding: measured over CDP, at
+the instant the orientation handler runs the viewport is still the old portrait
+one (`innerWidth 412 > innerHeight 915` is false) while `screen.orientation.type`
+already says `landscape-primary`. Comparing the viewport there simply never
+fires.
+
+Both `orientationchange` and `screen.orientation`'s `change` fire for one
+physical turn, so `onOrient` ignores a second call within 500ms — otherwise
+every turn asks twice.
+
+`goImmersive()` also runs on the first gesture, from `audioInit` (via the
+`lockLandscape` alias), for a player who arrives already sideways. `audioInit`
+runs on *every* touch, so the already-immersive case early-returns on
+`inFullscreen() && lockDone`. Leaving fullscreen sets `fsOptOut`, and a player
+who deliberately swipes out is **not** dragged back in by their next flap —
+only by turning the phone again, which re-arms it.
+
+All of it is best-effort and every failure is swallowed. iPhone Safari has no
+element fullscreen at all (the `apple-mobile-web-app-capable` meta only helps a
+home-screen install), and desktop is left alone entirely (`TOUCH` guard). The
+`#rotate` gate is still what actually guarantees landscape; fullscreen is the
+convenience.
 
 The menu is laid out **on the right half** (`padding-left:46vw`,
 `align-items:flex-end`) so the left stays clear — that is where he is waiting in
