@@ -2359,6 +2359,59 @@ missing audio file would have silently disabled the ride music permanently, on
 exactly the devices that could not load it.** Game state does not belong behind
 an asset check.
 
+## Sounds are GENERATED again, and the riff that never played (2026-09-06)
+
+**The rule reversed, at the user's instruction:** "all sounds i ask you about
+should be gemini studio generated, even the kick of the cage and the Boom".
+The earlier "synthesise them" note is superseded. `tools/gen_sfx.py` makes
+them, `tools/cut_sfx.py` cuts them, and the game plays them as samples through
+`A.sfxGain`.
+
+### The riff was never playing, twice over
+
+First: `RIDE_TRACK.play()` sat inside `if(rideWanted > 0)`, and the 0.85s engine
+hold sets rideWanted to 0 on the ONE frame `musicScene` runs -- and musicScene
+only runs when the scene CHANGES. play() was never reached. The delay I added
+to make the engine audible had removed the music entirely.
+
+Then, having fixed that: the hold takes the volume to zero, and the
+pause-when-silent line then PAUSED the element, with nothing left to start it
+again. It played for a frame and stopped. **A fade that can reach zero and a
+"pause when silent" rule are a trap together**; trackTick now restarts the
+track whenever it should be audible and is not, and only pauses once the scene
+has actually left the truck.
+
+### Why the synthesised vroom never sounded like an engine
+
+It was built out of `wob`, which bends an oscillator's PITCH -- and a wavering
+pitch is a siren or a swanee whistle, never a motor. **An engine is a pulse
+train: what rises when it revs is the RATE OF THE BANGS.** The synth version
+was rebuilt to gate amplitude at the firing rate (a saw through a wave shaper
+opening a gain), which measured correctly -- 5 bangs/sec rising to 11 -- and it
+is now only the fallback, because the user asked for the real thing.
+
+### Getting audio out of the studio at all
+
+- **"MUSIC STING" is the phrasing.** "sound effect" returns a written Foley
+  recipe; even "audio sting" got routed to chat on 9 of 26 attempts.
+- **Capacity failures take whatever is LAST in the queue**, so these are asked
+  for one at a time (`vroom-only`, `kick-only`, `boom-only` groups exist for
+  exactly that).
+- **The gesture is not at the front of the track.** The studio returns ~60s
+  with the sound somewhere inside -- truckjump's was at 15.08s. `cut_sfx.py`
+  finds the loudest point and walks BACKWARDS to where it starts, because the
+  first onset is usually a false start the model wandered through.
+
+### `SMP_HAVE` is a list on purpose
+
+A generated sound arrives when it arrives, and half of them fail. The game must
+not request a file that has not been made: that is a 404 on every load. The
+available set is declared, `loadSample` refuses anything outside it, and each
+entry in `S` falls back to its synth version until the sample lands. One line
+to edit when a new one arrives.
+
+**Landed so far: megg, truckjump. Still failing: vroom, kick, boom.**
+
 ## Next
 
 - Nothing spends the eggs yet.

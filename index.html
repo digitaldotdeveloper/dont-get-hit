@@ -734,6 +734,7 @@ const A = {
 function audioInit(){
   lockLandscape();          // first gesture: ask the phone to stay landscape
   initTrack();
+  setTimeout(warmSamples, 0);   // once there is a context to decode into
   if(A.started) return;
   const AC = window.AudioContext||window.webkitAudioContext; if(!AC) return;
   A.ctx = new AC();
@@ -821,24 +822,142 @@ function noise(dur, f0, f1, vol, q, at){
 
    `f0`/`f1` are where the rev begins and ends -- low and slow for arriving,
    higher and faster for a jump. */
-function vroom(len, f0, f1, vol, at){
-  at = at || 0;
-  /* THE RIFF AND THE ENGINE LIVE IN THE SAME OCTAVE, and the riff is louder.
-     The first version was a low sawtooth under a down-tuned palm-muted guitar
-     starting on the same frame -- identical spectral space, music at 0.60
-     against a peak of 0.24, and the engine simply lost. It fired every time
-     and could not be heard, which measures as working and plays as missing.
+/* AN ENGINE IS A PULSE TRAIN, NOT A TONE WITH VIBRATO.
+   The first version was built out of `wob`, which bends an oscillator's PITCH
+   -- and a pitch that wavers is a siren, a theremin, a cartoon swanee whistle.
+   It is not a motor, which is why it never sounded like one however loud it
+   got. A four-stroke is a series of BANGS: what rises when it revs is the
+   RATE of the bangs, and the tone you hear is that rate, not a note somebody
+   is bending.
 
-     So the rev now also speaks in the UPPER MIDS, where the guitars are not:
-     a bright harmonic riding an octave and a fifth above the fundamental, and
-     an exhaust rasp pushed up and opened out. The weight stays underneath for
-     the chest; the part that CUTS is the top. */
-  wob(f0, f1, len, {type:'sawtooth', vol:vol*0.62, depth:f0*0.34, rate:26, at:at});
-  wob(f0*0.5, f1*0.5, len*1.06, {type:'square', vol:vol*0.42, depth:f0*0.17, rate:19, at:at});
-  wob(f0*3, f1*3, len*0.85, {type:'sawtooth', vol:vol*0.30, depth:f0*0.5, rate:26, at:at});
-  noise(len*0.92, f0*6, f1*7, vol*0.42, 0.7, at);        // rasp, up out of the mud
-  noise(0.10, 1600, 320, vol*0.60, 0.8, at);             // the crack of it catching
+   So this gates the sound in AMPLITUDE at the firing rate. A sawtooth LFO
+   through a wave shaper becomes a sharp repeating pulse; that pulse opens and
+   shuts the gain on two voices -- a saw for the body and filtered noise for
+   the combustion grit -- and the whole thing sweeps from `rpm0` to `rpm1`
+   bangs per second. Everything else about it falls out of that: the lumpiness
+   is real rather than added, the rev is one parameter, and at high rates the
+   pulses fuse into the flat snarl a truck makes at speed.
+
+   Built out of raw nodes rather than tone/wob/noise because none of those
+   expose a gain to modulate, and that gain is the entire idea. */
+function vroom(len, rpm0, rpm1, vol, at){
+  if(!A.started || !A.on) return;
+  const c = actx(); if(!c) return;
+  try{
+  const t = c.currentTime + (at || 0);
+  const out = c.createGain();
+  out.gain.setValueAtTime(0.0001, t);
+  out.gain.exponentialRampToValueAtTime(vol, t + 0.03);
+  out.gain.exponentialRampToValueAtTime(0.0001, t + len);
+  out.connect(A.sfxGain);
+
+  /* the firing pulse. A saw run through a shaper that is flat for most of its
+     range and spikes near the top: one short bang per revolution, and the duty
+     cycle stays put as the rate climbs. */
+  const lfo = c.createOscillator(); lfo.type = 'sawtooth';
+  lfo.frequency.setValueAtTime(rpm0, t);
+  lfo.frequency.exponentialRampToValueAtTime(Math.max(1, rpm1), t + len);
+  const shape = c.createWaveShaper();
+  const n = 257, curve = new Float32Array(n);
+  for(let i = 0; i < n; i++){
+    const x = i/(n-1)*2 - 1;                 // -1..1
+    curve[i] = x < 0.45 ? 0.12 : Math.pow((x - 0.45)/0.55, 0.6);
+  }
+  shape.curve = curve;
+  const gate = c.createGain(); gate.gain.value = 0;
+  lfo.connect(shape); shape.connect(gate.gain);
+
+  // body: a saw an octave under the firing rate, so it has a pitch to it
+  const saw = c.createOscillator(); saw.type = 'sawtooth';
+  saw.frequency.setValueAtTime(rpm0*0.5, t);
+  saw.frequency.exponentialRampToValueAtTime(Math.max(20, rpm1*0.5), t + len);
+  const sawG = c.createGain(); sawG.gain.value = 0.55;
+
+  // grit: broadband, opened up by a filter that climbs with the revs
+  const nz = c.createBufferSource(); nz.buffer = noiseBuffer(c); nz.loop = true;
+  const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 0.9;
+  lp.frequency.setValueAtTime(rpm0*14, t);
+  lp.frequency.exponentialRampToValueAtTime(Math.max(200, rpm1*16), t + len);
+  const nzG = c.createGain(); nzG.gain.value = 0.75;
+
+  saw.connect(sawG); sawG.connect(gate);
+  nz.connect(lp); lp.connect(nzG); nzG.connect(gate);
+  gate.connect(out);
+
+  lfo.start(t); saw.start(t); nz.start(t);
+  lfo.stop(t + len + 0.05); saw.stop(t + len + 0.05); nz.stop(t + len + 0.05);
+  }catch(e){ A.err = e.message; }
 }
+/* ============================================================
+   SAMPLES
+   ============================================================
+   Everything else in `S` is synthesised. These are not: the user asked for the
+   sounds to be generated in Gemini Studio, so they arrive as files and this is
+   what plays them.
+
+   WHAT A SAMPLE COSTS, stated plainly because the synth versions cost none of
+   it: a fetch, a decode, memory for the buffer, and a first play that cannot
+   happen until all three have finished. What it buys is a sound a synthesiser
+   cannot make -- a real engine, a real cartoon boom -- which is the trade the
+   user made deliberately.
+
+   THREE RULES HOLD IT TOGETHER:
+
+   1. THEY GO THROUGH A.sfxGain like every other sound, so mute works for free
+      and the ride music's sidechain ducks against them correctly.
+   2. THEY ARE LOADED LATE AND NEVER GATE ANYTHING. `imqLoad` is for images and
+      the boot gate counts images; these fetch on their own after the first
+      gesture, and until one arrives its entry in `S` falls back to the synth
+      version. A pickup that is silent for the first two seconds of a session
+      is worse than one that is briefly the old sound.
+   3. A MISSING FILE IS SILENT, NOT AN ERROR. Same bargain the art makes.
+
+   Decoded once and reused: decodeAudioData on every press would allocate a
+   buffer per press and is the classic way to make a game stutter on its own
+   sound effects. */
+const SMP = { buf:{}, want:{}, ext:null };
+function sampleExt(){
+  if(SMP.ext) return SMP.ext;
+  try{ SMP.ext = new Audio().canPlayType('audio/ogg; codecs=opus') ? '.ogg' : '.mp3'; }
+  catch(e){ SMP.ext = '.mp3'; }
+  return SMP.ext;
+}
+function loadSample(name){
+  if(SMP.want[name] || SMP_HAVE.indexOf(name) < 0) return;
+  SMP.want[name] = 1;
+  const c = actx(); if(!c) { SMP.want[name] = 0; return; }   // retry after a gesture
+  fetch('audio/sfx/' + name + sampleExt())
+    .then(r => r.ok ? r.arrayBuffer() : Promise.reject(r.status))
+    .then(b => new Promise((ok, no) => c.decodeAudioData(b, ok, no)))
+    .then(buf => { SMP.buf[name] = buf; })
+    .catch(() => {});                       // silent: the synth fallback stands
+}
+function playSample(name, vol, rate){
+  const b = SMP.buf[name];
+  if(!b) { loadSample(name); return false; }
+  if(!A.started || !A.on) return true;      // "handled": do not double up
+  const c = actx(); if(!c) return false;
+  try{
+    const src = c.createBufferSource(); src.buffer = b;
+    if(rate) src.playbackRate.value = rate;
+    const g = c.createGain(); g.gain.value = vol === undefined ? 1 : vol;
+    src.connect(g); g.connect(A.sfxGain); src.start();
+  }catch(e){ A.err = e.message; }
+  return true;
+}
+/* Warm them once audio exists. Not on the boot gate: they are a second of
+   sound each and the gate is already the longest thing between a tap and a
+   game. */
+/* WHICH SAMPLES ACTUALLY EXIST. A generated sound arrives when it arrives --
+   Gemini's audio capacity fails on roughly half of them and they get re-run
+   over days -- so the game cannot assume the whole set is there. Asking for a
+   file that has not been made yet is a 404 on every single load, which is
+   noise in the network log and a lie in the asset count; the fallback is meant
+   to be the SYNTH version, not a failed request.
+   One line to edit when a new one lands: tools/cut_sfx.py prints the names. */
+const SMP_HAVE = ['megg', 'truckjump'];
+function warmSamples(){ SMP_HAVE.forEach(loadSample); }
+
 let stepFoot = 0;                 // which foot
 /* Everything else in here is a one-shot. Flying needs the opposite, and it is
    the single biggest thing missing from the flight: the sound of speed is not
@@ -1051,7 +1170,8 @@ const S = {
   cagerattle(){ noise(0.06, 1800, 900, 0.05, 4.0); tone(300,0.05,'square',0.035,240); },
   bedcreak(){ wob(420, 180, 0.22, {type:'sawtooth', vol:0.055, depth:22, rate:9});
               noise(0.10, 900, 380, 0.035, 2.2); },
-  doorbreak(){                              // a steel door losing an argument
+  doorbreak(){
+    if(playSample('boom', 1.0)) return;       // the generated cartoon boom                              // a steel door losing an argument
     tone(90,  0.44, 'sawtooth', 0.30, 32);                     // the weight of it
     noise(0.40, 1100, 70, 0.34, 0.6);                          // the tear
     tone(1400, 0.09, 'square', 0.16, 240);                     // the clang
@@ -1060,7 +1180,8 @@ const S = {
     tone(1800, 0.07, 'sine', 0.10, 2600, null, 0.02);          // the lock pings off
     tone(120, 0.16, 'square', 0.11, 70, null, 0.30);           // it lands
   },
-  cagebreak(){                              // the door leaves the building
+  cagebreak(){
+    if(playSample('kick', 0.95)) return;      // the generated kick                              // the door leaves the building
     tone(120, 0.30, 'sawtooth', 0.24, 40);
     noise(0.34, 1500, 120, 0.30, 0.7);                       // splintering
     wob(300, 90, 0.30, {type:'square', vol:0.16, depth:60, rate:15});
@@ -1122,6 +1243,7 @@ const S = {
      rather than a new instrument, and there is no interval in it that can
      sound wrong against the music underneath. */
   megg(){
+    if(playSample('megg', 0.85)) return;           // generated; synth below is the fallback
     const lad = [784, 988, 1175, 1568];            // G5 B5 D6 G6
     lad.forEach((f, i) => {
       tone(f, 0.16 - i*0.018, 'triangle', 0.13, null, null, i*0.055);
@@ -1139,10 +1261,14 @@ const S = {
      climbs a long way, because this is the one moment the truck gets to be
      enormous before it has to be a game object. */
   truckget(){
+    if(playSample('vroom', 1.0)) return;                     // the generated engine
     noise(0.14, 260, 90, 0.22, 0.9);                         // the clunk
     tone(66, 0.30, 'square', 0.18, 44);                      // ...with weight under it
-    vroom(0.90, 58, 205, 0.30, 0.05);
-    vroom(0.55, 120, 330, 0.16, 0.62);                       // and a second blip on top
+    /* rpm is BANGS PER SECOND now: a lumpy idle you can count, swinging up to
+       a snarl where the pulses fuse. Two revs, because nobody starts a big
+       engine and drives off on one. */
+    vroom(0.85, 17, 62, 0.34, 0.06);
+    vroom(0.55, 30, 88, 0.22, 0.70)
   },
 
   /* THE TRUCK LEAVING THE GROUND. The suspension lets go first -- that is the
@@ -1165,8 +1291,9 @@ const S = {
        `rideDuck` is read by trackTick; 0.25s is short enough that the music
        reads as pumping with the truck rather than as dropping out. */
     game.rideDuck = 0.25;
+    if(playSample('truckjump', 0.95)) return;                // the generated launch
     tone(52, 0.18, 'sine', 0.20, 30);                        // the springs unloading
-    vroom(0.40, 118, 355, 0.27);
+    vroom(0.42, 34, 96, 0.32);                               // a stab of throttle
   },
 };
 /* music: a light 8-step groove that speeds up with the run */
@@ -1292,9 +1419,17 @@ function musicScene(which){
   if(menuWanted > 0 && MENU_TRACK && MENU_TRACK.paused){
     const pr = MENU_TRACK.play(); if(pr && pr.catch) pr.catch(()=>{});
   }
-  if(rideWanted > 0 && RIDE_TRACK){
+  /* START IT ON THE SCENE, NOT ON THE VOLUME.
+     This used to read `if(rideWanted > 0 && RIDE_TRACK)`, and then the 0.85s
+     engine hold set rideWanted to 0 on the one frame musicScene runs -- and
+     musicScene only runs when the scene CHANGES, so play() was never reached
+     and the riff never started at all. The hold was supposed to delay the
+     music by a beat; it removed it.
+     The element starts here at volume 0; trackTick decides how loud it is. */
+  if(which === 'ride' && RIDE_TRACK){
     if(RIDE_TRACK.preload === 'none'){ RIDE_TRACK.preload = 'auto'; RIDE_TRACK.load(); }
     if(RIDE_TRACK.paused){
+      RIDE_TRACK.volume = 0;
       try{ RIDE_TRACK.currentTime = 0; }catch(e){}   // start on the downbeat
       const pr = RIDE_TRACK.play(); if(pr && pr.catch) pr.catch(()=>{});
     }
@@ -1385,7 +1520,20 @@ function trackTick(dt){
     // 4.5/s could not complete a 0.25s duck; the dip has to be faster than
     // the thing it is making room for
     RIDE_TRACK.volume = clamp(RIDE_TRACK.volume + (rt - RIDE_TRACK.volume) * Math.min(1, dt*11), 0, 1);
-    if(RIDE_TRACK.volume < 0.001 && !RIDE_TRACK.paused && rt === 0) RIDE_TRACK.pause();
+    /* SELF-HEALING, because the hold pauses it. The engine hold takes rideWanted
+       to 0 for 0.85s, the volume follows it to zero, and the line below then
+       PAUSES the element -- and musicScene, which is the only other place that
+       calls play(), does not run again because the scene has not changed. The
+       riff started and was immediately stopped, which is why the fix that got
+       play() called still produced silence. If it should be audible and it is
+       not running, start it. */
+    if(rt > 0.001 && RIDE_TRACK.paused){
+      const pr = RIDE_TRACK.play(); if(pr && pr.catch) pr.catch(()=>{});
+    }
+    // ...and only stop it once the scene has actually left the truck, not
+    // merely because it is ducked or held
+    if(RIDE_TRACK.volume < 0.001 && !RIDE_TRACK.paused && rt === 0 && musicNow !== 'ride')
+      RIDE_TRACK.pause();
   }
   if(!TRACK) return;
   const target = A.on ? trackWanted : 0;
@@ -7309,7 +7457,9 @@ function boot(){
     worldSpeed, distSpeed, rideAir, rideImpulse, rideJump, UPM, LOAD,
     /* the music, as a function rather than a value: musicNow changes and a
        captured copy would be a lie the moment the scene did */
-    musicFor, musicScene, trackTick, music: () => ({ now: musicNow,
+    musicFor, musicScene, trackTick, playSample, loadSample,
+    samples: () => Object.keys(SMP.buf),
+    music: () => ({ now: musicNow,
       ride: RIDE_TRACK ? { vol:+RIDE_TRACK.volume.toFixed(3), paused:RIDE_TRACK.paused } : null,
       menu: MENU_TRACK ? { vol:+MENU_TRACK.volume.toFixed(3), paused:MENU_TRACK.paused } : null,
       chase: TRACK ? { vol:+TRACK.volume.toFixed(3), paused:TRACK.paused } : null }) };

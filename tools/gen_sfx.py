@@ -1,30 +1,23 @@
 # -*- coding: utf-8 -*-
-"""Generate the pickup and vehicle stings through Gemini Studio.
+"""Generate the game's sound effects and music through Gemini Studio.
 
-    python tools/gen_sfx.py            # queue and wait
+    python tools/gen_sfx.py            # the sfx set
+    python tools/gen_sfx.py music      # the ride's riff
     python tools/gen_sfx.py --fetch    # pull what is ready
 
-READ THIS BEFORE ASSUMING IT WILL WORK.
+EVERY SOUND THE USER ASKS FOR IS GENERATED HERE. Two things about the studio
+shape everything below, and both cost real time to learn:
 
-Every other sound in this game is SYNTHESISED in WebAudio -- a few oscillators
-and a noise burst per entry in `S` -- which is why the whole game is one HTML
-file with no audio assets and why every sound starts on the exact frame it is
-asked for. These three are generated instead, on request, and that is a real
-trade:
+  * IT RETURNS A TRACK, NOT A GESTURE -- 30 seconds when this was first written
+    up, 175 the last time it ran. tools/cut_sfx.py finds the gesture inside and
+    cuts it out; nothing here is usable as it arrives.
+  * WORDING DECIDES WHETHER YOU GET AUDIO AT ALL. "sound effect" comes back as
+    a written Foley RECIPE. Asking for a short piece of AUDIO with a described
+    shape -- attack, body, tail -- comes back as audio.
 
-  * Gemini's audio mode returns roughly THIRTY SECONDS whatever you ask for
-    (see project-gemini-studio). A game sting is a fifth of a second, so the
-    attack has to be found and cut out of the front of a track -- tools/cut_sfx.py
-    does that, and what it finds is a fragment of music, not a designed effect.
-  * WORDING IS EVERYTHING. "sound effect" comes back as a written Foley RECIPE
-    with no audio at all; "music sting" and "loop" come back as audio. So these
-    prompts all say sting, and they describe the SHAPE of the sound -- attack,
-    body, tail -- because that is the part a music model can actually hit.
-  * A sample costs a fetch, a decode and a buffer the synth version does not.
-
-So this is worth doing for the three BIG moments -- a mystery pickup, a vehicle
-arriving, a vehicle launching -- where a richer sound earns its bytes, and is
-not worth doing for a footstep."""
+Capacity failures land on whatever is LAST in a queue, so ask for few things at
+a time and check `--list` for what actually arrived rather than trusting the
+exit code."""
 import os
 import sys
 
@@ -41,30 +34,57 @@ OUT = sheets('sfx')
 SHAPE = ("Cartoon mobile game audio. Bright, clean, punchy, arcade. No speech, no "
          "voice, no singing, no lyrics. ")
 
+# THE SOUND EFFECTS ARE GENERATED. This reversed on 2026-09-06 at the user's
+# instruction -- "all sounds i ask you about should be gemini studio generated"
+# -- and the earlier synthesised versions are gone. What that costs and how it
+# is paid: the studio hands back a long track, so tools/cut_sfx.py finds the
+# gesture inside it and cuts it out, and the game plays the result as a sample
+# through the same sfxGain everything else uses.
+#
+# WORDING IS STILL EVERYTHING. "sound effect" comes back as a written Foley
+# RECIPE with no audio at all; asking for a short piece of AUDIO with a
+# described shape comes back as audio. So each prompt below describes the
+# gesture -- attack, body, tail -- and says cartoon, because that is the note
+# that keeps it in the game's world rather than in a film.
 JOBS = [
-    ('mystery_egg',
-     SHAPE +
-     "A short magical REWARD STING for collecting a rare glowing mystery egg in a "
-     "cartoon game. It starts with a soft bright chime, rises quickly through a "
-     "sparkling arpeggio, and lands on one warm triumphant bell note that rings "
-     "out and fades. Golden, magical, surprising, delighted. The whole gesture is "
-     "over in about one second and then there is silence."),
+    ('sfx_vroom',
+     "Cartoon monster truck engine REV, as a short punchy MUSIC STING for a "
+     "kids arcade game. A big heavy V8 catching with a deep chugging idle, then "
+     "revving up hard into a loud throaty roar, with the engine lumps clearly "
+     "audible as separate beats before they blur together. Comically oversized, "
+     "boisterous, fun. Deep and bassy but bright and clear at the top so it cuts "
+     "through music. No speech, no music, no melody, no singing. It happens once, "
+     "lasting about one and a half seconds, then silence."),
 
-    ('truck_get',
-     SHAPE +
-     "A short POWER-UP STING for climbing into a monster truck in a cartoon game. "
-     "It starts with a heavy mechanical clunk, then a rising engine growl that "
-     "revs up and settles into a confident low rumble, with a bright brass-like "
-     "fanfare stab on top. Big, heavy, comedic, exciting. The whole gesture is "
-     "over in about one and a half seconds and then there is silence."),
+    ('sfx_truckjump',
+     "Cartoon monster truck LAUNCH, as a short punchy MUSIC STING for a kids "
+     "arcade game. A heavy suspension thump as the wheels unload, a hard stab of "
+     "engine throttle revving up, and a springy comic boing underneath as it "
+     "leaves the ground. Heavy, bouncy, silly. No speech, no music, no melody. "
+     "It happens once, lasting about one second, then silence."),
 
-    ('truck_jump',
-     SHAPE +
-     "A short LAUNCH STING for a monster truck leaping off the ground in a cartoon "
-     "game. It starts with a deep suspension thump, then a fast upward whoosh with "
-     "a springy boing in it, ending on a light airborne shimmer. Bouncy, heavy but "
-     "comic, full of lift. The whole gesture is over in about one second and then "
-     "there is silence."),
+    ('sfx_kick',
+     "Cartoon KICK against a metal barred door, as a short punchy MUSIC STING "
+     "for a kids arcade game. A rubbery windup whoosh, then a big comic thud of "
+     "a foot hitting metal, with the bars rattling and a chain jangling after "
+     "it. Slapstick, springy, funny -- a cartoon character booting a gate, not a "
+     "realistic impact. No speech, no music, no melody. It happens once, lasting "
+     "about one second, then silence."),
+
+    ('sfx_boom',
+     "Cartoon BOOM, as a short punchy MUSIC STING for a kids arcade game. A "
+     "bright comic explosion with a deep whump underneath and a puff of debris "
+     "clattering after it -- the sort of harmless cartoon blast that makes a "
+     "cloud and a few stars, not a realistic detonation. Big, silly, satisfying. "
+     "No speech, no music, no melody. It happens once, lasting about one second, "
+     "then silence."),
+
+    ('sfx_megg',
+     "Cartoon magical PICKUP chime, as a short punchy MUSIC STING for a kids "
+     "arcade game. A bright sparkling twinkle rising quickly through a few happy "
+     "notes and landing on one warm ringing bell that fades out. Golden, "
+     "delighted, rewarding. No speech, no singing, no words. It happens once, "
+     "lasting about one and a half seconds, then silence."),
 ]
 
 
@@ -89,18 +109,20 @@ MUSIC = [
      "an ant city. Instrumental only: no vocals, no singing, no speech. It should "
      "loop cleanly and keep the same riff throughout."),
 ]
-# STINGS ARE NOT GENERATED ANY MORE -- see "How a sound gets made" in
-# _CONTINUE-HERE.md. The prompts above are kept because they are an accurate
-# record of what was tried and why it lost, not because they should be run:
-# the studio returns a track, a game wants a gesture, and every entry in `S` is
-# synthesised. `music` is the exception, and the only group run by default.
-GROUPS = {'music': MUSIC, 'stings-DEPRECATED': JOBS}
+def _pick(*names):
+    return [j for j in JOBS if j[0] in names]
+# small groups on purpose: a capacity failure takes whatever is at the end of
+# the queue, so asking for five at once reliably loses the last three
+GROUPS = {'sfx': JOBS, 'music': MUSIC,
+          'vroom-only': _pick('sfx_vroom'),
+          'kick-only':  _pick('sfx_kick'),
+          'boom-only':  _pick('sfx_boom')}
 
 
 def main():
     which = [a for a in sys.argv[1:] if not a.startswith('--')]
     global JOBS
-    JOBS = [j for g in (which or ['music']) for j in GROUPS.get(g, [])]
+    JOBS = [j for g in (which or ['sfx']) for j in GROUPS.get(g, [])]
     if not JOBS:
         raise SystemExit('groups: ' + ', '.join(GROUPS))
     s = Studio(TOKEN)
