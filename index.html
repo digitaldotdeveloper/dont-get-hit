@@ -8863,8 +8863,14 @@ const SHOP = {
   veh: [
     { id:'trolley', name:'MONSTER TROLLEY', art:'art/truck_drive.webp', owned:true,
       eff:"Cuts the farm's power on pickup. Drives through crates and drums. A hit takes the trolley, not the run.",
-      cost:[850, 1800, 3200, 5000],
-      says:['', 'Turns up as often as it always did', 'Turns up 30% more often',
+      /* cost[n] is the price to reach level n+1, and the trolley is the one
+         thing you already own -- it starts at 1, so cost[0] is the slot for a
+         vehicle you have to buy and is simply never charged here. Getting this
+         off by one billed the first upgrade at the second upgrade's price and
+         left the top level unreachable, and it was self-consistent enough on
+         screen that only counting the eggs caught it. */
+      cost:[0, 850, 1800, 3200],
+      says:['', 'As it always was', 'Turns up 30% more often',
             'Survives one hit before it pops', 'Turns up twice as often'] },
     { id:'duster', name:'CROP DUSTER', art:'art/truck_drive.webp', dev:true,
       eff:'Flies over the wires instead of under them. Not built yet, so it is not for sale -- a button that takes 12,000 eggs for nothing is worse than one that does nothing.',
