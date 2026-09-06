@@ -1071,7 +1071,58 @@ const S = {
   splat(){ noise(0.22,420,60,0.28,0.8); tone(90,0.22,'sine',0.18,40); },
   bonk(){ tone(760,0.13,'square',0.18,180); noise(0.1,1400,300,0.09,1.4); },
   timber(){ wob(300,70,0.6,{type:'triangle',vol:0.11,depth:14,rate:5}); },
-  cheer(){ [0,1,2].forEach(i=> tone([784,988,1175][i],0.16,'triangle',0.14,null,null,i*0.07)); }
+  cheer(){ [0,1,2].forEach(i=> tone([784,988,1175][i],0.16,'triangle',0.14,null,null,i*0.07)); },
+
+  /* ---- the three pickups --------------------------------------------------
+     SYNTHESISED, like every other entry here, and that is now the rule rather
+     than a habit -- see "How a sound gets made" in _CONTINUE-HERE.md. These
+     were generated as audio first and it was the wrong tool: the studio hands
+     back a track, a game needs a gesture, and a gesture cut out of a track is
+     a fragment of somebody's music arriving a frame late through a decoder.
+     Here they cost nothing, start on the exact frame they are asked for, and
+     can be retuned by changing a number. */
+
+  /* THE MYSTERY EGG. A reward, so it goes UP -- four notes of a major
+     pentatonic climbing, each a little shorter and a little brighter than the
+     last, over a soft bell that rings on past them. The pentatonic matters:
+     the egg streak already walks that ladder, so this lands as the same world
+     rather than a new instrument, and there is no interval in it that can
+     sound wrong against the music underneath. */
+  megg(){
+    const lad = [784, 988, 1175, 1568];            // G5 B5 D6 G6
+    lad.forEach((f, i) => {
+      tone(f, 0.16 - i*0.018, 'triangle', 0.13, null, null, i*0.055);
+      tone(f*2, 0.07, 'sine', 0.035, null, null, i*0.055);   // the sparkle on top
+    });
+    tone(392, 0.85, 'sine', 0.10, null, null, 0.16);         // the bell it lands on
+    noise(0.30, 5200, 9000, 0.020, 3.2, 0.02);               // a breath of glitter
+  },
+
+  /* THE TRUCK ARRIVING. Heavy first, bright second: a dead clunk of metal,
+     then the engine catching and rising, then a stab on top so it reads as
+     good news rather than as something breaking. The rise is a `wob` because a
+     clean sweep sounds like a synth and an engine is lumpy. */
+  truckget(){
+    noise(0.13, 260, 90, 0.20, 0.9);                         // the clunk
+    tone(70, 0.28, 'square', 0.16, 46);                      // ...with weight under it
+    wob(90, 210, 0.55, {type:'sawtooth', vol:0.15, depth:22, rate:13, at:0.06});
+    tone(120, 0.50, 'sawtooth', 0.07, 190, null, 0.06);      // the engine catching
+    [392, 523, 659].forEach((f, i) =>                        // the brass stab
+      tone(f, 0.30, 'square', 0.075, null, null, 0.30 + i*0.012));
+    noise(0.22, 900, 300, 0.05, 1.2, 0.30);
+  },
+
+  /* THE TRUCK LEAVING THE GROUND. The suspension lets go first -- that is the
+     part you feel -- then it climbs. Deliberately a cousin of takeoff() rather
+     than a new idea: same rising shape, an octave down and twice the weight,
+     so a player who knows the chicken's hop hears the truck's as the same
+     verb done by something enormous. */
+  truckjump(){
+    tone(52, 0.20, 'sine', 0.22, 30);                        // the springs unloading
+    wob(150, 520, 0.30, {type:'square', vol:0.13, depth:34, rate:15});
+    noise(0.24, 380, 1500, 0.075, 1.1);                      // the whoosh
+    tone(210, 0.16, 'triangle', 0.06, 420, null, 0.05);      // a little lift on top
+  },
 };
 /* music: a light 8-step groove that speeds up with the run */
 const BASS=[0,0,3,7, 0,-2,-4,7];
@@ -3651,25 +3702,73 @@ function eggFree(x, y){
   }
   return true;
 }
+/* COIN FORMATIONS.
+   A line of eggs at one height is a thing to collect; a SHAPE is a thing to
+   go and get. That is the whole Jetpack Joyride trick -- the coins are not
+   really currency, they are a drawn instruction telling you where to fly, and
+   a good one pulls you off the safe line for a second because the shape is
+   worth it.
+
+   Each formation returns points in a UNIT BOX -- u and v both 0..1 -- and the
+   caller scales them into whatever height band is free. That keeps the shapes
+   readable at any screen size and means a new one is a few lines of geometry
+   rather than a new spawner.
+
+   The heart is deliberately the rare one. A shape you see every twenty seconds
+   is wallpaper; one you see a few times a run is a small event. */
+/* `tall` is the shape's height as a fraction of the free band; `aspect` is its
+   width DIVIDED BY that height. Sizing the width off the point count instead
+   (gap x n) is what the first version did and it stretched the closed shapes
+   into scatter: sixteen points at 78 units made the heart 1100 wide against
+   700 tall, so it spanned most of the screen and read as loose coins rather
+   than as a picture. A shape you cannot see all at once is not a shape. */
+const EGG_SHAPES = [
+  { w:5, name:'line',  n:7,  tall:0.05, aspect:9.0, f:(t)=> [t, 0.5] },
+  { w:4, name:'arc',   n:9,  tall:0.34, aspect:2.6, f:(t)=> [t, 0.5 - Math.sin(t*Math.PI)*0.5] },
+  { w:3, name:'climb', n:8,  tall:0.34, aspect:2.8, f:(t)=> [t, 1 - t] },
+  { w:3, name:'dip',   n:9,  tall:0.34, aspect:2.6, f:(t)=> [t, 0.5 + Math.sin(t*Math.PI)*0.5] },
+  { w:2, name:'zigzag',n:11, tall:0.30, aspect:3.0, f:(t)=> [t, 0.5 + 0.5*Math.sin(t*Math.PI*3)] },
+  { w:2, name:'stair', n:9,  tall:0.34, aspect:2.6, f:(t)=> [t, 1 - Math.floor(t*3.99)/3] },
+  /* A ring, drawn as a ring rather than approximated: the eye reads a closed
+     curve immediately and a nearly-closed one as a mistake. */
+  { w:1.4, name:'ring', n:12, tall:0.40, aspect:1.0,
+    f:(t)=> { const a = t*TAU; return [0.5 + Math.cos(a)*0.5, 0.5 - Math.sin(a)*0.5]; } },
+  /* The heart. The standard parametric one, normalised into the unit box and
+     flipped in v because the game's y counts UP from the ground. */
+  { w:1.0, name:'heart', n:16, tall:0.44, aspect:1.05,
+    f:(t)=> { const a = t*TAU;
+              const x = 16*Math.pow(Math.sin(a),3);
+              const y = 13*Math.cos(a) - 5*Math.cos(2*a) - 2*Math.cos(3*a) - Math.cos(4*a);
+              return [0.5 + x/34, 0.5 - y/30]; } },
+];
+const EGG_W_TOTAL = EGG_SHAPES.reduce((a, q) => a + q.w, 0);
+function pickEggShape(){
+  let r = Math.random()*EGG_W_TOTAL;
+  for(const q of EGG_SHAPES){ r -= q.w; if(r <= 0) return q; }
+  return EGG_SHAPES[0];
+}
+
 function spawnEggs(){
   const band = GROUND - CEIL;
-  const n = 5 + (Math.random()*5 | 0);
   const gap = 78;
   const x0 = player.x + game.speed * 1.9;
-  const shape = Math.random();
+  const sh = pickEggShape();
+  /* The band the shape lives in. A tall shape needs room above AND below, so
+     it is centred in the free air rather than hung off a random base -- a
+     heart clipped flat against the ceiling is not a heart. */
   const lo = 70, hi = band - 140;
-  const base = rnd(lo, hi);
-  for(let i=0;i<n;i++){
-    const t = i/(n-1 || 1);
-    let y;
-    if(shape < 0.42)      y = base;                                  // a flat line
-    else if(shape < 0.72) y = base + Math.sin(t*Math.PI) * 190;      // an arc over
-    else                  y = base + t * 190;                        // a climb
-    y = clamp(y, lo, hi);
-    const x = x0 + i*gap;
+  const tall = Math.max(90, (hi - lo) * sh.tall);
+  const mid = rnd(lo + tall*0.5, hi - tall*0.5);
+  const wide = tall * sh.aspect;
+  for(let i=0;i<sh.n;i++){
+    const t = sh.n === 1 ? 0.5 : i/(sh.n-1);
+    const p = sh.f(t);
+    const x = x0 + p[0]*wide;
+    const y = clamp(mid + (p[1]-0.5)*tall, lo, hi);
     if(!eggFree(x, y)) continue;
     game.eggs.push({ x, y, t: rnd(0,TAU), got:0 });
   }
+  game.lastEggShape = sh.name;                 // ?dbg reads this
   game.eggT = rnd(1.5, 2.6);
 }
 function updateEggs(dt){
@@ -4351,7 +4450,7 @@ function thrustOn(){
     player.thrusting = true;
     if(player.onGround){
       player.vy = -rideJump(); player.onGround = false;
-      player.rideJumps = 1; S.takeoff(); addShake(5);
+      player.rideJumps = 1; S.truckjump(); addShake(5);
       /* A WALL OF DUST off the back tyres, thrown backwards and up. Sparks
          alone read as a spell being cast; what leaves the ground when two
          tonnes of tractor tyre launches off a dirt road is dirt. */
@@ -4569,6 +4668,17 @@ function dropClearAt(x){
     const ow = (o.spec.hw != null ? o.spec.hw : o.w*0.42) + DROP_CLEAR;
     if(Math.abs(o.x - x) < ow) return false;
   }
+  /* AND NOTHING BETWEEN HERE AND THERE. Clearing the egg's own spot is not
+     enough: the player has to be able to GO for it, and an obstacle standing
+     in the approach turns the best pickup in the game into a choice between
+     the reward and staying alive. The run-up is everything from just ahead of
+     the player to the egg, so a piece already on screen counts -- which is the
+     case the old check missed, because it only looked at where the egg would
+     stand. */
+  for(const o of game.obstacles){
+    const ow = (o.spec.hw != null ? o.spec.hw : o.w*0.42);
+    if(o.x + ow > player.x + 120 && o.x - ow < x) return false;
+  }
   return true;
 }
 function spawnBasketDrop(){
@@ -4599,6 +4709,7 @@ function startRide(){
   game.flash = 0.55;
   addShake(13);
   S.powerdown();
+  S.truckget();
   pop(player.x, GROUND - player.y - 300, 'POWER DOWN', '#8FE9FF', 46, -46);
   pop(player.x, GROUND - player.y - 210, 'FLOOR IT!', C.gold, 56, -70);
   spark(player.x, GROUND - player.y - 120, 16,
@@ -4692,6 +4803,17 @@ function layRideCourse(){
   const span1 = span2 * 0.52;                       // a hop, to introduce the button
   const y0 = 74;                                    // the height eggs are collected at
   let x = player.x + game.speed*1.25;
+  /* CLEAR THE ROAD FIRST. The run's own formation is still in the air when the
+     truck lands, and this lays two long arcs straight through it -- which is
+     what "the coins merge together" is: two independent patterns overlapping
+     into a blob that reads as neither. Anything ahead of the player that has
+     not been collected goes, so the ride's course is the only thing on screen
+     and is legible as an instruction. Eggs already flying to the counter
+     (`got`) are left alone; they are an animation, not a pattern. */
+  for(let i = game.eggs.length - 1; i >= 0; i--){
+    const e = game.eggs[i];
+    if(!e.got && e.x > player.x - 60) game.eggs.splice(i, 1);
+  }
   const put = (n, w, peak) => {
     for(let i=0;i<n;i++){
       const u = i/(n-1);
@@ -4813,7 +4935,10 @@ function updateRide(dt){
     if(d.x < player.x - 260) game.drop = null;
     else {
       const dy = (GROUND - player.y - 90) - (GROUND - d.y);
-      if(Math.abs(d.x - player.x) < 90 && Math.abs(dy) < 130) startRide();
+      if(Math.abs(d.x - player.x) < 90 && Math.abs(dy) < 130){
+        S.megg();            // the egg first: ting -- then the truck lands on it
+        startRide();
+      }
     }
     return;
   }

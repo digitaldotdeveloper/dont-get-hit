@@ -2183,6 +2183,49 @@ synthesised WebAudio, which is why the game has no audio assets and why every
 sound starts on the exact frame it is asked for. Worth deciding between
 finishing the sample path and synthesising the three, rather than defaulting.
 
+## How a sound gets made (2026-09-06) -- THE RULE
+
+**Every sound in this game is SYNTHESISED in WebAudio, in `S`.** A few
+oscillators and a noise burst per entry. That is why the game is one HTML file
+with no audio assets, why every sound starts on the exact frame it is asked
+for, and why retuning one is changing a number.
+
+This was tested against the alternative rather than assumed. Three pickup
+stings were generated through Gemini Studio first, on request, and it is the
+wrong tool for the job:
+
+- the studio returns a TRACK (30s when this was written up, 175s the last time
+  it ran), and a game wants a gesture;
+- a gesture cut out of a track is a fragment of somebody's music, arriving a
+  frame late through a decoder;
+- and it costs a fetch, a decode and a buffer that the synth version does not.
+
+Two of the three stings did not even generate -- Gemini's audio capacity
+failures land on whatever is last in the queue.
+
+**MUSIC IS THE EXCEPTION, and the line is exactly this:** if it is a piece of
+music that loops, generate it (`audio/music_*`, `tools/gen_sfx.py music`); if
+it is a thing that happens, synthesise it. The truck's metal riff is generated
+and right to be. `megg`, `truckget` and `truckjump` are synthesised and right
+to be.
+
+Levels are checked, not guessed: `tools/sfx.py` renders every entry in `S`
+offline and prints its peak. megg 0.182, truckget 0.142, truckjump 0.222.
+
+### The three, and what shape each is
+
+- **megg** -- a reward, so it goes UP: four notes of a major pentatonic
+  climbing over a bell that rings past them. Pentatonic on purpose -- the egg
+  streak already walks that ladder, so it lands as the same world, and there is
+  no interval in it that can clash with the music underneath.
+- **truckget** -- heavy first, bright second: a dead clunk, an engine catching
+  and rising on a `wob` (a clean sweep sounds like a synth; an engine is
+  lumpy), then a brass stab so it reads as good news rather than a breakage.
+- **truckjump** -- deliberately a cousin of `takeoff()` rather than a new idea:
+  the same rising shape an octave down with twice the weight, so a player who
+  knows the chicken's hop hears the truck's as the same verb done by something
+  enormous.
+
 ## Next
 
 - Nothing spends the eggs yet.

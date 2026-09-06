@@ -89,13 +89,18 @@ MUSIC = [
      "an ant city. Instrumental only: no vocals, no singing, no speech. It should "
      "loop cleanly and keep the same riff throughout."),
 ]
-GROUPS = {'stings': JOBS, 'music': MUSIC}
+# STINGS ARE NOT GENERATED ANY MORE -- see "How a sound gets made" in
+# _CONTINUE-HERE.md. The prompts above are kept because they are an accurate
+# record of what was tried and why it lost, not because they should be run:
+# the studio returns a track, a game wants a gesture, and every entry in `S` is
+# synthesised. `music` is the exception, and the only group run by default.
+GROUPS = {'music': MUSIC, 'stings-DEPRECATED': JOBS}
 
 
 def main():
     which = [a for a in sys.argv[1:] if not a.startswith('--')]
     global JOBS
-    JOBS = [j for g in (which or list(GROUPS)) for j in GROUPS.get(g, [])]
+    JOBS = [j for g in (which or ['music']) for j in GROUPS.get(g, [])]
     if not JOBS:
         raise SystemExit('groups: ' + ', '.join(GROUPS))
     s = Studio(TOKEN)
