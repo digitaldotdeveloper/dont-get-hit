@@ -806,6 +806,28 @@ function noise(dur, f0, f1, vol, q, at){
   s.connect(bp); bp.connect(g); g.connect(A.sfxGain); s.start(t0); s.stop(t0+dur+0.02);
   }catch(e){ A.err = e.message; }
 }
+/* THE ENGINE. One voice, used by both truck moments, because the point is
+   that the player recognises it: the sound the truck makes when it arrives is
+   the sound it makes when it jumps, higher and shorter.
+
+   THE WOBBLE IS THE ENGINE. A clean pitch sweep is a synth rising; firing
+   cylinders are anything but clean, and it is the lumpiness that makes it read
+   as a motor rather than as a siren. Four layers, and each is doing one job:
+
+     the rev      a sawtooth climbing, chugging hard
+     the size     the same an octave down, so it has a chest
+     the exhaust  broadband roar opening up as the revs climb
+     the catch    a short crack at the front, so it STARTS rather than fades in
+
+   `f0`/`f1` are where the rev begins and ends -- low and slow for arriving,
+   higher and faster for a jump. */
+function vroom(len, f0, f1, vol, at){
+  at = at || 0;
+  wob(f0, f1, len, {type:'sawtooth', vol:vol*0.62, depth:f0*0.34, rate:26, at:at});
+  wob(f0*0.5, f1*0.5, len*1.06, {type:'square', vol:vol*0.42, depth:f0*0.17, rate:19, at:at});
+  noise(len*0.92, f0*3.4, f1*4.2, vol*0.34, 0.85, at);
+  noise(0.09, 950, 260, vol*0.52, 0.9, at);
+}
 let stepFoot = 0;                 // which foot
 /* Everything else in here is a one-shot. Flying needs the opposite, and it is
    the single biggest thing missing from the flight: the sound of speed is not
@@ -1102,14 +1124,14 @@ const S = {
      then the engine catching and rising, then a stab on top so it reads as
      good news rather than as something breaking. The rise is a `wob` because a
      clean sweep sounds like a synth and an engine is lumpy. */
+  /* ARRIVING: a door-slam of a clunk, then the big rev. Long and low, and it
+     climbs a long way, because this is the one moment the truck gets to be
+     enormous before it has to be a game object. */
   truckget(){
-    noise(0.13, 260, 90, 0.20, 0.9);                         // the clunk
-    tone(70, 0.28, 'square', 0.16, 46);                      // ...with weight under it
-    wob(90, 210, 0.55, {type:'sawtooth', vol:0.15, depth:22, rate:13, at:0.06});
-    tone(120, 0.50, 'sawtooth', 0.07, 190, null, 0.06);      // the engine catching
-    [392, 523, 659].forEach((f, i) =>                        // the brass stab
-      tone(f, 0.30, 'square', 0.075, null, null, 0.30 + i*0.012));
-    noise(0.22, 900, 300, 0.05, 1.2, 0.30);
+    noise(0.14, 260, 90, 0.22, 0.9);                         // the clunk
+    tone(66, 0.30, 'square', 0.18, 44);                      // ...with weight under it
+    vroom(0.90, 58, 205, 0.30, 0.05);
+    vroom(0.55, 120, 330, 0.16, 0.62);                       // and a second blip on top
   },
 
   /* THE TRUCK LEAVING THE GROUND. The suspension lets go first -- that is the
@@ -1117,11 +1139,14 @@ const S = {
      than a new idea: same rising shape, an octave down and twice the weight,
      so a player who knows the chicken's hop hears the truck's as the same
      verb done by something enormous. */
+  /* JUMPING: the SAME engine, shorter and higher -- a stab of throttle rather
+     than a start-up. That is the whole reason `vroom` is one function: the
+     player hears the truck arrive once and then hears the same voice on every
+     press, so the jump is the truck doing something rather than a new noise.
+     The springs go under it because the weight is what you feel. */
   truckjump(){
-    tone(52, 0.20, 'sine', 0.22, 30);                        // the springs unloading
-    wob(150, 520, 0.30, {type:'square', vol:0.13, depth:34, rate:15});
-    noise(0.24, 380, 1500, 0.075, 1.1);                      // the whoosh
-    tone(210, 0.16, 'triangle', 0.06, 420, null, 0.05);      // a little lift on top
+    tone(52, 0.18, 'sine', 0.20, 30);                        // the springs unloading
+    vroom(0.40, 118, 355, 0.27);
   },
 };
 /* music: a light 8-step groove that speeds up with the run */
@@ -2816,7 +2841,14 @@ const RUNG   = 66;    // wire spacing in a ladder. Well under the bird's 142 of
    solid box, wire radius included, so it changes what you SEE and never what
    you hit. Inset from both ends so it terminates on the insulators rather
    than running off into the ground. */
-function postWire(x, y0, y1){ return [x, y0+6, x, y1-6, 1]; }
+/* A wire up a post. `thin` by default, because on a fence it is the trickle
+   beside the fat main wire and drawing both at full weight makes a post look
+   like a hazard in its own right.
+   The CORN passes thin=0, and that is the fix for "the corn is not visible
+   enough": its stalks are its ONLY wires, so the default left the entire
+   obstacle drawn in the dim style meant for a supporting detail. A hazard has
+   to be the loudest thing about itself. */
+function postWire(x, y0, y1, thin){ return [x, y0+6, x, y1-6, thin === undefined ? 1 : thin]; }
 
 /* --- a live wire ---------------------------------------------------------
    A glow, a core that will not hold still, and a charge running along it.
@@ -3110,7 +3142,8 @@ function cornHazard(tier, art, w, h, stalks){
   return elecSpec({ tier, hw:w*0.5 + 14, top:clear, h:clear, art:[art],
     build(){
       const wires = [];
-      for(const x of stalks) wires.push(postWire(x, 0, h));
+      // full-weight wires: these are the whole hazard, not a detail on one
+      for(const x of stalks) wires.push(postWire(x, 0, h, 0));
       return { hw:[{ a:art, x:0, y:0, h:h }], shadow:w*0.5,
                solids:[[-w*0.5, 0, w*0.5, h]], wires };
     },
@@ -3722,24 +3755,33 @@ function eggFree(x, y){
    into scatter: sixteen points at 78 units made the heart 1100 wide against
    700 tall, so it spanned most of the screen and read as loose coins rather
    than as a picture. A shape you cannot see all at once is not a shape. */
+/* `f(t)` returns [u, v] in a unit box. **v = 0 IS THE BOTTOM AND v = 1 IS THE
+   TOP** -- the game's y counts UP from the ground and `spawnEggs` maps v
+   straight onto it, so v needs no inversion at all.
+
+   The first version inverted it anyway, on the stated reasoning that the
+   game's y counts up -- which is precisely why it should not have. The heart
+   shipped upside down and the arc and the dip were each other. If a comment
+   has to explain why a sign is flipped, draw the shape and look at it. */
 const EGG_SHAPES = [
   { w:5, name:'line',  n:7,  tall:0.05, aspect:9.0, f:(t)=> [t, 0.5] },
-  { w:4, name:'arc',   n:9,  tall:0.34, aspect:2.6, f:(t)=> [t, 0.5 - Math.sin(t*Math.PI)*0.5] },
-  { w:3, name:'climb', n:8,  tall:0.34, aspect:2.8, f:(t)=> [t, 1 - t] },
-  { w:3, name:'dip',   n:9,  tall:0.34, aspect:2.6, f:(t)=> [t, 0.5 + Math.sin(t*Math.PI)*0.5] },
+  { w:4, name:'arc',   n:9,  tall:0.34, aspect:2.6, f:(t)=> [t, 0.5 + Math.sin(t*Math.PI)*0.5] },
+  { w:3, name:'climb', n:8,  tall:0.34, aspect:2.8, f:(t)=> [t, t] },
+  { w:3, name:'dip',   n:9,  tall:0.34, aspect:2.6, f:(t)=> [t, 0.5 - Math.sin(t*Math.PI)*0.5] },
   { w:2, name:'zigzag',n:11, tall:0.30, aspect:3.0, f:(t)=> [t, 0.5 + 0.5*Math.sin(t*Math.PI*3)] },
-  { w:2, name:'stair', n:9,  tall:0.34, aspect:2.6, f:(t)=> [t, 1 - Math.floor(t*3.99)/3] },
+  { w:2, name:'stair', n:9,  tall:0.34, aspect:2.6, f:(t)=> [t, Math.floor(t*3.99)/3] },
   /* A ring, drawn as a ring rather than approximated: the eye reads a closed
      curve immediately and a nearly-closed one as a mistake. */
   { w:1.4, name:'ring', n:12, tall:0.40, aspect:1.0,
-    f:(t)=> { const a = t*TAU; return [0.5 + Math.cos(a)*0.5, 0.5 - Math.sin(a)*0.5]; } },
-  /* The heart. The standard parametric one, normalised into the unit box and
-     flipped in v because the game's y counts UP from the ground. */
+    f:(t)=> { const a = t*TAU; return [0.5 + Math.cos(a)*0.5, 0.5 + Math.sin(a)*0.5]; } },
+  /* The heart: the standard parametric curve, normalised into the unit box.
+     Its own y already puts the lobes up and the point down, so it goes in as
+     it comes out. */
   { w:1.0, name:'heart', n:16, tall:0.44, aspect:1.05,
     f:(t)=> { const a = t*TAU;
               const x = 16*Math.pow(Math.sin(a),3);
               const y = 13*Math.cos(a) - 5*Math.cos(2*a) - 2*Math.cos(3*a) - Math.cos(4*a);
-              return [0.5 + x/34, 0.5 - y/30]; } },
+              return [0.5 + x/34, 0.5 + y/30]; } },
 ];
 const EGG_W_TOTAL = EGG_SHAPES.reduce((a, q) => a + q.w, 0);
 function pickEggShape(){

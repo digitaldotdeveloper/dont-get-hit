@@ -2212,6 +2212,22 @@ to be.
 Levels are checked, not guessed: `tools/sfx.py` renders every entry in `S`
 offline and prints its peak. megg 0.182, truckget 0.142, truckjump 0.222.
 
+### VROOM: one engine, two moments
+
+`vroom(len, f0, f1, vol, at)` is a primitive next to tone/wob/noise, and BOTH
+truck sounds are it -- arriving is long and low (58->205Hz over 0.9s, with a
+second blip on top), jumping is the same voice short and high (118->355Hz over
+0.4s). That is the point: the player hears the truck arrive once and then hears
+the same engine on every press, so a jump is the truck doing something rather
+than a new noise.
+
+**The wobble IS the engine.** A clean pitch sweep is a synth rising; firing
+cylinders are anything but clean, and the lumpiness is what makes it a motor.
+Four layers, each doing one job: the rev (sawtooth climbing, chugging hard),
+the size (the same an octave down, so it has a chest), the exhaust (broadband
+roar opening as the revs climb), and a short crack at the front so it STARTS
+rather than fades in.
+
 ### The three, and what shape each is
 
 - **megg** -- a reward, so it goes UP: four notes of a major pentatonic
