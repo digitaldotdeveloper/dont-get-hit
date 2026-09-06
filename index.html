@@ -761,6 +761,7 @@
           background:rgba(21,8,39,.45);border:1.5px solid rgba(255,242,222,.10)}
   .dthCap{display:block;text-align:center;font-size:8.5px;font-weight:900;
           letter-spacing:.18em;color:rgba(255,242,222,.45)}
+  .dthCap b{color:var(--amber);font-weight:900;letter-spacing:.06em}
   .dthRow{display:flex;gap:7px;margin-top:7px}
   .dthBtn{flex:1;min-width:0;border-radius:12px;padding:7px 4px 8px;cursor:pointer;
           display:flex;flex-direction:column;align-items:center;gap:3px;
@@ -970,7 +971,7 @@
           </div>
         </div>
         <div class="dthCol">
-          <span class="dthCap">ONE LAST BANG</span>
+          <span class="dthCap" id="dthCapTnt">ONE LAST BANG</span>
           <div class="dthRow" id="dthTnt"></div>
         </div>
       </div>
@@ -9555,7 +9556,29 @@ function dailyDraw(){
    it. Everything else is a boolean, reset in startRun. */
 const DEATH_SECS = 8;
 const HEART_COST = 400;
+/* THE PRICE IS THE RUN. A flat 250 bought the same thousand metres whether you
+   died at 200 or at 2,000, which is the wrong way round twice over: at the top
+   of a good run those metres are the ones you actually want -- they are the
+   ones between you and a best -- and at the bottom of a bad one they were the
+   cheapest score in the game.
+
+   `cost` here is the FLOOR, charged for a run of nothing, and every 1,000 m
+   adds that much again. Capped at 4x so a deep run does not price itself past
+   anything a player could have banked; rounded to ten so the number on the
+   button reads as a price rather than a calculation.
+
+     died at    0 m    250 /  450 /  700     (the floor)
+              500 m    380 /  680 / 1050
+            1,000 m    500 /  900 / 1400
+            2,000 m    750 / 1350 / 2100
+            3,000 m+  1000 / 1800 / 2800     (the cap)
+
+   It is never cheaper than it used to be, which is what stops the change
+   making a short run a bargain. */
 const TNT = [ {m:500, cost:250}, {m:750, cost:450}, {m:1000, cost:700} ];
+const TNT_CAP = 4;
+function tntMul(){ return Math.min(TNT_CAP, 1 + (game.dist/UPM)/1000); }
+function tntCost(i){ return Math.round(TNT[i].cost * tntMul() / 10) * 10; }
 let dthTimer = 0;
 
 function deathOffer(){
@@ -9596,14 +9619,18 @@ function deathDraw(){
   heart.querySelector('.cost').innerHTML = game.usedHeart ? 'USED' : '<i></i>' + money(cost);
   ad.className = 'dthBtn ad' + (game.usedAd ? ' used' : '');
   ad.querySelector('.cost').innerHTML = game.usedAd ? 'USED' : 'WATCH';
-  const mul = PERK.bang();
+  const mul = PERK.bang(), pmul = tntMul();
+  /* The multiplier is on the label, not hidden in the sum. A price that moves
+     between runs and does not say why reads as the shop being unreliable. */
+  $('#dthCapTnt').innerHTML = 'ONE LAST BANG' +
+    (pmul > 1.05 ? ' <b>&times;' + pmul.toFixed(1) + '</b>' : '');
   $('#dthTnt').innerHTML = TNT.map((t, i) => {
-    const m = Math.round(t.m * mul);
-    const cls = game.usedTnt ? ' used' : (eggs() < t.cost ? ' no' : '');
+    const m = Math.round(t.m * mul), cost = tntCost(i);
+    const cls = game.usedTnt ? ' used' : (eggs() < cost ? ' no' : '');
     return '<button class="dthBtn tnt' + cls + '" data-tnt="' + i + '">' +
       '<span class="m">+' + money(m) + '</span><span class="lbl">METRES</span>' +
       '<span class="cost">' + (game.usedTnt ? 'USED'
-        : '<i></i>' + money(t.cost)) + '</span></button>';
+        : '<i></i>' + money(cost)) + '</span></button>';
   }).join('');
 }
 function deathClose(){ clearTimeout(dthTimer); META.open = false; $('#death').classList.remove('show'); }
@@ -9646,7 +9673,10 @@ function deathAd(){
 function deathTnt(i){
   if(game.usedTnt) return;
   const t = TNT[i]; if(!t) return;
-  if(!spend(t.cost)){ toast('NOT ENOUGH EGGS', true); S.bonk(); return; }
+  /* Charged from the same function the button was drawn from, so the price on
+     the screen and the price taken cannot come apart -- the trolley already
+     taught this the hard way. */
+  if(!spend(tntCost(i))){ toast('NOT ENOUGH EGGS', true); S.bonk(); return; }
   game.usedTnt = true;
   deathClose();
   startBlast(Math.round(t.m * PERK.bang()));
@@ -9860,6 +9890,7 @@ function boot(){
     startRide, loseRide, spawnBasketDrop, dropClearAt, spawnElec, spawnPattern, spawnEggs,
     SAVE, SHOP, PERK, SKIN, SKINS, buy, buySkin, eggs, spend, earn,
     deathOffer, deathHeart, deathAd, deathTnt, deathSkip, startBlast, TNT, HEART_COST,
+    tntCost, tntMul,
     die, finish, finishNow, softSave, dailyClaim, dailyState, skinApply, shopDraw, META,
     layRideCourse, rideApex, rideRise, rideCeil, truckGeom, truckFrame,
     elecDist, riding, wireHot, smoke, spark, pop, updateParticles, render,
