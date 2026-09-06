@@ -2320,6 +2320,45 @@ truck, an NPC passed close.
   still loaded and sliced. Turning the switch on is one word; the download is
   paid either way.
 
+## The vroom fired every time and could not be heard (2026-09-06)
+
+Reported as "wheres the VROOM sound". It was firing perfectly: **40 presses
+from the ground, 40 `truckjump` calls**, and the pickup fires `megg` +
+`powerdown` + `truckget`. It is also the LOUDEST sound in the game --
+truckjump 0.26, truckget 0.23, against hit at 0.25.
+
+**It was masked, and by something I put there myself.** The engine is a low
+sawtooth revving from 58Hz, and the ride's metal riff is a down-tuned
+palm-muted guitar -- the same octave -- and I had them start on the SAME FRAME
+with the music at 0.60 against a peak of 0.24. That measures as working and
+plays as missing, which is the worst kind of bug to chase.
+
+Three fixes, in order of how much they are worth:
+
+1. **The riff waits.** `RIDE_MUSIC_WAIT` (0.85s) holds the music down after
+   the pickup so the engine lands in clear air. Clunk, VROOM, *then* the music
+   -- which is how every good power-up in the genre is staged and costs one
+   number.
+2. **The music sidechains to the engine.** `game.rideDuck` dips the riff to 30%
+   for 0.25s on every truck jump. Making the vroom louder or brighter is
+   guesswork against a moving target -- whether one masks the other depends on
+   the bar -- and getting out of the way for the length of the hit is the
+   answer the whole industry already reached. The fade rate had to go from
+   4.5/s to 11/s, because a 4.5/s ramp cannot complete a 0.25s duck.
+3. **The rev speaks in the upper mids too**, where the guitars are not: a
+   harmonic an octave and a fifth up, and the exhaust rasp pushed out of the
+   mud. The weight stays underneath; the part that CUTS is the top.
+
+### And a real bug the probe surfaced on the way
+
+The two timers were written INSIDE `if(RIDE_TRACK)`. That track's own error
+handler sets it to `null` when it fails to load -- so on any device that could
+not fetch the riff, `rideMusicT` would never reach zero, and `musicScene('ride')`
+reads that forever as "the engine is still landing, keep the riff down". **A
+missing audio file would have silently disabled the ride music permanently, on
+exactly the devices that could not load it.** Game state does not belong behind
+an asset check.
+
 ## Next
 
 - Nothing spends the eggs yet.

@@ -823,10 +823,21 @@ function noise(dur, f0, f1, vol, q, at){
    higher and faster for a jump. */
 function vroom(len, f0, f1, vol, at){
   at = at || 0;
+  /* THE RIFF AND THE ENGINE LIVE IN THE SAME OCTAVE, and the riff is louder.
+     The first version was a low sawtooth under a down-tuned palm-muted guitar
+     starting on the same frame -- identical spectral space, music at 0.60
+     against a peak of 0.24, and the engine simply lost. It fired every time
+     and could not be heard, which measures as working and plays as missing.
+
+     So the rev now also speaks in the UPPER MIDS, where the guitars are not:
+     a bright harmonic riding an octave and a fifth above the fundamental, and
+     an exhaust rasp pushed up and opened out. The weight stays underneath for
+     the chest; the part that CUTS is the top. */
   wob(f0, f1, len, {type:'sawtooth', vol:vol*0.62, depth:f0*0.34, rate:26, at:at});
   wob(f0*0.5, f1*0.5, len*1.06, {type:'square', vol:vol*0.42, depth:f0*0.17, rate:19, at:at});
-  noise(len*0.92, f0*3.4, f1*4.2, vol*0.34, 0.85, at);
-  noise(0.09, 950, 260, vol*0.52, 0.9, at);
+  wob(f0*3, f1*3, len*0.85, {type:'sawtooth', vol:vol*0.30, depth:f0*0.5, rate:26, at:at});
+  noise(len*0.92, f0*6, f1*7, vol*0.42, 0.7, at);        // rasp, up out of the mud
+  noise(0.10, 1600, 320, vol*0.60, 0.8, at);             // the crack of it catching
 }
 let stepFoot = 0;                 // which foot
 /* Everything else in here is a one-shot. Flying needs the opposite, and it is
@@ -1145,6 +1156,15 @@ const S = {
      press, so the jump is the truck doing something rather than a new noise.
      The springs go under it because the weight is what you feel. */
   truckjump(){
+    /* DUCK THE RIFF FOR A QUARTER SECOND. Making the engine louder or brighter
+       is guesswork against a moving target -- the riff is a full mix and the
+       vroom is four oscillators, and whether one masks the other depends on
+       the bar. Sidechaining is the answer the whole audio industry already
+       reached: get out of the way for the length of the hit, and the hit is
+       audible whatever it is playing over.
+       `rideDuck` is read by trackTick; 0.25s is short enough that the music
+       reads as pumping with the truck rather than as dropping out. */
+    game.rideDuck = 0.25;
     tone(52, 0.18, 'sine', 0.20, 30);                        // the springs unloading
     vroom(0.40, 118, 355, 0.27);
   },
@@ -1260,7 +1280,8 @@ function musicScene(which){
   /* The riff REPLACES the chase rather than sitting on top of it. Two pieces
      of music at once is mud, and the whole point of the ride is that everything
      else got out of the way. */
-  if(which === 'ride'){        menuWanted = 0; rideWanted = 0.60;
+  if(which === 'ride'){        menuWanted = 0;
+                               rideWanted = (game.rideMusicT||0) > 0 ? 0 : 0.60;
                                trackVol(0);    musicVol(0.10); }
   else if(which === 'play'){   menuWanted = 0; rideWanted = 0;
                                trackVol(0.55); musicVol(0.50); }
@@ -1279,6 +1300,12 @@ function musicScene(which){
     }
   }
 }
+/* THE RIFF WAITS FOR THE ENGINE. Starting both on the pickup frame put a
+   loud guitar over the one sound the moment exists to deliver. The order is
+   the whole gag: clunk, VROOM, and THEN the music kicks in -- which is how
+   every good power-up in the genre is staged, and it costs nothing but a
+   number. */
+const RIDE_MUSIC_WAIT = 0.85;
 function nextTrack(){
   if(!TRACKS.length) return;
   const vol = TRACK ? TRACK.volume : 0;
@@ -1337,11 +1364,27 @@ function trackTick(dt){
     MENU_TRACK.volume = clamp(MENU_TRACK.volume + (mt - MENU_TRACK.volume) * Math.min(1, dt*2.2), 0, 1);
     if(MENU_TRACK.volume < 0.001 && !MENU_TRACK.paused && mt === 0) MENU_TRACK.pause();
   }
+  /* THE TIMERS TICK WHETHER OR NOT THERE IS A TRACK TO TICK THEM FOR.
+     They were inside `if(RIDE_TRACK)`, which is a trap: the track's own error
+     handler sets it to null when it fails to load, and then `rideMusicT` never
+     reaches zero, and `musicScene('ride')` reads it forever as "the engine is
+     still landing, keep the riff down". A missing audio file would have
+     silently disabled the ride music PERMANENTLY, on exactly the devices that
+     could not load it. Game state does not belong behind an asset check. */
+  if(game.rideMusicT > 0){
+    game.rideMusicT -= dt;
+    if(game.rideMusicT <= 0 && musicNow === 'ride') rideWanted = 0.60;
+  }
+  let duck = 1;
+  if(game.rideDuck > 0){ game.rideDuck -= dt; duck = 0.30; }
+
   if(RIDE_TRACK){
-    // faster than the menu's fade: the riff should arrive with the truck, not
-    // catch up with it a second later
-    const rt = A.on ? rideWanted : 0;
-    RIDE_TRACK.volume = clamp(RIDE_TRACK.volume + (rt - RIDE_TRACK.volume) * Math.min(1, dt*4.5), 0, 1);
+    // held down for RIDE_MUSIC_WAIT after the pickup so the engine is heard
+    // first, then quick, so it arrives with the truck rather than catching up
+    const rt = (A.on ? rideWanted : 0) * duck;
+    // 4.5/s could not complete a 0.25s duck; the dip has to be faster than
+    // the thing it is making room for
+    RIDE_TRACK.volume = clamp(RIDE_TRACK.volume + (rt - RIDE_TRACK.volume) * Math.min(1, dt*11), 0, 1);
     if(RIDE_TRACK.volume < 0.001 && !RIDE_TRACK.paused && rt === 0) RIDE_TRACK.pause();
   }
   if(!TRACK) return;
@@ -4661,6 +4704,7 @@ function startRun(){
   game.obstacles.length=0; game.parts.length=0; game.pops.length=0; game.ui.length=0;
   game.eggs.length=0; game.eggT=1.6; game.runEggs=0; game.eggStreak=0;
   game.ride=game.forceRide?RIDE_ON:0; game.rideGrace=0; game.drop=null; game.npcHit={};
+  game.rideDuck=0; game.rideMusicT=0;
   game.gridT=1; game.rideTeach=0;        // the power is on again at the top of a run
   game.dropT=game.forceRide?1e9:rnd(9, 14);
   game.crows.length=0; game.crowT=5*CROW_GAP; game.crowN=0; game.crowWait=0;
@@ -4760,6 +4804,7 @@ function startRide(){
   game.gridT = 1;                       // full brightness, so it has somewhere to fall from
   game.flash = 0.55;
   addShake(13);
+  game.rideMusicT = RIDE_MUSIC_WAIT;    // hold the riff back; the engine goes first
   S.powerdown();
   S.truckget();
   pop(player.x, GROUND - player.y - 300, 'POWER DOWN', '#8FE9FF', 46, -46);
@@ -7264,7 +7309,7 @@ function boot(){
     worldSpeed, distSpeed, rideAir, rideImpulse, rideJump, UPM, LOAD,
     /* the music, as a function rather than a value: musicNow changes and a
        captured copy would be a lie the moment the scene did */
-    musicFor, musicScene, music: () => ({ now: musicNow,
+    musicFor, musicScene, trackTick, music: () => ({ now: musicNow,
       ride: RIDE_TRACK ? { vol:+RIDE_TRACK.volume.toFixed(3), paused:RIDE_TRACK.paused } : null,
       menu: MENU_TRACK ? { vol:+MENU_TRACK.volume.toFixed(3), paused:MENU_TRACK.paused } : null,
       chase: TRACK ? { vol:+TRACK.volume.toFixed(3), paused:TRACK.paused } : null }) };

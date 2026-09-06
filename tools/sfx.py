@@ -35,6 +35,7 @@ ONE = [
     ("eggrun",   5,    0.60), ("near", None, 0.50),
     # the three pickups, synthesised like the rest
     ("megg",     None, 1.30), ("truckget", None, 1.10),
+    ("powerdown", None, 1.20),
     ("truckjump", None, 0.70),
 ]
 # name, [args], gap between them, seconds each
