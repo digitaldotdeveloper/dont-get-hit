@@ -2082,7 +2082,7 @@ around two and a half minutes of clean flying to reach the lab, which is a long
 way — the flags exist because nobody should have to earn it to look at it.
 
 
-## The flight is silent now (2026-09-06)
+## The flight lost its bed, and kept its glide (2026-09-06)
 
 User asked twice. The first time I measured the roof contact firing 35 times a
 second and fixed that -- a real bug, but not what they meant. What they meant
@@ -2092,27 +2092,41 @@ seconds of ordinary hold-and-release flying that was:
     glide  x12     the wings-out rustle, on a 0.42s cooldown
     + the wind bed, continuous, the whole run
 
-**Both are gone.** The bed was one looping noise source through a bandpass with
+**Only the bed went.** It was one looping noise source through a bandpass with
 its level and cutoff pushed from airspeed every frame, and it was written up
 here as "the thing that made flying sound like flying" -- which is exactly why
 it had to go. Holding is not an occasional action in this game, it is the entire
 input, so a layer that rises whenever you do the thing the game is about is a
 sound you cannot stop hearing.
 
-What is left in the air is the SHAPE of a flight and nothing between: `takeoff`
-when he leaves the ground, `ceiling` once on arrival at the roof, `land` and
-`scuff` when he comes down. The wingbeat has been silent since 2026-09-05.
+**I removed the glide with it and that was one thing too many; user asked for it
+back and they were right.** The distinction the first pass missed is the one
+that matters: the bed is a LAYER -- always on, rising with speed, no way to stop
+hearing it -- and the glide is an EVENT on a 0.42s cooldown that only fires
+while he is actually falling. One scores the whole run; the other punctuates a
+drop. Taking both left nothing at all in the middle of a flight.
 
-**Kept as no-op stubs, not deleted.** `windStart`/`windSet`/`S.glide` still
-exist and do nothing, because they are called from the run loop, the menu and
-the intro, and a half-removed audio node with live callers is how you get a
-silent failure inside a try/catch. Restoring any of them is putting the body
-back; no call site has to change.
+So the air now holds the glide, between `takeoff` leaving the ground, `ceiling`
+once on arrival at the roof, and `land`/`scuff` coming down. The wingbeat has
+been silent since 2026-09-05.
+
+At peak **0.012** the glide is the quietest thing in the game -- about a third
+of a footstep -- because it was mixed to sit UNDER the bed. With the bed gone
+there is nothing masking it, so it reads more clearly than it did before rather
+than less; worth knowing if it ever needs raising.
+
+**Kept as no-op stubs, not deleted** -- and that decision paid for itself
+within the hour. `windStart`/`windSet` still exist and do nothing, because they
+are called from the run loop, the menu and the intro, and a half-removed audio
+node with live callers is how you get a silent failure inside a try/catch.
+Restoring the glide was putting its body back and changing no call site, which
+is exactly what the stubs were for.
 
 **Proved, not assumed.** Counting calls cannot show silence -- a no-op stub is
-still called. `tools/sfx.py` renders every entry in `S` offline and reports its
-peak, and that is the check: **glide 0.000, everything else unchanged**
-(takeoff 0.100, land 0.183, hit 0.217). Two things in that tool also had to go,
+still called, and the first probe cheerfully reported `glide x12` after it had
+been silenced. `tools/sfx.py` renders every entry in `S` offline and reports its
+peak, and that is the check: it read **glide 0.000** while silenced and
+**0.012** with it back, everything else unchanged (takeoff 0.105, land 0.174). Two things in that tool also had to go,
 because they asked for a sound that no longer makes one: `wind` was in its
 inventory (it threw `S[name] is not a function`) and under its flight montage.
 The montage is now takeoff / roof / takeoff / land, which is worth keeping

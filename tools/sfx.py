@@ -13,7 +13,8 @@ It also joins the runs that only make sense as runs: eight footsteps at a walk
 and at a sprint, the alert tracking then locking, and a twelve-egg streak, which
 is the only way to hear whether the pentatonic ladder actually lands anywhere.
 There is no wingbeat here -- the flap is silent by design, so the flight montage
-is now only the two ENDS of it -- takeoff, the roof, and the landing.
+is the glide and the two ends of it -- takeoff, the roof, and the landing. The
+wind bed that used to sit under all of it is gone.
 """
 import base64, io, json, os, socket, struct, subprocess, sys, time, urllib.request
 import websocket
@@ -43,20 +44,21 @@ RUNS = [
 # The four things worth listening to as a whole, because none of them is one
 # sound: (label, [(at_seconds, name, arg, secs)], total_seconds).
 #
-# THE FLIGHT MONTAGE IS MOSTLY SILENCE NOW, and that is the point of keeping it.
-# It used to be a wind bed with wingbeats over it; the bed and the glide were
-# both removed on request, so what is left is takeoff, the roof and the landing
-# with air between them. Rendering it is how you check that the ENDS still land
-# -- a flight with nothing in the middle only works if its edges are crisp.
+# THE FLIGHT MONTAGE LOST ITS BED. It used to be a wind layer with everything
+# else over the top, and the bed is gone; what is left is the glide and the two
+# ends. Rendering it is how you check that a flight still has a shape without a
+# layer holding it together -- which is a real question, and the answer is that
+# the glide is now carrying the middle on its own.
 MONTAGE = [
     ("montage_running", 6.0, [(0.15 + i*0.30, "step", 0.05, 0.35) for i in range(8)] +
                              [(3.2 + i*0.17, "step", 0.95, 0.35) for i in range(9)] +
                              [(5.1, "scuff", 0.8, 0.6)]),
-    # no flap, no bed, no glide -- all three are deliberately silent, so this
-    # is the shape of a flight: leave the ground, touch the roof, come down
+    # no flap and no bed -- both are deliberately silent -- so a flight is
+    # takeoff, the glide carrying the drop, the roof, and the landing
     ("montage_flying",  7.5, [(0.30, "takeoff", None, 0.6),
-                              (2.6, "ceiling", None, 0.5),
-                              (4.4, "takeoff", None, 0.6),
+                              (1.9, "glide", None, 0.8), (2.8, "glide", None, 0.8),
+                              (4.0, "ceiling", None, 0.5),
+                              (5.0, "glide", None, 0.8),
                               (6.2, "land", None, 0.6)]),
     ("montage_crow",    7.0, [(0.0 + i*0.27, "alert", False, 0.35) for i in range(7)] +
                              [(1.95 + i*0.13, "alert", True, 0.35) for i in range(4)] +
