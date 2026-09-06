@@ -2276,6 +2276,50 @@ and with the fix, 40/40. Generally: **when a guard is tightened, ask what it now
 refuses that it used to allow, and count.** A clearance rule with no upper bound
 on how much it clears will eventually clear everything.
 
+## The content census: what ships but never appears (2026-09-06)
+
+After the truck went missing, the question was "what else is like this". The
+answer needs a census, not spot checks -- so: instrument `drawImage` and `S`,
+play a long run through every zone, and list what is loaded but never drawn and
+what is defined but never spawned.
+
+**Three false alarms first, all the harness's fault, and each worth knowing:**
+
+- Driving the player by TELEPORTING him onto eggs means he never flies, never
+  jumps and never gets hit, so a third of the character's frames looked dead.
+- `?auto=1&demo=1` fixes that but the demo pilot **dies every few seconds**, so
+  `dist` and `runT` reset and nothing gated on distance -- crows, the pickup,
+  tiers 1-4 -- ever gets a chance. Only tier-0 obstacles appeared.
+- Making it immortal by calling `startRun()` on each death then reset `dropT`,
+  which suppressed the pickup all over again.
+
+**If a census says half the game is dead, suspect the census.** The real
+conditions have to be STAGED: the intro playing out, a death, a jump in the
+truck, an NPC passed close.
+
+### What is actually true
+
+- **All 18 obstacles are reachable** -- 12 on foot at the top tier (`e_hang3`
+  and `zap_m` need tier 4), 6 in the truck. `?obtest` asserts this now, by
+  walking PAT and RIDE_PAT and resolving the `#tokens`, and it is
+  mutation-tested: an obstacle in no pattern reports `UNREACHABLE`.
+- Crows, eggs, the pickup, every character state, the truck's launch frame and
+  all six flames, the NPC panic cycles and the score-card hens all draw when
+  their condition happens.
+
+### Two things that ship and are never seen
+
+- **`cos-shades.webp` and `cos-scarf.webp`** -- ~92KB loaded every session, and
+  `equip()` is called from exactly one place: the `?wear=` debug flag. The
+  cosmetic SYSTEM is complete (slots, pivots, draw order) and nothing in the
+  game ever puts anything in a slot. This is a design gap, not a bug: there is
+  no way to earn or choose them, which is the same hole as eggs buying nothing.
+- **`spyalert` and the farmer's rage** -- gated off by `NPC_REACT = false`,
+  which is DELIBERATE and documented right there: background NPCs should be a
+  continuous band of movement, not a series of encounters. The frame sets are
+  still loaded and sliced. Turning the switch on is one word; the download is
+  paid either way.
+
 ## Next
 
 - Nothing spends the eggs yet.

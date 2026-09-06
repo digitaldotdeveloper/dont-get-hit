@@ -7611,6 +7611,34 @@ function boot(){
           '  transits '+(stuck?('BAD '+stuck):'ok')+'  '+
           Object.keys(kinds).sort().map(k=>k+':'+kinds[k]).join(' '));
       }
+      /* CAN EVERY PIECE ACTUALLY TURN UP?
+         Everything above asks whether a hazard is FAIR. None of it asks
+         whether the player will ever meet it -- and a piece that cannot spawn
+         is not a hazard, it is dead weight that still costs a download. This
+         is the same blind spot that let the monster truck leave the game
+         unnoticed: every check tested the thing once you had it.
+         So walk the tables and collect the keys they can actually produce, on
+         foot and in the truck, at the top tier. `#tokens` are resolved the way
+         spawnPattern resolves them. */
+      try{
+        const reach = new Set();
+        const tok = { '#fence':FENCE_KEYS, '#zap':ZAP_KEYS, '#hang':HANG_KEYS,
+                      '#corn':CORN_KEYS };
+        for(const table of [PAT, RIDE_PAT])
+          for(const p of table)
+            for(const st of p.seq){
+              const ks = tok[st.k] || [st.k];
+              for(const k of ks) if(OB[k]) reach.add(k);
+            }
+        const orphan = Object.keys(OB).filter(k => !reach.has(k));
+        if(orphan.length){
+          bad += orphan.length;
+          out.push('UNREACHABLE  no pattern can spawn: ' + orphan.join(', '));
+        } else {
+          out.push('ok     every one of the ' + Object.keys(OB).length +
+                   ' obstacles is in a pattern');
+        }
+      }catch(e){ bad++; out.push('reach test THREW ' + e.message); }
       out.unshift(bad ? ('OBSTACLES: '+bad+' PROBLEMS') : 'OBSTACLES: ok, every opening flyable');
       const el=document.getElementById('selftest');
       el.style.display='block'; el.style.color = bad ? '#FF456E' : '#0f0';
