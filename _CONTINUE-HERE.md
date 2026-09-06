@@ -2137,6 +2137,52 @@ There was also a dead line waiting to throw: the offline renderer saved and
 restored the wind's audio nodes around each render, and its restore still read
 `keep.w.src` after `keep.w` stopped existing.
 
+## The truck has its own music (2026-09-06)
+
+Taking the vehicle already cuts the farm's power and fills the road with
+barriers; the one thing it did not do was sound different. `musicScene('ride')`
+is a fourth scene, and `musicFor()` returns it whenever `riding()` -- so every
+route into the truck gets it, which is the bug that scene-follows-mode exists
+to prevent.
+
+**The riff REPLACES the chase rather than layering over it.** Two pieces of
+music at once is mud, and the point of the ride is that everything else got out
+of the way. It fades in at 4.5/s against the menu's 2.2 -- the riff should
+arrive with the truck, not catch up a second later -- and restarts from zero
+each time so it lands on the downbeat.
+
+`preload='none'`: 245KB that most runs never reach, wanted a second and a half
+after a pickup rather than instantly.
+
+**Generated, with the reference used the way the art references are.** The user
+named a specific commercial track (Godsmack, "Cryin' Like a Bitch") as the
+feel. The prompt asks for the QUALITIES -- down-tuned palm-muted chug, ~100 BPM,
+swaggering rather than dark -- and names no artist and no song. The point is
+that the truck sounds enormous, not that it sounds like somebody else's record.
+
+`tools/cut_ride_music.py` cuts it. **The generator returned 175 SECONDS**, not
+the ~30 the studio used to give, so the tool takes a 32s slice -- a ride lasts
+until you are hit, often ten or twenty seconds, and three minutes would be a
+megabyte nobody hears the end of. It trims leading and trailing silence FIRST
+(the menu track shipped with ~100ms of silence at the front and audibly
+breathed once every loop) and then **measures the seam**: head RMS 6393, tail
+5068, ratio 0.79, which is well inside healthy. Do not trust that "cut on a
+musical length" implies gapless -- measure it.
+
+`?dbg` now publishes `musicFor`, `musicScene` and `music()`. The tracks read
+null until a real gesture starts the AudioContext, which is correct rather than
+broken, so the scene LOGIC is what the probe checks.
+
+### Still open
+
+The three pickup stings (mystery egg, truck collect, truck jump) are generated
+but NOT cut or wired -- and only two of three exist, because Gemini's audio
+capacity failures land on whatever is last in the queue. They also need a
+sample-playback path the game does not have: every other sound in `S` is
+synthesised WebAudio, which is why the game has no audio assets and why every
+sound starts on the exact frame it is asked for. Worth deciding between
+finishing the sample path and synthesising the three, rather than defaulting.
+
 ## Next
 
 - Nothing spends the eggs yet.

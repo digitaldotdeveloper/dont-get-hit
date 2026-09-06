@@ -1115,6 +1115,7 @@ function musicTick(){
 }
 let TRACK = null, trackWanted = 0, TRACKS = [], trackIdx = 0;
 let MENU_TRACK = null, menuWanted = 0;
+let RIDE_TRACK = null, rideWanted = 0;
 /* Two long-form tracks, ~2.5 minutes each, so the soundtrack runs about five
    minutes before anything repeats. These come from the Pro model: everything
    generated on Flash comes back at 30.8s no matter what the prompt asks for. */
@@ -1162,6 +1163,17 @@ function initTrack(){
   MENU_TRACK = new Audio('audio/music_menu' + MUS_EXT);
   MENU_TRACK.loop = true; MENU_TRACK.volume = 0; MENU_TRACK.preload = 'auto';
   MENU_TRACK.addEventListener('error', () => { MENU_TRACK = null; });
+  /* THE TRUCK GETS ITS OWN MUSIC. Taking the vehicle already cuts the farm's
+     power and fills the road with barriers; the one thing it did not do was
+     sound different, and a power-up that changes the whole board should change
+     the whole soundtrack with it.
+     `preload='none'`: it is 245KB that most runs never reach, and it is wanted
+     a second and a half after a pickup rather than instantly, so it can afford
+     to fetch on demand. A missed first bar is better than 245KB on every
+     load. */
+  RIDE_TRACK = new Audio('audio/music_ride' + MUS_EXT);
+  RIDE_TRACK.loop = true; RIDE_TRACK.volume = 0; RIDE_TRACK.preload = 'none';
+  RIDE_TRACK.addEventListener('error', () => { RIDE_TRACK = null; });
 }
 /* The one place that decides what is playing. Everything else asks for a
    scene rather than setting volumes, so the two pieces can never overlap. */
@@ -1169,11 +1181,26 @@ function musicScene(which){
   audioInit();
   initTrack();
   musicNow = which;
-  if(which === 'play'){        menuWanted = 0;    trackVol(0.55); musicVol(0.50); }
-  else if(which === 'duck'){   menuWanted = 0;    trackVol(0.18); musicVol(0.12); }
-  else {                       menuWanted = 0.40; trackVol(0);    musicVol(0);    }
+  /* The riff REPLACES the chase rather than sitting on top of it. Two pieces
+     of music at once is mud, and the whole point of the ride is that everything
+     else got out of the way. */
+  if(which === 'ride'){        menuWanted = 0; rideWanted = 0.60;
+                               trackVol(0);    musicVol(0.10); }
+  else if(which === 'play'){   menuWanted = 0; rideWanted = 0;
+                               trackVol(0.55); musicVol(0.50); }
+  else if(which === 'duck'){   menuWanted = 0; rideWanted = 0;
+                               trackVol(0.18); musicVol(0.12); }
+  else {                       menuWanted = 0.40; rideWanted = 0;
+                               trackVol(0);    musicVol(0);    }
   if(menuWanted > 0 && MENU_TRACK && MENU_TRACK.paused){
     const pr = MENU_TRACK.play(); if(pr && pr.catch) pr.catch(()=>{});
+  }
+  if(rideWanted > 0 && RIDE_TRACK){
+    if(RIDE_TRACK.preload === 'none'){ RIDE_TRACK.preload = 'auto'; RIDE_TRACK.load(); }
+    if(RIDE_TRACK.paused){
+      try{ RIDE_TRACK.currentTime = 0; }catch(e){}   // start on the downbeat
+      const pr = RIDE_TRACK.play(); if(pr && pr.catch) pr.catch(()=>{});
+    }
   }
 }
 function nextTrack(){
@@ -1219,7 +1246,7 @@ function trackVol(v){
 let musicNow = '';
 function musicFor(){
   const m = game.mode;
-  if(m === 'play')  return 'play';
+  if(m === 'play')  return riding() ? 'ride' : 'play';
   if(m === 'dying') return 'duck';
   return 'menu';               // the menu, the escape and the score card share one
 }
@@ -1233,6 +1260,13 @@ function trackTick(dt){
     const mt = A.on ? menuWanted : 0;
     MENU_TRACK.volume = clamp(MENU_TRACK.volume + (mt - MENU_TRACK.volume) * Math.min(1, dt*2.2), 0, 1);
     if(MENU_TRACK.volume < 0.001 && !MENU_TRACK.paused && mt === 0) MENU_TRACK.pause();
+  }
+  if(RIDE_TRACK){
+    // faster than the menu's fade: the riff should arrive with the truck, not
+    // catch up with it a second later
+    const rt = A.on ? rideWanted : 0;
+    RIDE_TRACK.volume = clamp(RIDE_TRACK.volume + (rt - RIDE_TRACK.volume) * Math.min(1, dt*4.5), 0, 1);
+    if(RIDE_TRACK.volume < 0.001 && !RIDE_TRACK.paused && rt === 0) RIDE_TRACK.pause();
   }
   if(!TRACK) return;
   const target = A.on ? trackWanted : 0;
@@ -7029,7 +7063,13 @@ function boot(){
     startRide, loseRide, spawnBasketDrop, spawnElec, spawnPattern, spawnEggs,
     layRideCourse, rideApex, rideRise, rideCeil, truckGeom, truckFrame,
     elecDist, riding, wireHot, smoke, spark, pop, updateParticles, render,
-    worldSpeed, distSpeed, rideAir, rideImpulse, rideJump, UPM, LOAD };
+    worldSpeed, distSpeed, rideAir, rideImpulse, rideJump, UPM, LOAD,
+    /* the music, as a function rather than a value: musicNow changes and a
+       captured copy would be a lie the moment the scene did */
+    musicFor, musicScene, music: () => ({ now: musicNow,
+      ride: RIDE_TRACK ? { vol:+RIDE_TRACK.volume.toFixed(3), paused:RIDE_TRACK.paused } : null,
+      menu: MENU_TRACK ? { vol:+MENU_TRACK.volume.toFixed(3), paused:MENU_TRACK.paused } : null,
+      chase: TRACK ? { vol:+TRACK.volume.toFixed(3), paused:TRACK.paused } : null }) };
   const it=/[?&]introt=([0-9.]+)/.exec(location.search);
   if(it){ game.holdIntro = parseFloat(it[1]); }   // freeze the intro to look at a beat
   const sl=/[?&]slow=([0-9.]+)/.exec(location.search);
