@@ -137,6 +137,16 @@ def main():
             time.sleep(0.25)
         else:
             raise RuntimeError("__sfx never appeared -- is ?sfx in the URL?")
+        # ...and wait for the SAMPLES, not just the hook. Rendering before they
+        # decode gives the first sound that wants one its synth fallback and
+        # every later one the real file, which reads as a level bug that is not
+        # there. Not fatal if they never arrive: the fallbacks are the point.
+        for _ in range(80):
+            r = cmd("Runtime.evaluate", expression="window.__warm && window.__warm()",
+                    returnByValue=True)
+            if r.get("result", {}).get("value") is True:
+                break
+            time.sleep(0.25)
 
         def render(name, arg, secs):
             r = cmd("Runtime.evaluate",

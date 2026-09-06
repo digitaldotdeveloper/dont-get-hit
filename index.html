@@ -1636,15 +1636,28 @@ function vroom(len, rpm0, rpm1, vol, at, o){
 
    It idles on D one octave under the riff's root, so it agrees with the music
    for free. */
-/* LEVELS FOR A REAL ENGINE. Pulled down about a quarter across the truck on
-   2026-09-06 -- "lower the sfx of the monster truck sounds a bit". A recording
-   is far denser than the synth it replaced and went in at the synth's
-   headroom, which made it the loudest thing in the game rather than the
-   biggest. Dropping it also does the job the longer music delay was doing:
-   the engine and the riff stop fighting because one of them got out of the
-   way, not because they were separated in time. */
+/* LEVELS FOR A REAL ENGINE, SET AGAINST THE GAME AND NOT BY EAR.
+   Two rounds of "quieter" by feel did not fix this, so the whole sound table
+   was rendered and read, and the answer was not subtle:
+
+       hit (you have died)   0.217      <- the loudest thing in the game
+       land                  0.187
+       truckget              0.498
+       truckjump             0.485
+       truckland             0.411
+
+   The truck was more than twice the level of the sound that tells the player
+   they are dead, which is the one cue that must never be buried. A recording
+   is far denser than the four thin oscillators it replaced and it went in at
+   their headroom -- that made it the loudest thing in the game rather than
+   the biggest thing in it, which are not the same and only one of them is
+   what a monster truck should be.
+   So the one-shots now land a little ABOVE `hit` and nothing like double it,
+   and the bed -- which is continuous, and so reads louder than its peak --
+   sits down near a footstep. Anything that changes these should render the
+   table again and compare, rather than nudging a number. */
 const ENG_BED_VOL = 0.075;   // the synth bed: four oscillators, thin
-const ENG_BED_SMP_VOL = 0.21;  // a real engine recording, which is not
+const ENG_BED_SMP_VOL = 0.11;  // a real engine recording, which is not
 const ENG = { g:null, osc:null, nz:null, clf:null, bp:null, rev:0, rate:false };
 
 function engineBedOn(){
@@ -2172,19 +2185,16 @@ const S = {
      climbs a long way, because this is the one moment the truck gets to be
      enormous before it has to be a game object. */
   truckget(){
-    if(playSample('truckget', 0.72, 1, 'truck')) return;     // the user's recording
+    if(playSample('truckget', 0.36, 1, 'truck')) return;     // the user's recording
     /* THE IGNITION, IN THREE BEATS: the starter labours, it CATCHES, and it
-       roars up onto D and sits there -- the note the riff that is about to
-       start is built on, so the two lock instead of colliding. Then a second
-       blip up to the fifth, because nobody fires a big engine and drives off
-       on one rev. rpm is BANGS PER SECOND, not pitch. */
-    noise(0.10, 240, 80, 0.20, 0.9);                         // the door
-    /* THE IGNITION, IN THREE BEATS: the starter labours, it CATCHES, and it
-       roars up onto D and sits there -- the note the riff about to start is
-       built on. Then a blip onto the fifth, because nobody fires an engine
-       that size and drives off on one rev. */
-    vroom(1.30, 21, RIFF_HZ, 0.42, 0.04, {crank:0.34, rise:0.40, drive:3.0});
-    vroom(0.60, RIFF_HZ*0.8, RIFF_HZ*1.5, 0.26, 1.15, {rise:0.45, drive:3.4})
+       roars up onto D -- the note the riff about to start is built on, so the
+       two lock instead of colliding. rpm is BANGS PER SECOND, not pitch. */
+    /* A FALLBACK HAS TO MATCH THE LEVEL OF THE THING IT REPLACES, or the one
+       player whose browser fails to fetch the file gets an ignition at twice
+       everyone else's. Halved with the rest of the truck. */
+    noise(0.10, 240, 80, 0.10, 0.9);                         // the door
+    vroom(1.30, 21, RIFF_HZ, 0.21, 0.04, {crank:0.34, rise:0.40, drive:3.0});
+    vroom(0.60, RIFF_HZ*0.8, RIFF_HZ*1.5, 0.13, 1.15, {rise:0.45, drive:3.4})
   },
 
   /* THE TRUCK LEAVING THE GROUND. The suspension lets go first -- that is the
@@ -2225,11 +2235,11 @@ const S = {
     /* THE LOUDEST THING IN THE RUN, and it has to measure that way: rendered
        at 0.19 against the jump's 0.44 it was the quietest of the five, which
        is the wrong order for two tonnes hitting a road. */
-    tone(58, 0.22, 'sine', 0.52, 32);                        // the slam
-    tone(41, 0.26, 'sine', 0.34, 24);                        // and the floor under it
-    noise(0.17, 380, 90, 0.30, 1.4);                         // dirt
-    tone(96, 0.17, 'triangle', 0.15, 62, null, 0.11);        // suspension coming back
-    noise(0.22, 2600, 900, 0.075, 2.0, 0.10);                // and the rattle after it
+    tone(58, 0.22, 'sine', 0.26, 32);                        // the slam
+    tone(41, 0.26, 'sine', 0.17, 24);                        // and the floor under it
+    noise(0.17, 380, 90, 0.15, 1.4);                         // dirt
+    tone(96, 0.17, 'triangle', 0.075, 62, null, 0.11);       // suspension coming back
+    noise(0.22, 2600, 900, 0.037, 2.0, 0.10);                // and the rattle after it
   },
 
   truckjump(){
@@ -2253,7 +2263,7 @@ const S = {
        same engine recording that plays when the truck is collected. One key
        for both, so a jump restarts the engine rather than layering a second
        one over the one still running from the pickup. */
-    if(playSample('truckget', 0.66, 1, 'truck')) return;
+    if(playSample('truckget', 0.33, 1, 'truck')) return;
     tone(52, 0.18, 'sine', 0.20, 30);                        // the springs unloading
     vroom(0.60, RIFF_HZ*0.7, RIFF_HZ*1.5, 0.38, 0, {rise:0.35, drive:3.6})
   },
@@ -8944,6 +8954,20 @@ function boot(){
      comes out is the synthesis the game actually plays, not a copy of it that
      can drift. tools/sfx.py drives it and writes the files. */
   if(/[?&]sfx/.test(location.search)){
+    /* WARM THE SAMPLES BEFORE RENDERING ANY OF THEM.
+       Without this the harness renders whatever is ready at the moment it
+       asks, and the samples load lazily -- so the FIRST sound that wants one
+       gets the synth fallback (playSample kicks off the fetch and returns
+       false) and every later one gets the real file. That is not a bug in the
+       game, where a pickup happens seconds after boot; it is a bug in the
+       measurement, and it produced a report showing the ignition twice as
+       loud as it actually ships, which is exactly the sort of number that
+       gets acted on. */
+    window.__warm = () => {
+      audioInit();            // there is no gesture in a headless render
+      warmSamples();
+      return SMP_HAVE.every(n => !!SMP.buf[n]);
+    };
     window.__sfx = (name, arg, secs) => new Promise((res, rej)=>{
       const sr = 44100, n = Math.ceil(sr*(secs||1.2));
       const OC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
