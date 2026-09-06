@@ -45,6 +45,15 @@ JOBS = [
     # whole, three of them would be overlapping at all times and a run would
     # turn to porridge. 0.24s with a fade keeps the whole body of it and lets
     # each step end before the next two arrive.
+    # TEN SECONDS IS A LONG TIME AT THE START OF A RUN. The recording keeps
+    # clattering above 10% of its peak until 6.8s, which is a real debris tail
+    # and worth some of -- but the kick lands at 1.15s and the run proper
+    # starts at 2.0s, so the whole thing would spend eight seconds under the
+    # opening of the game, 73% of it below 100Hz, muddying everything. Five
+    # seconds keeps the breach and the debris settling and is clear of it.
+    ('audio/sfx/gatebreach', os.path.join(DESK, 'gate-breach-42.wav'),
+     'atrim=start=0.020:duration=5.0,asetpts=N/SR/TB,afade=t=out:st=4.45:d=0.55',
+     1, 'sfx'),
     ('audio/sfx/step', os.path.join(DESK, 'step-4.wav'),
      'atrim=start=0:duration=0.24,asetpts=N/SR/TB,afade=t=out:st=0.195:d=0.045',
      1, 'sfx'),

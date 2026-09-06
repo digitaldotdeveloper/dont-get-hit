@@ -2026,7 +2026,29 @@ function clipCurve(d){
    Decoded once and reused: decodeAudioData on every press would allocate a
    buffer per press and is the classic way to make a game stutter on its own
    sound effects. */
-const SMP = { buf:{}, want:{}, ext:null, voice:{}, loop:{} };
+const SMP = { buf:{}, want:{}, ext:null, voice:{}, loop:{}, raw:{} };
+
+/* FETCHING DOES NOT NEED A GESTURE; DECODING DOES.
+   That distinction is the whole reason this exists. A sample could only start
+   loading once there was an AudioContext to decode into, and an AudioContext
+   only exists after the player touches the screen -- which is the same touch
+   that starts the intro. The chicken kicks the door 1.15 SECONDS LATER, so the
+   biggest sound in the opening was racing a fetch and a decode it could easily
+   lose, and losing it means silence at the one moment the game introduces
+   itself.
+   So the BYTES are pulled during the loading screen, where there is no gesture
+   and no context and none is needed, and the decode happens on the first touch
+   from memory. Started only once the art gate has drained, so it is never
+   competing for bandwidth with the images the gate is actually waiting for. */
+function prefetchSamples(){
+  SMP_HAVE.forEach(n => {
+    if(SMP.raw[n] || SMP.buf[n]) return;
+    fetch('audio/sfx/' + n + sampleExt())
+      .then(r => r.ok ? r.arrayBuffer() : Promise.reject(r.status))
+      .then(b => { SMP.raw[n] = b; })
+      .catch(() => {});                    // silent: loadSample will try again
+  });
+}
 function sampleExt(){
   if(SMP.ext) return SMP.ext;
   try{ SMP.ext = new Audio().canPlayType('audio/ogg; codecs=opus') ? '.ogg' : '.mp3'; }
@@ -2037,11 +2059,18 @@ function loadSample(name){
   if(SMP.want[name] || SMP_HAVE.indexOf(name) < 0) return;
   SMP.want[name] = 1;
   const c = actx(); if(!c) { SMP.want[name] = 0; return; }   // retry after a gesture
-  fetch('audio/sfx/' + name + sampleExt())
-    .then(r => r.ok ? r.arrayBuffer() : Promise.reject(r.status))
+  /* the prefetched bytes if they arrived, otherwise fetch now. decodeAudioData
+     DETACHES what it is given, so the reference is dropped either way -- and
+     if the decode fails, want is cleared so a later call can start over. */
+  const have = SMP.raw[name];
+  const bytes = have ? Promise.resolve(have)
+                     : fetch('audio/sfx/' + name + sampleExt())
+                         .then(r => r.ok ? r.arrayBuffer() : Promise.reject(r.status));
+  SMP.raw[name] = null;
+  bytes
     .then(b => new Promise((ok, no) => c.decodeAudioData(b, ok, no)))
     .then(buf => { SMP.buf[name] = buf; })
-    .catch(() => {});                       // silent: the synth fallback stands
+    .catch(() => { SMP.want[name] = 0; });  // silent: the synth fallback stands
 }
 /* WHERE A LOOP ACTUALLY STARTS AND ENDS.
    Encoders pad. LAME writes an encoder delay at the head and MP3 frames are
@@ -2128,7 +2157,9 @@ function playSample(name, vol, rate, key){
    two generated sounds in the game and both of their moments are silent now at
    the user's request, so the names, the entries in S and the files are all
    gone rather than left behind to be fetched and never played. */
-const SMP_HAVE = ['truckget', 'truckidle', 'truckland', 'step'];
+/* gatebreach first: it is wanted 1.15s after the only gesture that can
+   decode it, and the list is walked in order. */
+const SMP_HAVE = ['gatebreach', 'step', 'truckget', 'truckidle', 'truckland'];
 function warmSamples(){ SMP_HAVE.forEach(loadSample); }
 
 let stepFoot = 0;                 // which foot
@@ -2340,6 +2371,13 @@ const S = {
     [0,4,7,12].forEach((sm,i)=>
       tone(root*Math.pow(2,sm/12), 0.13, 'triangle', 0.055, null, null, i*0.055));
   },
+  /* THE GATE GOING. The user's own recording, and there is no synthesised
+     fallback under it on purpose: they had the synthesised cage break removed
+     entirely, so if this file is missing the kick is silent, which is the
+     thing they chose rather than an accident.
+     Exclusive, because the intro can be skipped and restarted faster than five
+     seconds and two breaches over each other is a mess. */
+  gatebreach(){ playSample('gatebreach', 0.40, 1, 'gate'); },
   cagerattle(){ noise(0.06, 1800, 900, 0.05, 4.0); tone(300,0.05,'square',0.035,240); },
   bedcreak(){ wob(420, 180, 0.22, {type:'sawtooth', vol:0.055, depth:22, rate:9});
               noise(0.10, 900, 380, 0.035, 2.2); },
@@ -6088,6 +6126,13 @@ function onBtn(e){
   return !!(t && t.closest && t.closest('#mute,[data-meta]'));
 }
 function downFrom(e){
+  /* THE SAME EVENT, TWICE. bindDown is called for the window and for the
+     canvas, both in the CAPTURE phase, so one press on the canvas walks past
+     two listeners holding the same event object. Comparing the object itself
+     is exact -- no timing window to tune, and a genuine double-tap is two
+     objects and still gets through. */
+  if(e && e === game.lastDownEv) return;
+  game.lastDownEv = e;
   game.rawDown = (game.rawDown||0) + 1;
   if(onBtn(e)) { game.lastEv = 'btn'; return; }
   pressJump();
@@ -6113,8 +6158,22 @@ function bindDown(el){
   if(!el) return;
   el.addEventListener('touchstart', touchDown, ACT);
   if(!TOUCH){
-    el.addEventListener('pointerdown', e=>{ game.lastEv='pdown'; downFrom(e); }, CAP);
-    el.addEventListener('mousedown',  e=>{ game.lastEv='mdown'; downFrom(e); }, CAP);
+    /* ONE POINTER SOURCE, NOT TWO.
+       Binding pointerdown AND mousedown means a single mouse press arrives
+       TWICE, because a browser fires both for the same click -- and the two
+       presses are not harmless, they are read as two taps. On the menu that
+       is: press one starts the intro, press two lands in the intro's own
+       handler, which exists to let an impatient player skip ahead to the
+       kick. So the barn escape -- the door, the run-up, the boot going in --
+       was skipped instantly on every mouse play of this game, and nobody
+       noticed because on a phone only touchstart is bound and it is fine.
+       Measured before this line: one press, downFrom twice, introT at 1.441
+       within 400ms with the kick due at 1.15.
+       PointerEvent has been in every browser this game supports for years;
+       mousedown stays only as the fallback for one that somehow lacks it. */
+    const kind = window.PointerEvent ? 'pointerdown' : 'mousedown';
+    el.addEventListener(kind, e=>{ game.lastEv = kind === 'pointerdown' ? 'pdown' : 'mdown';
+                                   downFrom(e); }, CAP);
   }
 }
 bindDown(window); bindDown(cv);
@@ -6959,10 +7018,7 @@ function updateIntro(dt){
   else { q.sx = damp(q.sx, 1, 9, dt); q.sy = damp(q.sy, 1, 9, dt); }
 
   if(was < T_KICK && t >= T_KICK){                       // THE KICK
-    /* AND NO SOUND ON THE CAGE BREAK EITHER, same request. Everything else
-       about this beat stays -- the shake, the flash, the freeze, the slow-mo,
-       the phone buzzing in your hand -- so it still lands; it lands as
-       impact rather than as noise. */
+    S.gatebreach();
     breakCage(game.cageX - cam.x);
     game.boomT = 0;                                     // and the blast over the doorway
     game.doorBow = 0;
@@ -7894,13 +7950,28 @@ function trSpan(){
   return { a: TR_FROM, b: z ? z.start : 1180 };
 }
 function midPanelAt(worldM, k, base){
-  const t = MID_SEQ.trans, s = trSpan();
-  if(t.length && worldM >= s.a){
-    const u = clamp((worldM - s.a)/Math.max(1, s.b - s.a), 0, 0.9999);
-    return t[Math.min(t.length - 1, Math.floor(u*t.length))];
-  }
   const f = base.concat(MID_SEQ.farm);
-  return f[((k % f.length) + f.length) % f.length];
+  const farm = f[((k % f.length) + f.length) % f.length];
+  const t = MID_SEQ.trans, s = trSpan();
+  if(!t.length || worldM < s.a) return farm;
+  const u = clamp((worldM - s.a)/Math.max(1, s.b - s.a), 0, 1);
+
+  /* THE APPROACH IS DITHERED, NOT SWITCHED, and that is what makes it read as
+     a country changing hands rather than a level select.
+
+     Swapping the whole slot to the ant panels at 560m is a wall: one tile you
+     are on a farm, the next you are not, and with few panels made it is also
+     the same picture for six hundred metres. So the two sets are MIXED, with
+     the mix moving: a tile takes a transition panel with probability u, where
+     u is how far through the approach that tile stands. Early on the mounds
+     are the odd field among farms; by the mouth there is no farm left.
+
+     The roll is hashed off the TILE INDEX, never Math.random -- the same metre
+     has to look the same on every run, and a panel that re-rolls itself as it
+     scrolls would flicker between two worlds. */
+  const roll = hash(k*2.17 + 11.3);
+  if(roll >= u*u*(3 - 2*u)) return farm;                 // smoothstep: gentle at both ends
+  return t[Math.min(t.length - 1, Math.floor(u*t.length))];
 }
 
 function drawLayerSlot(L, key, alpha, clipL, clipR){
@@ -8963,6 +9034,7 @@ function gateStart(){
     const stalled = LOAD.sealed && (Date.now() - LOAD.lastAt) > LOAD.STALL_MS;
     if(drained || stalled || waited > LOAD.CEILING_MS){
       LOAD.ready   = true;
+      prefetchSamples();     // the bytes, now; the decode waits for a gesture
       LOAD.waitMs  = waited;
       LOAD.timedOut = !drained;
       LOAD.gaveUpOn = drained ? null : (stalled ? 'stall' : 'ceiling');
@@ -9756,6 +9828,8 @@ function boot(){
     ENG, engineBedTick, engineBedOn, engineBedOff, vroom, ENG_H,
     STEPB, stepBedTick, stepBedOn, stepBedOff, STEP_LEN,
     samples: () => Object.keys(SMP.buf),
+    prefetched: () => SMP_HAVE.filter(n => !!SMP.raw[n]),
+    SMP,
     music: () => ({ now: musicNow,
       ride: RIDE_TRACK ? { vol:+RIDE_TRACK.volume.toFixed(3), paused:RIDE_TRACK.paused,
                            src:(RIDE_TRACK.src||'').split('/').pop(),

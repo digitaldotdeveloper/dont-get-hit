@@ -34,6 +34,7 @@ ONE = [
     ("hit",      None, 1.00), ("egg", 1, 0.35),
     ("eggrun",   5,    0.60), ("near", None, 0.50),
     # the three pickups, synthesised like the rest
+    ("gatebreach", None, 2.00),
     ("truckget", None, 2.00),   # no megg: the mystery egg is silent now
     # truckboost RENDERS SILENT ON PURPOSE and the report will flag it. It is
     # the synthesised airborne surge, and it stands down whenever a real engine
