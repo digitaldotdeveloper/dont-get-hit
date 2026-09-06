@@ -141,6 +141,8 @@ rules that keep them consistent.
 | Obstacles (9 code-drawn, 16 painted) | `const OB = {`, `farmProp` |
 | Difficulty tiers | `function tierNow`, `function spawnPattern` |
 | The angry crows | `THE ANGRY CROWS`, `updateCrows`, `drawCrowAlerts` |
+| The meta shell (menu strip, shop, daily) | `THE META SHELL`, `const META = {`, `function metaBind` |
+| The loading screen | `#boot`, `.bootCol`, `body.booting`, `gateStart` |
 
 ## Flight model — one system, do not add a second
 
@@ -2412,9 +2414,190 @@ to edit when a new one arrives.
 
 **Landed so far: megg, truckjump. Still failing: vroom, kick, boom.**
 
+## The shell around the game (2026-09-06)
+
+The front door: a strip, three doors, a daily card, a four-tab shop and a
+loading screen re-laid onto the menu's own skeleton. The brief was "Vehicles
+(skills), power ups, Appearance, remove ads for 1.99$, a reward section that
+lets you watch an ad each 24h, and a section that lets you see how much golden
+eggs you have on the top left and top somewhere your best score".
+
+**NOTHING HERE TRANSACTS.** No egg is spent, no purchase is made, no ad is
+played, and every price and level in it is placeholder copy. It is the layout
+and the states, built so the shape could be judged before the economy is
+written against it. The two things that ARE real are the two numbers: the egg
+count and the best distance come straight out of the same state the run uses,
+so the strip is never a lie about what you have.
+
+| What | Marker |
+|---|---|
+| The whole shell | `THE META SHELL` (once in the CSS, once in the script) |
+| Open / close / which tab | `const META = {`, `META.open` |
+| The strip's numbers, and first-run | `function metaSync` |
+| The ladder | `const DAILY`, `function dailyDraw` |
+| Every listener | `function metaBind` |
+| The shop markup | `<div id="shop"`, `data-pane=` |
+| The loading screen | `#boot`, `.bootCol`, `body.booting` |
+
+### PLAY did not move, and that is the whole constraint
+
+Five destinations went onto a menu that had one button. Everything added is
+either smaller than PLAY, outlined instead of filled, or in a corner PLAY does
+not occupy. Three rules hold it:
+
+- **Filled gold is reserved.** Only PLAY and the daily claim are filled. Every
+  other new control is an outline, *including both of the ones that sell
+  things*, so nothing out-shouts the button the player came for.
+- **Gold means currency, cream means score.** The egg count is gold; BEST is
+  cream AND a different shape (a plate hanging off the top edge, not a pill), so
+  a glance can never read one as the other. Coral is real money and nothing
+  else.
+- **The eggs do not move.** They sit in the corner `#hudTL` already puts them in
+  during a run, so the number stays put when the game starts.
+
+There is a fourth, about where a thumb is. This game is landscape, so the
+bottom-right corner is the dominant thumb -- PLAY and the three doors -- and the
+bottom-left is the other one, which is where the daily card went. The top strip
+is status, and almost none of it is tappable.
+
+### The two rule chips and the hint are first-run only, and that is the trade
+
+`.rules` and `.hint` used to sit under PLAY on every visit. They are the exact
+room the three doors needed, and a returning player has already been told how to
+fly. `body:not(.firstrun)` hides them.
+
+**And on the first run the shell is not drawn AT ALL** -- no doors, no daily
+card, no egg pill, no BEST plate, no remove-ads. Nothing has been earned,
+nothing can be bought, nothing is customisable, and no ad has been seen, so
+selling ad removal to someone who has not seen one reads as grabbing. Day one is
+the menu this game already had, byte for byte, which is the point: adding a shop
+must not cost anything before the player's first run. `game.firstRun` is
+**re-read from `dgh.played` inside `metaSync`** rather than cached, because that
+key is written the first time you die and the menu you come back to is the
+second-visit one.
+
+### The loading screen IS the menu, unlit
+
+Same logo, same tagline, same seat. The bar is PLAY's box, in PLAY's place, in
+PLAY's gold -- `.big, .bootBar` share one `min-width` so they cannot drift apart
+whatever the label says -- and it fills, and then it is the button. The
+crossfade between the two screens does the morph for free.
+
+`boot()` calls `toMenu()` and starts the frame loop **before** `gateStart()`, so
+the farm is already being drawn under the loading screen. Dropping the backdrop
+from opaque to a wash lets it arrive behind the screen that is waiting for it,
+and the handover becomes a sunrise rather than a cut to a different picture.
+
+**That is also where the one real bug was.** A translucent `#boot` shows the
+canvas -- and `#menu`, which is a DOM sibling under it. Two logos, two taglines,
+a ghost PLAY and a ghost daily card. No z-index can be transparent to the canvas
+and opaque to a sibling, so `body.booting` simply does not draw the menu
+(`#menu` and `#hud` go `visibility:hidden`), and the class is removed at the
+**start** of the half-second fade -- so the menu is revealed underneath a
+dissolving loading screen, which is the morph rather than a workaround for it.
+
+The number is drawn twice, cream underneath and ink inside the fill, and the
+fill is **the whole button clipped from the right** (`clip-path`) rather than a
+bar that grows -- that is what makes the ink copy land exactly on the cream one,
+so the figure is legible at every percentage instead of going pale the moment
+the gold reaches it. `?noboot=1` still skips everything, and the stall-based
+give-up logic is untouched.
+
+### The press filter is the thing that would have broken it
+
+`onBtn` only ever let `#mute` swallow a press; every other tap flies, on
+purpose, so PLAY and RETRY start the run *and* flap. Drop a shop onto that and
+tapping VEHICLES launches the chicken.
+
+Both `onBtn` and `touchDown` now also pass `#mute,[data-meta]`, and
+`data-meta` is on the strip, the doors, the daily card, the whole shop and the
+ladder. `touchDown` needed its own arm because it decides `preventDefault`
+before `downFrom` ever runs -- swallowing the default on a meta element kills
+the click that follows. And **`thrustOn` returns early on `META.open`**, which
+is the part no amount of pointer filtering would have covered: without it, Space
+starts a run from inside the shop.
+
+### `.big` is taken, and so are `.card`, `.stat` and `.rule`
+
+Everything inside the shop is `s-` prefixed for that reason. One element slipped
+through: day seven's rung was `.dday.big`, which picked up the PLAY button's
+8px gold under-shadow and drew an orange bar under the last day of the ladder.
+It is `.dday.last` now. **Check a new class name against the game-over card and
+the menu chips before using it.**
+
+### The daily ladder, and the four decisions inside it
+
+Seven rungs, and the seventh is not eggs -- a ladder is sold by its end, so the
+reason to come back on day four has to be visible on day one. `DAILY` holds the
+state and `dailyDraw()` renders both halves of it: the claim, and the clock.
+
+- **A locked button with no clock reads as broken, so the clock IS the button.**
+  Nothing else on the card moves between the two states.
+- **Nothing resets on a missed day.** Resetting the streak punishes exactly the
+  lapsed player you are trying to win back. The ladder waits.
+- **24 hours from the claim, not from local midnight.** Midnight rollover
+  invites clock-changing and punishes a late player for being twenty minutes
+  early.
+- **Watch-then-claim, as asked.** The higher-converting variant is claim-free
+  with a double-it-for-an-ad button; that is a test, not a guess, and it belongs
+  with the economy.
+
+### `tools/cut_hats.py` is the one cut script that does not read the archive
+
+There is no Gemini sheet behind the four hats. They were generated as opaque
+reference *renders* -- a whole chicken wearing the hat, on flat green, 512x280
+RGB -- and `chickens.html` shows them as picture cards, keying the green in the
+browser. So the shipped file IS the source, and the script reads `art/`.
+
+The shop needs a hat-shaped icon 54px across instead, and a whole chicken at
+that size is a beige smudge, so each render is keyed, its largest blob taken and
+the top **44%** cropped. 44% was measured, not guessed: below it the beak goes,
+above it the wing comes in. Output is `art/shop/hat_*.webp`, lossless, at 3x the
+drawn size.
+
+**Every image in the shop is a CSS background, not an `<img>`.** Two reasons,
+both load-bearing: the gate counts `HTMLImageElement.prototype.src`, so a
+background does not inflate `LOAD.total` away from the game's own requests; and
+a background on a `display:none` pane is not fetched until the pane is shown, so
+the whole shop costs the boot path nothing. The three door icons are the
+exception and are visible on the menu -- and two of the three (`truck_drive`,
+`mystery_egg`) are art the game loads anyway.
+
+### What is not wired
+
+Buying, equipping, the ad, the clock, the economy. `?ridetest`-style proof does
+not exist for any of it because there is nothing yet to prove. The build order
+that does exist is in the launch plan: currency, then missions, then the shop,
+then characters and skills -- anything else writes the economy twice.
+
+### The verification that mattered
+
+`sh check.sh` first, always. Then: one clean load counting requests, 404s and
+`window.__errs` (225 / 0 / null); `?selftest ?obtest ?crowtest ?ridetest` all
+passing; a run, the ride, the crows and the 2200m zone with no exceptions; the
+portrait gate still gating. **Then the same pass against the live URL with a
+cache-buster**, which is the one that caught the real problem -- see below.
+
+### The concurrency hazard, in a new and worse shape
+
+The other session **committed and pushed the entire meta shell inside their own
+commit** (`6868e3a`, "The truck's five moments") while it sat in the working
+tree -- *without* the four `art/shop/hat_*.webp` files it references, because
+those were untracked and `git add index.html` does not notice what index.html
+asks for. The live site served a shop pointing at four 404s, and **nothing said
+so, because a missing image here is a silent fallback by design.** It was caught
+by diffing HEAD's file list, not by looking at the screen. `fb62062` fixed it.
+
+So, on top of everything already written under **Two sessions edit this at
+once**: after any edit here, check whether HEAD *already contains it* before
+assuming your work is uncommitted -- and check that every asset your commit
+references is tracked, because the game is built to hide exactly that failure.
+
 ## Next
 
-- Nothing spends the eggs yet.
+- **Nothing spends the eggs yet** -- the shop exists and none of it
+  transacts. See **The shell around the game**; the build order is
+  currency, missions, shop, then characters and skills.
 - The crows have no music cue. A stab under the lock, ducking the track for
   half a second, is the obvious next thing — `musicScene` already ducks.
 - The electric set has no sound of its own beyond `S.zap()` on a death. A hum
