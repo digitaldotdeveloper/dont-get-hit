@@ -34,9 +34,9 @@ ONE = [
     ("hit",      None, 1.00), ("egg", 1, 0.35),
     ("eggrun",   5,    0.60), ("near", None, 0.50),
     # the three pickups, synthesised like the rest
-    ("megg",     None, 1.30), ("truckget", None, 1.10),
+    ("megg",     None, 1.30), ("truckget", None, 2.00),
     ("powerdown", None, 1.20),
-    ("truckjump", None, 0.70),
+    ("truckjump", None, 1.00),
 ]
 # name, [args], gap between them, seconds each
 RUNS = [
@@ -117,7 +117,21 @@ def main():
                 if r.get("id") == n[0]:
                     if "error" in r: raise RuntimeError(m + ": " + json.dumps(r["error"]))
                     return r.get("result", {})
-        cmd("Page.enable"); cmd("Page.navigate", url=url); time.sleep(4.0)
+        cmd("Page.enable"); cmd("Page.navigate", url=url)
+        # WAIT FOR THE HOOK, DO NOT SLEEP AT IT. This was `time.sleep(4.0)`,
+        # which was true when the page had nothing to wait for; the loading
+        # gate now holds boot until the art is decoded, so a fixed wait
+        # started reporting "__sfx is not a function" as though the game were
+        # broken. Poll for the thing we actually need.
+        for _ in range(120):
+            r = cmd("Runtime.evaluate",
+                    expression="typeof window.__sfx === 'function'",
+                    returnByValue=True)
+            if r.get("result", {}).get("value"):
+                break
+            time.sleep(0.25)
+        else:
+            raise RuntimeError("__sfx never appeared -- is ?sfx in the URL?")
 
         def render(name, arg, secs):
             r = cmd("Runtime.evaluate",

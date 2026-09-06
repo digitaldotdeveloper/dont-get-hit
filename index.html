@@ -840,54 +840,159 @@ function noise(dur, f0, f1, vol, q, at){
 
    Built out of raw nodes rather than tone/wob/noise because none of those
    expose a gain to modulate, and that gain is the entire idea. */
-function vroom(len, rpm0, rpm1, vol, at){
+/* ============================================================
+   THE ENGINE
+   ============================================================
+   AN ENGINE IS A PULSE TRAIN, NOT A TONE WITH VIBRATO. The first version was
+   built out of `wob`, which bends an oscillator's PITCH -- and a wavering
+   pitch is a siren, not a motor, which is why it never sounded like one
+   however loud it got. A four-stroke is a series of BANGS: what rises when it
+   revs is the RATE of the bangs. So this gates the sound in AMPLITUDE at the
+   firing rate, and everything else falls out of that -- the lumpiness is real
+   rather than added, and at high rates the pulses fuse into the flat snarl a
+   truck makes at speed.
+
+   THEN THE USER SAID IT WAS LAME AND SHOULD FIT THE HEAVY METAL. That is not
+   a vague note, it is a measurable one, and it turned out to be two concrete
+   things the engine was getting wrong:
+
+   1. IT WAS IN THE WRONG KEY. An FFT of audio/music_ride puts its strongest
+      partial at 74Hz -- D2 -- with G1/G3 and A1 under it: a drop-D riff. The
+      engine was sweeping to 62 and 88 bangs per second, which are nothing, so
+      it sat a semitone-and-a-bit off the root and read as noise fighting the
+      music. Now it LANDS ON D (see RIFF_HZ) and the rev resolves into the
+      riff instead of arguing with it. A rev has a pitch whether you chose one
+      or not; choosing one is free.
+   2. IT WAS CLEAN. Distorted guitars are all harmonics, and a pure gated saw
+      underneath them sounds thin and polite by comparison -- "lame" is
+      exactly the right word for it. The body now goes through a soft-clip
+      shaper, which is what a guitar pedal is, so the engine has the same
+      texture as the thing it plays against.
+
+   And a rev that slides forever sounds out of control, so it RISES AND THEN
+   HOLDS: `o.rise` is the fraction of the length spent climbing, and the rest
+   sits on the target snarling. Arriving somewhere is what makes it sound
+   powerful rather than panicked.
+
+   Built out of raw nodes rather than tone/wob/noise because none of those
+   expose a gain to modulate, and that gain is the entire idea. */
+const RIFF_HZ = 73.42;   // D2, measured off the ride track. The truck's home note.
+
+function vroom(len, rpm0, rpm1, vol, at, o){
   if(!A.started || !A.on) return;
   const c = actx(); if(!c) return;
+  o = o || {};
   try{
-  const t = c.currentTime + (at || 0);
+  const t0 = c.currentTime + (at || 0);
+  const crank = o.crank || 0;              // starter motor before it catches
+  const t = t0 + crank;                    // when the engine itself begins
+  const rise = t + len*(o.rise === undefined ? 0.55 : o.rise);
   const out = c.createGain();
-  out.gain.setValueAtTime(0.0001, t);
+  out.gain.setValueAtTime(0.0001, t0);
   out.gain.exponentialRampToValueAtTime(vol, t + 0.03);
+  out.gain.setValueAtTime(vol, t + len*0.75);
   out.gain.exponentialRampToValueAtTime(0.0001, t + len);
   out.connect(A.sfxGain);
 
-  /* the firing pulse. A saw run through a shaper that is flat for most of its
-     range and spikes near the top: one short bang per revolution, and the duty
-     cycle stays put as the rate climbs. */
+  /* THE STARTER. Optional, and it is the whole reason a pickup reads as an
+     IGNITION rather than a rev: a labouring low whirr that turns the motor
+     over a few times before it fires. Cheap -- filtered noise with its own
+     slow gate -- and it buys the moment its entire shape. */
+  if(crank > 0){
+    const cg = c.createGain(); cg.gain.value = 0; cg.connect(out);
+    const clfo = c.createOscillator(); clfo.type = 'sawtooth';
+    clfo.frequency.setValueAtTime(7.5, t0);
+    clfo.frequency.linearRampToValueAtTime(11, t);
+    const csh = c.createWaveShaper(); csh.curve = pulseCurve(0.35);
+    const cAmt = c.createGain(); cAmt.gain.value = 0.7;
+    clfo.connect(csh); csh.connect(cAmt); cAmt.connect(cg.gain);
+    const cn = c.createBufferSource(); cn.buffer = noiseBuffer(c); cn.loop = true;
+    const cbp = c.createBiquadFilter(); cbp.type = 'bandpass';
+    cbp.frequency.setValueAtTime(320, t0);
+    cbp.frequency.linearRampToValueAtTime(520, t);
+    cbp.Q.value = 3.5;
+    const cw = c.createOscillator(); cw.type = 'square';   // the starter's whine
+    cw.frequency.setValueAtTime(180, t0);
+    cw.frequency.linearRampToValueAtTime(300, t);
+    const cwg = c.createGain(); cwg.gain.value = 0.16;
+    cn.connect(cbp); cbp.connect(cg); cw.connect(cwg); cwg.connect(cg);
+    clfo.start(t0); cn.start(t0); cw.start(t0);
+    clfo.stop(t + 0.02); cn.stop(t + 0.02); cw.stop(t + 0.02);
+    noise(0.10, 1800, 400, vol*0.55, 0.8, (at||0) + crank);   // it catches
+  }
+
+  /* the firing pulse: a saw through a shaper that is flat for most of its
+     range and spikes near the top -- one short bang per revolution, and the
+     duty cycle stays put as the rate climbs. */
   const lfo = c.createOscillator(); lfo.type = 'sawtooth';
   lfo.frequency.setValueAtTime(rpm0, t);
-  lfo.frequency.exponentialRampToValueAtTime(Math.max(1, rpm1), t + len);
-  const shape = c.createWaveShaper();
-  const n = 257, curve = new Float32Array(n);
-  for(let i = 0; i < n; i++){
-    const x = i/(n-1)*2 - 1;                 // -1..1
-    curve[i] = x < 0.45 ? 0.12 : Math.pow((x - 0.45)/0.55, 0.6);
-  }
-  shape.curve = curve;
+  lfo.frequency.exponentialRampToValueAtTime(Math.max(1, rpm1), rise);
+  lfo.frequency.setValueAtTime(Math.max(1, rpm1), t + len);   // ...and hold there
+  const shape = c.createWaveShaper(); shape.curve = pulseCurve(0.45);
   const gate = c.createGain(); gate.gain.value = 0;
   lfo.connect(shape); shape.connect(gate.gain);
 
   // body: a saw an octave under the firing rate, so it has a pitch to it
   const saw = c.createOscillator(); saw.type = 'sawtooth';
   saw.frequency.setValueAtTime(rpm0*0.5, t);
-  saw.frequency.exponentialRampToValueAtTime(Math.max(20, rpm1*0.5), t + len);
-  const sawG = c.createGain(); sawG.gain.value = 0.55;
+  saw.frequency.exponentialRampToValueAtTime(Math.max(20, rpm1*0.5), rise);
+  saw.frequency.setValueAtTime(Math.max(20, rpm1*0.5), t + len);
+  const sawG = c.createGain(); sawG.gain.value = 0.5;
+
+  // and a fifth over it -- what a V8's uneven bank actually gives you, and
+  // the interval this particular riff is built on
+  const fif = c.createOscillator(); fif.type = 'square';
+  fif.frequency.setValueAtTime(rpm0*0.75, t);
+  fif.frequency.exponentialRampToValueAtTime(Math.max(20, rpm1*0.75), rise);
+  fif.frequency.setValueAtTime(Math.max(20, rpm1*0.75), t + len);
+  const fifG = c.createGain(); fifG.gain.value = 0.2;
 
   // grit: broadband, opened up by a filter that climbs with the revs
   const nz = c.createBufferSource(); nz.buffer = noiseBuffer(c); nz.loop = true;
   const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 0.9;
   lp.frequency.setValueAtTime(rpm0*14, t);
-  lp.frequency.exponentialRampToValueAtTime(Math.max(200, rpm1*16), t + len);
-  const nzG = c.createGain(); nzG.gain.value = 0.75;
+  lp.frequency.exponentialRampToValueAtTime(Math.max(200, rpm1*16), rise);
+  const nzG = c.createGain(); nzG.gain.value = 0.7;
+
+  /* THE PEDAL. Soft clip, so the engine is made of harmonics like the guitars
+     are. Post-gate, so it saturates the bangs themselves. */
+  const drv = c.createWaveShaper();
+  drv.curve = clipCurve(o.drive === undefined ? 2.6 : o.drive);
+  drv.oversample = '2x';
 
   saw.connect(sawG); sawG.connect(gate);
+  fif.connect(fifG); fifG.connect(gate);
   nz.connect(lp); lp.connect(nzG); nzG.connect(gate);
-  gate.connect(out);
+  gate.connect(drv); drv.connect(out);
 
-  lfo.start(t); saw.start(t); nz.start(t);
-  lfo.stop(t + len + 0.05); saw.stop(t + len + 0.05); nz.stop(t + len + 0.05);
+  // chest: the sub, untouched by the gate so it is a solid floor under the lumps
+  const sub = c.createOscillator(); sub.type = 'sine';
+  sub.frequency.setValueAtTime(rpm0*0.5, t);
+  sub.frequency.exponentialRampToValueAtTime(Math.max(20, rpm1*0.5), rise);
+  const subG = c.createGain(); subG.gain.value = 0.55;
+  sub.connect(subG); subG.connect(out);
+
+  const stopAt = t + len + 0.05;
+  [lfo, saw, fif, nz, sub].forEach(n => { n.start(t); n.stop(stopAt); });
   }catch(e){ A.err = e.message; }
 }
+/* one bang per cycle: flat, then a spike near the top of the saw's travel */
+function pulseCurve(thr){
+  const n = 257, k = new Float32Array(n);
+  for(let i = 0; i < n; i++){
+    const x = i/(n-1)*2 - 1;
+    k[i] = x < thr ? 0.12 : Math.pow((x - thr)/(1 - thr), 0.6);
+  }
+  return k;
+}
+/* a distortion pedal in five lines: tanh, normalised so `drive` changes the
+   texture without changing the level */
+function clipCurve(d){
+  const n = 1025, k = new Float32Array(n), m = Math.tanh(d);
+  for(let i = 0; i < n; i++) k[i] = Math.tanh((i/(n-1)*2 - 1)*d)/m;
+  return k;
+}
+
 /* ============================================================
    SAMPLES
    ============================================================
@@ -955,7 +1060,7 @@ function playSample(name, vol, rate){
    noise in the network log and a lie in the asset count; the fallback is meant
    to be the SYNTH version, not a failed request.
    One line to edit when a new one lands: tools/cut_sfx.py prints the names. */
-const SMP_HAVE = ['megg', 'truckjump'];
+const SMP_HAVE = ['megg', 'truckjump', 'boom'];
 function warmSamples(){ SMP_HAVE.forEach(loadSample); }
 
 let stepFoot = 0;                 // which foot
@@ -1262,13 +1367,14 @@ const S = {
      enormous before it has to be a game object. */
   truckget(){
     if(playSample('vroom', 1.0)) return;                     // the generated engine
-    noise(0.14, 260, 90, 0.22, 0.9);                         // the clunk
-    tone(66, 0.30, 'square', 0.18, 44);                      // ...with weight under it
-    /* rpm is BANGS PER SECOND now: a lumpy idle you can count, swinging up to
-       a snarl where the pulses fuse. Two revs, because nobody starts a big
-       engine and drives off on one. */
-    vroom(0.85, 17, 62, 0.34, 0.06);
-    vroom(0.55, 30, 88, 0.22, 0.70)
+    /* THE IGNITION, IN THREE BEATS: the starter labours, it CATCHES, and it
+       roars up onto D and sits there -- the note the riff that is about to
+       start is built on, so the two lock instead of colliding. Then a second
+       blip up to the fifth, because nobody fires a big engine and drives off
+       on one rev. rpm is BANGS PER SECOND, not pitch. */
+    noise(0.10, 240, 80, 0.20, 0.9);                         // the door
+    vroom(1.25, 19, RIFF_HZ, 0.40, 0.04, {crank:0.30, rise:0.42, drive:3.2});
+    vroom(0.60, RIFF_HZ, RIFF_HZ*1.5, 0.24, 1.05, {rise:0.5, drive:3.4})
   },
 
   /* THE TRUCK LEAVING THE GROUND. The suspension lets go first -- that is the
@@ -1291,9 +1397,16 @@ const S = {
        `rideDuck` is read by trackTick; 0.25s is short enough that the music
        reads as pumping with the truck rather than as dropping out. */
     game.rideDuck = 0.25;
-    if(playSample('truckjump', 0.95)) return;                // the generated launch
+    /* THE SAMPLE IS THE MECHANICS, THE ROAR IS THE MUSIC. The generated take
+       is a suspension thump -- good, and completely untuned, because nothing
+       told Gemini what key to be in. So it is LAYERED rather than returned
+       from: the thump gives the jump its weight, and the roar over it climbs
+       a fifth off the truck's own D onto A, the note the riff leans on
+       hardest after the root. A rising fifth is the oldest trick there is for
+       making something sound like it is going up. */
+    playSample('truckjump', 0.75);
     tone(52, 0.18, 'sine', 0.20, 30);                        // the springs unloading
-    vroom(0.42, 34, 96, 0.32);                               // a stab of throttle
+    vroom(0.55, RIFF_HZ*0.85, RIFF_HZ*1.5, 0.34, 0, {rise:0.4, drive:3.4})
   },
 };
 /* music: a light 8-step groove that speeds up with the run */
@@ -4860,14 +4973,26 @@ function startRun(){
   game.camY=0; game.camYT=0; game.deadT=0; game.newBest=false;
   game.door=null; game.doorGone=false; game.lockGone=false; game.doorBow=0;
   game.cageX = -CAGE_RUNOUT;             // the barn stays put and the world leaves it
-  player.x=0; player.y=0; player.vy=0; player.onGround=true; player.phase=0;
+  /* THE ODOMETER AND THE WORLD START AT THE SAME PLACE.
+     `?dist=N` used to move game.dist and nothing else, so the run began with
+     the counter 2000m ahead of the ground it was standing on. Everything that
+     reads DISTANCE -- the zone, the palette, the layer set -- jumped; every
+     thing placed by WORLD POSITION -- the gateways, the signs, the mounds, and
+     the layer seam itself, all drawn at `m*UPM - cam.x` -- stayed 2000m down
+     the road and off the right-hand edge. So the flags built to look at a
+     boundary were the one thing that could never show one, and the only way to
+     see a doorway was to play to it. Measured before this line: ?dist=2000 gave
+     dist 2005.7m against cam.x -4.3m.
+     They advance together every frame after this (`game.dist += speed*dt` and
+     `player.x += speed*dt`), so all this does is start them agreeing. */
+  player.x=game.dist; player.y=0; player.vy=0; player.onGround=true; player.phase=0;
   player.flapT=0; player.flapBeat=-1; player.flapLag=0;
   player.thrusting=false;                                   // never start a run mid-thrust
   player.state='run'; player.stateT=0; player.landT=0; player.stumbleT=0;
   player.rideLand=0; player.rideJumps=0;
   player.near=0; player.nearT=0; player.nearCool=0;
   player.beat=''; player.beatT=0;
-  cam.x = -PX;
+  cam.x = player.x - PX;         // ...and the camera holds him at the play mark
   rag.alive=false;
   elMenu.classList.remove('show'); elOver.classList.remove('show');
   elHud.classList.add('on');
@@ -5450,6 +5575,21 @@ function cageExitX(){
   return game.cageX + CAGE_RUNOUT;
 }
 function startIntro(){
+  /* YOU CANNOT BE KICKED OUT OF A BARN 2000 METRES FROM THE BARN.
+     `?dist` / `?zone` start the run down the road, and every number in the
+     escape is measured from world ZERO: the cage is parked at -CAGE_RUNOUT,
+     camIntroX frames that spot, and cageExitX hands the run back at 0. Run it
+     anyway and the handover sets player.x = cageExitX() -- putting the last
+     pose at world 0 with the odometer 2000m away, which is precisely the
+     mismatch these flags are being fixed for, restored one line later.
+     Moving the cage to the preset instead was the other option and it is the
+     worse one: the escape's positions are a mix of world and screen space
+     (breakCage and the feather burst both take game.cageX through cam.x), and
+     anchoring it 70,000 units out multiplies every one of those by the
+     distance. A preset run is a RETRY -- straight in, with the READY/GO beat
+     -- which is also what it means: you asked to start there, not to be
+     released there. */
+  if(game.presetDist){ startQuick(); return; }
   startRun();
   elHud.classList.remove('on');
   elTut.classList.remove('show');
@@ -6098,12 +6238,17 @@ function drawSky(){
     ctx.ellipse(x-46*s, y-6*s, 44*s, 16*s, 0,0,TAU);
     ctx.fill(); ctx.globalAlpha=1;
   }
-  // birds
-  for(let i=0;i<3;i++){
+  // Birds, and they are an OUTDOOR thing like the clouds and the sun. They
+  // were the one piece of sky that never asked -- three silhouettes gliding
+  // through a sealed ant city, at the same weight as on the farm. Multiplied
+  // by outdoor() rather than gated on a boolean, for the same reason
+  // everything else here is: a bird that pops out of existence between two
+  // frames is worse than one that should not be there.
+  if(outK > 0.02) for(let i=0;i<3;i++){
     const x = ((hash(i*11)*VW*2) - (t*(34+i*11) + cam.x*0.05)) % (VW*1.6);
     const bx = x<0? x+VW*1.6 : x;
     const by = GROUND - 470 - hash(i*13)*160 + Math.sin(t*2+i)*8;
-    ctx.strokeStyle='rgba(36,16,67,.42)'; ctx.lineWidth=3; ctx.lineCap='round';
+    ctx.strokeStyle='rgba(36,16,67,'+(0.42*outK).toFixed(3)+')'; ctx.lineWidth=3; ctx.lineCap='round';
     const f = Math.sin(t*7+i)*5;
     ctx.beginPath(); ctx.moveTo(bx-9,by+f); ctx.lineTo(bx,by-3); ctx.lineTo(bx+9,by+f); ctx.stroke();
   }
@@ -7253,8 +7398,17 @@ function render(){
   /* Clear to the top of the sky, not to the ink. The camera rises with the bird
      and a zoom punch shrinks the world by a fraction, and both expose canvas
      outside the drawn band -- against the ink that reads as a black letterbox
-     round a bright farm. Indoors the ink is still right. */
-  ctx.fillStyle = C.skyA; ctx.fillRect(0,0,CW,CH);
+     round a bright farm.
+
+     AND IT IS themeNow(), NOT C. `C` is stamped once, from the theme the run
+     STARTED in, so underground this cleared to the farm's daylight blue -- and
+     the exposure is not hypothetical: game.camY lifts to +90 as he climbs, and
+     the sky surface is only drawn from y=0 down, so a band the height of the
+     camera lift is bare canvas. Measured at 2170m with camY 82: a strip of
+     bright blue daylight across the top of an ant city. Same bug the road had
+     (C.road, applied once from the starting theme); anything here that reads a
+     colour once per RUN is wrong in a world that changes with DISTANCE. */
+  ctx.fillStyle = themeNow().skyA; ctx.fillRect(0,0,CW,CH);
   ctx.save();
   ctx.scale(SCALE,SCALE);
 
