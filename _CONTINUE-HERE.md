@@ -3043,7 +3043,7 @@ against the mechanism, not a fix for a diagnosed fault. If it recurs, the
 question that splits it is whether the OTHER samples go quiet at the same time
 -- all of them means the audio context, only the gate means the timing race.
 
-### The dynamite is priced off the run it is ending
+### Both paid offers are priced off the run they are ending
 
 A flat 250 bought the same thousand metres whether you died at 200 or at 2,000,
 and that is the wrong way round twice over. **At the top of a good run those
@@ -3084,6 +3084,35 @@ exact string rendered, for the same reason.
 
 The floor row of that table is unreachable, incidentally -- `deathOffer` needs
 100 m before it shows anything, so the cheapest real price is x1.1.
+
+### And so is the extra life -- on the same curve, deliberately
+
+`tntMul` is **`runMul`** now, and `heartCost()` goes through it too.
+
+| died at | extra life |
+|---|---|
+| 0 m | 400 (the floor, unreachable -- the card needs 100 m) |
+| 500 m | 600 |
+| 1,000 m | 800 |
+| 2,000 m | 1,200 |
+| 3,000 m+ | 1,600 |
+
+**One curve, not two.** The dynamite scaled and the life did not, which left the
+card teaching two different rules in the eight seconds it is up -- and the
+second one would never have been worked out. The reasoning is the same and if
+anything stronger for the life: continuing a 2,000 m run is worth far more than
+continuing a 200 m one, because the metres you are protecting are the ones
+between you and a best.
+
+**The ad stays free at every distance.** Only the paid option tracks what it is
+buying, so the free one never gets worse -- which is the whole reason there are
+two of them on the card.
+
+Both column captions carry the multiplier now rather than just the dynamite's,
+because both columns hold a price that moved. And the hard-coded `400` that used
+to sit in the markup is gone: `deathDraw` rebuilds that whole node anyway, so a
+price baked into the HTML was one more thing that could quietly stop being true.
+
 
 ## Next
 
