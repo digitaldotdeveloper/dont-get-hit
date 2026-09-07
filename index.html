@@ -956,12 +956,12 @@
       <div class="dthTop"><h2 id="dthTitle">NUGGET DOWN</h2><p><b id="dthM">0</b> m</p></div>
       <div class="dthCols">
         <div class="dthCol">
-          <span class="dthCap">KEEP RUNNING</span>
+          <span class="dthCap" id="dthCapLife">KEEP RUNNING</span>
           <div class="dthRow">
             <button class="dthBtn heart" id="dthHeart">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-8-5.1-8-10.4A4.6 4.6 0 0 1 12 7a4.6 4.6 0 0 1 8 3.6C20 15.9 12 21 12 21z"/></svg>
               <span class="lbl">EXTRA LIFE</span>
-              <span class="cost"><i></i><span id="dthHeartCost">400</span></span>
+              <span class="cost"><i></i></span>
             </button>
             <button class="dthBtn ad" id="dthAd">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
@@ -9576,9 +9576,32 @@ const HEART_COST = 400;
    It is never cheaper than it used to be, which is what stops the change
    making a short run a bargain. */
 const TNT = [ {m:500, cost:250}, {m:750, cost:450}, {m:1000, cost:700} ];
-const TNT_CAP = 4;
-function tntMul(){ return Math.min(TNT_CAP, 1 + (game.dist/UPM)/1000); }
-function tntCost(i){ return Math.round(TNT[i].cost * tntMul() / 10) * 10; }
+/* ONE CURVE, NOT TWO. It was tntMul when only the dynamite scaled; the extra
+   life is priced off the run as well now, and it uses the same multiplier
+   deliberately -- two different curves would be two rules for a player to work
+   out in the eight seconds this card is up, and the second one would never get
+   worked out.
+
+   The reasoning is the same and if anything stronger for the life: continuing a
+   2,000 m run is worth far more than continuing a 200 m one, because the metres
+   you are protecting are the ones between you and a best. The ad stays free at
+   every distance, so the free option never gets worse -- only the paid one
+   tracks what it is buying.
+
+   Rounded to ten, floored at 1x and capped at 4x, for the same three reasons
+   the dynamite is: never a bargain on a short run, never a taunt on a deep one,
+   and always a price rather than a calculation.
+
+     died at    heart
+          0 m     400   (the floor, and unreachable -- the card needs 100 m)
+        500 m     600
+      1,000 m     800
+      2,000 m    1200
+      3,000 m+   1600   (the cap) */
+const RUN_CAP = 4;
+function runMul(){ return Math.min(RUN_CAP, 1 + (game.dist/UPM)/1000); }
+function tntCost(i){ return Math.round(TNT[i].cost * runMul() / 10) * 10; }
+function heartCost(){ return Math.round(HEART_COST * runMul() / 10) * 10; }
 let dthTimer = 0;
 
 function deathOffer(){
@@ -9610,7 +9633,7 @@ function deathOffer(){
 }
 function deathDraw(){
   const heart = $('#dthHeart'), ad = $('#dthAd');
-  const cost = HEART_COST;
+  const cost = heartCost();
   heart.className = 'dthBtn heart' + (game.usedHeart ? ' used' : (eggs() < cost ? ' no' : ''));
   /* The whole cost node is rebuilt, never half-edited. Writing 'USED' into it
      with textContent removed the price span living inside it, and the NEXT
@@ -9619,11 +9642,12 @@ function deathDraw(){
   heart.querySelector('.cost').innerHTML = game.usedHeart ? 'USED' : '<i></i>' + money(cost);
   ad.className = 'dthBtn ad' + (game.usedAd ? ' used' : '');
   ad.querySelector('.cost').innerHTML = game.usedAd ? 'USED' : 'WATCH';
-  const mul = PERK.bang(), pmul = tntMul();
+  const mul = PERK.bang(), pmul = runMul();
   /* The multiplier is on the label, not hidden in the sum. A price that moves
      between runs and does not say why reads as the shop being unreliable. */
-  $('#dthCapTnt').innerHTML = 'ONE LAST BANG' +
-    (pmul > 1.05 ? ' <b>&times;' + pmul.toFixed(1) + '</b>' : '');
+  const badge = pmul > 1.05 ? ' <b>&times;' + pmul.toFixed(1) + '</b>' : '';
+  $('#dthCapLife').innerHTML = 'KEEP RUNNING' + badge;
+  $('#dthCapTnt').innerHTML  = 'ONE LAST BANG' + badge;
   $('#dthTnt').innerHTML = TNT.map((t, i) => {
     const m = Math.round(t.m * mul), cost = tntCost(i);
     const cls = game.usedTnt ? ' used' : (eggs() < cost ? ' no' : '');
@@ -9662,7 +9686,11 @@ function reviveNow(){
 }
 function deathHeart(){
   if(game.usedHeart) return;
-  if(!spend(HEART_COST)){ toast('NOT ENOUGH EGGS', true); S.bonk(); return; }
+  /* Charged from the same function the button was drawn from. A price
+     computed twice is a price that comes apart, and it stays self-consistent
+     on screen the whole time it is wrong -- the trolley taught that once
+     already. */
+  if(!spend(heartCost())){ toast('NOT ENOUGH EGGS', true); S.bonk(); return; }
   game.usedHeart = true; reviveNow();
 }
 function deathAd(){
@@ -9890,7 +9918,7 @@ function boot(){
     startRide, loseRide, spawnBasketDrop, dropClearAt, spawnElec, spawnPattern, spawnEggs,
     SAVE, SHOP, PERK, SKIN, SKINS, buy, buySkin, eggs, spend, earn,
     deathOffer, deathHeart, deathAd, deathTnt, deathSkip, startBlast, TNT, HEART_COST,
-    tntCost, tntMul,
+    tntCost, heartCost, runMul,
     die, finish, finishNow, softSave, dailyClaim, dailyState, skinApply, shopDraw, META,
     layRideCourse, rideApex, rideRise, rideCeil, truckGeom, truckFrame,
     elecDist, riding, wireHot, smoke, spark, pop, updateParticles, render,
