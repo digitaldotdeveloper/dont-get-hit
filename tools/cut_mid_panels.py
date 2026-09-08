@@ -78,6 +78,54 @@ def key_magenta(im):
     return Image.fromarray(a.astype(np.uint8), 'RGBA')
 
 
+def key_by_flood(im, tol=42):
+    """Key the background by GROWING IN FROM THE BORDER, not by naming a colour.
+
+       The colour test wants magenta near #FF00FF. Sometimes the generator
+       returns a washed-out pink instead -- 162,134,164 on the alien machinery
+       panel, which is 79% of the picture and sails straight past a test that
+       needs green under 110. Loosening that test is not the answer: the alien
+       facility and space were given MAGENTA accents on purpose, and a looser
+       colour key would eat them out of the artwork.
+
+       So this floods from the edge, the way npc_frames.py keys a character who
+       is wearing the key colour: whatever is connected to the border and close
+       to the border's own colour is background, and anything enclosed by an ink
+       outline cannot be reached however magenta it is."""
+    a = np.asarray(im.convert('RGBA')).astype(np.int16).copy()
+    h, w = a.shape[:2]
+    seed = np.concatenate([a[0, :, :3], a[-1, :, :3], a[:, 0, :3], a[:, -1, :3]])
+    base = np.median(seed, axis=0)
+    close = (np.abs(a[..., :3] - base).sum(axis=2) < tol)
+
+    out = np.zeros((h, w), bool)
+    stack = [(0, x) for x in range(w) if close[0, x]] +             [(h-1, x) for x in range(w) if close[h-1, x]] +             [(y, 0) for y in range(h) if close[y, 0]] +             [(y, w-1) for y in range(h) if close[y, w-1]]
+    for y, x in stack:
+        out[y, x] = True
+    while stack:
+        y, x = stack.pop()
+        for dy, dx in ((1,0), (-1,0), (0,1), (0,-1)):
+            ny, nx = y+dy, x+dx
+            if 0 <= ny < h and 0 <= nx < w and not out[ny, nx] and close[ny, nx]:
+                out[ny, nx] = True
+                stack.append((ny, nx))
+    a[out, 3] = 0
+    return Image.fromarray(a.astype(np.uint8), 'RGBA')
+
+
+def key_panel(path):
+    """The colour key, with the flood as a fallback when it plainly failed."""
+    im = key_magenta(Image.open(path))
+    a = np.asarray(im)
+    op = a[..., 3] > 40
+    if op.sum():
+        r, g, b = a[..., 0].astype(int), a[..., 1].astype(int), a[..., 2].astype(int)
+        left = op & (r > 120) & (b > 120) & (g < r - 25) & (g < b - 25)
+        if left.sum() > op.sum() * 0.30:
+            return key_by_flood(Image.open(path))
+    return im
+
+
 def content_box(im):
     al = np.array(im)[..., 3] > 24
     if not al.any():
@@ -277,7 +325,7 @@ def main():
         if not src:
             print('  %-6s no render yet -- skipped' % name)
             continue
-        im = trim_clipped(strip_baseline(key_magenta(Image.open(src))))
+        im = trim_clipped(strip_baseline(key_panel(src)))
         box = content_box(im)
         if not box:
             print('  %-6s nothing survived the key' % name)

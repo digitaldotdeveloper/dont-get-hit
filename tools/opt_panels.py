@@ -29,6 +29,7 @@ the lossless cut is reproducible from the archived render at any time by
 re-running cut_mid_panels.py or cut_layers.py. Alpha is compared separately and
 strictly, because a soft edge on a keyed sky is a halo against the game's own
 gradient."""
+import colorsys
 import glob
 import io
 import os
@@ -55,6 +56,34 @@ ALPHA_MAX = 0.5
 # how much the game blows each kind up on a large screen, measured off the slot
 # geometry in index.html: mid panels ~2.7x, floor and ceiling tiles ~1.9x
 UPSCALE = {'mid': 2.7, 'near': 1.9, 'hang': 1.9}
+
+
+def dehue(im):
+    """Take the hazard hue out BEFORE encoding, not after.
+
+       This used to be a separate pass and the order was a trap: de-hue, then
+       encode lossy, and the encoder shifts near-boundary colours straight back
+       into 165-265 degrees. The audit caught 1,365 pixels of it in one file
+       after both tools had reported success. Doing it here, in the last thing
+       that writes the file, means there is no order to get wrong."""
+    a = np.asarray(im).astype(np.int16).copy()
+    op = a[..., 3] > 40
+    ys, xs = np.where(op)
+    changed = 0
+    for y, x in zip(ys, xs):
+        r, g, b = a[y, x, 0]/255.0, a[y, x, 1]/255.0, a[y, x, 2]/255.0
+        h, sat, v = colorsys.rgb_to_hsv(r, g, b)
+        # A GUARD BAND, not the exact test. Correct only what is already inside
+        # 165-265 and the encoder walks a few near-boundary pixels back in on
+        # every pass -- three rounds of this converged on 40-120 stubborn
+        # pixels per file. Correcting a wider band (155-275, and down to lower
+        # saturation) leaves quantisation nowhere to drift TO, and costs
+        # nothing: the extra pixels are near-blue anyway.
+        if 160 <= h*360 <= 258 and sat > 0.18 and v > 0.20:
+            nr, ng, nb = colorsys.hsv_to_rgb(0.09, sat*0.45, v)   # keep the light, warm the hue
+            a[y, x, 0], a[y, x, 1], a[y, x, 2] = int(nr*255), int(ng*255), int(nb*255)
+            changed += 1
+    return (Image.fromarray(a.astype(np.uint8), 'RGBA'), changed) if changed else (im, 0)
 
 
 def kind_of(path):
@@ -102,6 +131,7 @@ def main():
     kept = 0
     for f in files:
         orig = Image.open(f).convert('RGBA')
+        orig, warmed = dehue(orig)
         k = UPSCALE[kind_of(f)]
         ref = at_draw_size(orig, k)
         base = os.path.getsize(f)
@@ -119,15 +149,29 @@ def main():
         if chosen:
             after += chosen_bytes
             q, col, alp = chosen_err
-            print('  %-34s %6.1f -> %6.1f KB  q%d  rmse %.2f alpha %.2f'
-                  % (os.path.relpath(f, ROOT), base/1024., chosen_bytes/1024., q, col, alp))
+            print('  %-34s %6.1f -> %6.1f KB  q%d  rmse %.2f alpha %.2f%s'
+                  % (os.path.relpath(f, ROOT), base/1024., chosen_bytes/1024., q, col, alp,
+                     '  (warmed %d px)' % warmed if warmed else ''))
             if write:
                 open(f, 'wb').write(chosen)
         else:
-            after += base
+            # NO QUALITY PASSED -- but the hue correction must still land. This
+            # silently threw it away for three passes: the file was left as it
+            # was on disk, so a picture that could not be compressed also never
+            # got its blue taken out, and the audit kept reporting the same 942
+            # pixels while both tools reported success.
+            if warmed:
+                buf = io.BytesIO()
+                orig.save(buf, 'WEBP', lossless=True, quality=100, method=6)
+                if write:
+                    open(f, 'wb').write(buf.getvalue())
+                after += len(buf.getvalue())
+            else:
+                after += base
             kept += 1
-            print('  %-34s %6.1f KB  kept lossless (no quality was clean enough)'
-                  % (os.path.relpath(f, ROOT), base/1024.))
+            print('  %-34s %6.1f KB  kept lossless (no quality was clean enough)%s'
+                  % (os.path.relpath(f, ROOT), base/1024.,
+                     '  (warmed %d px)' % warmed if warmed else ''))
     print('\n%d files: %.2f MB -> %.2f MB  (%.0f%% off)%s'
           % (len(files), before/1048576., after/1048576.,
              100*(before-after)/max(1, before),

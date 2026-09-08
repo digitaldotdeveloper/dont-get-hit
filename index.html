@@ -8058,22 +8058,41 @@ function trSpan(){
   const z = ZONES.find(q => q.id === 'empire');
   return { a: TR_FROM, b: z ? z.start : 1000 };
 }
-function midPanelAt(worldM, k, base){
+/* NO TWO TILES IN A ROW MAY BE THE SAME PICTURE, and arithmetic alone will not
+   promise that. The approach walks a step per distance and a panel covers more
+   than one tile, so neighbours land on the same step; alternating on parity
+   fixed the middle and collapsed at the ends, where the clamp put both back on
+   the last panel. Escalation is a property of DISTANCE and non-repetition is a
+   property of ADJACENCY, so they are enforced separately: pick by distance,
+   then if the answer equals the tile before it, step one along the same list.
+   `avoid` is that neighbour, handed in by the draw loop. */
+function midPanelAt(worldM, k, base, avoid){
   const zone = zoneAt(worldM).a;
   const cyc = (list) => list[((k % list.length) + list.length) % list.length];
 
   if(zone.id === 'terr'){
     const t = MID_SEQ.terr || [], f = base.concat(MID_SEQ.farm || []);
-    const farm = cyc(f);
+    let farm = cyc(f);
+    if(farm === avoid && f.length > 1) farm = f[(((k + 1) % f.length) + f.length) % f.length];
     if(!t.length) return farm;
     const s = trSpan();
     const u = clamp((worldM - s.a)/Math.max(1, s.b - s.a), 0, 1);
     if(hash(k*2.17 + 11.3) >= u*u*(3 - 2*u)) return farm;
-    return t[Math.min(t.length - 1, Math.floor(u*t.length))];
+    /* WHICH transition panel, and neighbours must not match. Picking purely by
+       progress gives every tile in the same stretch the same picture, so two
+       adjacent ones show the identical mound-barn side by side and the whole
+       point of a sequence is lost. Alternating on the tile's parity keeps the
+       escalation -- the step still walks forward with distance -- while
+       guaranteeing that no two tiles in a row are the same panel. */
+    let idx = clamp(Math.floor(u*t.length), 0, t.length - 1);
+    if(t[idx] === avoid && t.length > 1) idx = idx > 0 ? idx - 1 : idx + 1;
+    return t[idx];
   }
   const own = MID_SEQ[zone.id] || [];
-  if(own.length) return cyc(zone.id === 'farm' ? base.concat(own) : own);
-  return cyc(base);          // a world with no panels of its own keeps its tile
+  const list = own.length ? (zone.id === 'farm' ? base.concat(own) : own) : base;
+  let im = cyc(list);
+  if(im === avoid && list.length > 1) im = list[(((k + 1) % list.length) + list.length) % list.length];
+  return im;
 }
 
 function drawLayerSlot(L, key, alpha, clipL, clipR){
@@ -8088,6 +8107,7 @@ function drawLayerSlot(L, key, alpha, clipL, clipR){
      world without panels falls back to its tile inside that function. */
   const seq = (key === 'mid');
   let seqK = seq ? Math.floor(cam.x*L.f/g.W) : 0;
+  let lastIm = null;   // what the tile to the left ended up being
   const clipped = clipL !== undefined;
   if(alpha < 1 || clipped) ctx.save();
   if(clipped){
@@ -8101,7 +8121,8 @@ function drawLayerSlot(L, key, alpha, clipL, clipR){
        its layer position divided back out. Get that wrong and the approach
        escalates at the wrong place -- or worse, changes panel under you while
        you stand still. */
-    const im = seq ? midPanelAt((seqK*g.W/L.f)/UPM, seqK, [L.img]) : L.img;
+    const im = seq ? midPanelAt((seqK*g.W/L.f)/UPM, seqK, [L.img], lastIm) : L.img;
+    lastIm = im;
     ctx.drawImage(im, x, g.y, g.W, g.H);
     /* The lookouts live on the watchtower painted into panel ZERO, so they
        ride that panel and no other -- drawn on every panel they would be three
