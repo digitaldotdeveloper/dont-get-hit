@@ -3114,6 +3114,133 @@ to sit in the markup is gone: `deathDraw` rebuilds that whole node anyway, so a
 price baked into the HTML was one more thing that could quietly stop being true.
 
 
+## The run is nine worlds now, and the background travels (2026-09-08)
+
+Farm 0-500, Ant Territory 500-1000, Ant Empire 1000-1500, Prison 1500-2000,
+Chernobyl 2000-2500, Secret Military Base 2500-3000, Area 51 3000-3500, Alien
+Facility 3500-4000, Space 4000+. Every zone is 500m, which is 25-40 seconds at
+this speed curve: long enough to read as a place, short enough that the next
+one is always coming.
+
+### A slot can be a SEQUENCE, and that is what fixed the treadmill
+
+The middle distance was one painting tiled forever -- the same barn, silo and
+windmill every 75 metres of travel, for as long as you survived. The odometer
+climbed and the view did not.
+
+**The mid slot walks a list now.** Panel n is chosen by the tile's own index in
+layer space, so it is a property of WHERE YOU ARE: the same metre is the same
+field on every run, and the set only repeats after the whole list has gone by.
+Every panel is the same pixel size, which is what lets one `g.W` place all of
+them and what makes their ground lines meet.
+
+**Panels are keyed by ZONE, not by layer set.** Several zones share a set while
+their art is being made -- the prison and the reactor both ran on the deep
+city's layers -- so keying by set would have made them the same place.
+
+**The approach is ORDERED and DITHERED; everything else cycles.** Out on the
+farm there is no story in which field comes next. The approach to the mouth is
+the opposite, so a tile there takes a transition panel with a probability equal
+to how far through the approach it stands (smoothstepped, hashed off the tile
+index, never Math.random -- the same metre must look the same twice). Early on
+the mounds are the odd field among farms; by the mouth there is no farm left.
+
+### CUT-OUT PROPS WERE TRIED FIRST AND ARE THE WRONG KIND OF ART
+
+The first answer to "make every 100m different" was set-pieces on flat green,
+placed by metre and drawn at camera parallax over everything. They did not fit,
+and the reason is structural rather than taste: a prop at parallax 1.0 crosses
+in FRONT of a fence moving at 0.60, at full saturation, at a size set by the
+road rather than the horizon. The eye reads that as a sticker on a photograph.
+**A middle distance is made of middle distance.** The art and the two tools were
+deleted; this paragraph is what is left of them, and it is the useful part.
+
+The same fault, already in the game, is why the ANT MOUNDS were removed from
+the lane: fifteen anthills at camera parallax standing on the ground line is a
+hazard silhouette, and it was reported as exactly that. The build-up they
+existed for moved into the transition panels, where a mound is a landmark.
+
+### What a panel must be, and what a tile must be
+
+Two different jobs, two cutters, and confusing them is how the seams show:
+
+| | panel (`mid`) | tile (`near`, `hang`) |
+|---|---|---|
+| placed | beside OTHER panels | against ITSELF, forever |
+| edges | empty margins, nothing touching | left and right must MATCH |
+| cutter | `cut_mid_panels.py` | `cut_layers.py` |
+| anchored | bottom edge, on the ground line | `near` bottom, `hang` TOP |
+
+`cut_layers.py` searches for the loop seam the way `bg_layers.py` always has:
+score columns near the right edge against columns near the left and crop
+between them. The generator will not give you a loop however politely it is
+asked.
+
+**A floor tile is scaled BY ITS HEIGHT, so height is resolution.** The prompt
+asked for a strip "about one quarter of the image height" and got exactly that:
+a 33px band that the game then magnified twelvefold. The clause asks for the
+bottom HALF now, the cutter refuses anything under 140px, and a flat floor gets
+something tall put in it (the prison's floor got a low wall along the back)
+because there is nothing tall in "concrete".
+
+### Things the generator does that cost a round each
+
+- **A row of one subject comes back as three copies of it.** `tr3` was asked for
+  "a barn half-buried by a mound" plus the row clause and drew that motif three
+  times. Transition panels ask for ONE CONTINUOUS SCENE, each thing exactly once.
+- **It draws the ground line literally**, as a solid dark bar across the width.
+  In the game that bar is the edge of a rectangle, and the panel reads as a
+  cut-out pasted on -- which is what "this house in the background is cutout"
+  was. The bar is dark BROWN, not black, and the transition panels spatter soil
+  BELOW it, so the test is relative (a full-width row under 55% of the panel's
+  own median brightness) and cuts from there down.
+- **It stacks two rows** when the subject is a yard of things. Refused by
+  measuring the alpha profile for horizontal bands -- but a 20px sparkle in a
+  corner is not a row, so bands are told apart by how much WIDTH they span.
+- **Some words return text instead of a picture.** "Prison yard", "razor wire",
+  "radiation trefoils" all did. No image ever arrives, the tool sees a timeout,
+  and it looks exactly like a broken studio. Same silhouette, different
+  vocabulary, and both rendered first time.
+
+### The rule about blue is now absolute and measured
+
+Blue is the hazard. `tools/warm_flowers.py` enumerates every background file
+(42 panels plus the older sets) and reports anything in the wire's HUE --
+165-265 degrees at real saturation, which is the right test; a channel test
+flags the hills and the grass. It found bluebells in the farm grass, cyan
+mushrooms underground, cyan lighting across the whole lab set, and 359 stray
+pixels in four of the new panels. The background is at **zero** now.
+
+### Lossy is right for a panel and wrong for a sprite
+
+`to_webp.py` says lossless, and it is right about sprites: flat cel fill, hard
+ink outline, alpha edge, drawn at about the size they were cut. A background
+panel is upscaled 2.7x on the way to the screen, so the question is not whether
+q84 differs from lossless but whether it differs AFTER the scaler.
+
+Starting from to_webp's own numbers (0.63-1.59 RMSE) rejected every quality and
+saved nothing. Measured at draw size these panels are 2-6, so the worst one was
+rendered beside its lossless original and looked at: indistinguishable. **65
+files, 6.29MB -> 2.31MB.** `tools/opt_panels.py`, and nothing is lost by being
+wrong -- the lossless cut is reproducible from the archived render.
+
+### Rendering 40 pictures through a shared studio
+
+`tools/render_panels.py`, and every rule in it was paid for:
+
+- **One at a time, tab closed after each** -- working or failed. The failure
+  rate climbs with the tab count.
+- **A timeout is retried once; a sign-out stops everything.** Only the user can
+  clear "you might be signed out"; a timeout is weather.
+- **One panel failing twice is SKIPPED and named**, three in a row stops the
+  run. Stopping the whole batch on one bad prompt cost several restarts.
+- **THE LIBRARY IS THE SOURCE OF TRUTH, NOT THE JOB STATUS.** `c4` was declared
+  failed four times while its picture sat in the library the whole while.
+  Always finish by running the cutters over everything.
+- **The studio gets restarted under you**, and a run that dies on a connection
+  reset leaves sixteen panels unrendered and a stack trace instead of a report.
+
+
 ## Next
 
 - **Nothing spends the eggs yet** -- the shop exists and none of it

@@ -1230,55 +1230,91 @@ function applyTheme(){
 
    Nugget is never moved, dropped or cut away from. He runs. */
 const ZONES = [
+  /* THE ROUTE, and it is the user's running order rather than a fiction I
+     invented: farm, the ants take the farm, their empire, and then it stops
+     being about ants at all -- a prison, a dead reactor, a base that should
+     not be on a map, and the thing the base was built around. Every zone is
+     500m, which at this speed curve is roughly 25-40 seconds each: long enough
+     to read as a place, short enough that the next one is always coming.
+
+     A ZONE WITHOUT ITS OWN ART IS NOT A HOLE. `slotFor` walks back through the
+     zones behind it for any slot it does not own, so an unbuilt world looks
+     like the last built one until its panels exist. `layers` below therefore
+     names the best STAND-IN for each new zone -- the industrial earth for the
+     prison and the reactor, the lab interior for the three that follow -- and
+     each becomes its own set the moment its art lands.
+
+     NOTHING HERE IS BLUE. Not the reactor's glow, not the base's lamps, not
+     space. Blue is the wire. */
   { id:'farm', name:'CLUCK COUNTY', start:0, layers:'farm', ants:0,
     theme:THEME },
 
-  /* Still the farm to look at. What changes is the LIFE: ants start
-     crossing, then carrying, then queueing, and the ground gets
-     barer. Nothing about the backdrop announces it -- the player is
-     meant to notice on their own, which is why this zone reuses the
-     farm's own layers rather than getting a set of its own. */
-  { id:'terr', name:'ANT TERRITORY', start:560, layers:'farm', ants:0.45,
+  /* The farm, with somebody else moving in underneath it. */
+  { id:'terr', name:'ANT TERRITORY', start:500, layers:'farm', ants:0.45,
     theme:{ id:'terr', name:'ANT TERRITORY', sunR:0.42, sunGlow:0.30, vig:0.46,
       skyA:'#B77A24', skyB:'#C48A30', skyC:'#D09C46', skyD:'#DFBC7C', skyE:'#EEDCAE',
       sun:'#FFEDA0', far:'#7FA85E', mid:'#5E8F44', near:'#4A6E31', prop:'#33532A',
       road:'#B0722E', roadLine:'#8F5C23', curb:'#835420', rim:'#8CB44E' } },
 
-  /* Through the mouth. Daylight is gone, the wash is lantern-warm,
-     and the layers are the city. */
-  { id:'empire', name:'ANT EMPIRE', start:1180, layers:'ant', ants:1, indoors:true,
-    /* THE AIR YOU FLY IN IS NOT A HOLE. The top stops of this palette were
-       #1A0E0A and #2C1710 -- near black -- and the whole upper half of the
-       screen is where the bird actually lives, so the game's main play space
-       was an unlit void with a bright orange city underneath it. Reported as
-       "the empty top doesn't let us visually see" and "not comfortable to the
-       eye", and both are the same fault: a value range that runs from black to
-       full-chroma amber in one screen. Lifted into a warm gloom you can read
-       through, which also closes the gap to the lit chambers. Still plainly
-       underground -- the sun is off, the clouds are gone, the palette is earth
-       -- but lit like a cavern with lanterns in it rather than like a cave-in. */
+  /* Through the mouth: lantern-warm, and lit like a cavern somebody lives in
+     rather than like a cave-in. */
+  { id:'empire', name:'ANT EMPIRE', start:1000, layers:'ant', ants:1, indoors:true,
     theme:{ id:'empire', name:'ANT EMPIRE', sunR:0, sunGlow:0, vig:0.38,
       skyA:'#3E2A1E', skyB:'#56382A', skyC:'#7A4B2E', skyD:'#9A6238', skyE:'#C9873F',
       sun:'#FFC46B', far:'#5A3520', mid:'#7A4726', near:'#93552B', prop:'#3E2415',
       road:'#8A5326', roadLine:'#6E401D', curb:'#5C3517', rim:'#C98B3E' } },
 
-  /* Deeper: the same city, colder and stranger, with the first
-     things down here that ants have no business owning. */
-  { id:'deep', name:'DEEP ANT EMPIRE', start:2100, layers:'deep', ants:1, indoors:true,
+  /* Somebody built cells down here. Cold light, but WARM cold -- grey-green
+     concrete and rust, never a blue wash. */
+  { id:'prison', name:'THE PRISON', start:1500, layers:'prison', ants:0.5, indoors:true,
     cast:['antw','antt','antg'],
-    theme:{ id:'deep', name:'DEEP ANT EMPIRE', sunR:0, sunGlow:0, vig:0.42,
-      skyA:'#2A2230', skyB:'#3A2E44', skyC:'#4E3A4C', skyD:'#684250', skyE:'#96584A',
-      sun:'#9FD8E8', far:'#3E2A2A', mid:'#5A3830', near:'#6E4534', prop:'#2A1A18',
-      road:'#6E4426', roadLine:'#55341C', curb:'#472B16', rim:'#8FA8C0' } },
+    theme:{ id:'prison', name:'THE PRISON', sunR:0, sunGlow:0, vig:0.44,
+      skyA:'#2A2A26', skyB:'#3A3A32', skyC:'#4E4C40', skyD:'#66604E', skyE:'#8A7E62',
+      sun:'#E8D9A8', far:'#3C3E36', mid:'#4E4E42', near:'#5E5A4A', prop:'#26261F',
+      road:'#5E5747', roadLine:'#45402F', curb:'#39351F', rim:'#C7B25E' } },
 
-  /* The joke lands here: it was never a cave. */
-  { id:'lab', name:'SECRET ANT LAB', start:3000, layers:'lab', ants:1, indoors:true,
+  /* A reactor nobody switched off. Sickly yellow-green and ash. */
+  { id:'cherno', name:'CHERNOBYL', start:2000, layers:'cherno', ants:0.35, indoors:true,
+    cast:['antt','antsci','antg'],
+    theme:{ id:'cherno', name:'CHERNOBYL', sunR:0, sunGlow:0, vig:0.46,
+      skyA:'#232A1E', skyB:'#333C24', skyC:'#48522C', skyD:'#6A7434', skyE:'#9EA644',
+      sun:'#D8F26A', far:'#39421F', mid:'#4C5726', near:'#5E6A2C', prop:'#1E2416',
+      road:'#5A5A34', roadLine:'#414226', curb:'#35361E', rim:'#C8E24E' } },
+
+  /* Corridors, cameras and a door that needs a card. */
+  { id:'cia', name:'SECRET MILITARY BASE', start:2500, layers:'cia', ants:0.3, indoors:true,
+    cast:['antsci','antt','antg'],
+    theme:{ id:'cia', name:'SECRET MILITARY BASE', sunR:0, sunGlow:0, vig:0.46,
+      skyA:'#26241E', skyB:'#34322A', skyC:'#464236', skyD:'#5E5642', skyE:'#82724E',
+      sun:'#FFD98A', far:'#33322A', mid:'#454034', near:'#575040', prop:'#22201A',
+      road:'#565046', roadLine:'#3E3A30', curb:'#332F27', rim:'#E0A83C' } },
+
+  /* Out into the desert, at night, where the hangars are. */
+  { id:'area51', name:'AREA 51', start:3000, layers:'area51', ants:0.3, indoors:true,
     cast:['antsci','antg','antt'],
-    theme:{ id:'lab', name:'SECRET ANT LAB', sunR:0, sunGlow:0, vig:0.52,
-      skyA:'#04080C', skyB:'#071620', skyC:'#0C2733', skyD:'#123A46', skyE:'#1C5462',
-      sun:'#7FF2E0', far:'#16323C', mid:'#1E4450', near:'#265563', prop:'#0E2129',
-      road:'#26424C', roadLine:'#1A2F37', curb:'#152730', rim:'#57E6D2' } },
+    theme:{ id:'area51', name:'AREA 51', sunR:0, sunGlow:0, vig:0.44,
+      skyA:'#2C1F1C', skyB:'#3E2A22', skyC:'#573A2A', skyD:'#7A5234', skyE:'#A87244',
+      sun:'#FFE0A0', far:'#4A3626', mid:'#5E4630', near:'#77583A', prop:'#2A1E18',
+      road:'#7A5F3E', roadLine:'#5A452C', curb:'#4A3924', rim:'#E8B45C' } },
+
+  /* Whatever they were keeping. Green glass and magenta light -- the one cool
+     accent in the game that is nowhere near the wire's hue. */
+  { id:'alien', name:'ALIEN FACILITY', start:3500, layers:'alien', ants:0.3, indoors:true,
+    cast:['antsci','antt','antg'],
+    theme:{ id:'alien', name:'ALIEN FACILITY', sunR:0, sunGlow:0, vig:0.48,
+      skyA:'#2A1A2E', skyB:'#3C2440', skyC:'#553055', skyD:'#7A3E66', skyE:'#A85A78',
+      sun:'#F2A8D8', far:'#3A2A3E', mid:'#4E3652', near:'#5E4062', prop:'#241628',
+      road:'#5A4450', roadLine:'#43303C', curb:'#382832', rim:'#7CE08C' } },
+
+  /* And out. No sky at all, so nothing here pretends there is one. */
+  { id:'space', name:'SPACE', start:4000, layers:'space', ants:0.2, indoors:true,
+    cast:['antsci','antg'],
+    theme:{ id:'space', name:'SPACE', sunR:0, sunGlow:0, vig:0.52,
+      skyA:'#0E0A12', skyB:'#170E1C', skyC:'#241228', skyD:'#3A1A38', skyE:'#552248',
+      sun:'#FFE8C0', far:'#1E1622', mid:'#2A1C30', near:'#38243E', prop:'#120C16',
+      road:'#3A2E42', roadLine:'#2A2030', curb:'#221828', rim:'#E8A0D8' } },
 ];
+
 
 /* Where the world is at a given distance in metres. `a` is the zone you are
    standing in, `b` the one ahead, `seamM` the metre they meet at. */
@@ -7797,7 +7833,16 @@ const underSet = keys => UNDER_SLOTS
 const BG_ANT  = underSet(['far','mid','near','hang']);   // earth, wood, lanterns
 const BG_DEEP = underSet(['mid','near','hang']);         // ...with technology through it
 const BG_LAB  = underSet(['far','mid','near','hang']);   // ...and where it came from
+/* Each world past the empire owns its FLOOR and its CEILING and nothing else.
+   The middle distance it inherits (its own panels ride on top of that slot),
+   and the haze behind it is the same cavern seen from the same distance, so
+   asking for one would be asking for a file nobody drew -- a listed slot is a
+   file REQUESTED, and a world that lists a slot nobody made 404s on every
+   load. Floor and ceiling are what actually say "this is a different place"
+   when you are running along it, so those are what each world gets. */
+const UNDER_WORLDS = ['prison','cherno','cia','area51','alien','space'];
 const LAYERSETS = { farm:BG, ant:BG_ANT, deep:BG_DEEP, lab:BG_LAB };
+UNDER_WORLDS.forEach(w => { LAYERSETS[w] = underSet(['near','hang']); });
 // stamp each layer with the world it belongs to: drawLayerSlot now receives a
 // resolved LAYER rather than a set, and the spy pigeons are a farm thing
 Object.keys(LAYERSETS).forEach(k => LAYERSETS[k].forEach(L => { L.set = k; }));
@@ -7808,6 +7853,7 @@ Object.keys(LAYERSETS).forEach(k => LAYERSETS[k].forEach(L => { L.set = k; }));
    before it -- so an unfinished zone is a zone that still looks like the last
    one, never a hole. */
 [[BG,'art/bg/'], [BG_ANT,'art/ant/'], [BG_DEEP,'art/deep/'], [BG_LAB,'art/lab/']]
+.concat(UNDER_WORLDS.map(w => [LAYERSETS[w], 'art/panels/' + w + '/']))
 .forEach(([set, dir]) => {
   set.forEach(L => {
     L.img = new Image();
@@ -7958,63 +8004,76 @@ function drawField(alpha){
 
    A panel that has not been made yet is simply not in the list; the run then
    cycles whatever exists. The game never waits for art. */
-const MID_PANELS = { farm: {}, trans: {} };  // name -> Image, sparse while loading
-const MID_SEQ = { farm: [], trans: [] };     // dense and ordered, rebuilt as they arrive
-function midPanel(group, i, src){
+const MID_PANELS = {};      // zone id -> {index: Image}, sparse while loading
+const MID_SEQ = {};         // zone id -> [Image], dense and ordered
+function midPanel(zone, i, src){
   const im = new Image();
   imqLoad(im, src, () => {
-    MID_PANELS[group][i] = im;
-    MID_SEQ[group] = Object.keys(MID_PANELS[group]).sort((a,b)=>a-b)
-                           .map(k => MID_PANELS[group][k]);
+    (MID_PANELS[zone] = MID_PANELS[zone] || {})[i] = im;
+    MID_SEQ[zone] = Object.keys(MID_PANELS[zone]).sort((a,b)=>a-b)
+                          .map(k => MID_PANELS[zone][k]);
   }, ()=>{}, 'gp');
 }
-[1,2,3,4,5,6,7,8].forEach(i => midPanel('farm', i, 'art/bg/mid' + i + '.webp'));
-[1,2,3,4].forEach(i => midPanel('trans', i, 'art/bg/tr' + i + '.webp'));
+/* PANELS BELONG TO A ZONE, NOT TO A LAYER SET. Several zones share a set while
+   their art is being made -- the prison and the reactor both run on the deep
+   city's layers -- so keying panels by set would have them share panels too,
+   and the two would look like the same place. Keyed by zone, a world's panels
+   arrive the moment they exist and nothing else moves. */
+const MID_SETS = {
+  farm:   ['mid1','mid2','mid3','mid4','mid5','mid6','mid7','mid8'],
+  terr:   ['tr1','tr2','tr3','tr4'],
+  empire: ['e1','e2','e3','e4'],
+  prison: ['p1','p2','p3','p4'],
+  cherno: ['c1','c2','c3','c4'],
+  cia:    ['b1','b2','b3','b4'],
+  area51: ['a1','a2','a3','a4'],
+  alien:  ['x1','x2','x3','x4'],
+  space:  ['s1','s2','s3','s4'],
+};
+Object.keys(MID_SETS).forEach(zone => {
+  MID_SETS[zone].forEach((f, i) => {
+    // the farm's eight live in art/bg beside the painting they were matched to;
+    // every other world keeps its own folder
+    const dir = zone === 'farm' || zone === 'terr' ? 'art/bg/' : 'art/panels/' + zone + '/';
+    midPanel(zone, i + 1, dir + f + '.webp');
+  });
+});
 
-/* THE APPROACH IS ORDERED; THE FARM IS A CYCLE. That difference is the whole
-   design of the transition.
+/* THE APPROACH IS ORDERED; EVERYTHING ELSE IS A CYCLE. That difference is the
+   whole design of the transition.
 
    Out on the farm there is no story in which field comes next, so the panels
-   cycle and the only rule is that you do not see the same one twice running.
-   The approach to the mouth is the opposite: it is a sequence with a direction
-   -- mounds in the field, a shed shoved over, the farm half-buried and built
-   ON, then a wall of earth with the city already in it. Cycle those and the
+   cycle. The approach to the mouth is the opposite: it is a sequence with a
+   direction -- mounds in the field, a shed shoved over, the farm half-buried
+   and built ON, then a wall of earth with the city in it. Cycle those and the
    farm gets undermined and then un-undermined, which is not a journey.
 
-   So a transition panel is chosen by HOW FAR THROUGH THE APPROACH you are,
-   not by tile index. Each panel therefore holds for a couple of tiles, which
-   is what makes it read as a stretch of country rather than a slideshow.
-
-   This is also where the anthills went after they were taken out of the lane
-   for looking like hazards -- same beat, told at the depth it belongs at. */
-const TR_FROM = 560;                         // ant territory begins
+   And the approach is DITHERED rather than switched: a tile takes a transition
+   panel with a probability equal to how far through the approach it stands, so
+   early on the mounds are the odd field among farms and by the mouth there is
+   no farm left. The roll is hashed off the TILE INDEX, never Math.random --
+   the same metre must look the same on every run. */
+const TR_FROM = (ZONES.find(z => z.id === 'terr') || {start:500}).start;
 function trSpan(){
   const z = ZONES.find(q => q.id === 'empire');
-  return { a: TR_FROM, b: z ? z.start : 1180 };
+  return { a: TR_FROM, b: z ? z.start : 1000 };
 }
 function midPanelAt(worldM, k, base){
-  const f = base.concat(MID_SEQ.farm);
-  const farm = f[((k % f.length) + f.length) % f.length];
-  const t = MID_SEQ.trans, s = trSpan();
-  if(!t.length || worldM < s.a) return farm;
-  const u = clamp((worldM - s.a)/Math.max(1, s.b - s.a), 0, 1);
+  const zone = zoneAt(worldM).a;
+  const cyc = (list) => list[((k % list.length) + list.length) % list.length];
 
-  /* THE APPROACH IS DITHERED, NOT SWITCHED, and that is what makes it read as
-     a country changing hands rather than a level select.
-
-     Swapping the whole slot to the ant panels at 560m is a wall: one tile you
-     are on a farm, the next you are not, and with few panels made it is also
-     the same picture for six hundred metres. So the two sets are MIXED, with
-     the mix moving: a tile takes a transition panel with probability u, where
-     u is how far through the approach that tile stands. Early on the mounds
-     are the odd field among farms; by the mouth there is no farm left.
-
-     The roll is hashed off the TILE INDEX, never Math.random -- the same metre
-     has to look the same on every run, and a panel that re-rolls itself as it
-     scrolls would flicker between two worlds. */
-  const roll = hash(k*2.17 + 11.3);
-  if(roll >= u*u*(3 - 2*u)) return farm;                 // smoothstep: gentle at both ends
-  return t[Math.min(t.length - 1, Math.floor(u*t.length))];
+  if(zone.id === 'terr'){
+    const t = MID_SEQ.terr || [], f = base.concat(MID_SEQ.farm || []);
+    const farm = cyc(f);
+    if(!t.length) return farm;
+    const s = trSpan();
+    const u = clamp((worldM - s.a)/Math.max(1, s.b - s.a), 0, 1);
+    if(hash(k*2.17 + 11.3) >= u*u*(3 - 2*u)) return farm;
+    return t[Math.min(t.length - 1, Math.floor(u*t.length))];
+  }
+  const own = MID_SEQ[zone.id] || [];
+  if(own.length) return cyc(zone.id === 'farm' ? base.concat(own) : own);
+  return cyc(base);          // a world with no panels of its own keeps its tile
 }
 
 function drawLayerSlot(L, key, alpha, clipL, clipR){
@@ -8024,8 +8083,10 @@ function drawLayerSlot(L, key, alpha, clipL, clipR){
   /* The farm's mid slot is the one that travels; every other slot is a tile.
      mid.webp itself is panel zero, so a run always opens on the painting the
      rest were matched to. */
-  const seq = (key === 'mid' && L.set === 'farm' &&
-               (MID_SEQ.farm.length || MID_SEQ.trans.length));
+  /* Every world's mid slot may walk a list; midPanelAt decides which list from
+     the tile's own metre. The check is only "is this the mid slot", because a
+     world without panels falls back to its tile inside that function. */
+  const seq = (key === 'mid');
   let seqK = seq ? Math.floor(cam.x*L.f/g.W) : 0;
   const clipped = clipL !== undefined;
   if(alpha < 1 || clipped) ctx.save();
@@ -8474,37 +8535,57 @@ const GATEWAYS = [
      on the scene. Scaled past the screen width the edges leave the frame
      entirely, which is the same trick the whole seam relies on: at the moment
      of crossing, the doorway IS the view. */
-  { zone:'lab',    art:'lab_door', s:2.35, lift: 6 },
+  /* The heavy riveted door with the hazard chevrons now guards the MILITARY
+     BASE at 2500 rather than a lab -- 'lab' is not a zone any more, and a
+     gateway naming a zone that does not exist is silently skipped, which is
+     how a doorway goes missing without anything throwing.
+
+     Two boundaries still cut without cover, and both are where the layer SET
+     changes: the empire into the prison at 1500, and the base into Area 51 at
+     3000 once those worlds have their own art. Everywhere else the neighbours
+     share a set, so there is no seam to hide. A prison gate and a chain-link
+     desert fence are the two pieces of art that would close that. */
+  { zone:'cia',    art:'lab_door', s:2.35, lift: 6 },
 ];
 
 /* The jokes. Occasional, never a wall of them -- the brief's word is that
    finding one should be funny, and a sign every screen is signage. */
 const ANT_SIGNS = [
-  // --- the farm turning into somebody else's country
-  { m: 705, art:'sign_a',     text:['ANT','TERRITORY'] },
-  { m: 905, art:'sign_arrow', text:['EMPIRE','AHEAD']  },
-  { m:1105, art:'sign_wide',  text:['NO CHICKENS']     },
-  // --- inside: a working civilisation with opinions
-  { m:1330, art:'sign_b',     text:['SUGAR','STORAGE'] },
-  { m:1520, art:'sign_wide',  text:['CRUMB STORAGE']   },
-  { m:1700, art:'sign_wide',  text:['WORK HARD.','STAY ANTSOME.'] },
-  { m:1900, art:'sign_b',     text:['QUEEN','ONLY']    },
-  // --- deeper, and the signage stops being about food
-  { m:2180, art:'plate_hazard', text:['SECTOR 7'],        ink:'#F2C14E' },
-  { m:2400, art:'plate_plain',  text:['MIND THE','CABLES'], ink:'#CBD5E0' },
-  { m:2660, art:'plate_hazard', text:['AUTHORIZED','ANTS ONLY'], ink:'#F2C14E' },
-  { m:2880, art:'plate_chain',  text:['NO DIGGING','BEYOND','THIS POINT'], ink:'#CBD5E0' },
-  /* --- and inside, the joke lands: they know his name.
-     Deliberately never explained. The brief's ask is curiosity, not a
-     backstory, so these are fragments a player reads at speed and assembles
-     for themselves. */
-  { m:3120, art:'plate_screen', text:['PROJECT','NUGGET'],  ink:'#7FF2E0' },
-  { m:3300, art:'plate_plain',  text:['SUBJECT','N-01'],    ink:'#CBD5E0' },
-  { m:3480, art:'plate_screen', text:['EGG TRIALS','DAY 412'], ink:'#7FF2E0' },
-  { m:3680, art:'plate_hazard', text:['CONTAINMENT'],       ink:'#F2C14E' },
-  { m:3900, art:'plate_screen', text:['HE IS','AWAKE'],     ink:'#7FF2E0' },
-  { m:4150, art:'plate_plain',  text:['DO NOT','FEED'],     ink:'#CBD5E0' },
+  // --- the farm turning into somebody else's country (500-1000)
+  { m: 620, art:'sign_a',     text:['ANT','TERRITORY'] },
+  { m: 780, art:'sign_arrow', text:['EMPIRE','AHEAD']  },
+  { m: 930, art:'sign_wide',  text:['NO CHICKENS']     },
+  // --- inside: a working civilisation with opinions (1000-1500)
+  { m:1120, art:'sign_b',     text:['SUGAR','STORAGE'] },
+  { m:1260, art:'sign_wide',  text:['CRUMB STORAGE']   },
+  { m:1400, art:'sign_wide',  text:['WORK HARD.','STAY ANTSOME.'] },
+  // --- the prison (1500-2000). Nugget has been here before, in a barn.
+  { m:1580, art:'plate_plain',  text:['BLOCK C'],            ink:'#CBD5E0' },
+  { m:1730, art:'plate_hazard', text:['NO YARD','TIME'],     ink:'#F2C14E' },
+  { m:1890, art:'plate_chain',  text:['LIGHTS OUT','21:00'], ink:'#CBD5E0' },
+  // --- the reactor (2000-2500)
+  { m:2080, art:'plate_hazard', text:['REACTOR 4'],          ink:'#D8F26A' },
+  { m:2240, art:'plate_hazard', text:['DO NOT','ENTER'],     ink:'#D8F26A' },
+  { m:2400, art:'plate_plain',  text:['DOSE LIMIT','EXCEEDED'], ink:'#D8F26A' },
+  // --- the base (2500-3000)
+  { m:2580, art:'plate_plain',  text:['LEVEL B3'],           ink:'#E0C08A' },
+  { m:2740, art:'plate_hazard', text:['AUTHORIZED','ONLY'],  ink:'#F2C14E' },
+  { m:2900, art:'plate_screen', text:['NO','PHOTOGRAPHY'],   ink:'#FFD98A' },
+  // --- Area 51 (3000-3500), where the signage stops being polite
+  { m:3080, art:'plate_hazard', text:['RESTRICTED'],         ink:'#F2C14E' },
+  { m:3240, art:'plate_plain',  text:['DEADLY FORCE','AUTHORIZED'], ink:'#E8B45C' },
+  { m:3400, art:'plate_screen', text:['HANGAR 18'],          ink:'#FFD98A' },
+  /* --- and inside, the joke lands: they know his name. Deliberately never
+     explained -- fragments read at speed and assembled by the player. */
+  { m:3580, art:'plate_screen', text:['PROJECT','NUGGET'],   ink:'#7CE08C' },
+  { m:3720, art:'plate_plain',  text:['SUBJECT','N-01'],     ink:'#F2A8D8' },
+  { m:3860, art:'plate_screen', text:['EGG TRIALS','DAY 412'], ink:'#7CE08C' },
+  // --- space (4000+)
+  { m:4060, art:'plate_hazard', text:['LAST EXIT'],          ink:'#E8A0D8' },
+  { m:4220, art:'plate_screen', text:['HE IS','AWAKE'],      ink:'#7CE08C' },
+  { m:4400, art:'plate_plain',  text:['DO NOT','FEED'],      ink:'#F2A8D8' },
 ];
+
 /* Lettering a blank board. Two lines at most, sized to fit the plank rather
    than a fixed point size, because the boards are four different widths. */
 function drawSignText(lines, w, h, ink){
