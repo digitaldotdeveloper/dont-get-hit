@@ -166,12 +166,11 @@ WORLDS = {
   # slab, not a chamber, and a rectangle in a world made of rounded earth reads
   # as a cut-out pasted on. So the SHAPE is now the first thing described and
   # the thing it must not be is named outright.
-  'e2': "One big rounded dome-shaped chamber hollowed out of packed red-brown earth, its "
-        "mouth a tall smooth arch, with three tiers of wooden shelves inside holding rows of "
-        "pale cream eggs on straw and a little ladder leaning between the tiers. The chamber "
-        "is a ROUNDED MOUND of earth with soft curved edges -- never a rectangle, never a "
-        "flat wall, never a straight-sided slab -- and warm lanterns hang either side of the "
-        "arch.",
+  # Re-rolled twice. First take was a flat red slab; second obeyed the shape but
+  # the ROW clause drew the chamber twice. It is in SINGULAR now, and the rest
+  # of the frame is described so there is something OTHER than the chamber for
+  # the picture to contain.
+  'e2': "ONE big rounded dome-shaped nursery chamber hollowed out of packed red-brown earth, its mouth a tall smooth arch, with three tiers of wooden shelves inside holding rows of pale cream eggs on straw and a ladder leaning between the tiers. The chamber is a ROUNDED MOUND with soft curved edges -- never a rectangle, never a flat wall. To its LEFT a stack of round straw bundles and a small wooden water trough; to its RIGHT a low earth bank with a rope handrail going up it and one hanging lantern on a post. The chamber appears ONCE and nothing in the picture is repeated.",
   # The rope hoist came back as an unreadable pole with a hook floating beside
   # the wheel. Named as a proper wooden crane with a visible arm instead: a
   # thing that reads at a glance beats a thing that is technically described.
@@ -332,6 +331,14 @@ LAYERS = {
 }
 
 
+# WHICH CLAUSE A PANEL GETS IS A PROPERTY OF ITS SUBJECT, not of which group
+# it happens to sit in. "They stand side by side in a row" is exactly right for
+# a row of chicken coops and exactly wrong for one chamber: asked for a nursery
+# with the row clause, the model drew the nursery TWICE. Anything singular goes
+# in here and gets the scene clause instead.
+SINGULAR = {'e2', 'e4'}
+
+
 def prompt_for(name):
     """The full prompt for any name in PANELS or LAYERS -- one source of truth,
        because the composition rules differ per KIND and a caller that
@@ -340,7 +347,7 @@ def prompt_for(name):
         shape = HANG_SHAPE if name.endswith('_hang') else NEAR_SHAPE
         return (STYLE + 'A seamless side-scrolling background layer showing ' +
                 LAYERS[name] + '. ' + shape + LOOPS + MAGENTA + NOBLUE)
-    comp = SCENE if name in TRANSITION else ROW
+    comp = SCENE if (name in TRANSITION or name in SINGULAR) else ROW
     return STYLE + PANELS[name] + ' ' + comp + EDGES + MAGENTA + NOBLUE
 
 
@@ -359,7 +366,7 @@ def main():
             # ONE take each. The last round burned a day's window on three
             # takes of ten prompts and half of them failed on capacity anyway;
             # a panel that comes back wrong is cheaper to re-queue by name.
-            comp = SCENE if name in TRANSITION else ROW
+            comp = SCENE if (name in TRANSITION or name in SINGULAR) else ROW
             s.generate(STYLE + PANELS[name] + ' ' + comp + EDGES + MAGENTA + NOBLUE,
                        runs=1, model='Pro')
         print('queued %d panel(s). Run with --fetch, or cut with '
