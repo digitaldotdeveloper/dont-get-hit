@@ -60,6 +60,9 @@ def dest_dir(name):
             return d
     return BG
 REF = os.path.join(BG, 'mid.webp')
+# the share of the frame a panel's content may occupy, leaving 4% clear
+# on each side so no two panels ever butt content against content
+MARGIN_FIT = 0.92
 
 
 def key_magenta(im):
@@ -137,6 +140,44 @@ def strip_baseline(im):
         elif cut is not None:
             break
     return im.crop((0, 0, w, cut)) if cut else im
+
+
+def trim_clipped(im, gap=6, max_bite=0.25):
+    """Drop objects the generator drew running off its own edge.
+
+       The prompt asks for empty margins and the cutter leaves 4% clear, and a
+       half barn door STILL turns up butted against the next panel -- because
+       the margin is around the CONTENT, and the content itself ends in half a
+       chamber that the generator cut with its own frame. A panel that ends
+       mid-object cannot sit beside anything.
+
+       So: walk in from each edge to the first real GAP -- a run of empty
+       columns -- and cut there, discarding whatever partial thing was outside
+       it. Bounded, because some panels are legitimately continuous (a wall, an
+       earth bank), and eating a quarter of one of those would be worse than
+       the seam it fixes; past that limit the panel is left alone."""
+    a = np.array(im)
+    h, w = a.shape[:2]
+    col = (a[..., 3] > 24).any(axis=0)
+    if not col.any():
+        return im
+
+    def first_gap(rng):
+        run = 0
+        for x in rng:
+            if not col[x]:
+                run += 1
+                if run >= gap:
+                    return x
+            else:
+                run = 0
+        return None
+
+    left = first_gap(range(0, int(w*max_bite))) if col[0] else 0
+    right = first_gap(range(w - 1, int(w*(1 - max_bite)), -1)) if col[w - 1] else w - 1
+    if left is None or right is None or right - left < w*0.5:
+        return im
+    return im.crop((left, 0, right + 1, h))
 
 
 def row_bands(im, gap=14):
@@ -236,7 +277,7 @@ def main():
         if not src:
             print('  %-6s no render yet -- skipped' % name)
             continue
-        im = strip_baseline(key_magenta(Image.open(src)))
+        im = trim_clipped(strip_baseline(key_magenta(Image.open(src))))
         box = content_box(im)
         if not box:
             print('  %-6s nothing survived the key' % name)
@@ -272,6 +313,15 @@ def main():
         k = ref_tall / float(tallest_run(im))
         # ...but never let a panel overflow the frame it has to live in
         k = min(k, H / float(im.height), (W * 0.92) / float(im.width))
+        # AND ALWAYS LEAVE A MARGIN. A panel is placed BESIDE other panels, so
+        # anything touching its own edge meets whatever the next panel starts
+        # with -- which is how half a barn door ends up butted against half an
+        # egg shelf in the middle of a chamber. The prompt asks for empty
+        # margins and the generator often draws right up to the edge anyway, so
+        # the fit is enforced here rather than hoped for: at least 4% of the
+        # frame clear on each side, which costs a little scale and buys a panel
+        # that can sit next to anything.
+        k = min(k, (W * MARGIN_FIT) / float(im.width))
         im = im.resize((max(1, round(im.width * k)), max(1, round(im.height * k))),
                        Image.LANCZOS)
 

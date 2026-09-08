@@ -162,11 +162,23 @@ WORLDS = {
   'e1': "A row of big rounded earth chambers in an ant city: one stacked with white sugar "
         "cubes, one with golden biscuit crumbs, a small wooden crane between them and a "
         "plank walkway across the top, warm lanterns hanging on hooks.",
-  'e2': "An ant nursery cut into packed earth: three tiers of wooden shelves holding rows of "
-        "pale cream eggs on straw, little ladders between the tiers, a rounded doorway, and "
-        "warm lanterns on posts.",
-  'e3': "An ant workshop in an earth chamber: a huge wooden gear wheel on a frame, a rack of "
-        "oversized tools, a rope hoist lifting a biscuit crumb, sawdust and timber offcuts.",
+  # The first take came back as a flat red RECTANGLE with shelves on it -- a
+  # slab, not a chamber, and a rectangle in a world made of rounded earth reads
+  # as a cut-out pasted on. So the SHAPE is now the first thing described and
+  # the thing it must not be is named outright.
+  'e2': "One big rounded dome-shaped chamber hollowed out of packed red-brown earth, its "
+        "mouth a tall smooth arch, with three tiers of wooden shelves inside holding rows of "
+        "pale cream eggs on straw and a little ladder leaning between the tiers. The chamber "
+        "is a ROUNDED MOUND of earth with soft curved edges -- never a rectangle, never a "
+        "flat wall, never a straight-sided slab -- and warm lanterns hang either side of the "
+        "arch.",
+  # The rope hoist came back as an unreadable pole with a hook floating beside
+  # the wheel. Named as a proper wooden crane with a visible arm instead: a
+  # thing that reads at a glance beats a thing that is technically described.
+  'e3': "An ant workshop in a rounded earth chamber: a huge wooden gear wheel standing in a "
+        "timber frame, a wooden crane with a clear angled arm and a rope hanging from its "
+        "tip holding a biscuit crumb, a rack of oversized tools behind them, and heaps of "
+        "sawdust and timber offcuts on the ground.",
   'e4': "The queen's hall of an ant city: one tall arched earth chamber with a raised throne "
         "of packed earth and a red leaf canopy over it, tall lanterns either side, and two "
         "smaller arches beside it.",

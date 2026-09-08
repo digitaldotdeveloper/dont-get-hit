@@ -188,9 +188,15 @@ import colorsys
 # hand: 42 panels across nine worlds is past the point where a hand-kept list
 # stays true, and the whole value of this pass is that it is exhaustive.
 import glob as _glob
+# Every background file, and the SCENERY too: the blast door that stands on a
+# zone boundary is 29,000 pixels of cyan glow, and it fills the screen at the
+# moment of crossing. A doorway is not a hazard, so it may not be lit like one.
 HUE_FILES = sorted([os.path.relpath(f, ROOT) for f in
                     _glob.glob(os.path.join(ROOT, 'art', 'bg', '*.webp')) +
-                    _glob.glob(os.path.join(ROOT, 'art', 'panels', '*', '*.webp'))])
+                    _glob.glob(os.path.join(ROOT, 'art', 'panels', '*', '*.webp')) +
+                    _glob.glob(os.path.join(ROOT, 'art', 'ant', '*.webp')) +
+                    _glob.glob(os.path.join(ROOT, 'art', 'deep', '*.webp')) +
+                    _glob.glob(os.path.join(ROOT, 'art', 'lab', '*.webp'))])
 
 
 def hazard_hue(r, g, b):
