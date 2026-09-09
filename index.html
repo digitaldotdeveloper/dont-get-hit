@@ -771,6 +771,13 @@
           transition:transform .07s ease}
   .dthBtn:active{transform:translateY(3px)}
   .dthBtn svg{width:19px;height:19px;fill:currentColor}
+  /* Painted, not drawn: the card is a decision made in eight seconds and eight
+     seconds is decided on silhouettes. One stick, two, three -- the escalation
+     is the picture, so the tiers no longer need the word METRES under them. */
+  .dthBtn .ic{width:30px;height:30px;background-position:center bottom;
+              background-repeat:no-repeat;background-size:contain;
+              filter:drop-shadow(0 2px 3px rgba(21,8,39,.55))}
+  .dthBtn.used .ic{filter:grayscale(1) brightness(.55)}
   .dthBtn .lbl{font-size:8px;font-weight:900;letter-spacing:.1em;color:rgba(255,242,222,.62);
                white-space:nowrap}
   .dthBtn .cost{display:flex;align-items:center;gap:4px;font-family:'Bungee',cursive;
@@ -959,7 +966,7 @@
           <span class="dthCap" id="dthCapLife">KEEP RUNNING</span>
           <div class="dthRow">
             <button class="dthBtn heart" id="dthHeart">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-8-5.1-8-10.4A4.6 4.6 0 0 1 12 7a4.6 4.6 0 0 1 8 3.6C20 15.9 12 21 12 21z"/></svg>
+              <i class="ic" style="background-image:url(art/shop/heart.webp)"></i>
               <span class="lbl">EXTRA LIFE</span>
               <span class="cost"><i></i></span>
             </button>
@@ -9862,7 +9869,8 @@ function deathDraw(){
     const m = Math.round(t.m * mul), cost = tntCost(i);
     const cls = game.usedTnt ? ' used' : (eggs() < cost ? ' no' : '');
     return '<button class="dthBtn tnt' + cls + '" data-tnt="' + i + '">' +
-      '<span class="m">+' + money(m) + '</span><span class="lbl">METRES</span>' +
+      '<i class="ic" style="background-image:url(art/shop/tnt' + (i+1) + '.webp)"></i>' +
+      '<span class="m">+' + money(m) + ' m</span>' +
       '<span class="cost">' + (game.usedTnt ? 'USED'
         : '<i></i>' + money(cost)) + '</span></button>';
   }).join('');
