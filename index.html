@@ -8727,16 +8727,25 @@ const underSet = keys => UNDER_SLOTS
 const BG_ANT  = underSet(['far','mid','near','hang']);   // earth, wood, lanterns
 const BG_DEEP = underSet(['mid','near','hang']);         // ...with technology through it
 const BG_LAB  = underSet(['far','mid','near','hang']);   // ...and where it came from
-/* Each world past the empire owns its FLOOR and its CEILING and nothing else.
-   The middle distance it inherits (its own panels ride on top of that slot),
-   and the haze behind it is the same cavern seen from the same distance, so
-   asking for one would be asking for a file nobody drew -- a listed slot is a
-   file REQUESTED, and a world that lists a slot nobody made 404s on every
-   load. Floor and ceiling are what actually say "this is a different place"
+/* Each world past the empire owns its FAR HAZE, its FLOOR and its CEILING. It
+   still inherits the MIDDLE distance, because its own panels ride on top of
+   that slot and cover it.
+
+   This used to be floor and ceiling only, on the reasoning that "the haze
+   behind it is the same cavern seen from the same distance". That was wrong,
+   and it was the largest thing wrong with the second half of the run: the far
+   slot is the biggest area on screen and it held ONE picture -- the ant
+   empire's dirt-mound horizon, ants and all -- from 1500m to the end, behind a
+   prison, a reactor, a military base, a hangar, an alien facility and space.
+   It is what "the background dont change, just the props change" was pointing
+   at. Six far tiles now exist, one per world.
+
+   A listed slot is still a file REQUESTED, so a world that lists a slot nobody
+   made 404s on every load; these six are drawn
    when you are running along it, so those are what each world gets. */
 const UNDER_WORLDS = ['prison','cherno','cia','area51','alien','space'];
 const LAYERSETS = { farm:BG, ant:BG_ANT, deep:BG_DEEP, lab:BG_LAB };
-UNDER_WORLDS.forEach(w => { LAYERSETS[w] = underSet(['near','hang']); });
+UNDER_WORLDS.forEach(w => { LAYERSETS[w] = underSet(['far','near','hang']); });
 // stamp each layer with the world it belongs to: drawLayerSlot now receives a
 // resolved LAYER rather than a set, and the spy pigeons are a farm thing
 Object.keys(LAYERSETS).forEach(k => LAYERSETS[k].forEach(L => { L.set = k; }));
