@@ -10412,6 +10412,7 @@ function deathOffer(){
   const el = $('#death'); if(!el) return false;
   if(game.dist / UPM < 100) return false;        // not in the opening seconds
   if(game.usedHeart && game.usedAd && game.usedTnt) return false;   // nothing left to sell
+  warmBlastArt();                    // seconds before the fire is needed
   $('#dthM').textContent = money(Math.floor(game.dist/UPM));
   /* "SO CLOSE" is what you say to somebody who nearly beat their best, so it
      needs a best to be near -- the same rule the score card's own lines already
@@ -10530,6 +10531,32 @@ function deathTnt(i){
    has already happened, so there is no case for putting three more requests on
    the boot path the loading gate is counting. A bundle that has not arrived
    draws as the fallback below and nothing waits for it. */
+/* LAZY IS RIGHT; LAZY AT THE MOMENT OF USE IS NOT. Asked for on the frame the
+   charge goes off, the fireball spends its first three hundred milliseconds
+   waiting for a decode -- which is most of a 0.78s cycle, so the explosion the
+   player just paid for simply did not appear. warmBlastArt() is called when
+   the death card opens instead: seconds of warning, and still nothing on the
+   boot path the loading gate is counting. */
+/* THE BLAST HAS ITS OWN FIREBALL. It was borrowing the CAGE's explosion --
+   five frames cut for a barn door being kicked out, scaled up three times --
+   which reads as a yellow star and is over in half a second, a fifth of the
+   flight it is supposed to have caused. These six are white-hot core, burst,
+   fireball with debris, then three of smoke, so the fire ENDS as smoke rather
+   than simply stopping. */
+const BLAST_FR = [null, null, null, null, null, null];
+const BLAST_T_BOOM = 0.78;
+function blastArt(i){
+  if(BLAST_FR[i] === null){
+    const im = new Image(); im.src = 'art/fx/blast' + i + '.webp';
+    BLAST_FR[i] = im;
+  }
+  const im = BLAST_FR[i];
+  return (im && im.complete && im.naturalWidth) ? im : null;
+}
+function warmBlastArt(){
+  for(let i = 0; i < 6; i++) blastArt(i);
+  for(let i = 0; i < 3; i++) tntArt(i);
+}
 const TNT_IMG = [null, null, null];
 function tntArt(i){
   if(TNT_IMG[i] === null){
@@ -10581,6 +10608,7 @@ function startBlast(metres, tier){
   game.mode = 'blast';
   game.blastT = 0; game.blastM = metres; game.blastDone = 0;
   game.blastPhase = 'drop'; game.blastHop = 0; game.blastFuse = 0;
+  game.blastBoomT = undefined; game.blastSquash = 0;
   game.spawnT = 1e9; game.crowT = 1e9; game.dropT = 1e9;
   game.obstacles.length = 0; game.crows.length = 0; game.drop = null;
   game.timeScale = 1; game.tsTarget = 1;
@@ -10596,7 +10624,7 @@ function blastBoom(){
   game.blastPhase = 'fly';
   game.blastT = 0;
   const t = game.tnt, by = rag.y + CK.standH*0.55;   // his body, on screen
-  game.boomT = 0;                       // the cage's own explosion frames
+  game.blastBoomT = 0;                  // its own fireball, on its own clock
   game.freeze = 0.14; addShake(46); game.flash = 1;
   S.zap(); S.hit(); S.timber();
   /* Two rings, a beat apart and at different speeds. One reads as a graphic;
@@ -10703,7 +10731,7 @@ function updateBlast(dt){
   }
 
   /* ---- and away ---- */
-  if(game.boomT !== undefined && game.boomT < BOOM_T) game.boomT += dt;
+  if(game.blastBoomT !== undefined) game.blastBoomT += dt;
   const k = Math.min(1, game.blastT / BLAST_T);
   const p = 1 - Math.pow(1 - k, 2.2);              // fast off the blast, easing down
   const want = game.blastM * p;
@@ -10787,22 +10815,22 @@ function drawTnt(){
      the charge went off it is correct and invisible: the world scrolls at
      twenty-six thousand units a second, so a static explosion is off the left
      edge about eighty milliseconds after it starts and nobody ever sees the
-     thing they paid for. Hung just behind him it lasts its full half second and
+     thing they paid for. Hung just behind him it lasts its full life and
      reads as the blast still throwing him, which is what it is. */
-  if(game.boomT !== undefined && game.boomT < BOOM_T){
-    const list = FRAME_DATA.boom;
-    if(list && list.length){
-      const q = game.boomT / BOOM_T;
-      const fr = list[Math.min(list.length-1, Math.floor(q*list.length))];
-      const im = FR.img[fr.f];
-      if(im && im.complete && im.naturalWidth){
-        const sc = (430 / fr.w) * (0.7 + q*0.7);
-        ctx.save();
-        ctx.globalAlpha = q > 0.72 ? (1 - (q-0.72)/0.28) : 1;
-        ctx.translate(rag.x - cam.x - 130, GROUND - rag.y - 70);
-        ctx.drawImage(im, -fr.w*sc*0.5, -fr.h*sc*0.5, fr.w*sc, fr.h*sc);
-        ctx.restore();
-      }
+  const bt = game.blastBoomT;
+  if(bt !== undefined && bt < BLAST_T_BOOM){
+    const q = bt / BLAST_T_BOOM;
+    const im = blastArt(Math.min(5, Math.floor(q * 6)));
+    if(im){
+      /* The ART already grows -- frame three is the biggest of the six -- so
+         the only scaling here is a slow drift outward. Doubling up on growth
+         balloons it and then snaps it back on the frame the smoke starts. */
+      const w = 520 * (0.86 + q*0.34);
+      ctx.save();
+      ctx.globalAlpha = q > 0.80 ? (1 - (q-0.80)/0.20) : 1;
+      ctx.translate(rag.x - cam.x - 120, rag.y + CK.standH*0.45);
+      ctx.drawImage(im, -w*0.5, -w*0.5, w, w);
+      ctx.restore();
     }
   }
 }
