@@ -120,8 +120,16 @@ def key_panel(path):
     op = a[..., 3] > 40
     if op.sum():
         r, g, b = a[..., 0].astype(int), a[..., 1].astype(int), a[..., 2].astype(int)
-        left = op & (r > 120) & (b > 120) & (g < r - 25) & (g < b - 25)
-        if left.sum() > op.sum() * 0.30:
+        # The TRIGGER is looser than the key on purpose. It is not deciding what
+        # to erase -- the flood decides that -- it is only answering "did the
+        # colour key plainly fail here". The alien panel came back at 162,134,164
+        # and fired; the docking bay came back paler still, sailed under a
+        # stricter test, and shipped 78% background as a pink slab behind the
+        # shuttle. A trigger that misses is worse than a trigger that fires
+        # once too often, because the flood is harmless on a picture that was
+        # already keyed properly.
+        left = op & (r > 110) & (b > 110) & (g < r - 18) & (g < b - 18)
+        if left.sum() > op.sum() * 0.25:
             return key_by_flood(Image.open(path))
     return im
 
@@ -331,6 +339,24 @@ def main():
             print('  %-6s nothing survived the key' % name)
             continue
         im = im.crop(box)
+
+        # AND REFUSE A PANEL THAT IS STILL MOSTLY BACKGROUND. The docking bay came
+        # back with the scene drawn on a PINK CARD inside the picture -- a
+        # lighter magenta than the true background, so the colour key cannot
+        # name it and the flood cannot reach it: it is enclosed, exactly like
+        # artwork. Nothing downstream can fix that, and it shipped as a slab
+        # behind the shuttle. A picture that is three quarters background is a
+        # failed render, not a panel.
+        chk = np.asarray(im)
+        opq = chk[..., 3] > 40
+        if opq.any():
+            cr, cg, cb = chk[..., 0].astype(int), chk[..., 1].astype(int), chk[..., 2].astype(int)
+            slab = opq & (cr > 110) & (cb > 110) & (cg < cr - 18) & (cg < cb - 18)
+            if slab.sum() > opq.sum() * 0.25:
+                print('  %-6s REFUSED: %.0f%% of it is still background -- the scene was '
+                      'drawn on a coloured card. Re-render it.'
+                      % (name, 100.0 * slab.sum() / opq.sum()))
+                continue
 
         bands = row_bands(im)
         if len(bands) > 1:
