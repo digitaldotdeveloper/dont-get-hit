@@ -47,6 +47,14 @@ ONE = [
     # so this is the only place its level can be set against anything
     ("ufoget",   None, 1.40),
     ("abduct",   None, 0.70),
+    # the four new vehicles: pickups, and the two that repeat
+    ("rocketget", None, 1.60), ("hopget", None, 1.00),
+    ("hopbounce", 0.1, 0.45),  ("hopbounce", 1.0, 0.45),
+    ("hopperfect", None, 0.60),
+    ("spoonget", None, 1.00), ("spoonflip", None, 0.35),
+    ("spoonsnap", None, 0.30),
+    ("toastget", None, 1.20), ("toastpop", 0.15, 0.45),
+    ("toastpop", 1.0, 0.60),
 ]
 # name, [args], gap between them, seconds each
 RUNS = [

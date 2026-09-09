@@ -2568,6 +2568,72 @@ const S = {
     tone(1245, 0.14, 'sine', 0.030, 1975, null, 0.16);
   },
 
+  /* ---- the other four vehicles ----------------------------------------
+     Each pickup is one gesture and the gesture IS the vehicle: the rocket
+     builds and does not stop, the hopper is a single spring, the spoon is a
+     coil charging, the toaster is a wind-up waiting to be let go. A player who
+     has the sound on knows which one they got before the art has finished
+     arriving, and that is worth more than any of them sounding impressive.
+
+     Levels are set against `hit` and `truckget` with tools/sfx.py, never by
+     ear -- see feedback in _CONTINUE-HERE.md. */
+  rocketget(){
+    noise(0.85, 200, 2600, 0.288, 0.7);                 // the burn taking hold
+    wob(70, 260, 0.95, {type:'sawtooth', vol:0.360, depth:16, rate:9});
+    wob(320, 1500, 0.55, {type:'square', vol:0.099, depth:30, rate:7, at:0.18});
+    tone(1046, 0.22, 'triangle', 0.135, 1568, null, 0.55);
+  },
+  hopget(){
+    wob(180, 900, 0.30, {type:'square', vol:0.342, depth:80, rate:19});
+    wob(900, 200, 0.34, {type:'square', vol:0.234, depth:70, rate:16, at:0.26});
+    tone(784, 0.18, 'triangle', 0.135, 1175, null, 0.55);
+  },
+  /* The bounce, and its PITCH IS THE REWARD. A weak bounce is a low flat
+     boing and a strong one is high and long, so the timing has a sound as
+     well as a height -- which is the half of it a player can hear while they
+     are looking at the fence instead. */
+  hopbounce(arm){
+    const a = clamp(arm || 0, 0, 1);
+    wob(150 + 210*a, 520 + 620*a, 0.16 + 0.10*a,
+        {type:'square', vol:0.075 + 0.037*a, depth:50 + 40*a, rate:22});
+    noise(0.07, 700, 260, 0.019, 1.2);
+  },
+  hopperfect(){
+    tone(1319, 0.16, 'triangle', 0.085, null, null, 0);
+    tone(1976, 0.20, 'triangle', 0.060, null, null, 0.055);
+    wob(420, 1500, 0.24, {type:'square', vol:0.085, depth:70, rate:24});
+  },
+  spoonget(){
+    wob(90, 620, 0.55, {type:'sawtooth', vol:0.352, depth:22, rate:5});
+    tone(1568, 0.30, 'square', 0.121, 3136, null, 0.20);
+    noise(0.34, 1800, 6000, 0.077, 2.0, 0.10);
+  },
+  /* The flip is SHORT. It happens as often as a tap, so anything with a tail
+     on it would become the run's texture within five seconds. */
+  spoonflip(){
+    tone(520, 0.10, 'square', 0.075, 1560);
+    noise(0.10, 900, 4200, 0.030, 2.2);
+  },
+  spoonsnap(){
+    tone(210, 0.07, 'square', 0.085, 90);
+    noise(0.09, 2600, 700, 0.045, 1.6);
+  },
+  toastget(){
+    wob(120, 480, 0.60, {type:'triangle', vol:0.330, depth:26, rate:11});
+    noise(0.50, 300, 1500, 0.099, 0.9, 0.05);
+    tone(659, 0.20, 'triangle', 0.154, 988, null, 0.42);
+  },
+  /* THE POP, and the charge is in the pitch and the length as well as the
+     level -- a full pop is a proper toaster and a brush of the button is a
+     tick. Same voice either way, so it never reads as two different events. */
+  toastpop(c){
+    const k = clamp(c || 0, 0, 1);
+    tone(300 + 260*k, 0.09 + 0.05*k, 'square', 0.070 + 0.047*k, 120);
+    wob(700 + 500*k, 180, 0.20 + 0.14*k,
+        {type:'square', vol:0.078 + 0.047*k, depth:60, rate:15});
+    noise(0.12 + 0.08*k, 1400, 300, 0.039 + 0.023*k, 1.1);
+  },
+
   /* THE TRUCK LEAVING THE GROUND. The suspension lets go first -- that is the
      part you feel -- then it climbs. Deliberately a cousin of takeoff() rather
      than a new idea: same rising shape, an octave down and twice the weight,
@@ -2736,6 +2802,14 @@ const RIDE_MOVEMENTS = ['ride', 'ride_b'];
    the whole change when it is. */
 const UFO_MOVEMENTS = ['ufo'];
 const UFO_TRACKS = [];
+/* ...and one each for the other four. A vehicle that changes the board, the
+   controls and the roster and then plays somebody else's riff is telling the
+   player the two are the same reward. Six vehicles, six soundtracks -- and
+   each list is a LIST, so a second movement for any of them is one filename. */
+const ROC_MOVEMENTS = ['rocket'],  ROC_TRACKS = [];
+const HOP_MOVEMENTS = ['hopper'],  HOP_TRACKS = [];
+const SPN_MOVEMENTS = ['spoon'],   SPN_TRACKS = [];
+const TST_MOVEMENTS = ['toaster'], TST_TRACKS = [];
 /* These two and music_menu are the whole soundtrack SHIPPED. Four other
    generated tracks and a second long one were carried for a while and never
    referenced by anything -- 6.1 MB of a game whose images are 2.8 -- so they
@@ -2795,6 +2869,10 @@ function initTrack(){
   };
   RIDE_MOVEMENTS.forEach(n => rideAudio(n, RIDE_TRACKS));
   UFO_MOVEMENTS.forEach(n => rideAudio(n, UFO_TRACKS));
+  ROC_MOVEMENTS.forEach(n => rideAudio(n, ROC_TRACKS));
+  HOP_MOVEMENTS.forEach(n => rideAudio(n, HOP_TRACKS));
+  SPN_MOVEMENTS.forEach(n => rideAudio(n, SPN_TRACKS));
+  TST_MOVEMENTS.forEach(n => rideAudio(n, TST_TRACKS));
   RIDE_TRACK = RIDE_TRACKS[0];
 }
 /* One of them, at random, whenever the ride's music is asked for. Skips any
@@ -2806,7 +2884,7 @@ function pickRideTrack(){
   /* WHICH POOL is the only thing the vehicle changes here. Everything
      downstream -- trackTick's fade, the engine hold, the stop on the way out
      -- keeps pointing at RIDE_TRACK and never learns there are two lists. */
-  const pool = inUfo() ? UFO_TRACKS : RIDE_TRACKS;
+  const pool = (riding() && V().tracks) ? V().tracks() : RIDE_TRACKS;
   const live = pool.filter(a => !a.dead);
   if(!live.length){ RIDE_TRACK = null; return; }
   const next = live[(Math.random()*live.length)|0];
@@ -4109,22 +4187,23 @@ const riding = () => game.ride > 0;
    a trap in it: every `riding()` caller would keep working and every
    truck-specific one would silently start firing for the saucer. Naming the
    two questions differently is what makes the compiler out of the reader. */
-const VEH_TROLLEY = 0, VEH_UFO = 1;
-const inUfo    = () => game.ride > 0 && game.veh === VEH_UFO;
-const onWheels = () => game.ride > 0 && game.veh !== VEH_UFO;
+const VEH_TROLLEY = 'trolley', VEH_UFO = 'ufo';
+const inUfo    = () => game.ride > 0 && game.veh === 'ufo';
+/* `onWheels()` means THE TROLLEY, and it kept that meaning when the hopper and
+   the toaster arrived even though both of them plainly have wheels. Every one
+   of its callers is about something only the trolley has -- the blackout, the
+   bumper, the exhaust scorch, the tap-or-hold jump -- so widening it to "any
+   ground vehicle" would have handed three of those to two vehicles that own
+   none of them. `V().kind === 'ground'` is the question about wheels; this is
+   the question about the trolley. */
+const onWheels = () => game.ride > 0 && game.veh === 'trolley';
 /* ONE definition of what can be hit, because two of them drift. The obstacle
    loop and the crows both ask this, and a crow that kills what a fence only
    dismounts is worse than either rule on its own. */
 function rideBox(){
   const p = player;
   if(!riding()) return { l: p.x-48, r: p.x+48, b: p.y+8, t: p.y+150 };
-  if(inUfo()) return ufoBox();
-  const g = truckGeom();
-  /* Wider than the bird and about as tall, because he is sitting in it: the
-     truck is a long low thing, and a box the height of the whole picture would
-     have the tyres colliding with the sky. */
-  return { l: p.x - g.tw*0.40, r: p.x + g.tw*0.40,
-           b: p.y + 6,          t: p.y + g.th*0.92 };
+  return V().box();
 }
 
 /* ============================================================
@@ -4307,6 +4386,719 @@ function ufoBeamHalf(){
    for a crate it smashes; this is a little more because it costs a low pass
    with the button held, which is the one moment the saucer is not free. */
 const ABDUCT_T = 1.05, ABDUCT_SCORE = 40;
+
+/* ============================================================
+   THE OTHER FOUR VEHICLES (2026-09-10)
+
+   Two vehicles could be told apart with a boolean. Six cannot, and the moment
+   the third one arrived every `inUfo() ? a : riding() ? b : c` in this file
+   became a place where the fourth, fifth and sixth would be forgotten. So the
+   differences move into a TABLE and the call sites ask it a question.
+
+   What is in the table is DATA -- gravity, drag, thrust, boost, which pattern
+   table, which music, how big the box is -- plus the handful of hooks where a
+   vehicle genuinely behaves differently rather than merely differently-tuned:
+   `press`, `release`, `land`, `feel`, `draw`, `start`. Anything a vehicle does
+   not override simply is not there, and the default applies.
+
+   Each one also gets a WEAKNESS on purpose, because a vehicle that is better
+   than the bird at everything is not a choice, it is an upgrade:
+
+     trolley  POWER      cannot stay high; you commit to jumps
+     saucer   CONTROL    goes anywhere, slowly; you anticipate
+     rocket   SPEED      redirects like a barge; you commit to a line
+     hopper   RHYTHM     cannot choose to stay down or stay up
+     spoon    SWITCH     only two heights exist; mid-air is a place you pass
+     toaster  CHARGE     the power costs ground time you may not have
+   ============================================================ */
+
+/* ---- CORN ROCKET ---------------------------------------------------------
+   "This vehicle is insanely fast and committed to its movement."
+
+   The speed is the easy half. The committed half is DRAG, and it is the lowest
+   of any vehicle here: k = 1.92, a time constant of 0.52s, so it takes half a
+   second of holding before the nose is really climbing and another half after
+   letting go before it is really diving. You do not steer this thing, you aim
+   it and then live with the aim. */
+const ROC_G = 0.26, ROC_D = 0.40, ROC_T = 0.28;
+const ROC_BOOST = 1.62;          // by a distance the fastest thing in the game
+const CLEAR_ROC = 440;           // ...so the openings have to be that much wider
+const ROC_W = 820, ROC_H = 518;
+/* Where the nozzles are, measured by tools/cut_veh4.py. One anchor, two jets:
+   the pair sit symmetrically about it, which is cheaper than measuring both
+   and cannot end up asymmetric through a rounding error. */
+const ROC_EX = 0.035, ROC_EY = 0.4817, ROC_ESPLIT = 0.085;
+const ROCKET = { img:new Image(), ready:false };
+ROCKET.img.onload = () => { ROCKET.ready = true; };
+ROCKET.img.src = 'art/veh_rocket.webp';
+function rocGeom(){
+  const rw = GROUND*0.46;
+  return { rw, rh: rw*(ROC_H/ROC_W) };
+}
+
+/* ---- EGGSHELL HOPPER -----------------------------------------------------
+   "This vehicle is all about bounce timing and spring energy."
+
+   THE ONLY VEHICLE WHOSE CONTROL IS NOT A HEIGHT. It bounces whether you press
+   or not -- the rhythm is the level -- and the press is a TIMING: hit the
+   button as the shell meets the ground and the spring gives it back with
+   interest. Miss and you get the plain bounce, which clears very little.
+
+   `hopArm` is set by a press and decays; landing reads how much is left of it,
+   so a press half a second early is worth nothing and a press on the frame of
+   contact is worth all of it. That continuum matters more than a window would:
+   a window is pass/fail and this is a skill you can feel yourself getting
+   better at. */
+const HOP_G = 0.62, HOP_D = 0.20;
+const HOP_BOOST = 1.12;          // it is not about speed
+const HOP_LOW = 0.30, HOP_HIGH = 0.62;   // apex as a share of the play area
+const HOP_WIN = 0.28;            // seconds a press stays worth something
+const HOP_SQ_K = 130, HOP_SQ_C = 10;     // the spring, as a spring
+const HOP_W = 560, HOP_H = 690, HOP_FOOTX = 0.4821;
+const HOPPER = { img:new Image(), ready:false };
+HOPPER.img.onload = () => { HOPPER.ready = true; };
+HOPPER.img.src = 'art/veh_hopper.webp';
+/* The shell is sized off its WIDTH and the coil is drawn under it, so the
+   sprite's own height is not what sits on the road -- `sh` is how tall the
+   shell is and `spring` is how much air is under it at rest. */
+function hopGeom(){
+  const hw = GROUND*0.26;
+  return { hw, sh: hw*(HOP_H/HOP_W), spring: GROUND*0.085 };
+}
+
+/* ---- MAGNET SPOON --------------------------------------------------------
+   "Nugget flips between floor and ceiling using magnetic pull."
+
+   Gravity with a SIGN. Everything else in this file accelerates downward; this
+   accelerates toward whichever surface the coils are currently pointed at, and
+   a tap swaps them. It is not a teleport and it must not be -- the half second
+   spent crossing is the whole of the vehicle's risk, because it is the only
+   time it is anywhere other than a surface.
+
+   Drag is almost nothing (k = 0.58) so the crossing is a clean parabola rather
+   than a drift, and the pull is strong enough that the trip takes 0.5s however
+   tall the screen is. */
+const SPN_G = 0.72, SPN_D = 0.12;
+const SPN_BOOST = 1.26;
+const SPN_FLIP = 0.16;           // seconds before another flip is allowed
+const SPN_W = 760, SPN_H = 413;
+/* The two coils, measured. The arc is drawn between them on a flip, so it
+   comes out of the metal rather than out of the middle of the picture. */
+const SPN_COILS = [ {cx:0.1579, cy:0.2203, r:0.0829},
+                    {cx:0.6980, cy:0.8245, r:0.0901} ];
+const SPOON = { img:new Image(), ready:false };
+SPOON.img.onload = () => { SPOON.ready = true; };
+SPOON.img.src = 'art/veh_spoon.webp';
+function spnGeom(){
+  const sw = GROUND*0.40;
+  return { sw, sh: sw*(SPN_H/SPN_W) };
+}
+/* Where the ceiling is for something that RIDES it: the bird's rail is his
+   feet and he is allowed to stick out above it, but a spoon bolted to the
+   roof has to have the roof under it. */
+const spnRoof = () => GROUND - CEIL - spnGeom().sh;
+
+/* ---- TOASTER JUMPER ------------------------------------------------------
+   "This vehicle stores power, pops, and launches into big committed jumps."
+
+   The one control in this game that costs TIME rather than height. Holding
+   charges -- and charging only happens on the ground, so the whole skill is
+   deciding how much of the road ahead you are willing to spend looking at the
+   toast instead of the fence. Release pops it, and the arc you get is the
+   charge you paid for. It is reusable: land, charge, again.
+
+   Nothing is taken away on a bad launch, which is what keeps it comic rather
+   than punishing -- a half-charged pop is a small hop and the road carries on.
+*/
+const TST_G = 0.42, TST_D = 0.20;
+const TST_BOOST = 1.24;
+const TST_CHG = 0.80;            // seconds to a full charge
+const TST_LOW = 0.24, TST_HIGH = 0.80;   // apex as a share of the play area
+const TST_W = 620, TST_H = 574, TST_SLOTX = 0.3806, TST_SLOTY = 0.3902;
+const TST_TW = 200, TST_TH = 180;
+const TOASTER = { img:new Image(), ready:false };
+TOASTER.img.onload = () => { TOASTER.ready = true; };
+TOASTER.img.src = 'art/veh_toaster.webp';
+const TOAST = { img:new Image(), ready:false };
+TOAST.img.onload = () => { TOAST.ready = true; };
+TOAST.img.src = 'art/veh_toast.webp';
+function tstGeom(){
+  const tw = GROUND*0.34;
+  return { tw, th: tw*(TST_H/TST_W) };
+}
+
+/* ---- the arithmetic, made to take any vehicle's numbers ------------------
+   `rideApex` and friends had RIDE_G and RIDE_D baked in, which was correct
+   while one vehicle jumped. Four of them do now, so the constants become
+   arguments with the trolley's as the default -- every existing caller keeps
+   working and nothing had to be renamed. */
+function vApex(impulse, g, d, vup){
+  const a = GRAV*(g === undefined ? RIDE_G : g);
+  const k = DRAG*(d === undefined ? RIDE_D : d), vT = a/k;
+  const u = Math.min(Math.abs(impulse), Math.abs(VY_UP*(vup === undefined ? RIDE_VUP : vup)));
+  return (u - vT*Math.log(1 + u/vT))/k;
+}
+/* And the inverse, by bisection, because `u - vT*ln(1+u/vT)` will not come
+   apart. Forty halvings land on it to well under a pixel and cost nothing. */
+function vImpulse(apex, g, d, vup){
+  let lo = 0, hi = Math.abs(VY_UP*(vup === undefined ? RIDE_VUP : vup));
+  for(let i = 0; i < 40; i++){
+    const m = (lo + hi)*0.5;
+    if(vApex(m, g, d, vup) < apex) lo = m; else hi = m;
+  }
+  return (lo + hi)*0.5;
+}
+/* Cached per screen height, because bisecting forty times a frame to find a
+   number that only changes on a resize is the kind of thing that shows up in
+   a profile as "the game got slower and nobody knows why". */
+const _vimp = {};
+function vJump(key, share, g, d, vup){
+  const k = key + '@' + Math.round(GROUND);
+  if(_vimp[k] === undefined) _vimp[k] = vImpulse(GROUND*share, g, d, vup);
+  return _vimp[k];
+}
+
+/* ---- what each of them looks like ---------------------------------------
+   Same split as the trolley and the saucer, every time: the hull is art
+   because it has no rule, and the part that answers the button is drawn,
+   because a painted one cannot answer it on the frame it happened. */
+
+/* THE ROCKET. Two jets out of one measured anchor, and `drawExhaust` already
+   draws fire that points left out of a root on the right -- which is exactly
+   what a rocket travelling right needs, so the trolley's flame is reused
+   whole rather than a second fire being written. */
+const rocFlame = () => (0.62 + (player.thrusting ? 0.34 : 0))
+                     * (0.90 + 0.10*Math.sin(game.t*41))
+                     + Math.max(0, -player.vy/2600);
+function drawRocket(){
+  const g = rocGeom(), w = g.rw, h = g.rh;
+  const x = player.x - cam.x, yb = GROUND - player.y;
+  ctx.save();
+  ctx.translate(x, yb - h*0.5);
+  ctx.rotate(game.rocRot || 0);
+  const len = w*0.52*rocFlame();
+  for(const s of [-1, 1]){
+    ctx.save();
+    ctx.translate((ROC_EX - 0.5)*w, ((ROC_EY - 0.5) + s*ROC_ESPLIT)*h);
+    drawExhaust(0, 0, len);
+    ctx.restore();
+  }
+  if(ROCKET.ready) ctx.drawImage(ROCKET.img, -w*0.5, -h*0.5, w, h);
+  else {
+    ctx.beginPath(); ctx.ellipse(0, 0, w*0.48, h*0.30, 0, 0, TAU);
+    ctx.fillStyle = '#F5C518'; ctx.fill();
+    ctx.lineWidth = 5; ctx.strokeStyle = C.ink; ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/* THE HOPPER, and the SPRING IS DRAWN because a spring is a rule: its length
+   is the compression and its compression is the landing. A painted coil would
+   be the same length on a gentle touchdown and a slam, which is the one thing
+   this vehicle is about.
+
+   The shell squashes about its own base and the coil takes up the difference,
+   so the two never separate: whatever height the spring is, the shell sits on
+   top of it. */
+function drawHopper(){
+  const g = hopGeom(), w = g.hw, sh = g.sh;
+  const x = player.x - cam.x, gy = GROUND - player.y;
+  const sq  = clamp(game.hopSq || 0, -0.55, 1.15);
+  const len = Math.max(g.spring*0.16, g.spring*(1 - sq*0.80));
+  /* The base plate, on the road. Drawn rather than generated: it is an
+     ellipse and a rim, and asking a model for one would have cost a sheet. */
+  ctx.save();
+  ctx.translate(x, gy);
+  ctx.beginPath(); ctx.ellipse(0, 0, w*0.34, w*0.075, 0, 0, TAU);
+  ctx.fillStyle = '#F3C61C'; ctx.fill();
+  ctx.lineWidth = 4.5; ctx.strokeStyle = C.ink; ctx.stroke();
+  /* THE COIL. Six turns between the plate and the shell's foot, drawn as one
+     stroked path so it compresses as a unit; the turns bulge outward as it
+     squashes, because a real coil does and it is two characters of maths. */
+  const turns = 6, bulge = 1 + sq*0.30;
+  ctx.beginPath();
+  for(let i = 0; i <= turns*12; i++){
+    const u = i/(turns*12);
+    ctx.lineTo(Math.sin(u*TAU*turns)*w*0.20*bulge, -u*len);
+  }
+  ctx.lineWidth = Math.max(5, w*0.045); ctx.strokeStyle = '#5B6672';
+  ctx.lineCap = 'round'; ctx.stroke();
+  ctx.lineWidth = Math.max(2, w*0.018); ctx.strokeStyle = '#93A1AE'; ctx.stroke();
+  ctx.restore();
+  /* The shell, on top of whatever the spring is doing. */
+  ctx.save();
+  ctx.translate(x - (HOP_FOOTX - 0.5)*w, gy - len);
+  ctx.scale(1 + sq*0.10, 1 - sq*0.14);
+  if(HOPPER.ready) ctx.drawImage(HOPPER.img, -w*0.5, -sh, w, sh);
+  else {
+    ctx.beginPath(); ctx.ellipse(0, -sh*0.4, w*0.46, sh*0.40, 0, 0, TAU);
+    ctx.fillStyle = '#F2E6D2'; ctx.fill();
+    ctx.lineWidth = 5; ctx.strokeStyle = C.ink; ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/* THE SPOON, and the only sprite in the game that is drawn UPSIDE DOWN.
+   `ctx.scale(1,-1)` about the attach point is the whole of it -- the art is
+   the same picture, so Nugget on the ceiling is unmistakably the same Nugget
+   and nothing had to be redrawn hanging.
+
+   The arc between the coils is the flip, and it only exists while the craft is
+   in transit: it is the visible reason the vehicle is somewhere it usually is
+   not. */
+function drawSpoon(){
+  const g = spnGeom(), w = g.sw, h = g.sh;
+  const x = player.x - cam.x, y = GROUND - player.y;
+  const up = (game.pol || 1) < 0;
+  ctx.save();
+  ctx.translate(x, y + (up ? h*0.5 : -h*0.5));
+  if(up) ctx.scale(1, -1);
+  ctx.rotate(game.spnRot || 0);
+  const fly = clamp((game.spnT || 0)/0.5, 0, 1);
+  if(fly > 0.02){
+    /* A jagged line between the two coils, redrawn every frame off a hash so
+       it crackles rather than flickers between two fixed shapes. */
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const a = SPN_COILS[0], b = SPN_COILS[1];
+    const ax = (a.cx - 0.5)*w, ay = (a.cy - 0.5)*h;
+    const bx = (b.cx - 0.5)*w, by = (b.cy - 0.5)*h;
+    for(let pass = 0; pass < 2; pass++){
+      ctx.beginPath(); ctx.moveTo(ax, ay);
+      for(let i = 1; i < 7; i++){
+        const u = i/7, j = (hash(Math.floor(game.t*38) + i*7.3 + pass*2.1) - 0.5)*w*0.10;
+        ctx.lineTo(ax + (bx - ax)*u + j, ay + (by - ay)*u - j*0.6);
+      }
+      ctx.lineTo(bx, by);
+      ctx.lineWidth = pass ? 3 : 9;
+      ctx.strokeStyle = pass ? 'rgba(235,252,255,' + (0.85*fly).toFixed(2) + ')'
+                             : 'rgba(90,190,255,' + (0.45*fly).toFixed(2) + ')';
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  if(SPOON.ready) ctx.drawImage(SPOON.img, -w*0.5, -h*0.5, w, h);
+  else {
+    ctx.beginPath(); ctx.ellipse(w*0.22, 0, w*0.26, h*0.40, 0, 0, TAU);
+    ctx.fillStyle = '#C8D2DA'; ctx.fill();
+    ctx.lineWidth = 5; ctx.strokeStyle = C.ink; ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/* THE TOASTER. The toast IS the charge meter, and it is the right one because
+   it is diegetic: nobody has to be taught that bread coming up out of a
+   toaster means something is about to happen. It rises with the charge, the
+   element glows underneath, and the pop is the release.
+
+   The body hunkers as it charges -- wider and shorter -- so the charge reads
+   even at the moment the toast is still low. */
+function drawToaster(){
+  const g = tstGeom(), w = g.tw, h = g.th;
+  const x = player.x - cam.x, gy = GROUND - player.y;
+  const c = clamp(game.tstChg || 0, 0, 1);
+  const pop = clamp((game.tstPop || 0)/0.22, 0, 1);
+  ctx.save();
+  ctx.translate(x, gy);
+  ctx.scale(1 + c*0.05 - pop*0.04, 1 - c*0.07 + pop*0.06);
+  /* THE ELEMENT, under the body: a hot orange bar that brightens with the
+     charge. It is what makes a charging toaster read as charging from the far
+     side of the screen, where the toast is only a few pixels of movement. */
+  if(c > 0.02){
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const gr = ctx.createLinearGradient(0, -h*0.16, 0, h*0.02);
+    gr.addColorStop(0, 'rgba(255,120,20,0)');
+    gr.addColorStop(0.55, 'rgba(255,160,45,' + (0.75*c).toFixed(3) + ')');
+    gr.addColorStop(1, 'rgba(255,70,20,0)');
+    ctx.fillStyle = gr;
+    ctx.fillRect(-w*0.44, -h*0.16, w*0.88, h*0.16);
+    ctx.restore();
+  }
+  /* The toast, BEHIND the body so it slides out of it rather than over it. */
+  const tw = w*0.30, th = tw*(TST_TH/TST_TW);
+  /* SHIFTED OFF THE PILOT. The slot's measured centre is directly behind
+     Nugget's head, so toast rising out of it came up behind him and the charge
+     -- the one thing this vehicle needs to be readable at a glance -- was
+     mostly hidden by a chicken. Nine per cent of the body to the left puts it
+     clear of him and still plainly out of the machine. */
+  const sx = (TST_SLOTX - 0.09 - 0.5)*w, sy = -h + TST_SLOTY*h;
+  if(TOAST.ready)
+    ctx.drawImage(TOAST.img, sx - tw*0.5,
+                  sy - th*(0.10 + 0.92*c) - pop*th*0.45, tw, th);
+  if(TOASTER.ready) ctx.drawImage(TOASTER.img, -w*0.5, -h, w, h);
+  else {
+    ctx.beginPath(); ctx.roundRect(-w*0.44, -h*0.86, w*0.88, h*0.72, w*0.09);
+    ctx.fillStyle = '#F4F2EC'; ctx.fill();
+    ctx.lineWidth = 5; ctx.strokeStyle = C.ink; ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/* ============================================================
+   THE TABLE. Every difference between six vehicles, in one place.
+
+   The fields are answers to questions the run asks. `kind` is the only one
+   that is a category rather than a number, and it exists because three things
+   genuinely live in different spaces: `ground` sits on the road, `fly` is
+   anywhere in the band, `magnet` is on one of exactly two surfaces.
+
+   The hooks -- press, release, land, feel, start, lost -- are where a vehicle
+   BEHAVES differently rather than merely being tuned differently. The trolley's
+   and the saucer's simply call the code they already had: this is a dispatch
+   table, not a rewrite of two working vehicles.
+   ============================================================ */
+const VEH = {
+  trolley: {
+    id:'trolley', name:'MONSTER TROLLEY', kind:'ground',
+    killsGrid:true, bumper:true, scorch:true, dust:true, smashes:true,
+    g:RIDE_G, d:RIDE_D, thrust:0, vup:RIDE_VUP,
+    boost:RIDE_BOOST, ease:3.2, clear:CLEAR_RIDE,
+    pat:() => RIDE_PAT, tracks:() => RIDE_TRACKS,
+    tough:() => PERK.trolleyTough(),
+    lost:{ word:'POP!', col:'#FF6B6B' },
+    box(){
+      const p = player, g = truckGeom();
+      /* Wider than the bird and about as tall, because he is sitting in it. */
+      return { l: p.x - g.tw*0.40, r: p.x + g.tw*0.40,
+               b: p.y + 6,         t: p.y + g.th*0.92 };
+    },
+    draw(){ drawTruck(); },
+    press(){ trolleyJump(); },
+    release(){ trolleyCut(); },
+    land(impact){ trolleyLand(impact); },
+    feel(dt){ trolleyFeel(dt); },
+    start(){ startTrolley(); },
+  },
+
+  ufo: {
+    id:'ufo', name:'FRIED EGG UFO', kind:'fly',
+    beam:true, low:UFO_LOW,
+    g:UFO_G, d:UFO_D, thrust:UFO_T, vup:1,
+    boost:UFO_BOOST, ease:5.5, clear:CLEAR_UFO,
+    pat:() => UFO_PAT, tracks:() => UFO_TRACKS,
+    tough:() => PERK.ufoTough(),
+    lost:{ word:'SCRAMBLED!', col:'#FFC01F' },
+    box(){ return ufoBox(); },
+    ceil(){ return ufoCeil(); },
+    draw(){ drawUfo(); },
+    feel(dt){ ufoFeel(dt); },
+    start(){ startUfo(); },
+  },
+
+  /* ---- CORN ROCKET: aim it, then live with the aim -------------------- */
+  rocket: {
+    id:'rocket', name:'CORN ROCKET', kind:'fly',
+    low:26,
+    g:ROC_G, d:ROC_D, thrust:ROC_T, vup:1.35,
+    boost:ROC_BOOST, ease:2.2, clear:CLEAR_ROC,
+    pat:() => ROC_PAT, tracks:() => ROC_TRACKS,
+    tough:() => PERK.vehTough('rocket'),
+    lost:{ word:'POPCORN!', col:'#FFD447' },
+    box(){
+      const p = player, g = rocGeom();
+      /* Long and shallow. The nose cone and the engine bells are the ends of
+         the picture and both are narrower than the cob, so the box stops short
+         of them -- the forgiving direction, and the one that stops a rocket
+         dying on the tip of a leaf. */
+      return { l: p.x - g.rw*0.40, r: p.x + g.rw*0.40,
+               b: p.y + g.rh*0.14, t: p.y + g.rh*0.86 };
+    },
+    ceil(){ return GROUND - CEIL - rocGeom().rh*0.55; },
+    draw(){ drawRocket(); },
+    feel(dt){
+      /* The lean is the velocity, eased HARD -- rate 5 against the saucer's 9,
+         so the nose is still coming round after the button has changed. It is
+         the same trick and a different number, and the number is the vehicle. */
+      game.rocRot = damp(game.rocRot || 0, clamp(player.vy/2000, -0.34, 0.34), 5, dt);
+    },
+    start(){
+      player.y = Math.max(player.y, 90);
+      game.rocRot = 0;
+      game.flash = 0.34; addShake(10);
+      S.rocketget();
+      pop(player.x, GROUND - player.y - 300, 'IGNITION', '#FFD447', 44, -46);
+      pop(player.x, GROUND - player.y - 210, 'HOLD ON!', C.gold, 56, -70);
+      spark(player.x - 120, GROUND - player.y - 40, 24,
+            {col:'#FF9E2C', a0:Math.PI*0.75, a1:Math.PI*1.25,
+             s0:260, s1:700, l0:0.25, l1:0.7, r0:3, r1:10});
+      layVehCourse();
+    },
+  },
+
+  /* ---- EGGSHELL HOPPER: the rhythm is the level ----------------------- */
+  hopper: {
+    id:'hopper', name:'EGGSHELL HOPPER', kind:'ground',
+    g:HOP_G, d:HOP_D, thrust:0, vup:1.9,
+    boost:HOP_BOOST, ease:4.0, clear:CLEAR_RIDE,
+    pat:() => JUMP_PAT, tracks:() => HOP_TRACKS,
+    tough:() => PERK.vehTough('hopper'),
+    lost:{ word:'CRACKED!', col:'#FFE2B0' },
+    box(){
+      const p = player, g = hopGeom();
+      /* Measured off the SHELL, which sits a spring's height off the road --
+         so the bottom of the box is not the bottom of the vehicle, and that is
+         correct: the coil is not what a fence hits. */
+      return { l: p.x - g.hw*0.42, r: p.x + g.hw*0.42,
+               b: p.y + g.spring*0.55, t: p.y + g.spring + g.sh*0.86 };
+    },
+    draw(){ drawHopper(); },
+    press(){
+      /* THE PRESS IS A TIMING, NOT A JUMP. Nothing happens now; it arms the
+         landing, and how much is left of `hopArm` when the shell touches down
+         is how much the bounce is worth. Pressing in mid-air early is not
+         punished, it is simply spent by the time it matters. */
+      player.hopArm = HOP_WIN;
+      if(!player.onGround) spark(player.x, GROUND - player.y - 40, 3,
+        {col:'rgba(255,255,255,.55)', s0:60, s1:150, l0:0.12, l1:0.3, r0:2, r1:5});
+    },
+    land(impact){ hopperLand(impact); },
+    feel(dt){
+      /* AND IT NEVER RESTS. `land` is what launches it, so anything that sets
+         `onGround` without going through a landing would strand the vehicle on
+         the floor -- a death, a revive, a debug flag. One line here means the
+         rhythm cannot be stopped by something that has not thought about it. */
+      if(player.onGround && game.mode === 'play') hopperLand(player.vy || 0);
+      player.hopArm = Math.max(0, (player.hopArm || 0) - dt);
+      for(let i = 0; i < 2; i++){
+        const h = dt*0.5;
+        game.hopSqV = (game.hopSqV||0) +
+                      (-HOP_SQ_K*(game.hopSq||0) - HOP_SQ_C*(game.hopSqV||0))*h;
+        game.hopSq  = clamp((game.hopSq||0) + game.hopSqV*h, -0.6, 1.2);
+      }
+    },
+    start(){
+      /* IT HAS TO BE IN THE AIR, and the first version was not: the pickup can
+         be taken while he is already standing on the road, `onGround` was
+         therefore still true, and the landing that starts the whole rhythm
+         never happened -- the vehicle simply sat there, measured at y 0..0
+         with zero contacts. So the shell is lifted a little and dropped, which
+         is also the right picture: it arrives by bouncing. */
+      player.y = Math.max(player.y, 40);
+      player.onGround = false;
+      player.vy = 300;
+      game.hopSq = 0; game.hopSqV = 0; player.hopArm = 0;
+      game.flash = 0.28; addShake(8);
+      S.hopget();
+      pop(player.x, GROUND - player.y - 300, 'BOING', '#FFE2B0', 44, -46);
+      pop(player.x, GROUND - player.y - 210, 'TIME IT!', C.gold, 56, -70);
+      layVehCourse();
+    },
+  },
+
+  /* ---- MAGNET SPOON: two heights, and the trip between them ----------- */
+  spoon: {
+    id:'spoon', name:'MAGNET SPOON', kind:'magnet',
+    g:SPN_G, d:SPN_D, thrust:0, vup:2.6,
+    boost:SPN_BOOST, ease:4.6, clear:CLEAR_RIDE,
+    pat:() => SPN_PAT, tracks:() => SPN_TRACKS,
+    tough:() => PERK.vehTough('spoon'),
+    lost:{ word:'DEMAGNETISED!', col:'#7FE6FF' },
+    sgn(){ return game.pol || 1; },
+    /* Its roof is the SURFACE it rides, not a rail it bumps -- so it is stated
+       here rather than left to `rideCeil()`, which would put an invisible stop
+       a little above the ceiling the craft is trying to land on. */
+    ceil(){ return spnRoof(); },
+    box(){
+      const p = player, g = spnGeom();
+      /* Symmetrical about the attach point, because the craft is on the other
+         side of it half the time and a box that only reached one way would be
+         wrong upside down. */
+      const up = (game.pol || 1) < 0;
+      return { l: p.x - g.sw*0.42, r: p.x + g.sw*0.42,
+               b: p.y - (up ? g.sh*0.90 : 0) + 6,
+               t: p.y + (up ? 0 : g.sh*0.90) - 6 };
+    },
+    draw(){ drawSpoon(); },
+    press(){ spoonFlip(); },
+    feel(dt){
+      game.spnT = Math.max(0, (game.spnT || 0) - dt);
+      game.spnRot = damp(game.spnRot || 0,
+                         clamp(player.vy*(game.pol||1)/2600, -0.20, 0.20), 11, dt);
+    },
+    start(){
+      game.pol = 1; game.spnT = 0; game.spnRot = 0; game.spnCool = 0;
+      player.vy = Math.max(player.vy, 240);
+      game.flash = 0.30; addShake(9);
+      S.spoonget();
+      pop(player.x, GROUND - player.y - 300, 'POLARITY', '#7FE6FF', 44, -46);
+      pop(player.x, GROUND - player.y - 210, 'TAP TO FLIP!', C.gold, 56, -70);
+      layVehCourse();
+    },
+  },
+
+  /* ---- TOASTER JUMPER: the power costs road ---------------------------- */
+  toaster: {
+    id:'toaster', name:'TOASTER JUMPER', kind:'ground',
+    bumper:true, smashes:true, dust:true,
+    g:TST_G, d:TST_D, thrust:0, vup:2.0,
+    boost:TST_BOOST, ease:3.6, clear:CLEAR_RIDE,
+    pat:() => RIDE_PAT, tracks:() => TST_TRACKS,
+    tough:() => PERK.vehTough('toaster'),
+    lost:{ word:'BURNT!', col:'#FF9E2C' },
+    box(){
+      const p = player, g = tstGeom();
+      return { l: p.x - g.tw*0.42, r: p.x + g.tw*0.42,
+               b: p.y + 6,          t: p.y + g.th*0.80 };
+    },
+    draw(){ drawToaster(); },
+    press(){ /* charging happens in feel(); the press only sets the flag */ },
+    release(){ toasterPop(); },
+    land(impact){ toasterLand(impact); },
+    feel(dt){
+      /* CHARGE ONLY ON THE ROAD. That is the whole cost of the vehicle: the
+         power is paid for in ground time, and ground time is the thing a fence
+         is about to take away from you. */
+      game.tstPop = Math.max(0, (game.tstPop || 0) - dt);
+      if(player.onGround && player.thrusting)
+        game.tstChg = Math.min(1, (game.tstChg || 0) + dt*PERK.toastFast()/TST_CHG);
+      else if(player.onGround && !player.thrusting)
+        game.tstChg = Math.max(0, (game.tstChg || 0) - dt*2.6);
+      /* A tick as it fills, at a rate that rises with the charge -- the sound
+         of something winding up, and the one cue that does not need looking at. */
+      if(player.onGround && player.thrusting){
+        game.tstTick = (game.tstTick || 0) - dt;
+        if(game.tstTick <= 0){ game.tstTick = 0.16 - 0.09*(game.tstChg||0); S.tick(); }
+      }
+    },
+    start(){
+      player.vy = Math.max(player.vy, 240);
+      game.tstChg = 0; game.tstPop = 0;
+      game.flash = 0.30; addShake(9);
+      S.toastget();
+      pop(player.x, GROUND - player.y - 300, 'PREHEAT', '#FF9E2C', 44, -46);
+      pop(player.x, GROUND - player.y - 210, 'HOLD TO CHARGE!', C.gold, 52, -70);
+      layVehCourse();
+    },
+  },
+};
+/* The spec of whatever is being ridden. Falls back to the trolley rather than
+   to undefined, because a `game.veh` that somehow went missing should cost a
+   wrong vehicle rather than a thrown frame. */
+const V = () => VEH[game.veh] || VEH.trolley;
+const VEH_IDS = Object.keys(VEH);
+
+/* ---- the behaviour the table points at ---------------------------------- */
+
+/* The trolley's, lifted out of thrustOn/thrustOff/updatePlay/updateRide
+   unchanged -- moved so that six vehicles are described in one shape, not so
+   that this one behaves differently. */
+function trolleyJump(){
+  if(!player.onGround) return;
+  player.vy = -rideJump(); player.onGround = false;
+  player.rideJumps = 1; S.truckjump(); addShake(5);
+  game.boostT = 0.19;
+  player.rideKick = 1;
+  game.tSquashV = (game.tSquashV||0) - 3.4;
+  smoke(player.x - 44, GROUND - 6, 18,
+        {a0:Math.PI*0.92, a1:Math.PI*1.80, s0:150, s1:430, r0:20, r1:40, l0:0.45, l1:1.0});
+  spark(player.x-40, GROUND-player.y, 10,
+        {col:'rgba(210,180,140,.9)', a0:Math.PI*0.9, a1:Math.PI*1.4,
+         s0:120, s1:340, l0:0.2, l1:0.5, r0:4, r1:10, g:900});
+}
+function trolleyCut(){
+  if(player.onGround || player.vy >= 0) return;
+  const m = -player.vy;
+  player.vy = -Math.max(m*RIDE_CUT, Math.min(m, RIDE_TAP*rideJump()));
+}
+function trolleyLand(impact){
+  player.rideLand = 0.26; player.rideJumps = 0;
+  game.tSquashV = (game.tSquashV||0) + clamp(impact/(900*PACE), 0.35, 1.9)*4.6;
+  S.truckland(); addShake(clamp(impact/(150*PACE), 5, 16)); game.camYT = 22;
+  smoke(player.x - 26, GROUND - 4, 20, {s0:170, s1:460, r0:22, r1:42, l0:0.45, l1:1.05});
+  smoke(player.x + 130, GROUND - 4, 8, {s0:110, s1:300, r0:16, r1:32});
+  spark(player.x, GROUND, 10, {col:'rgba(198,176,146,.85)', a0:Math.PI*1.05, a1:Math.PI*1.95,
+        s0:150, s1:430, l0:0.2, l1:0.5, r0:3, r1:8, g:700});
+}
+function trolleyFeel(dt){
+  for(let i = 0; i < 2; i++){
+    const h = dt*0.5;
+    game.tSquashV = (game.tSquashV||0) +
+                    (-RIDE_SQ_K*(game.tSquash||0) - RIDE_SQ_C*(game.tSquashV||0))*h;
+    game.tSquash  = clamp((game.tSquash||0) + game.tSquashV*h, -0.6, 1.2);
+  }
+  player.rideKick = Math.max(0, (player.rideKick||0) - dt*4.2);
+}
+
+/* THE HOPPER'S LANDING IS ITS WHOLE GAME. It never stays down: touching the
+   road IS the launch, and the only question is how much the press was worth.
+   `hopArm` is a continuum rather than a window on purpose -- a window is
+   pass/fail and this is a thing a player should feel themselves getting
+   better at. */
+function hopperLand(impact){
+  const arm = clamp((player.hopArm || 0)/HOP_WIN, 0, 1);
+  const share = HOP_LOW + (HOP_HIGH - HOP_LOW)*arm;
+  player.hopArm = 0;
+  game.hopSqV = (game.hopSqV||0) + clamp(impact/(900*PACE), 0.3, 1.8)*5.2 + arm*3.4;
+  /* Straight back up, on the frame of contact. Nothing waits for an animation:
+     the squash is a spring that carries on while the shell is already leaving,
+     which is what makes it read as elastic rather than as a pause. */
+  player.vy = -vJump('hop' + Math.round(share*1000), share*PERK.hopperHigh(),
+                     HOP_G, HOP_D, 1.9);
+  player.onGround = false; player.rideJumps = 0;
+  addShake(clamp(impact/(190*PACE), 4, 13));
+  smoke(player.x, GROUND - 4, 6 + Math.round(arm*8),
+        {s0:110, s1:300 + arm*220, r0:14, r1:30, l0:0.3, l1:0.7});
+  if(arm > 0.70){
+    S.hopperfect();
+    pop(player.x, GROUND - 250, 'PERFECT!', C.mint, 46, -74);
+    game.score += 30;
+    spark(player.x, GROUND - 30, 16, {col:C.mint, a0:Math.PI*1.1, a1:Math.PI*1.9,
+          s0:180, s1:460, l0:0.2, l1:0.55, r0:3, r1:8});
+  } else S.hopbounce(arm);
+}
+
+/* THE FLIP. A cooldown rather than a toggle guard, because the interesting
+   failure is a player mashing the button and arriving nowhere -- one flip per
+   SPN_FLIP means a double tap costs the second one and the craft still gets
+   where the first one sent it. */
+function spoonFlip(){
+  if((game.spnCool || 0) > 0) return;
+  game.spnCool = SPN_FLIP*PERK.spoonQuick();
+  game.pol = -(game.pol || 1);
+  game.spnT = 0.5;                       // how long the arc crackles for
+  player.onGround = false;
+  S.spoonflip();
+  addShake(5);
+  spark(player.x, GROUND - player.y, 12,
+        {col:'#8FE9FF', s0:130, s1:340, l0:0.15, l1:0.4, r0:2, r1:7});
+}
+/* Arriving. Same beat whichever surface it is, which is the point -- the
+   ceiling is not a special place, it is the other floor. */
+function spoonSnap(){
+  game.spnT = 0;
+  S.spoonsnap(); addShake(6);
+  const gy = GROUND - player.y;
+  spark(player.x, gy, 10, {col:'#8FE9FF', s0:100, s1:280, l0:0.12, l1:0.35, r0:2, r1:6});
+  smoke(player.x, gy, 3, {s0:60, s1:160, r0:10, r1:20, l0:0.2, l1:0.45});
+}
+
+/* THE POP. The charge is spent whole -- there is no partial refund and no
+   carry-over, because a charge you can bank is a charge you never have to
+   time. Landing gives it back to zero and you start again. */
+function toasterPop(){
+  if(!player.onGround) return;
+  const c = clamp(game.tstChg || 0, 0, 1);
+  if(c < 0.06){ game.tstChg = 0; return; }      // a brush of the button is not a jump
+  const share = TST_LOW + (TST_HIGH - TST_LOW)*c;
+  player.vy = -vJump('tst' + Math.round(share*1000), share, TST_G, TST_D, 2.0);
+  player.onGround = false;
+  game.tstChg = 0; game.tstPop = 0.22;
+  S.toastpop(c); addShake(6 + c*9);
+  game.boostT = 0.19;
+  smoke(player.x - 18, GROUND - 6, 8 + Math.round(c*12),
+        {a0:Math.PI*0.9, a1:Math.PI*1.85, s0:130, s1:300 + c*280, r0:16, r1:34});
+  spark(player.x, GROUND - 40, 10 + Math.round(c*10),
+        {col:'#FFCE5B', a0:-Math.PI*0.85, a1:-Math.PI*0.15,
+         s0:180, s1:420 + c*260, l0:0.2, l1:0.55, r0:3, r1:8, g:900});
+  if(c > 0.92) pop(player.x, GROUND - player.y - 250, 'WELL DONE!', C.gold, 44, -70);
+}
+function toasterLand(impact){
+  game.tstChg = 0;
+  S.truckland(); addShake(clamp(impact/(190*PACE), 4, 12));
+  smoke(player.x, GROUND - 4, 10, {s0:130, s1:330, r0:16, r1:32, l0:0.35, l1:0.8});
+}
+
 
 const CAGE = {
   ready:false, img:null, door:null,
@@ -4767,7 +5559,7 @@ const CLEAR  = 330;
    hangs measured against it and the wires measured against the bird.
    `CLEAR_RIDE` and `CLEAR_UFO` are declared with their own vehicles further
    down; this is only ever called at runtime, long after both exist. */
-const clearNow = () => inUfo() ? CLEAR_UFO : riding() ? CLEAR_RIDE : CLEAR;
+const clearNow = () => riding() ? V().clear : CLEAR;
 const RUNG   = 66;    // wire spacing in a ladder. Well under the bird's 142 of
                       // height, so a rung gap can never read as a way through.
 
@@ -4937,7 +5729,8 @@ function elecSpec(def){
    spent once. Handing it to the saucer as well would both cheapen it and leave
    a flying vehicle with nothing electric to fly through, which is the whole
    game with the game taken out. */
-const wireHot = (o) => (o && o.spec && o.spec.alwaysHot) ? true : !onWheels();
+const wireHot = (o) => (o && o.spec && o.spec.alwaysHot) ? true
+                     : !(game.ride > 0 && V().killsGrid);
 function elecDist(o, l, r, b, t){
   const p = o.spec.build(o, game.t);
   const L=l-o.x, R=r-o.x;
@@ -5258,7 +6051,7 @@ function junk(o){
   spec.wired = false;                  // no crackle, no flash, no zap
   spec.smash = true;                   // ...and the trolley goes through it
   const solid = spec.hit;
-  spec.hit = (ob, l, r, b, t) => onWheels() && solid(ob, l, r, b, t);
+  spec.hit = (ob, l, r, b, t) => (game.ride > 0 && V().smashes) && solid(ob, l, r, b, t);
   return spec;
 }
 Object.assign(OB, {
@@ -5865,7 +6658,7 @@ function spawnEggs(){
    collect it has plainly been collected. */
 function eggAim(){
   const p = player;
-  if(inUfo()){
+  if(riding() && V().beam){
     const g = ufoGeom();
     return { x: p.x, y: p.y + g.uh*0.30,
              r: Math.max(g.uw*1.40*PERK.ufoBeam(), PERK.magnet()),
@@ -6564,9 +7357,78 @@ const UFO_PAT = [
   mkPat(4, [1.55,1.95], ['#zap', 1.35, '#zap', 1.45, '#zap']),
   mkPat(4, [1.60,2.00], ['#hang', 1.50, '#zap', 1.55, '#fence']),
 ];
+/* WHAT THE ROCKET FLIES THROUGH. The same tokens again, and again the numbers
+   are the whole difference -- but this time they move for a reason that is not
+   the vehicle's SIZE, it is its SPEED.
+
+   Spacing is in seconds, so a faster vehicle does not meet more obstacles. It
+   meets them with less warning: a piece appears at the screen edge and covers
+   the gap to the player at `game.speed`, so at 1.62x boost the time between
+   seeing a thing and arriving at it is cut by a third. Everything here is
+   therefore longer than the saucer's, and `CLEAR_ROC` is wider than any other
+   vehicle's opening -- not because the rocket is fat, but because the corridor
+   has to be findable in half the time. */
+const ROC_PAT = [
+  mkPat(0, [2.35,2.85], ['#fence']),
+  mkPat(1, [2.20,2.65], ['#zap']),
+  mkPat(1, [2.25,2.70], ['#fence']),
+  mkPat(1, [2.30,2.75], ['#fence', 1.85, '#zap']),
+  mkPat(2, [2.10,2.55], ['#zap']),
+  mkPat(2, [2.15,2.60], ['#hang', 1.90, '#fence']),
+  mkPat(2, [2.10,2.55], ['#zap', 1.80, '#zap']),
+  mkPat(3, [2.00,2.45], ['#fence', 1.85, '#hang']),
+  mkPat(3, [2.00,2.45], ['#zap', 1.75, '#zap']),
+  mkPat(4, [1.90,2.30], ['#zap', 1.70, '#zap', 1.80, '#zap']),
+  mkPat(4, [1.95,2.35], ['#hang', 1.85, '#zap', 1.90, '#fence']),
+];
+/* WHAT THE HOPPER BOUNCES THROUGH, and it is the trolley's roster with the
+   smashables taken out. A monster trolley goes through a stack of crates
+   because the key art promises it does; an eggshell on a spring plainly does
+   not, and letting it would be the vehicle lying about what it is.
+
+   Everything else is a barrier, which is right: the hopper's whole question is
+   whether the NEXT bounce clears the next thing, and a barrier is the purest
+   form of that question. Tails are two bounces wide, because one bounce is not
+   a decision -- the vehicle is already committed to it. */
+const JUMP_PAT = [
+  mkPat(0, [2.15,2.60], ['r_tyres']),
+  mkPat(0, [2.10,2.55], ['r_trough']),
+  mkPat(1, [2.05,2.50], ['r_crates']),
+  mkPat(1, [2.00,2.45], ['r_bales']),
+  mkPat(1, [2.10,2.55], ['r_tyres', 2.60, 'r_trough']),
+  mkPat(2, [2.05,2.50], ['r_drums']),
+  mkPat(2, [2.00,2.45], ['r_wagon']),
+  mkPat(2, [2.10,2.55], ['r_tyres', 2.70, 'r_bales']),
+  mkPat(3, [2.05,2.50], ['r_bales', 2.75, 'r_drums']),
+  mkPat(3, [2.00,2.45], ['r_wagon', 2.80, 'r_crates']),
+];
+/* WHAT THE SPOON FLIPS THROUGH, and this is the one table that is really a
+   different GAME rather than a different tuning.
+
+   The spoon has two heights and no others, so a hazard is not a corridor to
+   thread -- it is a question about which surface to be on. `#fence` stands on
+   the floor and says "be on the ceiling"; `#hang` drops from the roof and says
+   "be on the floor". Alternating them is the entire vehicle, and the risk is
+   the half-second crossing in between, which is the only time it is neither.
+
+   `#zap` is in here as the awkward one: a wire across the middle threatens the
+   TRANSIT rather than either surface, so it punishes flipping late. That is
+   the only thing in the game that does. */
+const SPN_PAT = [
+  mkPat(0, [2.05,2.50], ['#fence']),
+  mkPat(1, [1.95,2.40], ['#fence', 1.70, '#zap']),
+  mkPat(1, [2.00,2.45], ['#zap']),
+  mkPat(2, [1.90,2.30], ['#fence', 1.75, '#hang']),
+  mkPat(2, [1.95,2.35], ['#hang', 1.75, '#fence']),
+  mkPat(2, [1.90,2.30], ['#zap', 1.65, '#fence']),
+  mkPat(3, [1.85,2.25], ['#fence', 1.70, '#hang', 1.75, '#fence']),
+  mkPat(3, [1.85,2.25], ['#hang', 1.70, '#zap']),
+  mkPat(4, [1.75,2.15], ['#fence', 1.60, '#hang', 1.65, '#fence', 1.70, '#hang']),
+  mkPat(4, [1.80,2.20], ['#zap', 1.60, '#hang', 1.70, '#fence']),
+];
 function spawnPattern(){
   const tier = tierNow();
-  const table = inUfo() ? UFO_PAT : riding() ? RIDE_PAT : PAT;
+  const table = riding() ? V().pat() : PAT;
   let pool = table.filter(p => p.tier<=tier && !(p.corn && game.cornT>0));
   if(!pool.length) pool = table.filter(p => p.tier<=tier);
   if(!pool.length) pool = table.slice(0, 2);
@@ -6627,47 +7489,16 @@ function thrustOn(){
      more in the air, and nothing while the second is spent. Holding does
      nothing at all -- which is the point, because the bird's whole control is
      holding, and a vehicle that reuses it is not a different vehicle. */
-  /* ...and it is `onWheels()`, not `riding()`. The saucer's control is the
-     HOLD -- the one the player already has -- so it wants none of this and
-     falls through to the flight path below. Leaving this on `riding()` was the
-     single easiest way to ship a flying vehicle that could not be flown. */
-  if(onWheels()){
-    player.thrusting = true;
-    if(player.onGround){
-      player.vy = -rideJump(); player.onGround = false;
-      player.rideJumps = 1; S.truckjump(); addShake(5);
-      /* FRONT END FIRST. The rig is four painted frames and none of them is
-         "half way into a wheelie", so the moment is a rotation rather than a
-         pose: a hard nose-up kick that decays over a quarter of a second, on
-         top of whatever tilt the launch frame already has. It reads as the
-         front wheels leaving before the back ones, which is what a light cart
-         under a big engine actually does.
-         The suspension gets the opposite sign -- it EXTENDS as the weight
-         comes off it, which is the half of a jump nobody animates. */
-      player.rideKick = 1;
-      game.tSquashV = (game.tSquashV||0) - 3.4;
-      game.boostT = 0.19;                  // ...and the surge, a beat later
-      /* A WALL OF DUST off the back tyres, thrown backwards and up. Sparks
-         alone read as a spell being cast; what leaves the ground when two
-         tonnes of tractor tyre launches off a dirt road is dirt. */
-      smoke(player.x - 44, GROUND - 6, 18,
-            {a0:Math.PI*0.92, a1:Math.PI*1.80, s0:150, s1:430, r0:20, r1:40, l0:0.45, l1:1.0});
-      spark(player.x-40, GROUND-player.y, 10,
-            {col:'rgba(210,180,140,.9)', a0:Math.PI*0.9, a1:Math.PI*1.4,
-             s0:120, s1:340, l0:0.2, l1:0.5, r0:4, r1:10, g:900});
-    }
-    /* AND THAT IS THE ONLY JUMP. There used to be a second one in mid-air, and
-       it was reported as a bug rather than found as a feature -- which is fair,
-       because nothing in the truck says it should have one and the ground is
-       the only thing it visibly pushes off. It also fired one FRAME off the
-       road if you tapped twice quickly, spending both jumps at ankle height on
-       a truck that then had nothing left for the fence.
+  /* THE PRESS BELONGS TO THE VEHICLE. Four of the six have their own answer
+     to a button -- jump, arm the bounce, flip the poles, start charging -- and
+     the two that do not (the saucer and the rocket) simply have no `press` and
+     fall through to the flight path below, which is the control they want.
 
-       It mattered when the jump was small. It does not now: one press clears
-       three quarters of the screen, which is over everything in the ride's
-       roster with room to spare, so a second press was buying hang on top of a
-       jump that already lasts a second and a half. One button, one jump, and
-       you have to be on the ground to use it. */
+     This was `if(onWheels())` with the trolley's jump written out inside it,
+     and that shape had exactly one vehicle's worth of room in it. */
+  if(riding() && V().press){
+    player.thrusting = true;
+    V().press();
     return;
   }
   const wasOff = !player.thrusting;
@@ -6689,10 +7520,7 @@ function thrustOff(){
      Only on the way UP, and only in the trolley: cutting a fall would be a
      brake, and the saucer's whole feel is that release changes nothing
      instantly. */
-  if(onWheels() && !player.onGround && player.vy < 0){
-    const m = -player.vy;
-    player.vy = -Math.max(m*RIDE_CUT, Math.min(m, RIDE_TAP*rideJump()));
-  }
+  if(riding() && V().release) V().release();
   player.thrusting = false;
 }
 const pressJump = thrustOn, releaseJump = thrustOff;   // old names, one system
@@ -6875,7 +7703,9 @@ function startRun(){
      `nextVeh` is cleared rather than set, because `pickVeh` reads undefined as
      "roll for it" -- so the coin is tossed once per run and the alternation
      runs from wherever it lands. */
-  game.veh=game.forceVeh||VEH_TROLLEY; game.nextVeh=undefined;
+  game.veh=game.forceVeh||'trolley'; game.vehBag=null;
+  game.pol=1; game.spnT=0; game.spnCool=0; game.rocRot=0;
+  game.hopSq=0; game.hopSqV=0; game.tstChg=0; game.tstPop=0; player.hopArm=0;
   game.rideTough=game.ride ? vehTough() : 0;      // ?ride / ?ufo skip startRide
   game.ufoRot=0; game.ufoLamp=0;
   game.rideMusicT=0;
@@ -6988,10 +7818,23 @@ function spawnBasketDrop(){
    twice a quarter of the time. Which one the run OPENS with is the coin flip,
    so nothing about it is predictable across runs -- only within one. */
 function pickVeh(){
-  const v = (game.nextVeh === undefined)
-          ? (Math.random() < 0.5 ? VEH_TROLLEY : VEH_UFO) : game.nextVeh;
-  game.nextVeh = (v === VEH_TROLLEY) ? VEH_UFO : VEH_TROLLEY;
-  return v;
+  /* A SHUFFLED BAG, not a roll and not a rotation. With two vehicles an
+     alternation was right; with six a coin is worse than useless (you would
+     see the same one twice before you saw half of them) and a fixed rotation
+     is worse still, because it is learnable and the mystery egg's whole job is
+     that it is not.
+
+     So: deal all six in a random order, hand them out one at a time, and
+     reshuffle when the bag is empty. Every vehicle turns up once before any
+     turns up twice, and the ORDER is different every time. */
+  if(!game.vehBag || !game.vehBag.length){
+    game.vehBag = VEH_IDS.slice();
+    for(let i = game.vehBag.length - 1; i > 0; i--){
+      const j = (Math.random()*(i+1))|0;
+      const t = game.vehBag[i]; game.vehBag[i] = game.vehBag[j]; game.vehBag[j] = t;
+    }
+  }
+  return game.vehBag.pop();
 }
 /* THE SAUCER'S MOMENT, and it is the opposite beat to the trolley's.
 
@@ -7017,14 +7860,18 @@ function startUfo(){
   layUfoCourse();
 }
 /* Whichever vehicle just arrived, does ITS level buy a free hit. */
-const vehTough = () => ((inUfo() ? PERK.ufoTough() : PERK.trolleyTough()) ? 1 : 0);
+const vehTough = () => ((V().tough && V().tough()) ? 1 : 0);
 function startRide(which){
   game.ride = RIDE_ON; game.rideGrace = 0;
-  game.veh = (which === undefined) ? VEH_TROLLEY : which;
+  game.veh = VEH[which] ? which : 'trolley';
   game.rideTough = vehTough();
   game.drop = null;
   game.rideMusicT = RIDE_MUSIC_WAIT;   // hold the riff back whichever it is
-  if(inUfo()) return startUfo();
+  V().start();
+}
+/* THE TROLLEY'S OWN MOMENT, lifted out of startRide unchanged when there were
+   six of these to tell apart. */
+function startTrolley(){
   /* Straight down onto the road: it is a ground vehicle, and being handed one
      in mid-air with no way to fly it is a worse surprise than the drop. */
   player.vy = Math.max(player.vy, 260);
@@ -7206,6 +8053,83 @@ function layUfoCourse(){
   game.rideTeach = clear;
   return clear;
 }
+/* WHICH LESSON THE PICKUP LAYS. Every vehicle gets a stretch of clear road
+   and a run of eggs shaped like the thing it does, because a control the
+   player does not have has to be taught with something they want rather than
+   with a caption. The trolley's is the shape of its jump, the flyers' is a
+   sine across the band they can now reach, the spoon's is two lines with the
+   crossings between them, and the bouncers' is a pair of arcs. */
+function layVehCourse(){
+  if(game.veh === 'trolley')   return layRideCourse();
+  if(V().kind === 'fly')       return layUfoCourse();
+  if(V().kind === 'magnet')    return laySpoonCourse();
+  return layBounceCourse();
+}
+/* Two arcs sized off THIS vehicle's own best jump, so the promise moves when
+   the jump does instead of quietly becoming a lie -- the same reason
+   `layRideCourse` is laid out of `rideApex` rather than out of a number. */
+function layBounceCourse(){
+  const hi = GROUND*(game.veh === 'hopper' ? HOP_HIGH : TST_HIGH);
+  const roof = rideCeil() - 90, y0 = 74;
+  let x = player.x + game.speed*1.20;
+  for(let i = game.eggs.length - 1; i >= 0; i--){
+    const e = game.eggs[i];
+    if(!e.got && e.x > player.x - 60) game.eggs.splice(i, 1);
+  }
+  const put = (n, w, peak) => {
+    for(let i = 0; i < n; i++){
+      const u = i/(n-1);
+      game.eggs.push({ x: x + u*w, y: y0 + Math.sin(u*Math.PI)*peak, t:rnd(0,TAU), got:0 });
+    }
+    x += w;
+  };
+  const span = game.speed*1.25;
+  put(8,  span*0.55, Math.min(hi*0.40, roof));
+  x += game.speed*0.40;
+  put(11, span,      Math.min(hi*0.92, roof));
+  const clear = (x - player.x)/game.speed + 0.7;
+  game.spawnT = Math.max(game.spawnT, clear);
+  game.crowT  = Math.max(game.crowT,  clear + 0.8);
+  game.eggT   = Math.max(game.eggT,   clear);
+  game.rideTeach = clear;
+  return clear;
+}
+/* THE SPOON'S LESSON IS THE ONLY ONE THAT IS NOT A CURVE, because the vehicle
+   cannot fly a curve. Two straight runs -- one on the floor, one on the
+   ceiling -- with the eggs of the crossing laid along the arc between them, so
+   collecting the lot is exactly one flip up and one flip back and the shape of
+   the transit is drawn in the thing you are chasing. */
+function laySpoonCourse(){
+  const lo = 70, hi = spnRoof() - 30;
+  let x = player.x + game.speed*1.15;
+  for(let i = game.eggs.length - 1; i >= 0; i--){
+    const e = game.eggs[i];
+    if(!e.got && e.x > player.x - 60) game.eggs.splice(i, 1);
+  }
+  const line = (n, w, y) => {
+    for(let i = 0; i < n; i++)
+      game.eggs.push({ x: x + i*w/(n-1), y, t:rnd(0,TAU), got:0 });
+    x += w;
+  };
+  const ramp = (n, w, y0, y1) => {
+    for(let i = 0; i < n; i++){
+      const u = i/(n-1);
+      game.eggs.push({ x: x + u*w, y: y0 + (y1 - y0)*u*u*(3 - 2*u), t:rnd(0,TAU), got:0 });
+    }
+    x += w;
+  };
+  line(6, game.speed*0.75, lo);
+  ramp(6, game.speed*0.50, lo, hi);
+  line(7, game.speed*0.85, hi);
+  ramp(6, game.speed*0.50, hi, lo);
+  line(5, game.speed*0.60, lo);
+  const clear = (x - player.x)/game.speed + 0.7;
+  game.spawnT = Math.max(game.spawnT, clear);
+  game.crowT  = Math.max(game.crowT,  clear + 0.8);
+  game.eggT   = Math.max(game.eggT,   clear);
+  game.rideTeach = clear;
+  return clear;
+}
 /* Losing it is not dying. The balloons go, the basket drops away behind him,
    and for RIDE_GRACE seconds nothing can touch him -- without that he is
    solid again inside the same gap that just took the basket. */
@@ -7251,7 +8175,7 @@ function loseRide(o){
           {col:C.mint, s0:160,s1:420, l0:0.25,l1:0.6, r0:3,r1:8});
     return;
   }
-  const wasUfo = inUfo();
+  const lost = V().lost;
   game.ride = 0; game.rideGrace = RIDE_GRACE;
   engineBedOff();       // the engine goes with it, not on the next frame
   addShake(16); game.flash = 0.35; S.hit();
@@ -7261,15 +8185,13 @@ function loseRide(o){
      different word: a monster trolley POPS and a flying saucer goes DOWN, and
      the two colours are the two vehicles' own -- there is no reason for the
      player to have to read the text to know which one just left. */
-  if(wasUfo){
-    spark(player.x, gy - 120, 24, {col:'#FFC01F', s0:220,s1:560, l0:0.3,l1:0.9, r0:4,r1:11});
-    spark(player.x, gy - 100, 14, {col:'#FFFFFF', s0:140,s1:380, l0:0.2,l1:0.6, r0:3,r1:8});
-    smoke(player.x, gy - 60, 8, {s0:90, s1:250, r0:14, r1:30});
-    pop(player.x, gy - 230, 'SCRAMBLED!', '#FFC01F', 48, -60);
-  } else {
-    spark(player.x, gy - 150, 20, {col:C.coral, s0:200,s1:520, l0:0.3,l1:0.8, r0:4,r1:10});
-    pop(player.x, gy - 230, 'POP!', C.coral, 48, -60);
-  }
+  /* THE WORD AND THE COLOUR ARE THE VEHICLE'S OWN, out of the table. There is
+     no reason for the player to have to read the text to know which of six
+     things just left them. */
+  spark(player.x, gy - 140, 22, {col:lost.col, s0:210,s1:540, l0:0.3,l1:0.85, r0:4,r1:11});
+  spark(player.x, gy - 110, 12, {col:'#FFFFFF', s0:140,s1:380, l0:0.2,l1:0.6, r0:3,r1:8});
+  smoke(player.x, gy - 60, 7, {s0:90, s1:250, r0:14, r1:30});
+  pop(player.x, gy - 230, lost.word, lost.col, 48, -60);
   if(o) o.hitBy = true;                // the hazard stays put; the basket is what left
 }
 /* WHAT THE TRUCK DOES TO THE NEIGHBOURS.
@@ -7317,7 +8239,7 @@ function updateRide(dt){
   /* The picture of the grid, chasing the fact of it. Down fast, because a
      power cut is not a dimmer; back up slower, and well inside RIDE_GRACE, so
      the wires are visibly live again before they can touch him. */
-  const tgt = onWheels() ? 0 : 1;
+  const tgt = (riding() && V().killsGrid) ? 0 : 1;
   const now = (game.gridT === undefined) ? 1 : game.gridT;
   const step = dt / (tgt ? 0.42 : 0.22);
   game.gridT = tgt > now ? Math.min(tgt, now + step) : Math.max(tgt, now - step);
@@ -7346,7 +8268,7 @@ function updateRide(dt){
      polished floor between them -- the whole reason the thing reads as heavy
      is that it disturbs the ground it is on, continuously. Small, sparse and
      short-lived, so it is texture rather than a smokescreen. */
-  if(riding() && player.onGround && game.mode === 'play'){
+  if(riding() && V().dust && player.onGround && game.mode === 'play'){
     game.dustT = (game.dustT||0) - dt;
     if(game.dustT <= 0){
       game.dustT = 0.07;
@@ -8017,8 +8939,8 @@ function updatePlay(dt){
      it takes the same second to give it back when the ride ends. The saucer
      just changes speed, because a hovercraft has no flywheel. */
   game.boost = damp(game.boost === undefined ? 1 : game.boost,
-                    inUfo() ? UFO_BOOST : riding() ? RIDE_BOOST : 1,
-                    onWheels() ? 3.2 : 5.5, dt);
+                    riding() ? V().boost : 1,
+                    riding() ? V().ease : 5.5, dt);
   game.speed = worldSpeed() * game.boost;
   if(game.invuln > 0) game.invuln = Math.max(0, game.invuln - dt);
   const speedT = game.diff;
@@ -8038,7 +8960,12 @@ function updatePlay(dt){
     game.leg = leg;
   }
   const before = game.score;
-  game.score += dt*game.speed/UPM*SCORE_PER_M;
+  /* The rocket's level 4 is paid HERE, on the distance, because that is the
+     only thing it can sensibly be: everything else about the vehicle is a
+     control, and selling a control away is selling the weakness that makes it
+     a choice. */
+  game.score += dt*game.speed/UPM*SCORE_PER_M
+              * (game.veh === 'rocket' && riding() ? PERK.rocketPay() : 1);
   /* The tick is the odometer's sound. It was every 50 points at ~250/s, so it
      machine-gunned; at 1 point per metre that same 50 would leave four seconds
      of silence. Every 10 metres lands it about once a second. */
@@ -8063,8 +8990,11 @@ function updatePlay(dt){
   }
   p.nearCool = Math.max(0, p.nearCool-dt);
   p.kickT = Math.max(0, (p.kickT||0)-dt);
-  const ceilH = inUfo() ? ufoCeil()
-              : riding() ? rideCeil() : GROUND - CEIL;   // usable altitude, in world units
+  /* Usable altitude, in world units, and every vehicle that needs its own says
+     so with a `ceil` in the table. The trolley keeps `rideCeil()` because its
+     rail is about keeping a very tall sprite in frame rather than about where
+     it can go. */
+  const ceilH = riding() ? (V().ceil ? V().ceil() : rideCeil()) : GROUND - CEIL;
   /* How far he has to drop off the roof before hitting it counts as arriving
      again. Roughly his own body: big enough that the bounce cannot flicker it,
      small enough that bumping the roof twice on purpose still sounds twice. */
@@ -8083,10 +9013,15 @@ function updatePlay(dt){
      `p.thrusting && !riding()` becomes a number in a table instead of a
      condition that would have needed a third clause the moment a vehicle
      wanted to be held. */
-  const rG = inUfo() ? UFO_G : riding() ? RIDE_G : 1;
-  const rD = inUfo() ? UFO_D : riding() ? RIDE_D : 1;
-  const rT = inUfo() ? UFO_T : riding() ? 0       : 1;
-  if(inUfo()) ufoFeel(dt);
+  const rG = riding() ? V().g : 1;
+  const rD = riding() ? V().d : 1;
+  const rT = riding() ? V().thrust : 1;
+  /* WHICH WAY IS DOWN. Five of the six agree; the spoon does not, and its
+     `sgn` is the whole of how a gravity flip is expressed in a movement model
+     that was written assuming there is only one answer. */
+  const rS = (riding() && V().sgn) ? V().sgn() : 1;
+  if(riding() && V().feel) V().feel(dt);
+  if(riding() && game.spnCool) game.spnCool = Math.max(0, game.spnCool - dt);
   /* Solved, not stepped.
 
      `dv/dt = a - k*v` is the whole movement model, and it has a closed form:
@@ -8103,7 +9038,7 @@ function updatePlay(dt){
      -- moving by `v*dt` after solving for v would put the step error straight
      back into y. Two exp() calls a frame and no accumulator, which keeps the
      one loop this game has. */
-  const acc = GRAV*rG - (p.thrusting ? THRUST*rT : 0);
+  const acc = GRAV*rG*rS - (p.thrusting ? THRUST*rT : 0);
   const k   = DRAG*rD;
   const vT  = acc/k;                                 // terminal speed, this input
   const e   = Math.exp(-k*dt);
@@ -8112,7 +9047,7 @@ function updatePlay(dt){
      ceiling on the truck's jump. VY_UP is -2775 at this pace, so raising the
      jump impulse from 3000 to 3250 changed the apex by four units: both were
      being clipped on the frame they were applied. The truck gets its own rail. */
-  const vUp = onWheels() ? VY_UP*RIDE_VUP : VY_UP;
+  const vUp = riding() ? VY_UP*V().vup : VY_UP;
   p.vy = clamp(vT + (v0 - vT)*e, vUp, VY_DOWN);
   p.y -= vT*dt + (v0 - vT)*(1 - e)/k;                // exact ∫v dt over the step
   /* THE SAUCER NEVER LANDS. Its floor is its own hover height, which is well
@@ -8121,7 +9056,7 @@ function updatePlay(dt){
      into, and nothing to write to make sure of that. A flying vehicle that
      parks on the road would need a landing pose, a landing sound and a reason,
      and it has none of the three. */
-  if(inUfo() && p.y < UFO_LOW){
+  if(riding() && V().low !== undefined && p.y < V().low){
     /* SETTLING, not landing. It stops, it squishes, and the lip is thrown UP
        by the stop -- the spring gets the impulse rather than a scripted pose,
        so a fast arrival wobbles hard and a drift onto the floor barely does.
@@ -8129,15 +9064,31 @@ function updatePlay(dt){
        positive every frame and an un-latched version would kick the spring at
        the frame rate. That exact bug ate the ceiling rustle once. */
     const drop = p.vy;
-    p.y = UFO_LOW; if(p.vy > 0) p.vy = 0;
+    p.y = V().low; if(p.vy > 0) p.vy = 0;
     if(!p.ufoLow && drop > 120){
       p.ufoLow = true;
-      game.ufoWobV = (game.ufoWobV || 0) - clamp(drop/640, 0.3, 1)*5;
+      if(inUfo()) game.ufoWobV = (game.ufoWobV || 0) - clamp(drop/640, 0.3, 1)*5;
       smoke(p.x, GROUND - 4, 5, {s0:70, s1:190, r0:12, r1:26, l0:0.3, l1:0.7});
     }
-  } else if(inUfo() && p.y > UFO_LOW + 40){ p.ufoLow = false; }
+  } else if(riding() && V().low !== undefined && p.y > V().low + 40){ p.ufoLow = false; }
+  /* ---- THE SPOON'S OTHER FLOOR -------------------------------------------
+     It is the only thing in the game with a surface ABOVE it, and the arrival
+     is the same event either way: stop dead, snap on, stay. Which surface is
+     decided by the polarity rather than by which one is nearer, so a flip that
+     is cancelled mid-flight takes it back where it came from -- and that is
+     the right answer, because the button said so. */
+  if(riding() && V().kind === 'magnet'){
+    const roof = spnRoof();
+    if(game.pol < 0 && p.y >= roof){
+      if(p.y > roof || p.vy < 0){ p.y = roof; p.vy = 0; if(!p.onGround) spoonSnap(); }
+      p.onGround = true;
+    } else if(game.pol > 0 && p.y <= 0){
+      if(p.y < 0 || p.vy > 0){ p.y = 0; p.vy = 0; if(!p.onGround) spoonSnap(); }
+      p.onGround = true;
+    } else p.onGround = false;
+  }
 
-  if(p.thrusting && !inUfo()){                       // wingbeat is animation only
+  if(p.thrusting && !riding()){                      // wingbeat is animation only
     p.flapT += dt*FLAP_HZ;
     const beat = Math.floor(p.flapT);
     if(beat !== p.flapBeat){
@@ -8146,11 +9097,11 @@ function updatePlay(dt){
       spark(p.x-34, GROUND-p.y-30, 3, {col:'rgba(255,242,222,.5)', a0:Math.PI*0.85,a1:Math.PI*1.25,
         s0:70,s1:190, l0:0.18,l1:0.45, r0:3,r1:7, g:120});
     }
-  } else if(inUfo()){
-    /* Nothing to animate: he is painted into the craft and the craft's whole
-       animation is the lean and the lamps, both of which are already solved.
-       The branch exists so the glide rustle below cannot fire out of a
-       flying saucer. */
+  } else if(riding()){
+    /* Nothing to animate: he is painted into every one of these and each
+       craft's animation is already solved somewhere else. The branch exists so
+       the glide rustle below cannot fire out of a flying saucer -- or out of a
+       corn rocket, which is where it would have gone next. */
   } else {
     p.flapT += dt*1.4;                               // wings glide, barely moving
     /* ...but it is not silent. A long drop used to be a hole in the mix
@@ -8193,7 +9144,7 @@ function updatePlay(dt){
          is the character leaking out of the vehicle he is sealed inside. */
       if(!p.ceilOn){
         p.ceilOn = true;
-        if(inUfo()){
+        if(riding()){
           S.bonk();
           spark(p.x, GROUND-p.y+10, 5, {col:'rgba(150,240,255,.8)', a0:Math.PI*0.2,
             a1:Math.PI*0.8, s0:90,s1:230, l0:0.15,l1:0.4, r0:2,r1:6, g:400});
@@ -8210,28 +9161,12 @@ function updatePlay(dt){
     if(!p.onGround){
       p.onGround = true; p.state='land'; p.stateT=0;
       p.landT = clamp(impact/(1200*PACE), 0.35, 1);
+      /* WHOSE LANDING IS IT. The trolley's slam, the hopper's rebound, the
+         toaster's thump -- and the two that fly have no `land` at all, which
+         is how a flying vehicle stays unable to touch down without anybody
+         having to write that it cannot. */
       if(riding()){
-        /* THE SLAM. A monster truck coming down is the loudest thing in the
-           run and it was landing like a bird: a small puff and a two-unit
-           shake. Twice the camera kick, a wide skirt of dust off both axles,
-           and the compressed frame held for a quarter second.
-
-           `rideJumps` goes back to 0 here, which is what makes the NEXT jump
-           possible -- the truck may only launch from the road, so landing is
-           the whole of its cooldown. It is also what `flameLen` reads to know
-           the exhaust is not still roaring from a jump that has landed. */
-        p.rideLand = 0.26;
-        p.rideJumps = 0;
-        /* BOOM -> SQUASH -> REBOUND. The impulse is the impact, so the whole
-           beat scales with how far it fell instead of playing the same canned
-           compression off a two-inch drop. */
-        game.tSquashV = (game.tSquashV||0) + clamp(impact/(900*PACE), 0.35, 1.9)*4.6;
-        S.truckland(); addShake(clamp(impact/(150*PACE), 5, 16)); game.camYT = 22;
-        smoke(p.x - 26, GROUND - 4, 20,
-              {s0:170, s1:460, r0:22, r1:42, l0:0.45, l1:1.05});
-        smoke(p.x + 130, GROUND - 4, 8, {s0:110, s1:300, r0:16, r1:32});
-        spark(p.x, GROUND, 10, {col:'rgba(198,176,146,.85)', a0:Math.PI*1.05,a1:Math.PI*1.95,
-              s0:150,s1:430, l0:0.2,l1:0.5, r0:3,r1:8, g:700});
+        if(V().land) V().land(impact);
       } else {
         S.land(); addShake(clamp(impact/(220*PACE), 2, 9)); game.camYT = 14;
         // and at speed he does not just land, he runs it off
@@ -9532,7 +10467,7 @@ function drawSpectators(){
        one arrived it silently gave the UFO a bumper it does not have: fly low
        past a cow and the cow would be bowled by thin air. Every rule in here
        that belongs to a PARTICULAR vehicle has to name it. */
-    if(onWheels() && !hits[i] && game.mode === 'play'
+    if(riding() && V().bumper && !hits[i] && game.mode === 'play'
        && Math.abs(dx) < NPC_HIT_W && player.y < 210){
       hits[i] = { t:0, kind };            // hit, and staying exactly where it is
       pop(sx, GROUND - 250, pick(['MOOO!','OINK!','BAAA!','WHOA!']), C.gold, 44, -70);
@@ -9572,7 +10507,8 @@ function drawSpectators(){
       continue;
     }
     /* The flame -- `onWheels()`, because a saucer has no exhaust either. */
-    const scorched = onWheels() && game.mode === 'play' && dx > -140 && dx < NPC_BURN;
+    const scorched = riding() && V().scorch && game.mode === 'play'
+                  && dx > -140 && dx < NPC_BURN;
     const near = scorched
               || (NPC_REACT && game.mode === 'play' && dx > -430 && dx < 900);
     const ph = hash(i*2.3)*TAU;
@@ -10199,7 +11135,7 @@ function render(){
        works for exactly one pose: the moment the rig tilts for a jump, a bird
        hovering at a fixed offset over a tilted cart is a bird standing on
        nothing. */
-    if(riding()) inUfo() ? drawUfo() : drawTruck();
+    if(riding()) V().draw();
     else drawChicken(px, GROUND - py, player.pose);
     /* ?hit=1 shows NUGGET'S box over Nugget, next to the hazards' own. The
        question this answers is the only one that matters about a hitbox --
@@ -10364,7 +11300,7 @@ const SAVE = (() => {
      opens the game with the UFO at level 1 rather than at a paywall for
      something the run is going to hand them anyway. What is sold here is what
      a vehicle DOES when you find it, never whether you find it. */
-  const d = { v:1, veh:{trolley:1, ufo:1}, pow:{bang:0,magnet:0,head:0,lucky:0,nerve:0,soft:0},
+  const d = { v:1, veh:{trolley:1, ufo:1, rocket:1, hopper:1, spoon:1, toaster:1}, pow:{bang:0,magnet:0,head:0,lucky:0,nerve:0,soft:0},
               skin:'nugget', skins:['nugget'], noAds:false, daily:{day:1,last:0} };
   try{
     const raw = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
@@ -10430,7 +11366,35 @@ const SHOP = {
       eff:'Floats where the bird darts, and its beam hoovers in every egg it passes. A hit takes the saucer, not the run.',
       cost:[0, 900, 1900, 3400],
       says:['', 'As it flies', 'The beam reaches half again as far',
-            'Survives one hit before it scrambles', 'The beam reaches twice as far'] }
+            'Survives one hit before it scrambles', 'The beam reaches twice as far'] },
+    /* THE OTHER FOUR ALL SELL THE SAME LADDER, and that is deliberate rather
+       than lazy. The trolley sells how often it turns up and the saucer sells
+       its beam because each of those is that vehicle's own event; these four
+       have four different CONTROLS, and a control is not a thing you sell by
+       the level -- selling "the flip is faster" or "the charge is quicker"
+       would be selling away the weakness that makes the vehicle a choice.
+       So what is on offer is what a vehicle is worth when you find it: it
+       turns up more, it survives a hit, it pays more. */
+    { id:'rocket', name:'CORN ROCKET', art:'art/veh_rocket.webp', owned:true,
+      eff:'Ridiculously fast and slow to turn. Aim it early -- it goes where it was pointed, not where you are pointing.',
+      cost:[0, 1100, 2200, 4000],
+      says:['', 'As it flies', 'Turns up 30% more often',
+            'Survives one hit before it pops', 'Scores 25% more while you ride it'] },
+    { id:'hopper', name:'EGGSHELL HOPPER', art:'art/veh_hopper.webp', owned:true,
+      eff:'Bounces whether you like it or not. Press as it lands and the spring gives it back with interest.',
+      cost:[0, 800, 1700, 3100],
+      says:['', 'As it bounces', 'Turns up 30% more often',
+            'Survives one hit before it cracks', 'A perfect bounce goes higher still'] },
+    { id:'spoon', name:'MAGNET SPOON', art:'art/veh_spoon.webp', owned:true,
+      eff:'Two heights and nothing in between. Tap to flip the poles and get pulled to the other surface.',
+      cost:[0, 950, 1900, 3400],
+      says:['', 'As it flips', 'Turns up 30% more often',
+            'Survives one hit before it drops', 'Flips a third quicker'] },
+    { id:'toaster', name:'TOASTER JUMPER', art:'art/veh_toaster.webp', owned:true,
+      eff:'Hold to charge, release to launch. The longer you hold the bigger the jump -- and holding costs road.',
+      cost:[0, 900, 1800, 3300],
+      says:['', 'As it pops', 'Turns up 30% more often',
+            'Survives one hit before it burns', 'Charges half again as fast'] }
   ],
   pow: [
     /* SECOND WIND used to live here and sold a revive. The death beat gives
@@ -10479,9 +11443,30 @@ const PERK = {
      vehicle cannot be at level 0. */
   ufoBeam:  () => [1, 1, 1.5, 1.5, 2][lvl('veh','ufo')] || 1,
   ufoTough: () => lvl('veh','ufo') >= 3,
+  /* The four new ones all sell the same third rung, because the free hit is
+     the one upgrade that means the same thing whatever the vehicle is. Taking
+     an id rather than having four near-identical functions is what stops the
+     seventh vehicle needing a seventh line here. */
+  vehTough: id => lvl('veh', id) >= 3,
+  /* Level 2 on any of the four is the same thing the trolley's level 2 is --
+     the egg comes sooner -- so `dropRate` reads whichever vehicle is next out
+     of the bag as well as the trolley's own level. Level 4 is the one that
+     differs per vehicle, and each is one line. */
+  rocketPay:  () => lvl('veh','rocket')  >= 4 ? 1.25 : 1,
+  hopperHigh: () => lvl('veh','hopper')  >= 4 ? 1.12 : 1,
+  spoonQuick: () => lvl('veh','spoon')   >= 4 ? 0.66 : 1,
+  toastFast:  () => lvl('veh','toaster') >= 4 ? 1.5  : 1,
   // both of these make the mystery egg arrive sooner, so they multiply
-  dropRate: () => ([1, 0.82, 0.66, 0.45][lvl('pow','lucky')] || 1) *
-                  ([1, 1, 0.78, 0.78, 0.55][lvl('veh','trolley')] || 1)
+  dropRate: () => {
+    /* The mystery egg is shared, so every vehicle's "turns up more often"
+       pulls on the SAME timer -- and multiplying six of them together would
+       hand a fully-upgraded garage an egg every four seconds. The best of them
+       wins instead, which is what a player means by it. */
+    let best = 1;
+    for(const k of VEH_IDS)
+      best = Math.min(best, [1, 1, 0.78, 0.78, 0.78][lvl('veh', k)] || 1);
+    return ([1, 0.82, 0.66, 0.45][lvl('pow','lucky')] || 1) * best;
+  }
 };
 
 /* ---- skins ---------------------------------------------------------------
@@ -11451,6 +12436,9 @@ function boot(){
     die, finish, finishNow, softSave, dailyClaim, dailyState, skinApply, shopDraw, META,
     layRideCourse, rideApex, rideRise, rideCeil, truckGeom, truckFrame,
     layUfoCourse, ufoGeom, ufoCeil, ufoBox, inUfo, onWheels, pickVeh, eggAim,
+    VEH, V, VEH_IDS, rocGeom, hopGeom, spnGeom, tstGeom, spnRoof, vJump, vApex,
+    layVehCourse, laySpoonCourse, layBounceCourse, spoonFlip, toasterPop,
+    ROC_PAT, JUMP_PAT, SPN_PAT,
     ufoReach, ufoBeamLen, ufoBeamDown, ufoBeamHalf, ufoBeamDrop, drawAbduction,
     smash, junk, flameLen, rideJump, ABDUCT_T, UFO_G, UFO_D, UFO_T, RIDE_G,
     RIDE_CUT, RIDE_TAP,
@@ -11487,7 +12475,13 @@ function boot(){
      exists: a vehicle that turns up once every twenty seconds cannot be looked
      at otherwise. It sets `forceRide` too, because "which one" is a second
      question and the first one still has to be yes. */
-  if(/[?&]ufo/.test(location.search)){ game.forceRide = true; game.forceVeh = VEH_UFO; }
+  if(/[?&]ufo/.test(location.search)){ game.forceRide = true; game.forceVeh = 'ufo'; }
+  /* ?veh=NAME starts a run in any of them, which is the only sane way to look
+     at a vehicle that otherwise turns up once every twenty seconds -- and with
+     six of them, one flag that takes a name beats six flags. ?ride and ?ufo
+     stay because they are in every note written before today. */
+  const vq = /[?&]veh=([a-z]+)/.exec(location.search);
+  if(vq && VEH[vq[1]]){ game.forceRide = true; game.forceVeh = vq[1]; }
   const rt=/[?&]runt=([0-9.]+)/.exec(location.search);
   if(rt) game.presetRunT = parseFloat(rt[1]);   // jump to a difficulty tier
   const ds=/[?&]dist=([0-9.]+)/.exec(location.search);
@@ -11870,7 +12864,7 @@ function boot(){
         const reach = new Set();
         const tok = { '#fence':FENCE_KEYS, '#zap':ZAP_KEYS, '#hang':HANG_KEYS,
                       '#corn':CORN_KEYS };
-        for(const table of [PAT, RIDE_PAT, UFO_PAT])
+        for(const table of [PAT, RIDE_PAT, UFO_PAT, ROC_PAT, JUMP_PAT, SPN_PAT])
           for(const p of table)
             for(const st of p.seq){
               const ks = tok[st.k] || [st.k];

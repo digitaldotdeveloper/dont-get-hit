@@ -3690,6 +3690,152 @@ now gates both.
 the short jump and calls the roster unclearable. It reports the tap window
 separately now.
 
+## Six vehicles, and a table instead of a boolean (2026-09-10)
+
+Four more out of the mystery egg — Corn Rocket, Eggshell Hopper, Magnet Spoon,
+Toaster Jumper — from the user's own concept sheets, with the physics for each
+taken from the brief in `dgh/ref/veh-brief.txt` rather than invented.
+
+### The refactor came first, and it had to
+
+Two vehicles could be told apart with a boolean. Six cannot: every
+`inUfo() ? a : riding() ? b : c` in the file was a place where the fourth,
+fifth and sixth would be silently forgotten. So `VEH` is a table keyed by id,
+`V()` is the spec of whatever is being ridden, and `game.veh` is a STRING now
+rather than 0/1.
+
+What is in the table is **data** — gravity, drag, thrust, boost, ease, which
+pattern table, which music pool, clearance — plus six **hooks** for the places
+a vehicle behaves differently rather than merely being tuned differently:
+`press`, `release`, `land`, `feel`, `start`, `draw`. A vehicle that does not
+override a hook simply does not have it, and the default applies. That is how
+the two flyers get the bird's hold for free (no `press`) and how the two of
+them stay unable to land (no `land`) without anybody writing that they cannot.
+
+`onWheels()` still means **the trolley specifically**, and kept that meaning
+even though the hopper and the toaster plainly have wheels: every one of its
+callers is about something only the trolley has — the blackout, the bumper, the
+exhaust scorch, the tap-or-hold jump. Widening it would have handed three of
+those to two vehicles that own none of them. `V().kind === 'ground'` is the
+question about wheels; `onWheels()` is the question about the trolley.
+
+### The four, and what each one's weakness is
+
+| | control | feel | weakness |
+|---|---|---|---|
+| **Corn Rocket** | hold to climb, release to dive | fastest thing in the game (boost **1.62**), drag **0.40** so the time constant is 0.52s | you aim it and live with the aim |
+| **Eggshell Hopper** | press *as it lands* | bounces whether you press or not; apex 0.30 → 0.62 of the play area on the timing | cannot choose to stay down, or up |
+| **Magnet Spoon** | tap to flip the poles | signed gravity, ~0.5s to cross, snaps onto whichever surface the coils point at | two heights exist and nothing between |
+| **Toaster Jumper** | hold to charge, release to pop | charge 0 → 1 in 0.8s, apex 0.24 → 0.80, reusable for ever | the power is paid for in ground time |
+
+Measured, four seconds each with real obstacles: rocket `y 26..588`, hopper
+`y 0..510`, spoon `y 0..604`, toaster `y 0..361`, all six clean.
+
+**The spoon is the only thing in the game with a surface above it.** `sgn()` in
+its spec is the whole of how a gravity flip is expressed in a movement model
+written assuming there is one answer to "which way is down" — `acc` gains one
+multiplier and everything else is unchanged. Arrival is a snap rather than the
+bird's ceiling bounce, and it is the same event on either surface, deliberately:
+the ceiling is not a special place, it is the other floor.
+
+**The hopper never rests.** `land` is what launches it, so `feel` also bounces
+it if it ever finds itself on the ground — a death, a revive, a debug flag.
+Without that line the first version measured `y 0..0, contacts 0`: the pickup
+was taken while he was already standing, `onGround` was still true, and the
+landing that starts the whole rhythm never happened.
+
+**`hopArm` is a continuum, not a window.** A press sets it and it decays; the
+landing reads how much is left. Pass/fail would have been easier and worse —
+this is a skill a player should be able to feel themselves getting better at,
+and the bounce's pitch rises with it so the timing has a sound as well as a
+height.
+
+### The art: four sheets, four stills, and one that had to be magenta
+
+Same two-attachment shape `gen_ufo.py` proved, and the prompt says which is
+which: `truck_drive.webp` for the game's style AND the pilot (the brief is
+emphatic that Nugget is not to be redesigned, so he goes in as a picture rather
+than as adjectives), and the concept sheet for the design — with "take the
+vehicle, ignore the page", because those sheets are marketing boards with
+logos, captions and several poses on them.
+
+**The corn rocket is shot on MAGENTA** and the other three on green, for the
+same reason the parallax layers are: nothing in the art may be the key colour,
+and a corn husk is bright green. Nugget's teal cap survives a green key — that
+was measured on the saucer sheet — but a saturated leaf does not.
+
+**What was asked NOT to be drawn is the interesting half.** No flame on the
+rocket, no spring or base under the eggshell, no lightning on the spoon, no
+toast in the toaster's slot. Every one of those has a rule — it burns with the
+button, it compresses with the landing, it arcs on the flip, it rises with the
+charge — and a painted one cannot answer an input on the frame it happens. They
+are drawn in code, the way the trolley's exhaust and the saucer's beam are.
+The rocket's flame is literally `drawExhaust`, reused whole: it already draws
+fire pointing left out of a root on the right, which is what a rocket
+travelling right needs.
+
+`tools/cut_veh4.py` cuts them and measures the anchor each one needs, with
+`--check` drawing the answer back onto the sprite. Two of those measurements
+were wrong first time and the proof caught both:
+
+- The toaster's slot came back at the very top of the picture, on Nugget's cap,
+  because "the highest covered row of the middle third" is the CHICKEN.
+- Rewritten as "the whitest pixels" it was wrong again — Nugget's cream body is
+  240,235,215 and sails through any threshold the casing passes. It is the
+  **largest white connected component** now, which is a fact about the sprite
+  rather than a threshold that needs tuning per render.
+
+### The music: one loop each, and the window is searched for
+
+`gen_veh_music.py` and `cut_veh_music.py`. Every prompt names an instrument and
+a tempo rather than a mood, for the same reason the art prompts say what the
+shape is: surf rock and a banjo for the rocket, tuba and slide whistle for the
+hopper, an arpeggio and a switch-throw sweep for the spoon, honky-tonk ragtime
+for the toaster.
+
+Two things this cost:
+
+- **Music mode sometimes hands back the VIDEO.** A generated track is a
+  `<generated-music>` block wrapping a `<video>` and the MP3 lives behind its
+  own "Audio only" entry; when that is slow, what lands in the library is a
+  1.4 MB .mp4 of the cover art. Three of the four arrived that way. `-vn` and
+  ffmpeg, and nothing about the audio is different.
+- **Three of four jobs failed the first time** with "No audio appeared before
+  the timeout", two of them after logging "First audio appeared". Retried one
+  at a time, they all came back. It is intermittent, not the prompt.
+
+**The loop window is SEARCHED FOR rather than taken from the start.** Cutting
+the first 30 seconds gave the rocket a seam ratio of 2.30 — the slice opened
+quiet and closed loud, so every time round it fell off a cliff. The generator
+hands back a minute or more, so the track is decoded once and a 30s window is
+slid over the samples comparing 60ms of head against 60ms of tail at every half
+second. All four now land at **0.98–1.01**, from offsets of 18.7s, 18.1s, 9.1s
+and 21.5s — not one of them was the start.
+
+All six are levelled to **RMS 5400** against `music_ride` 5512 /
+`music_ride_b` 5261, because every vehicle plays through the same element at
+the same 0.60.
+
+Sounds, measured with `tools/sfx.py` as always: the four pickups at
+**0.248–0.255** beside `ufoget` 0.243 and under `truckget` 0.296; the ones that
+repeat — `hopbounce` 0.054–0.086, `spoonflip`/`spoonsnap` 0.057, `toastpop`
+0.100–0.150 — down in the `egg`/`near` band, because a sound that fires twice a
+second at pickup level becomes the run's texture.
+
+### Two things the six-vehicle economy needed
+
+- **`pickVeh` is a shuffled bag.** With two vehicles alternating was right; with
+  six a coin shows you the same one twice before you have seen half of them,
+  and a fixed rotation is learnable — which the mystery egg must not be. Deal
+  all six in a random order, hand them out one at a time, reshuffle when empty.
+- **`dropRate` takes the BEST vehicle's "turns up more often", not the
+  product.** Six of them multiplied would hand a fully upgraded garage an egg
+  every four seconds. The egg is shared, so the best one wins, which is what a
+  player means by it.
+
+`?veh=NAME` starts a run in any of them. `?ride` and `?ufo` still work, because
+they are in every note written before today.
+
 ## Next
 
 - **Nothing spends the eggs yet** -- the shop exists and none of it
