@@ -9,6 +9,9 @@ invisible until it is beside its neighbour, and by then it is in the game. Each
 check below is a fault that actually reached a screenshot, written down so it
 cannot reach one twice:
 
+  RAMP BITE     content sitting inside the 7% the game ramps as it draws. That
+                ramp is what dissolves one panel into the next; landing it on a
+                real object is what made a coop and a tree see-through.
   CUTOUT EDGE   content touching the frame edge. A panel is placed BESIDE other
                 panels, so anything running off its own edge butts into whatever
                 the next one starts with -- half a barn door against half an egg
@@ -38,7 +41,7 @@ import numpy as np
 from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from gen_mid_panels import INTERIORS                        # noqa: E402
+from gen_mid_panels import INTERIORS, OUTDOORS              # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REF_ASPECT = 830 / 240.0          # art/bg/mid.webp, which every panel is cut to
@@ -97,42 +100,37 @@ def edge_contact(a):
     return max(left, right)
 
 
-def hard_edge(a):
-    """Does the picture END ON A STEP, or does it fade out?
+# How much of its own width the game ramps at draw time. Must match
+# MID_OVERLAP in index.html; the two are a pair.
+MID_OVERLAP = 0.07
 
-       The first version of this asked how TALL the content was at the panel's
-       ends, which flagged 22 pictures -- and it was asking the wrong question.
-       A corridor has walls; a wall of cells reaches the edge because that is
-       what a wall does. Re-rendering all of them would not have fixed
-       anything.
 
-       What actually reads as a cut is a hard ALPHA STEP: opaque wall, then
-       nothing, in the space of a pixel or two. The cutter fades each panel's
-       last 7% for exactly this reason, so the honest test is how far the edge
-       takes to go from transparent to solid. A step is a fault; a ramp is the
-       fix.
+def ramp_bite(a):
+    """Does the draw-time ramp land on a real object, or on empty margin?
 
-       Returns the fade width as a fraction of the picture's width -- small is
-       bad."""
+       This replaces a check that asked the OPPOSITE question. HARD EDGE used to
+       flag any panel that went from nothing to solid in a pixel or two, because
+       panels BUTTED and a picture that stopped dead met the next one at a hard
+       line. The cutter therefore baked a fade into each end.
+
+       The game now overlaps panels and ramps each left edge as it draws, so
+       nothing butts anything and the baked fade became a SECOND ramp on top of
+       the first. Where the two met, both were half transparent and a quarter of
+       the sky came through solid objects -- a chicken coop and a tree you could
+       see the hills through. So the fade is gone, and the fault worth checking
+       is the one that caused: content sitting inside the 7% the game ramps,
+       which gets eaten instead of empty margin.
+
+       Full-bleed pictures are exempt: their content reaches the edge on
+       purpose, and the ramp dissolving it onto the panel behind is the whole
+       mechanism. Returns how far in the content starts, as a fraction."""
     al = a[..., 3]
     cols = (al > 24).any(axis=0)
     if not cols.any():
         return 1.0
     xs = cols.nonzero()[0]
-    w = a.shape[1]
-    worst = 1.0
-    for x0, step in ((int(xs.min()), 1), (int(xs.max()), -1)):
-        run = 0
-        for k in range(0, int(w*0.20)):
-            x = x0 + step*k
-            if x < 0 or x >= w:
-                break
-            col = al[:, x]
-            if col.max() >= 250:              # this column is fully solid
-                break
-            run += 1
-        worst = min(worst, run/float(w))
-    return worst
+    w = float(a.shape[1])
+    return min(int(xs.min()), int(w - 1 - xs.max())) / w
 
 
 def ground_rule(a):
@@ -209,7 +207,16 @@ def main():
         # neighbour, and it is supposed to fill its frame. Testing it for empty
         # margins and a soft fade is testing it for being the thing that made
         # the map look cheap.
-        if not is_tile and name in INTERIORS:
+        # An OUTDOOR panel is full-bleed too, and judged more loosely: a desert
+        # at night legitimately has empty sky above the dunes, so it is not
+        # asked to fill its frame -- only to carry its GROUND to both edges, so
+        # the interior wall it sits beside does not open onto a hole.
+        if not is_tile and name in OUTDOORS:
+            _, edge = wall_cover(a)
+            if edge < 0.12:
+                faults.append('GROUND STOPS the land covers %d%% of an edge column, so the '
+                              'panel beside it opens onto sky' % (edge*100))
+        elif not is_tile and name in INTERIORS:
             cov, edge = wall_cover(a)
             if cov < 0.90:
                 faults.append('VOID only %d%% of the columns have anything in them; this '
@@ -219,11 +226,12 @@ def main():
                               'ends instead of running into the next panel' % (edge*100))
         elif not is_tile and edge_contact(a) > 0.10:
             faults.append('CUTOUT EDGE %d%% of an edge column has content' % (edge_contact(a)*100))
-        if not is_tile and name not in INTERIORS:
-            e = hard_edge(a)
-            if e < 0.02:
-                faults.append('HARD EDGE the picture goes from nothing to solid in %.1f%% '
-                              'of its width; it will butt its neighbour' % (e*100))
+        if not is_tile and name not in INTERIORS and name not in OUTDOORS:
+            b = ramp_bite(a)
+            if b < MID_OVERLAP:
+                faults.append('RAMP BITE content starts %.1f%% in, inside the %.0f%% the '
+                              'game ramps; the ramp will fade a real object'
+                              % (b*100, MID_OVERLAP*100))
         # Only a PANEL can have a false ground rule. A floor tile's bottom IS
         # the ground line -- it sits on the road, which is drawn over it -- so a
         # dark horizontal band down there is the edge of the plating or the foot
@@ -237,7 +245,7 @@ def main():
         # rows are floor, skirting and dado -- checked on p2, where the 54% bar
         # it flagged is a wooden skirting board in a guard station that is
         # otherwise the best panel in the world.
-        g = 0.0 if (is_tile or name in INTERIORS) else ground_rule(a)
+        g = 0.0 if (is_tile or name in INTERIORS or name in OUTDOORS) else ground_rule(a)
         if g > 0.30:
             faults.append('GROUND RULE a dark bar %d%% under the picture' % (g*100))
         hz = hazard_px(a)

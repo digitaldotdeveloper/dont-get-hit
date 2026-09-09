@@ -37,7 +37,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from PIL import Image                                       # noqa: E402
 import numpy as np                                          # noqa: E402
-from gen_mid_panels import PANELS, INTERIORS                           # noqa: E402
+from gen_mid_panels import PANELS, INTERIORS, OUTDOORS                           # noqa: E402
 
 # Phrases from earlier wordings, so a re-prompt never orphans what came back.
 EXTRA_NEEDLES = {
@@ -62,7 +62,12 @@ def dest_dir(name):
 REF = os.path.join(BG, 'mid.webp')
 # the share of the frame a panel's content may occupy, leaving 4% clear
 # on each side so no two panels ever butt content against content
-MARGIN_FIT = 0.92
+# Content must end up OUTSIDE the 7% the game ramps at draw time, or the ramp
+# eats the edge of a real object instead of empty margin -- which is the fault
+# the baked fade used to cause. 0.84 leaves 8% clear on each side, one point
+# clear of MID_OVERLAP in index.html. These two numbers are a pair: change one
+# and change the other.
+MARGIN_FIT = 0.84
 
 
 def key_magenta(im):
@@ -430,7 +435,7 @@ def main():
         # appear". So the interior path keeps the full width, scales to fill the
         # frame edge to edge, and does not fade its ends: the wall is supposed
         # to run straight on into the next picture.
-        interior = name in INTERIORS
+        interior = name in INTERIORS or name in OUTDOORS
         im = strip_baseline(key_panel(src))
         if not interior:
             im = trim_clipped(im)
@@ -520,7 +525,17 @@ def main():
 
         out = Image.new('RGBA', (W, H), (0, 0, 0, 0))
         out.alpha_composite(im, ((W - im.width) // 2, H - im.height))   # on the bottom edge
-        out = fade_edges(out)
+        # THE BAKED FADE IS GONE, and this is why. It existed because panels
+        # BUTTED: a picture that stopped on a pixel column met the next one at
+        # a hard vertical line, so each end was ramped to transparent and they
+        # dissolved into the sky. The game now OVERLAPS panels and ramps each
+        # LEFT edge at draw time, which does the same job onto the picture
+        # behind instead of onto nothing -- so baking it here as well fades
+        # each end TWICE. Where the two ramps met, both were half transparent
+        # and a quarter of the sky came through solid objects: a whole chicken
+        # coop and a tree that you could see the hills through, reported as
+        # "the faded props in the background". One ramp, at draw time, is the
+        # whole mechanism now.
         dst = os.path.join(dest_dir(name), name + '.webp')
         out.save(dst, 'WEBP', lossless=True, quality=100, method=6)
 
