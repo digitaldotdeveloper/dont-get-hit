@@ -3435,6 +3435,89 @@ explicit decision to get a joke that only lands in world one.
   `109ded3` too** -- verified by serving `git show HEAD:index.html` side by
   side. It is not from this work, and it is the next thing worth chasing.
 
+### `rag.y` is a SCREEN coordinate, not a height
+
+This is the one to remember. `rag.build` stores `y - CK.standH` off a `y` that
+is already `GROUND - player.y`, so **rag.y counts DOWN from the top of the
+canvas**: small means high, large means lying on the road.
+
+`rag.y = hopY(t)` therefore inverted the entire flight. He skimmed along the top
+of the screen, every bounce "landed" in mid-air, and the dust went up off a road
+he never came near. It survived three separate filmstrips because the dust looked
+like landings and he looked like he was arcing -- **it was only obvious once the
+numbers were printed next to the pictures.** It is `ragGround() - hopY(t)` now.
+
+**And `ragGround()` is a function, not a constant.** `GROUND` is recomputed by
+`resize()`, so `const RAG_GROUND = GROUND - CK.standH` captured a canvas that had
+no size yet: it came out at -80 and threw him clean off the top of the screen.
+Anything derived from `GROUND`, `VW`, `VH` or `SCALE` at module scope is derived
+from nothing.
+
+### Weight in the bounces
+
+Every landing announces itself three ways, and before this it announced itself
+none: he passed through the road at the right heights and nothing about him
+noticed.
+
+- **Squash.** `game.blastSquash` is set to 1 by the landing and eased out over a
+  sixth of a second, driving `rag.pose.sx/sy` -- wide and flat at the bottom, a
+  touch stretched while it recovers. It is reset before `finishNow()`, because a
+  squashed pose handed to the score card stays squashed.
+- **Spin DECAYS, it is not scheduled.** It used to be a fixed rate scaled by
+  progress through the flight, which spins him identically whether or not he has
+  touched anything. `rag.vrot` loses 56% per contact and decays continuously, so
+  the last two hops read as a body sliding to a stop rather than a wheel that
+  happens to be slowing down.
+- **Dust lies down.** `dustSheet()` throws a low wide sheet backwards; the round
+  puff `smoke()` makes is right for an impact and wrong for a landing, and using
+  it for both was why the bounces read as polite.
+
+### The explosion has its own fire now
+
+`tools/gen_boom.py` -> `tools/cut_boom.py` -> `art/fx/blast0..5.webp`.
+
+It was borrowing the CAGE's explosion -- five frames cut for a barn door being
+kicked out, scaled three times up -- which reads as a yellow star and is over in
+half a second, a fifth of the flight it is supposed to have caused. The six new
+frames are white-hot core, burst, fireball with debris, then three of smoke, so
+**the fire ends as smoke instead of simply stopping**.
+
+- **"EXACTLY 6 SEPARATE PICTURES IN A ROW"** is the wording that gets a cuttable
+  cycle out of this model, the same as the exhaust flame. The other two takes
+  came back as two rows of five, which `col_split` cannot read -- and that is
+  the whole reason three takes get asked for.
+- **Registration here is the easy case**: an explosion is radially symmetric, so
+  each frame's own bounding box IS the blast centre. Every frame is pasted into
+  a square the size of the biggest, so all six draw at one scale off one anchor.
+  (Compare the crow, where the bbox is mostly wing and had to be thrown away for
+  the beak tip.)
+- **The art already grows** -- frame three is the biggest -- so the code adds
+  only a slow drift outward. Doubling up on growth balloons it and then snaps it
+  back on the frame the smoke starts.
+
+**Lazy loading has to be lazy EARLIER than the moment of use.** Asked for on the
+frame the charge goes off, the fireball spent its first three hundred
+milliseconds waiting for a decode -- most of a 0.78s cycle -- so the explosion
+the player had just paid for did not appear at all. `warmBlastArt()` runs when
+the death card opens: seconds of warning, and still nothing on the boot path the
+loading gate counts.
+
+### Two more particles, and a trail that comes off him
+
+- **`ring()`** -- a shockwave is the fastest thing on screen and half of what
+  sells an explosion. Stroke width falls with radius so it does not read as a
+  bubble, and it is squashed vertically so it sits IN the world. Two of them a
+  beat apart: one reads as a graphic, two read as pressure, because the second
+  is still arriving while the first has gone.
+- **`dustSheet()`** -- described above.
+- **The trail hangs off his body**, not off the ground. It was seeded at ground
+  level whatever height he was at, so a body forty feet up left smoke round its
+  ankles. It is also denser: one particle every twenty-five milliseconds is a
+  dotted line, not a trail.
+- **A smoke column stays where it happened.** Everything else in this scene
+  leaves at twenty-six thousand units a second, so without something anchored
+  the road behind is spotless one frame after the biggest event in the run.
+
 ## Next
 
 - **Nothing spends the eggs yet** -- the shop exists and none of it
