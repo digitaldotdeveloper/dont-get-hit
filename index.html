@@ -9695,7 +9695,14 @@ Object.keys(LAYERSETS).forEach(k => LAYERSETS[k].forEach(L => { L.set = k; }));
 .forEach(([set, dir]) => {
   set.forEach(L => {
     L.img = new Image();
-    L.img.onload = () => { L.ready = true; warmDecode(L.img); if(SCALE) buildLayers(); };
+    L.img.onload = () => {
+      L.ready = true; warmDecode(L.img);
+      // variant zero has to be ramped like the rest of them: it is drawn over
+      // its neighbour the same way, and an un-ramped left edge is the hard
+      // vertical line the overlap exists to remove.
+      if(L.key === 'near') L.ramp = rampLeft(L.img);
+      if(SCALE) buildLayers();
+    };
     L.img.onerror = () => { L.ready = false; };
     L.img.src = dir + L.key + '.webp';
   });
@@ -9905,6 +9912,62 @@ Object.keys(MID_SETS).forEach(zone => {
   });
 });
 
+/* THE FLOOR SHUFFLES TOO, and until now it could not.
+
+   Every world had exactly ONE floor tile, repeated against itself forever, and
+   at f=0.60 it is the fastest thing on screen: the same rocks, the same tyre
+   tracks and the same sandbags come round every 840 screen pixels, twice per
+   frame on a wide phone. It is the most obvious repeat in the game precisely
+   because it is the layer the eye tracks while running.
+
+   The mechanism is the mid panels' one, pointed at the floor. What it needs
+   that a single tile did not is the OVERLAP: a tile is cut to loop against
+   ITSELF -- bg_layers.loop_seam finds the join -- so its own two edges match and
+   butting is correct. Two DIFFERENT tiles have no such guarantee, and butting
+   those is a hard vertical line in the fastest layer on screen. So a world with
+   variants switches to the same 7% overlap and left-edge ramp the mid panels
+   use, and the tiles dissolve into each other instead.
+
+   A world with no variants keeps butting, which is right: with one tile the
+   overlap would blend the picture with a 93%-offset copy of itself and ghost
+   the whole pattern. */
+const NEAR_SEQ = {};        // zone id -> [ramped canvas], the variants only
+function nearTile(zone, src){
+  const im = new Image();
+  imqLoad(im, src, () => {
+    (NEAR_SEQ[zone] = NEAR_SEQ[zone] || []).push(rampLeft(im));
+  }, ()=>{}, 'gp');
+}
+function nearTileAt(worldM, k, base, avoid){
+  const list = NEAR_SEQ[zoneAt(worldM).a.id];
+  if(!list || !list.length) return base[0];
+  const all = base.concat(list);
+  const at = i => all[((i % all.length) + all.length) % all.length];
+  let im = at(k);
+  if(im === avoid && all.length > 1) im = at(k + 1);
+  return im;
+}
+/* Which zones have floor variants, and what they are called. A variant is
+   `near2`, `near3`... beside the world's own `near.webp`, which stays variant
+   zero -- so a world with none behaves exactly as it did. */
+const NEAR_SETS = {
+  farm:   ['near2','near3'],
+  terr:   ['near2','near3'],
+  empire: ['near2','near3'],
+  prison: ['near2','near3'],
+  cherno: ['near2','near3'],
+  cia:    ['near2','near3'],
+  area51: ['near2','near3'],
+  alien:  ['near2','near3'],
+  space:  ['near2','near3'],
+};
+Object.keys(NEAR_SETS).forEach(zone => {
+  const dir = zone === 'farm' || zone === 'terr' ? 'art/bg/'
+            : zone === 'empire' ? 'art/ant/'
+            : 'art/panels/' + zone + '/';
+  NEAR_SETS[zone].forEach(f => nearTile(zone, dir + f + '.webp'));
+});
+
 /* THE APPROACH IS ORDERED; EVERYTHING ELSE IS A CYCLE. That difference is the
    whole design of the transition.
 
@@ -9982,7 +10045,12 @@ function drawLayerSlot(L, key, alpha, clipL, clipR){
      Everything downstream keys off `step`, not g.W -- including which metre a
      panel thinks it stands at, which is how the approach knows when to
      escalate. */
-  const seq = (key === 'mid');
+  /* The floor joins the mid slot in overlapping ONLY when it has variants to
+     overlap WITH. One tile blended with a 93%-offset copy of itself ghosts the
+     whole pattern, so a world without variants keeps butting -- which is right,
+     because a lone tile is cut to loop against itself. */
+  const seq = (key === 'mid') ||
+              (key === 'near' && (NEAR_SEQ[zoneAt(game.dist/UPM).a.id] || []).length > 0);
   const step = seq ? g.W * (1 - MID_OVERLAP) : g.W;
   const off = ((cam.x*L.f) % step + step) % step;
   /* The farm's mid slot is the one that travels; every other slot is a tile.
@@ -10006,7 +10074,9 @@ function drawLayerSlot(L, key, alpha, clipL, clipR){
        its layer position divided back out. Get that wrong and the approach
        escalates at the wrong place -- or worse, changes panel under you while
        you stand still. */
-    const im = seq ? midPanelAt((seqK*step/L.f)/UPM, seqK, [L.img], lastIm) : L.img;
+    const im = !seq ? L.img
+              : key === 'mid' ? midPanelAt((seqK*step/L.f)/UPM, seqK, [L.img], lastIm)
+              : nearTileAt((seqK*step/L.f)/UPM, seqK, [L.ramp || L.img], lastIm);
     lastIm = im;
     ctx.drawImage(im, x, g.y, g.W, g.H);
     /* The lookouts live on the watchtower painted into panel ZERO, so they

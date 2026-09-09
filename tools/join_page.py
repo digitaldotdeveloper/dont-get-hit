@@ -7,14 +7,18 @@ The strips alone show that something changed; the numbers say what, and which
 way. Both belong on the same page or the reader has to take the change on
 trust -- which is the position that produced "there's still cutouts, I'm tired
 of screenshotting and not getting results"."""
+import base64
+import glob
 import io
 import os
 import subprocess
 import sys
 
+from PIL import Image
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-from joins import SKY                                  # noqa: E402
+from joins import SKY, ROOT                            # noqa: E402
 
 HEAD = """<title>Join Inspector</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -50,6 +54,7 @@ figcaption b{color:var(--ink);letter-spacing:.06em;text-transform:uppercase}
 .scroll{overflow-x:auto;border:1px solid var(--rule);border-radius:2px;
         background:#000;-webkit-overflow-scrolling:touch}
 .scroll img{display:block;height:210px;width:auto;max-width:none;image-rendering:auto}
+.scroll img.shot{height:auto;width:100%;max-width:100%}
 .none{font:12px 'IBM Plex Mono',monospace;color:var(--dim);
       border-left:2px solid var(--rule);padding:6px 0 6px 12px;margin:0 0 18px}
 .note{background:var(--panel);border:1px solid var(--rule);border-radius:2px;
@@ -82,17 +87,40 @@ def main():
            'farm, where you should see sky between the barns. Inside a prison it gives '
            'four detached objects standing in a void.</p>'
            '<p><b>Continuous</b> &mdash; one unbroken wall with everything set into it, a '
-           'recess to see back into, and something crossing in front. Panels butt in the '
-           'game, so the wall is cut off by the frame and runs on into the next picture '
-           'instead of stopping in an empty margin.</p>'
-           '<p><b>Now</b> &mdash; joining the walls up exposed the next fault: nothing made '
-           'the four panels agree about colour, and while they were floating apart nothing '
-           'had to. Each world&rsquo;s palette is named in the prompt, so a join is a wall '
-           'continuing rather than a colour changing.</p>'
-           '<p>Measured with <code>python tools/audit_map.py</code>: an interior is scored '
-           'on how much of its frame has anything in it, and whether its wall reaches both '
-           'edges.</p>'
+           'recess to see back into, and something crossing in front. The wall is cut off '
+           'by the frame and runs on into the next picture instead of stopping in an '
+           'empty margin.</p>'
+           '<p><b>Now</b> &mdash; each world painted from one named palette, then pulled '
+           'onto one tone by <code>tools/harmonise.py</code>. And the join itself is fixed '
+           'in the game rather than in the art: panels now <b>overlap by 7%</b> with a ramp '
+           'down each left edge, so a join is a dissolve onto the picture behind instead of '
+           'a butt against it.</p>'
+           '<p>Rendering each panel with the previous one attached &mdash; asking Gemini to '
+           'continue the scene &mdash; was tried twice and measured worse both times '
+           '(67 &rarr; 90 &rarr; 124). Given a reference the model reframes: the style '
+           'matches and the wall comes back lower, which is a hole to the sky.</p>'
+           '<p><code>python tools/audit_map.py</code> &mdash; 65 pictures, 0 faults. '
+           'Art 6.33 MB &rarr; 2.18 MB.</p>'
            '</div>']
+    shots = sorted(glob.glob(os.path.join(ROOT, 'tools', '_mapshots', 'm*.png')),
+                   key=lambda f: int(os.path.basename(f)[1:-4]))
+    if shots:
+        out.append('<section id="ingame"><h2>in the game</h2>'
+                   '<p class="sub">Photographed from inside the running game with '
+                   '<code>tools/mapshot.py</code>, which flies to a distance and takes the '
+                   'picture &mdash; so the whole map gets looked at, not only the places '
+                   'somebody happened to fly past.</p>')
+        for f in shots:
+            m = os.path.basename(f)[1:-4]
+            im = Image.open(f).convert('RGB')
+            im.thumbnail((1300, 1300), Image.LANCZOS)
+            b = io.BytesIO(); im.save(b, 'WEBP', quality=82, method=6)
+            src = 'data:image/webp;base64,' + base64.b64encode(b.getvalue()).decode()
+            out.append('<figure><figcaption><b>%s m</b></figcaption>'
+                       '<div class="scroll"><img class="shot" src="%s" width="%d" '
+                       'height="%d" alt="the map at %s metres"></div></figure>'
+                       % (m, src, im.width, im.height, m))
+        out.append('</section>')
     out.append(strips.stdout)
     out.append('</div>')
     sys.stdout.write('\n'.join(out))

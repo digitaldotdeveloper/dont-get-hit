@@ -69,7 +69,6 @@ def main():
         for label, note, get in STAGES:
             fs = get(w)
             if not fs:
-                print('<p class="none">%s &mdash; no copies kept</p>' % label)
                 continue
             src, W, H, n = strip(fs, SKY[w])
             print('<figure><figcaption><b>%s</b> &middot; %s</figcaption>'

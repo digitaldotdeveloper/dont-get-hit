@@ -51,6 +51,13 @@ def content_box(im):
     return int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1
 
 
+# Where a world's tiles actually live. The six worlds past the empire keep their
+# own folder; the farm and the ant empire predate that and their tiles sit in
+# the directories the game has always loaded them from. `terr` runs on the
+# farm's layer set, so it shares the farm's floor.
+TILE_DIR = {'farm': ('art', 'bg'), 'terr': ('art', 'bg'), 'empire': ('art', 'ant')}
+
+
 def cut(name, src):
     world, slot = name.split('_')
     im = BL.key_magenta(Image.open(src))
@@ -60,7 +67,7 @@ def cut(name, src):
         b, a, _score = seam
         im = im.crop((b, 0, a, im.height))
 
-    if slot in ('near', 'far'):
+    if slot.startswith('near') or slot == 'far':
         im = strip_baseline(im)
         box = content_box(im)
         if box:                       # keep the full width, trim only the air above
@@ -76,11 +83,26 @@ def cut(name, src):
     # that. The reference floors are 172-242px, so anything under 140 is called
     # out rather than quietly shipped.
     warn = ''
-    if slot == 'near' and im.height < 140:
+    if slot.startswith('near') and im.height < 140:
         warn = '   <-- ONLY %dpx TALL, it will be magnified; re-render it' % im.height
 
-    out_dir = os.path.join(ROOT, 'art', 'panels', world)
+    out_dir = os.path.join(ROOT, *TILE_DIR.get(world, ('art', 'panels', world)))
     os.makedirs(out_dir, exist_ok=True)
+
+    # A VARIANT MUST BE THE EXACT SIZE OF THE TILE IT STANDS IN FOR. The game
+    # computes the whole slot's geometry from ONE image -- bgGeom reads
+    # L.img.naturalWidth/Height and every tile in that slot is drawn at the
+    # size it produces. A variant cut half a pixel wider is not drawn wider, it
+    # is drawn STRETCHED, and its ground line lands somewhere else. The loop
+    # seam search crops to wherever the join happens to be, so this is not a
+    # rare case; it is every time.
+    base = os.path.join(out_dir, 'near.webp') if slot.startswith('near') else None
+    if base and slot != 'near' and os.path.exists(base):
+        bw, bh = Image.open(base).size
+        if im.size != (bw, bh):
+            im = im.resize((bw, bh), Image.LANCZOS)
+            warn += '   (fitted to %dx%d, the size of near.webp)' % (bw, bh)
+
     dst = os.path.join(out_dir, slot + '.webp')
     im.save(dst, 'WEBP', lossless=True, quality=100, method=6)
     return dst, im.size, warn

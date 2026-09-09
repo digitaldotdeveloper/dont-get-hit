@@ -3951,3 +3951,53 @@ which headless Chrome throttles -- without it every shot is the loader frozen at
 partial Reinhard transfer. It runs BEFORE `opt_panels.py`, never on the farm or
 the approach -- those are meant to be separate buildings with sky between them.
 
+## The far layer and the floor (the `dont-get-hit-art` brief)
+
+A brief arrived on the Desktop as `dont-get-hit-art/PROMPT.md` with a style bible
+and three gaps. Its numbers all check out against the repo -- UPM 60, ANT_H 52,
+Nugget 190, all nine zone starts. Four things in it are wrong or stale and are
+worth knowing before following it:
+
+**Its reference frames are OLD.** `style-reference/` shows the prison as four
+cell doors floating with sky between them and the ant empire's dirt-mound
+horizon standing behind six zones. Both were fixed. Attaching those frames to a
+generation request teaches the model exactly the composition that was removed --
+which is the whole point of attaching a reference. `tools/restyle_refs.py`
+re-shoots the same metre marks from the running build into
+`style-reference-current/`, beside the originals so the pairs still line up.
+
+**"Magenta/violet is allowed" is wrong.** Magenta is the key colour. See the
+rule above; it cost the alien facility its containment chamber.
+
+**Gap A was half-solved before it was raised.** Six `far` tiles now exist and the
+six late worlds list `far` alongside `near` and `hang`. But the far band is
+y 304-394 and the mid band is y 192-450, so far draws INSIDE mid -- and the
+interiors are full-bleed walls, which cover it. The tiles read where a zone shows
+sky: the Area 51 airstrip, the launch pad, the moon surface. In the prison, the
+reactor, the base and the alien facility the horizon is behind a wall, which is
+what a wall is for. The symptom the brief describes -- ant mounds behind the
+prison -- had already gone when the cell doors stopped being four objects with
+gaps between them.
+
+**Gap B needed code, not just art.** The floor runs at f=0.60, the fastest layer
+on screen, and every world had ONE tile repeating. Two DIFFERENT tiles have no
+shared edge -- a tile is cut to loop against ITSELF via `bg_layers.loop_seam` --
+so variants butted would be a hard vertical line in the fastest layer. A world
+with variants therefore switches to the same 7% overlap and left-edge ramp the
+mid panels use (`NEAR_SEQ`, `nearTileAt`, `NEAR_SETS`); a world without them
+keeps butting, because one tile overlapped with a 93%-offset copy of itself
+ghosts the whole pattern.
+
+Two rules for floor variants:
+
+- **A variant must be the EXACT pixel size of the `near.webp` it stands in for.**
+  `bgGeom` reads the geometry off one image and draws every tile in the slot at
+  that size, so an odd-sized variant is not drawn wider, it is drawn STRETCHED
+  and its ground line lands somewhere else. `cut_layers.py` fits them.
+- **A floor tile is scaled BY ITS HEIGHT.** Under ~140px it is magnified into
+  mush; the cutter says so.
+
+Tiles live where the game has always loaded them: `art/bg/` for the farm and the
+approach (which share a floor), `art/ant/` for the empire, `art/panels/<world>/`
+for the six after it.
+

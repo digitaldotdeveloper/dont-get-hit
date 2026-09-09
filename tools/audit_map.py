@@ -56,6 +56,15 @@ REF_ASPECT = 830 / 240.0          # art/bg/mid.webp, which every panel is cut to
 # The wire is #4CCFFF, hue 197. What competes with it is CYAN THROUGH BLUE,
 # 170-250. Violet past that does not: the haze in the lab set is 255-263 dark
 # purple-grey silhouettes, which is haze rather than paint and has to stay.
+#
+# THE VALUE FLOOR IS 0.12, NOT 0.25, AND THAT WAS A REAL MISS. A DARK navy is
+# still navy: the alien facility's floor came back 33% hexagonal tiles at hue
+# 235, saturation 0.43 -- unmistakably blue on screen, on the layer closest to
+# the player -- and it passed clean because its value was 0.20. Re-measured
+# across the whole map, dropping the floor to 0.12 flags those two tiles at 40%
+# and 26% and nothing else above 0.2%, which is the trace the de-hue in
+# opt_panels.py clears on its next pass. The old floor was not protecting
+# anything; it was hiding one thing.
 # This comment used to go on to defend the magenta accents in the alien facility
 # and in space. Those are gone now, for an unrelated reason worth knowing here:
 # the colour key deletes any bright pink or purple pixel, because that is how
@@ -69,7 +78,7 @@ def hazard_px(a):
     n = 0
     for r, g, b in rgb[::7]:       # every 7th pixel: enough to catch a glow
         h, s, v = colorsys.rgb_to_hsv(r, g, b)
-        if 170 <= h * 360 <= 250 and s > 0.25 and v > 0.25:
+        if 170 <= h * 360 <= 250 and s > 0.25 and v > 0.12:
             n += 1
     return n * 7
 
@@ -244,7 +253,8 @@ def main():
                    glob.glob(os.path.join(ROOT, 'art', 'panels', '*', '*.webp')) +
                    [f for w in ('ant', 'deep', 'lab')
                     for f in glob.glob(os.path.join(ROOT, 'art', w, '*.webp'))
-                    if os.path.basename(f).split('.')[0] in ('far', 'mid', 'near', 'hang')])
+                    if os.path.basename(f).split('.')[0].rstrip('23')
+                       in ('far', 'mid', 'near', 'hang')])
     rows = []
     for f in files:
         rel = os.path.relpath(f, ROOT).replace('\\', '/')
@@ -254,7 +264,7 @@ def main():
         # to reach both edges, and flagging them as cut-outs is the audit being
         # wrong rather than the art. Only the numbered panels are placed beside
         # a different picture.
-        is_tile = (name in ('near', 'hang', 'far', 'mid')
+        is_tile = (name.rstrip('23') in ('near', 'hang', 'far', 'mid')
                    or rel.startswith('art/ant/') or rel.startswith('art/deep/')
                    or rel.startswith('art/lab/'))
         a = np.asarray(Image.open(f).convert('RGBA'))
@@ -315,13 +325,16 @@ def main():
             faults.append('CHECKERBOARD the scene is painted on a transparency checker '
                           '(%d%% pale, alternating %.2f)' % (pale*100, alt))
         hz = hazard_px(a)
-        if hz > 40:
-            faults.append('HAZARD HUE ~%d px in the wire colour' % hz)
+        opq = max(1, int((a[..., 3] > 40).sum()))
+        if hz / float(opq) > 0.0015:
+            faults.append('HAZARD HUE %.1f%% of the picture is in the wire colour (~%d px)'
+                          % (100.0 * hz / opq, hz))
         if not is_tile and len(bands(a)) > 1:
             faults.append('STACKED ROWS %d bands' % len(bands(a)))
-        if name == 'near' and a.shape[0] < 140:
+        if name.startswith('near') and a.shape[0] < 140:
             faults.append('THIN FLOOR only %dpx tall; it gets magnified' % a.shape[0])
-        if is_tile and name in ('near', 'hang'):
+        siblings = len(glob.glob(os.path.join(os.path.dirname(f), name.rstrip('23') + '*.webp')))
+        if is_tile and name.rstrip('23') in ('near', 'hang') and siblings < 2:
             sm = seam(a)
             if sm > 60:
                 faults.append('OPEN SEAM edges differ by %.0f' % sm)

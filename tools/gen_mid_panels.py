@@ -484,6 +484,59 @@ LAYERS = {
  'alien_hang':  "smooth curved organic bronze tendrils hanging down, thin glowing GREEN "
                 "conduits threading between them, and one bell-shaped hanging lamp glowing "
                 "warm amber",
+ # FLOOR VARIANTS. One tile per world repeated forever is the most obvious
+ # repeat in the game -- the floor runs at f=0.60, the fastest thing on screen,
+ # so the same rocks come round twice a frame. Each world gets two more, and
+ # they are written as the SAME strip with different things lying on it rather
+ # than as different floors: the ground has to stay continuous across a join.
+ 'farm_near2':   "a strip of green farm grass verge, thick and tufty along the whole back, "
+                 "with a worn bare patch of brown earth in the middle of it, a fallen wooden "
+                 "fence rail lying in the grass and a scatter of small stones",
+ 'farm_near3':   "green farm grass along the whole back of the strip with little yellow and "
+                 "white wildflowers in it, loose straw scattered over the grass, a dropped "
+                 "wooden bucket on its side and a shallow tractor rut of brown earth",
+ 'empire_near2': "a strip of packed red-brown earth floor with pale root threads in it, two "
+                 "small round tunnel mouths at the back, scattered crumbs of biscuit and a "
+                 "spilled heap of sugar grains",
+ 'empire_near3': "a strip of packed red-brown earth floor with a LOW EARTH BANK standing along "
+                 "the whole back of the strip at knee height, pale root threads hanging out of "
+                 "it, a broken wooden crate slat leaning against it and a scatter of seed husks",
+ 'prison_near2': "a strip of worn concrete floor with a painted white line, a square drain "
+                 "grate, a scrubbing brush and a coiled hose against a low breeze block wall "
+                 "at the back",
+ 'prison_near3': "a strip of worn concrete floor with a long crack running through it, two "
+                 "chipped floor tiles, a dropped tin mug and a low breeze block wall at the back",
+ 'cherno_near2': "a strip of cracked grey concrete with weeds in the cracks, a fallen length "
+                 "of rusted handrail, a scatter of broken tile and a shallow puddle",
+ 'cherno_near3': "a strip of cracked grey concrete with a LOW BROKEN CONCRETE KERB WALL standing "
+                 "along the whole back of the strip at knee height, a toppled rusted drum lying "
+                 "against it, loose rubble and dry weeds",
+ 'cia_near2':    "two flush floor hatches with recessed handles set into riveted dark metal "
+                 "plating, a coiled cable loom beside them, a yellow stencilled edge line and "
+                 "a low kick plate along the back",
+ 'cia_near3':    "an open inspection hatch lying back on its hinge in a floor of riveted dark "
+                 "metal plating, rows of bolt heads, a scatter of dropped tools and a low kick "
+                 "plate along the back",
+ 'area51_near2': "a strip of pale desert sand meeting grey tarmac with a painted yellow "
+                 "marking, tyre tracks, a low sandbag row and two small rocks",
+ 'area51_near3': "a strip of pale desert sand with dry scrub tufts, a half-buried tyre, "
+                 "wind-blown ripples and a scatter of pebbles",
+ 'alien_near2':  "one round floor port lit from below in GREEN, set into an alien floor of DARK "
+                 "BRONZE-BROWN and near-black tiles with thin glowing green seams running "
+                 "between them, and a low bronze skirting along the back. The tiles are BROWN "
+                 "and BLACK -- never blue, never navy, never indigo, never grey-blue. NO wooden "
+                 "buildings, NO barns, NO straw",
+ 'alien_near3':  "an alien facility floor running the full width: DARK BRONZE-BROWN and "
+                 "near-black tiles with thin glowing GREEN seams between them, three small "
+                 "green-lit studs set flush in the floor, and a low bronze skirting standing "
+                 "along the whole back of the strip. It is a FLAT FLOOR seen close up, not one "
+                 "big round object. The tiles are BROWN and BLACK -- never blue, never navy. "
+                 "NO wooden buildings, NO barns, NO straw",
+ 'space_near2':  "a bolted-down equipment crate standing on dark metal grating floor, yellow "
+                 "and black hazard chevrons along the edge of the grating, a recessed light and "
+                 "a low tubular rail along the back",
+ 'space_near3':  "a strip of dark metal grating floor with a circular access hatch, hazard "
+                 "chevrons along its edge and a low tubular rail with a coiled tether on it",
  'space_near':  "a strip of dark metal grating floor with yellow and black hazard chevrons "
                 "along its edge, two recessed lights, and a low rail of tubular steel",
  'space_hang':  "docking clamps and folded robotic arms hanging down, bundled cables, one "
@@ -522,6 +575,25 @@ CONTINUE = ("The ATTACHED PICTURE is the scene immediately to the LEFT of the on
             "of the image height, running the full width and reaching both edges. Do not "
             "lower it, do not raise it, do not leave a gap of empty background above the "
             "wall at either edge. ")
+
+
+NEEDLE = 48
+
+
+def _check_needles():
+    seen = {}
+    for name in list(PANELS) + list(LAYERS):
+        key = (PANELS.get(name) or LAYERS[name])[:NEEDLE]
+        if key in seen:
+            raise SystemExit(
+                'PROMPT COLLISION: %s and %s both begin "%s". '
+                'The library is searched by that phrase, so both names resolve to the '
+                'same render and one picture is written into two files. Reword one of '
+                'them so the first %d characters differ.' % (seen[key], name, key, NEEDLE))
+        seen[key] = name
+
+
+_check_needles()
 
 
 def prompt_for(name, chained=False):
