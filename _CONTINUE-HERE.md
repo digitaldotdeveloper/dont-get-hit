@@ -3241,6 +3241,88 @@ wrong -- the lossless cut is reproducible from the archived render.
   reset leaves sixteen panels unrendered and a stack trace instead of a report.
 
 
+### The blast is a scene now: it lands, it burns, then it throws him
+
+Buying dynamite used to be a flash and a number going up. Three beats, and the
+second and a half before the bang is what turns a purchase into an event.
+
+| phase | for | what happens |
+|---|---|---|
+| `drop` | 0.42s | a bundle is lobbed in from off the left and lands beside him |
+| `fuse` | 0.58s | it sits there, ticking faster and faster, the shake building |
+| `fly` | 2.30s | BOOM, and he goes down the road |
+
+**It lands on his LEFT**, because he faces right and it has to throw him right.
+The bundle is the tier you bought -- one stick, two or three -- so the thing on
+the ground is the thing on the button.
+
+**He bounces rather than arcing.** `HOPS` is four decaying parabolas and each
+one announces its own landing with dust, a thud and a shake. One long parabola
+is a cannonball, and a cannonball is somebody else's game. `hopY` walks the
+hops rather than solving them, because a closed form would give the height
+without ever telling us a bounce had happened.
+
+`pickFrame` hands him the **hit** set while he flies -- launched, tumbling,
+tumbling, face down -- because without it he leaves the explosion in a running
+pose, on the grounds that he is technically on the ground.
+
+### Three things the filmstrip found that reasoning had not
+
+Reasoning got the beats right and every one of these wrong. They were all
+invisible in the code and obvious the moment twelve frames were laid side by
+side.
+
+- **The boom clock lives inside `updateIntro`**, which does not run in a blast.
+  `boomT` sat at zero and the fireball drew its first frame, forever. The blast
+  ticks its own now.
+- **A damped camera cannot follow this.** He covers a thousand metres in 2.3s --
+  **twenty-six thousand world units a second** -- and a damp at rate 9 settles
+  about three thousand units behind it, so the entire animation played a screen
+  and a half off the right edge. `rag.x` and `player.x` advance by the same
+  delta every frame, so the camera is *pinned* to him and the FRAMING is what
+  eases, 0.52 to 0.34 over the first third of a second. Cutting straight to the
+  flight framing threw him a fifth of a screen sideways on the frame of the
+  explosion, which reads as a jump rather than a launch.
+- **A fireball anchored where the charge went off is correct and invisible.** At
+  that scroll speed it is off the left edge eighty milliseconds in and nobody
+  ever sees the thing they paid for. It hangs just behind him instead and lasts
+  its full half second, which reads as the blast still throwing him -- which is
+  what it is.
+
+**Generally: anything that is not attached to the player is off-screen almost
+immediately during a blast.** Distance-per-second here is two orders of
+magnitude above a normal run, and every instinct about camera work is wrong at
+that speed.
+
+### The icons, and the two scripts that make them
+
+`tools/gen_icons.py` -> `tools/cut_icons.py` -> `art/shop/{tnt1,tnt2,tnt3,heart}.webp`.
+
+The card is a decision made in eight seconds, and eight seconds is decided on
+silhouettes -- so the three tiers are one stick, two and three rather than three
+identical text buttons, and the escalation is the picture. The tiers lost the
+word METRES because the picture already says it.
+
+- **Three separate prompts, not one strip of three.** A strip is what the flame
+  wanted, because every cell there is the same object at a different moment;
+  here the cells are the escalation, and asking one image for "1, then 2, then 3
+  of the same thing" is the sheet-of-props failure exactly. Three prompts cost
+  three times the quota and come back cuttable.
+- **The mystery egg is the attachment.** It is the closest thing the game has to
+  an ICON already -- one shiny object drawn to read small -- so it anchors the
+  style better than a piece of scenery.
+- **The choosing is in `cut_icons.py`, by name**, so the pick is recorded rather
+  than remembered, with a note on what each rejected take got wrong. One `tnt3`
+  take came back blue and gold on a starfield, in somebody else's game
+  entirely, which is why three takes are asked for.
+- **Largest blob only.** Gemini leaves a small sparkle mark low-right on these
+  and the biggest-component rule drops it without anybody having to notice.
+- The bundles are **lazily loaded with a drawn fallback**, so they cost the
+  loading gate nothing and a missing one still reads as dynamite.
+
+The ad button keeps its triangle. A triangle is already the clearest thing a
+play button can be, and a painted one would only be bigger.
+
 ## Next
 
 - **Nothing spends the eggs yet** -- the shop exists and none of it
