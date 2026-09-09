@@ -113,6 +113,49 @@ def key_by_flood(im, tol=42):
     return Image.fromarray(a.astype(np.uint8), 'RGBA')
 
 
+def sweep_key_residue(im):
+    """Erase the key colour the brightness tests could not see.
+
+       Both keys above ask how BRIGHT a pixel is -- key_magenta wants r>150 and
+       b>150, and the flood wants a colour close to the border's median. Neither
+       survives the generator SHADING the empty area: a magenta background with
+       a gradient or a cast shadow across it ends at rgb(94,54,94), which is
+       plainly purple on screen and passes both tests as artwork. It shipped as
+       a solid opaque purple bar across the full width of the briefing room, and
+       as a quarter of the containment chamber. Measured across the map, 37 of
+       65 pictures carried some of it. It is very likely what was reported as
+       "on the edge of each scene, blue bugs".
+
+       The test here is the magenta FAMILY at any brightness -- red and blue both
+       clear of green -- and it is only allowed to erase what the flood can reach
+       from the border, through residue and through already-keyed holes. Anything
+       an ink outline encloses is artwork and cannot be reached, however purple
+       it is. That safety net is what makes a hue test usable at all, and it is
+       usable now for a second reason: nothing in the artwork is allowed to be
+       magenta any more, because asking for it was asking for a hole."""
+    a = np.asarray(im.convert('RGBA')).astype(np.int16).copy()
+    h, w = a.shape[:2]
+    r, g, b, al = a[..., 0], a[..., 1], a[..., 2], a[..., 3]
+    mag = (r > g + 18) & (b > g + 18)
+    conduct = mag | (al < 24)          # a keyed hole passes the flood along
+    seen = np.zeros((h, w), bool)
+    stack = ([(0, x) for x in range(w)] + [(h - 1, x) for x in range(w)] +
+             [(y, 0) for y in range(h)] + [(y, w - 1) for y in range(h)])
+    stack = [(y, x) for y, x in stack if conduct[y, x]]
+    for y, x in stack:
+        seen[y, x] = True
+    while stack:
+        y, x = stack.pop()
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            ny, nx = y + dy, x + dx
+            if 0 <= ny < h and 0 <= nx < w and not seen[ny, nx] and conduct[ny, nx]:
+                seen[ny, nx] = True
+                stack.append((ny, nx))
+    hit = seen & mag & (al > 0)
+    a[hit, 3] = 0
+    return Image.fromarray(a.astype(np.uint8), 'RGBA'), int(hit.sum())
+
+
 def key_panel(path):
     """The colour key, with the flood as a fallback when it plainly failed."""
     im = key_magenta(Image.open(path))
@@ -130,7 +173,10 @@ def key_panel(path):
         # already keyed properly.
         left = op & (r > 110) & (b > 110) & (g < r - 18) & (g < b - 18)
         if left.sum() > op.sum() * 0.25:
-            return key_by_flood(Image.open(path))
+            im = key_by_flood(Image.open(path))
+    im, swept = sweep_key_residue(im)
+    if swept > 400:
+        print('         (swept %d px of shaded key colour)' % swept)
     return im
 
 

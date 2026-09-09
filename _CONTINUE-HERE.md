@@ -3338,3 +3338,64 @@ play button can be, and a painted one would only be bigger.
 - Every image is already lossless WebP and the music is already Opus. The
   next real size win is the five music tracks the game never plays, and
   that is a bundle-time exclusion rather than a code change.
+
+## Why the map looked boring, and the four rules that came out of it
+
+The map was called "boring", "an unpolished asset flip". It was not a bug in the
+game: every one of the 65 pictures passed every check in `tools/audit_map.py`
+while it looked that way. It was the PROMPT, and four separate faults in it.
+
+**1. An interior is not a row of props.** The `ROW` clause asks for things
+"evenly spaced with clear empty gaps between them". Right for a farm -- you
+should see sky between the barns -- and wrong for the inside of a prison, which
+rendered as four detached cell doors floating on the sky wash. Interiors now get
+`INTERIOR`: one unbroken back wall, everything set INTO it, plus a recess to see
+into and something crossing in front so the picture has depth. Run
+`python tools/joins.py` to see any world's panels butted as the game tiles them
+-- floating props are obvious there and invisible in a single panel.
+
+**2. Panels BUTT, so a margin is a hole.** The draw loop steps by exactly one
+panel width. `EDGES` asks for empty magenta margins and the cutter enforced 4%
+more, which on a continuous wall is a hole punched to the sky at every join --
+reported as "the walls suddenly appear". Interiors get `JOIN` instead: the wall
+is cut off by the frame and runs on into the next picture, its top named as a
+straight line at two thirds height so four independent renders line up. They are
+cut full-bleed, with no margin and **no edge fade**.
+
+**3. One world, one palette.** This only became visible once the walls joined
+up: while the panels were floating objects, nothing made the guard station and
+the canteen agree about colour and nothing had to. Butted together, a cream room
+against a grey one is a hard colour step at every join. Each world's colours are
+now named in `PALETTE` and pasted into the prompt.
+
+**4. Never ask for magenta in the artwork.** Magenta is the key colour.
+`key_magenta` deletes any pixel with r>150, b>150, g<110. Three prompts asked for
+magenta lighting, a magenta nebula and magenta accents -- instructions to punch a
+hole through the picture. Green and warm amber are the accents these worlds get.
+
+`audit_map.py` grew the check that would have caught all of this: **VOID**
+measures how much of an interior's frame actually has anything in it, and
+**WALL STOPS** whether the wall reaches its edges. Interiors are exempt from the
+margin, edge-fade and ground-rule checks, which test them for being the thing
+that made the map cheap.
+
+### Two other things worth knowing
+
+**The far layer was one picture for 3500m.** Every world past the empire owned
+only its floor and ceiling; the largest area on screen never changed from the
+empire to the end of the run, which is exactly the reported "the background dont
+change, just the props change". Six per-world `far` tiles are written in
+`LAYERS`; `index.html` still lists `near`+`hang` only and flips to
+`underSet(['far','near','hang'])` once the files exist.
+
+**Gemini Studio is shared with other sessions.** It runs one job at a time, and
+another session's batch sits in front of yours. `render_panels.py` used to start
+its patience when it QUEUED a prompt, so a panel that was merely waiting got
+declared dead and retried into the back of the same queue. The clock now starts
+when the studio picks the job up. And `close_thread(all=True)` is the only lever
+these jobs offer -- they carry no threadId -- so the tab sweep waits until
+nothing else is running rather than closing someone else's conversation.
+
+`python tools/join_page.py prison cia > page.html` builds the before/after
+review page; stages live in `tools/_before/` and `tools/_step1/`.
+

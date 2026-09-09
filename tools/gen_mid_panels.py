@@ -345,8 +345,9 @@ OUTDOOR = (SCENE + "The GROUND runs unbroken from the far left of the artwork to
 # the wall height is.
 PALETTE = {
  'empire': "packed red-brown earth, dark timber, pale straw and warm amber lantern light",
- 'prison': "cool grey concrete and grey breeze block, dull grey-green steel doors, brown "
-           "rust stains and warm amber lamp light -- NO cream or white walls, NO red walls",
+ 'prison': "warm neutral grey concrete and pale grey breeze block with NO blue tint of any "
+           "kind and NO blue-grey, dull grey-green steel doors, brown rust stains and warm "
+           "amber lamp light -- NO cream or white walls, NO red walls",
  'cherno': "grey concrete, olive green, orange rust, faded yellow markings and dull steel "
            "-- NO cream or white walls",
  'cia':    "warm grey-brown concrete, olive drab, dull grey steel, stencilled yellow and "
