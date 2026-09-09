@@ -3518,6 +3518,178 @@ loading gate counts.
   leaves at twenty-six thousand units a second, so without something anchored
   the road behind is spotless one frame after the biggest event in the run.
 
+## POWER and CONTROL: the two vehicles pulled apart (2026-09-09, later)
+
+The brief, in the user's words: *"Your Monster Truck Basket and Egg UFO should
+feel almost like two completely different mini-games... Basket = POWER and UFO
+= CONTROL. That distinction is exactly what will make people have favorite
+vehicles."* Everything below is that, and each vehicle was given a weakness on
+purpose, because otherwise the saucer is simply a better Nugget.
+
+### The trolley: heavy, and it commits
+
+- **`RIDE_G` 0.27 -> 0.46.** Nearly twice the pull, and the whole arc now takes
+  **1.11s where it took 1.49** (`?ridetest`). 0.27 was chosen when the arc had
+  to cover a 392-wide hay wagon at the slowest speed in the game and hang time
+  was the only lever; with smashables back the arc does not have to be long, it
+  has to be POWERFUL.
+- **The apex did not move, and that is the whole payoff of having SOLVED for
+  the impulse.** `rideImpulse` bisects for the launch speed that reaches
+  `RIDE_TOP` under whatever gravity it is handed, so raising the pull raised
+  the launch to match and bought a snappier arc at the same height for free.
+  A typed-in impulse would have made this a tuning session.
+- **TAP OR HOLD** (`RIDE_CUT`, `RIDE_TAP`) -- one line in `thrustOff`, not a
+  second jump. Releasing while still climbing cuts the remaining upward speed,
+  with a floor under it. Measured through the real input path:
+  **tap 346, half-hold 593, hold 593.** And per piece (`?ridetest`):
+
+  | piece | top | hold window | tap window |
+  |---|---|---|---|
+  | r_trough | 126 | 420px | 150px |
+  | r_tyres | 164 | 390px | 150px |
+  | r_drums | 176 | 570px | 210px |
+  | r_wagon | 230 | 450px | 60px |
+  | r_bales | 238 | 360px | **0px** |
+  | r_crates | 250 | 360px | 30px |
+
+  That split is the design: low things can be tapped, waist-high and up need
+  the hold. `RIDE_TAP` was 0.55 first and measured **tap:0px on all six** -- a
+  tap that clears nothing is not a short jump, it is a wasted press, and "the
+  button did not register" is exactly what a player would report.
+- **THE SUSPENSION IS A SPRING, not a pose** (`RIDE_SQ_K/C`, `game.tSquash`).
+  Free, resting at zero, moved only by impulses: the landing kicks it *down*
+  scaled by impact, the launch kicks it *up* because weight coming off a spring
+  extends it, and a smash gives it a jolt. So a hard landing wobbles hard and
+  rolling off a tap barely shows, without anything deciding what "compressed"
+  means. `drawTruck` now scales the rig about **the contact line** -- squash it
+  about its centre and the wheels sink into the road on every landing.
+- **The rattle, the wheelie and the spit.** Two sines of a couple of pixels
+  while it is on the ground (a trolley at speed is not a still picture
+  sliding); a hard nose-up rotation on the press that decays over a quarter
+  second, which reads as the front wheels leaving before the back ones; and a
+  sparse brief flare in `flameLen` that turns the exhaust from breathing into a
+  badly tuned engine. The landing blows fire too -- everything else about a
+  landing goes down, and the one thing that answers upward is the exhaust.
+- **It winds up.** `game.boost` eases at 3.2 for the trolley against 5.5 for
+  everything else, so it takes about a second to reach 1.34 and the same second
+  to give it back. A hovercraft has no flywheel; a runaway trolley does.
+
+### Smashables are back, and the ambiguity is not
+
+The all-electric roster was built to remove exactly one thing -- *"some
+electric barriers can be rammed"* -- and that is still removed. The way out is
+that the new pieces are **not barriers**:
+
+    blue, crackling, on posts, striped plinth   ->  JUMP IT
+    plain brown farm junk, no stripes, no glow  ->  GO THROUGH IT
+
+One rule, read off the picture, and "if it crackles do not touch it" is still
+true of every crackling thing on the board. `junk()` builds `r_crate` and
+`r_hay` out of the farm props with `wired:false` and `smash:true`. **No hazard
+stripe, deliberately**: the stripe exists so a bale you can DIE on is told apart
+from the bales painted into the background, and a bale you cannot die on has no
+such problem.
+
+`hit` is gated on `onWheels()` and that is the safety catch -- a ride can END
+with one on screen, and the bird dying on a stack of crates three seconds after
+the trolley left is the old bug in a new hat. Off the wheels they are scenery.
+
+`smash()` knocks `game.boost` down 6% and the ease returns it over a third of a
+second: *"the vehicle barely slows"* as a number rather than an adjective.
+Nothing at all felt like driving through a hologram.
+
+The pattern table got its rhythm back with them. Barrier-to-barrier still needs
+a whole arc plus a beat (**2.45-2.55s**, down from 3.10-3.25 now the arc is
+shorter); anything-to-smashable needs only long enough to SEE it
+(**1.25-1.40s**). With every piece a barrier the trolley's stretch could only
+ever be a metronome.
+
+### The saucer: it drifts
+
+- **`UFO_D` 1.00 -> 0.50** and that one number carries the feel. The first pass
+  kept the bird's drag on the theory that the SPEEDS make a vehicle and the
+  ease does not; that was the wrong half. At his drag it settled in 0.21s, so
+  releasing reversed it almost at once -- not a craft, a cursor.
+  Time constant is now **0.42s**, and **measured**: after a 0.6s hold, letting
+  go still climbs **70 more units over 0.27s** before it turns round.
+- **`UFO_G` 0.42 -> 0.18, `UFO_T` 0.50 -> 0.19.** Terminal 640 down / 765 up,
+  reached over more than a second. **1.3s to cross the band** against the
+  bird's 0.37 -- and that IS the weakness. You can go anywhere; you cannot go
+  there *now*, so the corridor has to be chosen a second before it arrives.
+- **THE WHITE WOBBLES AND THE YOLK DOES NOT**, and it is one sprite drawn
+  twice with a clip at the waist (`UFO_RIM`, measured by `cut_ufo.py`). The
+  obvious answer was to cut the dome into its own file; the clip is better
+  because both halves come from the same picture through a transform that is
+  **the identity at the waist**, so they cannot separate, cannot disagree about
+  their edges, cost no bytes, and nothing had to repaint the white the dome is
+  currently covering.
+  It is a real spring (`UFO_WOB_K/C`), not a damp, because **overshoot is the
+  entire effect** -- the lip has to go past level and come back. Driven by
+  vertical speed: rising stretches it down, sinking pushes it up, a direction
+  change whips it through the middle, and arriving at the hover floor kicks it
+  with an impulse scaled by the drop. The lamps and the beams are moved by the
+  same transform, because beams that stayed put while the hull they come out of
+  stretched would be the flame-on-the-grass mistake all over again.
+
+### The beam takes the livestock
+
+- **`ufoReach()` is the rule and `ufoBeamLen()` is the picture.** The beam only
+  takes what it is visibly standing next to: *fly low, or hold the button*,
+  which the player reads off the screen rather than being told. The flicker is
+  deliberately kept OUT of the rule -- an animal at the edge being taken or not
+  depending on where a 19Hz sine was on that frame is a coin toss dressed as a
+  mechanic. The horizontal catch (`ufoBeamHalf`) is computed from the lamp
+  table, so widening the cone widens the catch.
+- **The animation is the animal's own panic frames at 22Hz**, and that is the
+  better picture rather than a shortcut: the one thing a cartoon abduction has
+  to show is legs still running in mid air, and a purpose-drawn dangling set
+  would have thrown that away and cost three sheets to do it. Lift, turn and
+  shrink are staggered so it does not read as a sprite being scaled.
+  **The pull in x runs ahead of the lift** and has to: the world scrolls at
+  nine hundred units a second, so anything tracking its own world position for
+  even a moment is gone before it has risen. It is being pulled to a SHIP.
+- **`riding()` was giving the saucer a bumper it does not have.**
+  `drawSpectators` read `riding()` for the trolley's bumper and its exhaust
+  scorch, which was correct for exactly as long as there was one vehicle; fly
+  low past a cow and the cow was bowled by thin air. Both are `onWheels()` now.
+  Every rule that belongs to a PARTICULAR vehicle has to name it.
+
+### The saucer's own music
+
+`UFO_MOVEMENTS`/`UFO_TRACKS`, and `pickRideTrack` chooses the pool from the
+vehicle -- everything downstream keeps pointing at `RIDE_TRACK` and never
+learns there are two lists. It was borrowing the trolley's metal, which is the
+wrong music by the width of the galaxy.
+
+Generation was **explicitly asked for** ("generate alien type music when i get
+the UFO") -- the standing rule is that it stopped in favour of the user's own
+recordings. Three takes through `mode:"music"`, and the one that ships was
+chosen **by measuring the join** (`cut_ufo_music.py`): head RMS against tail
+RMS over 60ms, take 3 at a ratio of 0.96 against 0.60 and 0.78. Levelled to
+**RMS 5388** against `music_ride` 5512 and `music_ride_b` 5261 -- both vehicles
+play through the same element at the same 0.60, so a decibel of difference
+would make one vehicle feel louder than the other and nobody could say why.
+
+`S.abduct()` is the pickup's shape in miniature and deliberately much quieter:
+**0.064**, sitting with `egg` at 0.066, because the pickup happens once and
+this can happen four times in a low pass.
+
+### The test that was lying (and had been for a while)
+
+**`?selftest` reported apex=0 for every hold and `?ridetest` reported a 0px
+window for all six barriers -- and neither was a physics fault.** Both fire on
+a 40ms timer, `thrustOn()` opens with `if(!LOAD.ready) return;`, and the
+loading gate holds boot until the art is decoded. Every press the tests made
+was silently dropped. A warm cache hides it entirely, which is why it survived:
+the same page passes in a browser that has been there before and fails on a
+cold headless probe, and the cold probe is the one that reports. `whenLoaded()`
+now gates both.
+
+`?ridetest` also had to learn that a press is a HOLD --
+`thrustOn(); thrustOff();` on one frame is a tap, and a test that taps measures
+the short jump and calls the roster unclearable. It reports the tap window
+separately now.
+
 ## Next
 
 - **Nothing spends the eggs yet** -- the shop exists and none of it

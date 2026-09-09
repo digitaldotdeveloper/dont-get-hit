@@ -46,6 +46,7 @@ ONE = [
     # the saucer, which has no recording behind it -- the synth IS the sound,
     # so this is the only place its level can be set against anything
     ("ufoget",   None, 1.40),
+    ("abduct",   None, 0.70),
 ]
 # name, [args], gap between them, seconds each
 RUNS = [

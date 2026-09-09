@@ -196,6 +196,7 @@ check Settings before queueing a pack.
 | `gen_bg.py` | parallax layers, on magenta |
 | `gen_crow.py` | the flap cycle + the badge head, on green |
 | `gen_truckfx.py` | the wheel and the flame strip |
+| `gen_ufo_music.py` | the saucer's own 30s loop (`mode:"music"`, `model:'auto'`) |
 | `gen_ufo.py` | the fried-egg saucer, from **two** attachments — the game's style and pilot, and the user's design render — with which is which said out loud in the prompt |
 
 **Cut** — key, split, trim, register, write lossless WebP.
@@ -206,6 +207,7 @@ check Settings before queueing a pack.
 | `cut_obstacles.py` | the prop and electric-hardware sheets (`--contact` for a numbered contact sheet) |
 | `cut_crow.py` | the flap cycle, registered on the beak tip |
 | `cut_truck.py` / `cut_truckfx.py` | the rig on its axle line; the wheel and flames |
+| `cut_ufo_music.py` | picks the best-**looping** alien take by measuring the join, levels it against `music_ride`, writes Opus 64k + MP3 96k |
 | `cut_ufo.py` | the saucer — one still, plus the three lamp anchors **measured** off it (`--check` draws them back onto the art) |
 | `cut_eggs.py` | the golden egg's spin from a painted turnaround |
 | `npc_frames.py` | the cow/pig/goat sheets, keyed from the border |
