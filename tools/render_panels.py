@@ -75,8 +75,12 @@ def state_jobs(s, tries=6):
     return []
 
 
-def render(s, name, timeout=780):
-    prompt = prompt_for(name)
+def render(s, name, timeout=780, prompt=None, attach=None):
+    # `prompt` and `attach` are for the CHAIN, which sends the same panel with a
+    # continuation clause and the previous picture attached. The watcher below
+    # is deliberately unchanged: it matches on a phrase from the panel's own
+    # description, which is present either way.
+    prompt = prompt or prompt_for(name)
     # MATCH ON A PHRASE, NOT ON THE WHOLE STRING. The studio does not store the
     # prompt back byte-for-byte, so `j['prompt'] == prompt` never matched: the
     # first run of this script sat out its whole timeout and reported a failure
@@ -87,7 +91,7 @@ def render(s, name, timeout=780):
     def jobs():
         return [j for j in state_jobs(s) if needle in (j.get('prompt') or '')]
     before = len([j for j in jobs() if j.get('status') == 'done'])
-    s.generate(prompt, runs=1, model='Pro')
+    s.generate(prompt, runs=1, model='Pro', attach=attach)
     end = time.time() + timeout
     hard = time.time() + timeout*4        # even a queue has to end somewhere
     while time.time() < end and time.time() < hard:

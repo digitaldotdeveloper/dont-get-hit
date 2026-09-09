@@ -75,7 +75,24 @@ def main():
            'visible in a panel on its own &mdash; it is visible where that panel meets '
            'the next one.</p>',
            '<div class="legend">' +
-           ''.join('<a href="#%s">%s</a>' % (w, w) for w in worlds) + '</div>']
+           ''.join('<a href="#%s">%s</a>' % (w, w) for w in worlds) + '</div>',
+           '<div class="note">'
+           '<p><b>Before</b> &mdash; the composition clause asked for things '
+           '&ldquo;evenly spaced with clear empty gaps between them&rdquo;. Right for a '
+           'farm, where you should see sky between the barns. Inside a prison it gives '
+           'four detached objects standing in a void.</p>'
+           '<p><b>Continuous</b> &mdash; one unbroken wall with everything set into it, a '
+           'recess to see back into, and something crossing in front. Panels butt in the '
+           'game, so the wall is cut off by the frame and runs on into the next picture '
+           'instead of stopping in an empty margin.</p>'
+           '<p><b>Now</b> &mdash; joining the walls up exposed the next fault: nothing made '
+           'the four panels agree about colour, and while they were floating apart nothing '
+           'had to. Each world&rsquo;s palette is named in the prompt, so a join is a wall '
+           'continuing rather than a colour changing.</p>'
+           '<p>Measured with <code>python tools/audit_map.py</code>: an interior is scored '
+           'on how much of its frame has anything in it, and whether its wall reaches both '
+           'edges.</p>'
+           '</div>']
     out.append(strips.stdout)
     out.append('</div>')
     sys.stdout.write('\n'.join(out))

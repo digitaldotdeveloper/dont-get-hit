@@ -5343,6 +5343,35 @@ setScore(0);
    fat, GROWS as it goes (`grow`, in units a second), drifts upward against a
    negative gravity, and drags down to nothing rather than arcing. Six of them
    read as a cloud where sixty sparks read as a firework. */
+/* A SHOCKWAVE IS A RING, AND IT IS THE FASTEST THING ON SCREEN. Half of what
+   sells an explosion is not the fire, it is the one frame of pressure leaving
+   it -- a thin ring that is gone in a fifth of a second and that nobody
+   consciously sees. It is drawn as a stroke whose width falls with the radius,
+   which is what keeps it from reading as a bubble. */
+function ring(x, y, opt){
+  opt = opt || {};
+  game.parts.push({
+    x, y, vx:0, vy:0, life: opt.life || 0.28, t:0,
+    r: opt.r0 || 30, grow: opt.grow || 1500, col: opt.col || 'rgba(255,242,222,.9)',
+    g:0, kind:'ring', rot:0, vr:0, drag:1, w: opt.w || 9, sq: opt.sq || 0.42
+  });
+}
+/* GROUND DUST LIES DOWN. A body skipping along a road throws a low wide sheet,
+   not a ball -- the round puff smoke() makes is right for an impact and wrong
+   for a landing, and using it for both was why the bounces read as polite. */
+function dustSheet(x, y, n, dirx){
+  for(let i = 0; i < n; i++){
+    const sp = rnd(150, 520);
+    game.parts.push({
+      x: x + rnd(-26, 26), y: y + rnd(-6, 4),
+      vx: -dirx*sp*rnd(0.5, 1), vy: -rnd(20, 90),
+      life: rnd(0.30, 0.62), t:0,
+      r: rnd(10, 22), col: 'rgba(206,186,158,0.85)',
+      g: -30, kind:'smoke', rot: rnd(0, TAU), vr: rnd(-1.6, 1.6),
+      drag: 0.90, grow: rnd(120, 230)
+    });
+  }
+}
 function smoke(x, y, n, opt){
   opt = opt || {};
   for(let i=0;i<n;i++){
@@ -8499,10 +8528,38 @@ function drawField(alpha){
    cycles whatever exists. The game never waits for art. */
 const MID_PANELS = {};      // zone id -> {index: Image}, sparse while loading
 const MID_SEQ = {};         // zone id -> [Image], dense and ordered
+/* How much of its own width a panel gives up to its neighbour. 7% is the same
+   figure the cutter used to fade the ends with, chosen there because it is wide
+   enough to dissolve a wall and narrow enough not to lose an object off the
+   end. The difference is where the fade lands: it used to fade onto the sky and
+   now it falls on the panel behind. */
+const MID_OVERLAP = 0.07;
+
+/* THE RAMP IS BAKED ONCE, NOT APPLIED PER FRAME.
+   A gradient composite is cheap, and cheap times four panels times sixty
+   frames is not. The panel is drawn into a canvas at load and the left edge
+   ramped there, so the game keeps drawing one image per panel exactly as
+   before. Only the LEFT edge is ramped: the right edge is the one that gets
+   covered by the next panel, and ramping both would thin the overlap to
+   nothing. */
+function rampLeft(im){
+  const c = document.createElement('canvas');
+  c.width = im.naturalWidth || im.width; c.height = im.naturalHeight || im.height;
+  const g = c.getContext('2d');
+  g.drawImage(im, 0, 0);
+  g.globalCompositeOperation = 'destination-in';
+  const grad = g.createLinearGradient(0, 0, c.width, 0);
+  grad.addColorStop(0, 'rgba(0,0,0,0)');
+  grad.addColorStop(MID_OVERLAP, 'rgba(0,0,0,1)');
+  grad.addColorStop(1, 'rgba(0,0,0,1)');
+  g.fillStyle = grad; g.fillRect(0, 0, c.width, c.height);
+  return c;
+}
+
 function midPanel(zone, i, src){
   const im = new Image();
   imqLoad(im, src, () => {
-    (MID_PANELS[zone] = MID_PANELS[zone] || {})[i] = im;
+    (MID_PANELS[zone] = MID_PANELS[zone] || {})[i] = rampLeft(im);
     MID_SEQ[zone] = Object.keys(MID_PANELS[zone]).sort((a,b)=>a-b)
                           .map(k => MID_PANELS[zone][k]);
   }, ()=>{}, 'gp');
@@ -8591,15 +8648,34 @@ function midPanelAt(worldM, k, base, avoid){
 function drawLayerSlot(L, key, alpha, clipL, clipR){
   if(!L || !L.ready || alpha <= 0.004) return false;
   const g = bgGeom(L);
-  const off = ((cam.x*L.f) % g.W + g.W) % g.W;
+  /* PANELS OVERLAP; TILES BUTT.
+
+     A tile is repeated against itself, so its own edges already match and it
+     wants to be laid end to end. A panel is a DIFFERENT PICTURE from the one
+     beside it, and butting two different pictures puts a hard vertical line
+     between them -- reported from a screenshot as "the background walls
+     suddenly appear".
+
+     The old answer was to fade each panel's last 7% to transparent, which works
+     on the farm and is wrong indoors: the panels butt, so the fade is a hole
+     punched through the wall to the sky at every join. The answer that works
+     for both is to keep the ramp and OVERLAP, so a panel's soft left edge
+     dissolves onto the picture BEHIND it rather than onto nothing. Each join
+     then costs a little distance and buys a join you cannot find.
+
+     Everything downstream keys off `step`, not g.W -- including which metre a
+     panel thinks it stands at, which is how the approach knows when to
+     escalate. */
+  const seq = (key === 'mid');
+  const step = seq ? g.W * (1 - MID_OVERLAP) : g.W;
+  const off = ((cam.x*L.f) % step + step) % step;
   /* The farm's mid slot is the one that travels; every other slot is a tile.
      mid.webp itself is panel zero, so a run always opens on the painting the
      rest were matched to. */
   /* Every world's mid slot may walk a list; midPanelAt decides which list from
      the tile's own metre. The check is only "is this the mid slot", because a
      world without panels falls back to its tile inside that function. */
-  const seq = (key === 'mid');
-  let seqK = seq ? Math.floor(cam.x*L.f/g.W) : 0;
+  let seqK = seq ? Math.floor(cam.x*L.f/step) : 0;
   let lastIm = null;   // what the tile to the left ended up being
   const clipped = clipL !== undefined;
   if(alpha < 1 || clipped) ctx.save();
@@ -8608,13 +8684,13 @@ function drawLayerSlot(L, key, alpha, clipL, clipR){
     ctx.beginPath(); ctx.rect(clipL, 0, clipR - clipL, VH); ctx.clip();
   }
   if(alpha < 1) ctx.globalAlpha = alpha;
-  for(let x = -off; x < VW + 1; x += g.W, seqK++){
+  for(let x = -off; x < VW + 1; x += step, seqK++){
     /* Which metre this TILE stands at, not which metre the player does: a
        layer scrolls at L.f of the camera, so the tile's own world position is
        its layer position divided back out. Get that wrong and the approach
        escalates at the wrong place -- or worse, changes panel under you while
        you stand still. */
-    const im = seq ? midPanelAt((seqK*g.W/L.f)/UPM, seqK, [L.img], lastIm) : L.img;
+    const im = seq ? midPanelAt((seqK*step/L.f)/UPM, seqK, [L.img], lastIm) : L.img;
     lastIm = im;
     ctx.drawImage(im, x, g.y, g.W, g.H);
     /* The lookouts live on the watchtower painted into panel ZERO, so they
@@ -9504,6 +9580,16 @@ function drawParticles(){
       else ctx.rect(-L*0.5,-W*0.5,L,W);
       ctx.fillStyle=q.col; ctx.fill();
       ctx.lineWidth=2.5; ctx.strokeStyle='rgba(21,8,39,.55)'; ctx.stroke();
+      ctx.restore();
+    } else if(q.kind==='ring'){
+      const R = q.r + q.grow*q.t;
+      ctx.save();
+      ctx.translate(q.x-cam.x, q.y);
+      ctx.scale(1, q.sq);                      // squashed, so it sits IN the world
+      ctx.globalAlpha = a*a;                   // a shockwave leaves fast
+      ctx.strokeStyle = q.col;
+      ctx.lineWidth = Math.max(1, q.w * (1-q.t/q.life));
+      ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.stroke();
       ctx.restore();
     } else if(q.kind==='smoke'){
       /* THREE OVERLAPPING LOBES, not a disc.
@@ -10481,6 +10567,16 @@ const BLAST_T = 2.3;
    fractions of the first hop; the durations sum to BLAST_T. */
 const HOPS = [{h:1, d:0.90}, {h:0.42, d:0.62}, {h:0.18, d:0.45}, {h:0.07, d:0.33}];
 const HOP_PEAK = 330;
+/* Where the ragdoll sits when it is lying on the road. rag.y counts DOWN from
+   the top of the canvas -- rag.build stores `y - CK.standH` off a y that is
+   already GROUND - player.y -- so a hop is subtracted from this, never
+   assigned to it. Getting that backwards flew him along the top of the screen
+   with his bounces landing in mid-air.
+
+   A FUNCTION, not a constant: GROUND is recomputed by resize(), so a const
+   evaluated at load captures whatever the canvas was before it had a size --
+   which came out at -80 and threw him clean off the top of the screen. */
+function ragGround(){ return GROUND - CK.standH; }
 function startBlast(metres, tier){
   game.mode = 'blast';
   game.blastT = 0; game.blastM = metres; game.blastDone = 0;
@@ -10499,16 +10595,41 @@ function startBlast(metres, tier){
 function blastBoom(){
   game.blastPhase = 'fly';
   game.blastT = 0;
-  const t = game.tnt, gy = GROUND - rag.y;
+  const t = game.tnt, by = rag.y + CK.standH*0.55;   // his body, on screen
   game.boomT = 0;                       // the cage's own explosion frames
-  game.freeze = 0.10; addShake(40); game.flash = 1;
+  game.freeze = 0.14; addShake(46); game.flash = 1;
   S.zap(); S.hit(); S.timber();
+  /* Two rings, a beat apart and at different speeds. One reads as a graphic;
+     two read as pressure, because the second one is still arriving while the
+     first is already gone. */
+  ring(t.x, GROUND - 34, {r0:26, grow:1750, life:0.26, w:11});
+  setTimeout(()=>{ if(game.mode==='blast') ring(t.x, GROUND - 34,
+    {r0:18, grow:1050, life:0.34, w:6, col:'rgba(255,180,71,.75)'}); }, 60);
+  /* Dirt, not sparks. He is on a farm road and the charge went into it. */
+  for(let i = 0; i < 14; i++){
+    const a2 = rnd(-Math.PI*0.92, -Math.PI*0.08), sp = rnd(320, 940);
+    game.parts.push({ x:t.x, y:GROUND-20, vx:Math.cos(a2)*sp, vy:Math.sin(a2)*sp,
+      life:rnd(0.5,1.0), t:0, r:rnd(9,22), col:'#6B4A2A', g:1500, kind:'plank',
+      rot:rnd(0,TAU), vr:rnd(-11,11), drag:0.99 });
+  }
+  dustSheet(t.x, GROUND - 8, 16,  1);
+  dustSheet(t.x, GROUND - 8, 16, -1);
   spark(t.x, GROUND - 40, 46, {col:C.amber, s0:280,s1:980, l0:0.4,l1:1.0, r0:5,r1:15});
   spark(t.x, GROUND - 40, 30, {col:C.coral, s0:200,s1:760, l0:0.4,l1:0.9, r0:6,r1:17});
   smoke(t.x, GROUND - 8, 26, {a0:Math.PI*0.72, a1:Math.PI*2.2, s0:200, s1:580,
                               r0:28, r1:62, l0:0.7, l1:1.4});
-  featherBurst(rag.x, gy - 60, 30, 560);
-  rag.vrot = 9;
+  featherBurst(rag.x, by, 34, 620);
+  /* AND A COLUMN THAT STAYS. Everything else in this scene travels with him at
+     twenty-six thousand units a second, so without something anchored the road
+     behind is spotless one frame after the biggest event in the run. It is
+     only on screen for a moment -- that is the point, it is what he is
+     leaving. */
+  for(let i = 0; i < 12; i++){
+    smoke(t.x + rnd(-30,30), GROUND - 10 - i*26, 1,
+      {a0:Math.PI*1.2, a1:Math.PI*1.8, s0:20, s1:90,
+       r0:22+i*3, r1:40+i*4, l0:0.7+i*0.05, l1:1.5+i*0.06});
+  }
+  rag.vrot = 16;                        // he leaves it spinning, and it decays
   if(navigator.vibrate) try{ navigator.vibrate([40,60,90]); }catch(e){}
 }
 /* Where he is, vertically, this far into the flight. The hops are walked rather
@@ -10521,11 +10642,19 @@ function hopY(t){
     if(t < acc + h.d || i === HOPS.length - 1){
       const u = Math.min(1, (t - acc) / h.d);
       if(i > game.blastHop){
-        game.blastHop = i;              // a landing, and it gets a landing's beat
-        addShake(9 - i*2); S.thud();
-        smoke(rag.x, GROUND - 6, 6 - i, {a0:Math.PI*0.85, a1:Math.PI*2.15,
-              s0:110, s1:300, r0:16, r1:38, l0:0.4, l1:0.9});
-        spark(rag.x, GROUND - 20, 5, {col:'rgba(210,180,140,.9)', s0:90, s1:260,
+        /* A LANDING, AND IT GETS A LANDING'S BEAT. Every hop announces itself
+           three ways -- the body squashes, the spin loses most of itself to
+           the ground, and a low wide sheet of dust goes up behind him. Without
+           the first two the bounces were geometry: he passed through the road
+           at the right heights and nothing about him noticed. */
+        game.blastHop = i;
+        game.blastSquash = 1;                       // decays in updateBlast
+        rag.vrot *= 0.44;                           // friction, per contact
+        addShake(13 - i*2.5); S.thud(); if(i < 2) S.bonk();
+        dustSheet(rag.x, GROUND - 6, 14 - i*3, 1);
+        smoke(rag.x, GROUND - 10, 4 - i, {a0:Math.PI*1.1, a1:Math.PI*1.9,
+              s0:60, s1:200, r0:18, r1:34, l0:0.5, l1:1.0});
+        spark(rag.x, GROUND - 20, 7 - i, {col:'rgba(210,180,140,.9)', s0:120, s1:320,
               l0:0.2, l1:0.45, r0:3, r1:8, g:900});
       }
       return HOP_PEAK * h.h * Math.sin(u * Math.PI);
@@ -10539,8 +10668,6 @@ function updateBlast(dt){
   const t = game.tnt;
 
   /* ---- it is still in the air ---- */
-  // he is not moving while it falls, so a damp is the right thing here --
-  // framed further left to leave room for the throw coming in off-screen
   if(game.blastPhase === 'drop' || game.blastPhase === 'fuse'){
     cam.x = damp(cam.x, rag.x - VW*0.52, 5, dt);
   }
@@ -10576,9 +10703,6 @@ function updateBlast(dt){
   }
 
   /* ---- and away ---- */
-  /* The blast owns its own boom clock. The one that already existed lives
-     inside updateIntro, which does not run here -- so boomT sat at zero and the
-     fireball drew its first frame, forever. */
   if(game.boomT !== undefined && game.boomT < BOOM_T) game.boomT += dt;
   const k = Math.min(1, game.blastT / BLAST_T);
   const p = 1 - Math.pow(1 - k, 2.2);              // fast off the blast, easing down
@@ -10590,26 +10714,49 @@ function updateBlast(dt){
   game.score += step * SCORE_PER_M;
   player.x   += units;
   rag.x      += units;
-  rag.y = hopY(game.blastT);
-  rag.rot += (7.5 * (1 - k*0.85)) * dt;
-  /* THE FRAMING MOVES, THE TRACKING DOES NOT. He covers a thousand metres in
-     2.3s -- twenty-six thousand world units a second -- and a damped camera
-     settles about three thousand units behind that, which put the entire
-     animation a screen and a half off the right edge. rag.x and player.x
-     advance by the same delta every frame, so pinning is exact and lag-free;
-     easing the OFFSET instead walks the shot forward to leave room for the road
-     without ever letting him slide out of it. Cutting straight to the flight's
-     framing threw him a fifth of a screen sideways on the frame of the
-     explosion, which read as a jump rather than a launch. */
+  rag.y = ragGround() - hopY(game.blastT);
+  /* SPIN DECAYS, IT IS NOT SCHEDULED. It used to be a fixed rate scaled by how
+     far through the flight we were, which spins him at the same speed whether
+     or not he has touched anything. Losing it to the ground on contact is what
+     makes the last two hops read as a body sliding to a stop rather than a
+     wheel that happens to be slowing down. */
+  rag.vrot = (rag.vrot || 16) * Math.pow(0.55, dt);
+  rag.rot += rag.vrot * dt;
+  /* SQUASH ON CONTACT. One number, set to 1 by the landing and eased out over
+     a sixth of a second; wide and flat at the bottom, and a touch stretched
+     while it recovers, which is the whole of cartoon weight. */
+  game.blastSquash = Math.max(0, (game.blastSquash || 0) - dt*6);
+  const q = game.blastSquash;
+  rag.pose.sx = 1 + q*0.34;
+  rag.pose.sy = 1 - q*0.30;
+  /* The framing MOVES, the tracking does not. Cutting straight from the
+     fuse's 0.52 to the flight's 0.34 threw him a fifth of a screen sideways on
+     the frame of the explosion -- read as a jump, not a launch. Easing the
+     OFFSET keeps the camera locked to him the whole time and still walks the
+     shot forward to leave room for the road ahead. */
   const fr = 0.52 - 0.18 * Math.min(1, game.blastT / 0.32);
   cam.x = rag.x - VW*fr;
-  if(Math.random() < dt*40) smoke(rag.x - 30, GROUND - 6, 1,
-      {a0:Math.PI*0.9, a1:Math.PI*1.6, s0:90, s1:280, r0:14, r1:34, l0:0.4, l1:0.9});
-  if(Math.random() < dt*16) spark(rag.x, GROUND - rag.y - 40, 2,
-      {col:C.amber, s0:120,s1:340, l0:0.2,l1:0.5, r0:3,r1:7, g:700});
+  /* THE TRAIL COMES OFF HIM, NOT OFF THE ROAD. It was seeded at ground level
+     whatever height he was at, so a body forty feet up left smoke round its
+     ankles. It hangs off wherever he actually is, and it is denser and more
+     varied than one puff at a time -- a single particle every twenty-five
+     milliseconds is a dotted line, not a trail. */
+  const ty = rag.y + CK.standH*0.45;
+  if(Math.random() < dt*70) smoke(rag.x - rnd(10,60), ty + rnd(-24,24), 2,
+      {a0:Math.PI*0.95, a1:Math.PI*1.55, s0:60, s1:220, r0:10, r1:30,
+       l0:0.45, l1:1.05, col:'rgba(198,186,170,0.8)'});
+  /* and he is on fire, because he was just blown up */
+  if(Math.random() < dt*46) spark(rag.x - rnd(0,40), ty + rnd(-20,20), 2,
+      {col:C.amber, s0:70,s1:260, l0:0.16,l1:0.42, r0:3,r1:8, g:520});
+  if(Math.random() < dt*14) spark(rag.x, ty, 1,
+      {col:C.coral, s0:40,s1:160, l0:0.2,l1:0.5, r0:4,r1:9, g:300});
+  // ground dust while he is low enough to be scraping it
+  if(rag.y > ragGround() - 46 && Math.random() < dt*26) dustSheet(rag.x, GROUND - 6, 1, 1);
   setScore(game.score);
   if(k >= 1){
-    addShake(12); S.thud();
+    addShake(16); S.thud(); S.splat();
+    dustSheet(rag.x, GROUND - 6, 12, 1);
+    rag.pose.sx = 1; rag.pose.sy = 1;      // never hand a squashed pose to the card
     smoke(rag.x, GROUND - 6, 10, {a0:Math.PI*0.85, a1:Math.PI*2.15, s0:120, s1:340,
                                   r0:20, r1:44, l0:0.5, l1:1.0});
     game.mode = 'dead'; game.deadT = 0; game.recover = 0;
@@ -10624,8 +10771,6 @@ function updateBlast(dt){
 function drawTnt(){
   const t = game.tnt; if(!t) return;
   const x = t.x - cam.x;
-  // the charge stays where it went off, so it is allowed to leave; the
-  // fireball below is hung on him and must not be culled with it
   if(game.blastPhase !== 'fly' && (x < -420 || x > VW + 420)) return;
   if(game.blastPhase !== 'fly'){
     ctx.save();

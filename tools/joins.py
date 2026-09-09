@@ -11,7 +11,15 @@ the game tiles them, on that world's own sky colour, so every join in the map
 is on one page.
 
 The sky colours are lifted from ZONES in index.html: a join that looks fine on
-white can be glaring against the wash it actually sits on."""
+white can be glaring against the wash it actually sits on.
+
+WHAT THIS MEASURES IS THE FILES, AND THE GAME NO LONGER DRAWS THEM THIS WAY.
+Panels now OVERLAP by MID_OVERLAP (7%) with a ramp down each left edge, so a
+join on screen is a dissolve and not a butt. The numbers below are therefore a
+WORST CASE -- the step that would show if the panels were laid end to end -- and
+they stay useful for exactly that: they rank which pairs disagree most, which is
+what tells you a panel is from a different building. Do not read a colour of 60
+as something a player can see; read it as sixty more than the pair below it."""
 import glob
 import os
 import re
@@ -46,6 +54,34 @@ def panels_for(world):
                   if os.path.basename(f) not in ('near.webp', 'hang.webp'))
 
 
+def join_step(a, b):
+    """How badly panel A's right edge disagrees with panel B's left edge.
+
+       The strips show whether a join reads as continuous; this says so as a
+       number, which is the only way to tell a real improvement from a hopeful
+       one. Both columns are compared over the rows where EITHER has content,
+       on colour and on coverage:
+
+         colour   RMSE between the two edge columns. A wall continuing into the
+                  next picture matches; a different room does not.
+         profile  how differently the two columns are filled. A wall that stops
+                  at two thirds height beside one that reaches the top is a step
+                  even when the colours agree.
+
+       Panels are placed in a ring -- the last one is followed by the first
+       again -- so the wrap join is measured too. It is the one nobody ever
+       looks at and it is on screen as often as the others."""
+    import numpy as np
+    l = np.asarray(a)[:, -1, :].astype(float)
+    r = np.asarray(b)[:, 0, :].astype(float)
+    on = (l[:, 3] > 24) | (r[:, 3] > 24)
+    if not on.any():
+        return 0.0, 0.0
+    col = float(np.sqrt(((l[on][:, :3] - r[on][:, :3]) ** 2).mean()))
+    prof = float(np.abs((l[:, 3] > 24).astype(float) - (r[:, 3] > 24)).mean() * 100)
+    return col, prof
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     for world, sky in SKY.items():
@@ -69,8 +105,18 @@ def main():
             d.line([(x, h), (x, h + 26)], fill=(255, 64, 64, 255), width=3)
         p = os.path.join(OUT, '%s.png' % world)
         strip.convert('RGB').save(p)
-        print('  %-7s %d panels, %d joins  -> %s' % (world, len(ims), len(ims) - 1,
-                                                     os.path.relpath(p, ROOT)))
+        steps = []
+        for i in range(len(ims)):
+            c, pr = join_step(ims[i], ims[(i + 1) % len(ims)])
+            steps.append((c, pr, os.path.basename(fs[i]).split('.')[0],
+                          os.path.basename(fs[(i + 1) % len(ims)]).split('.')[0]))
+        worst = max(steps)
+        print('  %-7s %d panels  worst join %s|%s  colour %5.1f  profile %4.1f%%  -> %s'
+              % (world, len(ims), worst[2], worst[3], worst[0], worst[1],
+                 os.path.relpath(p, ROOT)))
+        if '-v' in sys.argv:
+            for c, pr, x, y in steps:
+                print('        %-4s|%-4s colour %5.1f  profile %4.1f%%' % (x, y, c, pr))
 
 
 if __name__ == '__main__':

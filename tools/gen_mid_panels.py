@@ -325,10 +325,12 @@ JOIN = ("The back wall REACHES BOTH the far LEFT edge and the far RIGHT edge of 
 # fix: gaps between things are FINE at night in a desert, what is not fine is a
 # ground line that stops. So they keep SCENE's one-of-each rule and gain a
 # continuous mass along the back to sit against.
-OUTDOOR = (SCENE + "The GROUND runs unbroken from the far left of the artwork to the far "
-           "right, and a continuous low mass of land -- dunes, banked earth, distant "
-           "hills -- runs along behind everything so the picture never shows a hole "
-           "straight through to nothing. ")
+OUTDOOR = (SCENE + "The GROUND runs unbroken from the far LEFT edge of the artwork to "
+           "the far RIGHT edge and is CUT OFF by them, and a continuous mass of land -- "
+           "dunes, banked earth, distant hills -- runs along behind everything and also "
+           "reaches BOTH edges, so the picture never shows a hole straight through to "
+           "nothing and can be placed beside another picture of the same place. The land "
+           "meets the left edge and the right edge at about the SAME HEIGHT. ")
 
 # ONE WORLD, ONE PALETTE -- and this only became a fault once the walls joined up.
 #
@@ -484,7 +486,32 @@ LAYERS = {
 SINGULAR = {'e2', 'e4'}
 
 
-def prompt_for(name):
+# WHAT MAKES TWO PANELS ONE PLACE, and it is the thing tone-matching cannot do.
+#
+# Naming the palette got each world onto one set of colours, and harmonise.py
+# closed the rest of the gap arithmetically. Neither makes the WALL line up:
+# panel three still ends on a doorway and panel four still starts on a bench,
+# because they were painted by two renders that never saw each other. Measured,
+# the joins were still stepping by 60-100 RMSE after both fixes.
+#
+# So the previous panel is ATTACHED and the new one is asked to carry on from
+# it. This is the same trick the character sheets use to keep one chicken across
+# forty sprites, pointed at a wall instead of a bird.
+CONTINUE = ("The ATTACHED PICTURE is the scene immediately to the LEFT of the one you are "
+            "drawing, and your picture must continue it EXACTLY. Your LEFT edge carries on "
+            "from the attached picture's RIGHT edge: the same wall at the same height, the "
+            "same colours, the same materials, the same floor line and the same lighting, "
+            "so that placing the two side by side reads as ONE UNBROKEN PLACE with no seam. "
+            "Do NOT redraw or repeat what is in the attached picture -- continue past it "
+            "with the new things described below. "
+            "CRITICAL: the wall in your picture is EXACTLY as TALL as the wall in the "
+            "attached picture -- its top is the same straight horizontal line at two thirds "
+            "of the image height, running the full width and reaching both edges. Do not "
+            "lower it, do not raise it, do not leave a gap of empty background above the "
+            "wall at either edge. ")
+
+
+def prompt_for(name, chained=False):
     """The full prompt for any name in PANELS or LAYERS -- one source of truth,
        because the composition rules differ per KIND and a caller that
        assembles its own prompt will eventually assemble the wrong one."""
@@ -496,9 +523,13 @@ def prompt_for(name):
     if name in INTERIORS:
         pal = ('COLOURS: the whole picture is painted in %s. '
                % PALETTE[WORLD_OF[name]])
-        return STYLE + PANELS[name] + ' ' + INTERIOR + JOIN + pal + MAGENTA + NOBLUE
-    comp = (OUTDOOR if name in OUTDOORS else
-            SCENE if (name in TRANSITION or name in SINGULAR) else ROW)
+        cont = CONTINUE if chained else ''
+        return (STYLE + PANELS[name] + ' ' + INTERIOR + JOIN + pal + cont
+                + MAGENTA + NOBLUE)
+    if name in OUTDOORS:
+        pal = 'COLOURS: the whole picture is painted in %s. ' % PALETTE[WORLD_OF[name]]
+        return STYLE + PANELS[name] + ' ' + OUTDOOR + pal + MAGENTA + NOBLUE
+    comp = SCENE if (name in TRANSITION or name in SINGULAR) else ROW
     return STYLE + PANELS[name] + ' ' + comp + EDGES + MAGENTA + NOBLUE
 
 
