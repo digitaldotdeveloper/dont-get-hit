@@ -8195,7 +8195,7 @@ function slotFor(zone, key){
    slower one. The blend has to happen inside what the eye can hold, so it is
    sized off the screen -- about a screen and a third, which at this speed is
    two or three seconds of the new ground arriving in pieces. */
-const ZONE_BLEND_SCREENS = 1.9;
+const ZONE_BLEND_SCREENS = 2.6;
 
 function patchClip(seamX, band, ahead){
   /* `ahead` true: patches of the NEW world BEFORE the seam.
@@ -8205,16 +8205,16 @@ function patchClip(seamX, band, ahead){
      clip as patches alone -- which is how the first version of this drew
      nothing at all where it mattered. This adds rects to whatever path is
      open. */
-  /* Nine slots, and each takes a share of its slot equal to how near the seam
-     it is: unbroken next to the boundary, a sliver at the far end. That ramp
-     is the whole effect -- the ground going from "one odd patch of rubble" to
-     "this is rubble now" over about two screens, which at this speed is three
-     or four seconds of watching it arrive. */
-  const n = 9;
+  /* Eleven slots, and each takes a share of its slot equal to how near the seam
+     it is -- SQUARED, so the far end of the band is a scatter of patches and
+     only the last stretch before the boundary is unbroken. A linear ramp put
+     half the ground over in the first twenty-five metres, which still read as
+     a change rather than an approach. */
+  const n = 11;
   const slot = band/n;
   for(let i = 0; i < n; i++){
     const f = (i + 0.5)/n;                       // 0 at the seam, 1 at the far end
-    const grow = clamp(1.25*(1 - f), 0, 1);
+    const grow = clamp(1.15*(1 - f)*(1 - f), 0, 1);
     if(grow <= 0.02) continue;
     const centre = ahead ? seamX - band*f : seamX + band*f;
     const w = slot*grow;

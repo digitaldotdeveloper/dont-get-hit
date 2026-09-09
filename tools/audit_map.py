@@ -69,6 +69,44 @@ def edge_contact(a):
     return max(left, right)
 
 
+def hard_edge(a):
+    """Does the picture END ON A STEP, or does it fade out?
+
+       The first version of this asked how TALL the content was at the panel's
+       ends, which flagged 22 pictures -- and it was asking the wrong question.
+       A corridor has walls; a wall of cells reaches the edge because that is
+       what a wall does. Re-rendering all of them would not have fixed
+       anything.
+
+       What actually reads as a cut is a hard ALPHA STEP: opaque wall, then
+       nothing, in the space of a pixel or two. The cutter fades each panel's
+       last 7% for exactly this reason, so the honest test is how far the edge
+       takes to go from transparent to solid. A step is a fault; a ramp is the
+       fix.
+
+       Returns the fade width as a fraction of the picture's width -- small is
+       bad."""
+    al = a[..., 3]
+    cols = (al > 24).any(axis=0)
+    if not cols.any():
+        return 1.0
+    xs = cols.nonzero()[0]
+    w = a.shape[1]
+    worst = 1.0
+    for x0, step in ((int(xs.min()), 1), (int(xs.max()), -1)):
+        run = 0
+        for k in range(0, int(w*0.20)):
+            x = x0 + step*k
+            if x < 0 or x >= w:
+                break
+            col = al[:, x]
+            if col.max() >= 250:              # this column is fully solid
+                break
+            run += 1
+        worst = min(worst, run/float(w))
+    return worst
+
+
 def ground_rule(a):
     """The darkest full-width row in the bottom third, relative to the picture."""
     h, w = a.shape[:2]
@@ -140,6 +178,11 @@ def main():
 
         if not is_tile and edge_contact(a) > 0.10:
             faults.append('CUTOUT EDGE %d%% of an edge column has content' % (edge_contact(a)*100))
+        if not is_tile:
+            e = hard_edge(a)
+            if e < 0.02:
+                faults.append('HARD EDGE the picture goes from nothing to solid in %.1f%% '
+                              'of its width; it will butt its neighbour' % (e*100))
         # Only a PANEL can have a false ground rule. A floor tile's bottom IS
         # the ground line -- it sits on the road, which is drawn over it -- so a
         # dark horizontal band down there is the edge of the plating or the foot

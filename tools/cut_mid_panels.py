@@ -198,6 +198,50 @@ def strip_baseline(im):
     return im.crop((0, 0, w, cut)) if cut else im
 
 
+# How much of a panel's own width fades out at each end. 7% of 830 is about
+# 58px, which at the size a panel is drawn is a soft edge rather than a visible
+# gap.
+EDGE_FADE = 0.07
+
+
+def fade_edges(im):
+    """Ramp the alpha out at the left and right ends of the content.
+
+       22 of the panels END MID-OBJECT: a mound, a wall of cells, a rack of
+       servers that runs the width of the picture and stops dead, because that
+       is what the generator drew and no crop can invent what is past the edge.
+       Butted against the next panel that is a hard vertical join -- the thing
+       reported as "the background walls suddenly appear".
+
+       Re-rendering 22 pictures would not reliably fix it either: a corridor has
+       walls, and a wall that reaches the edge is what a corridor looks like.
+
+       So the panels dissolve into each other instead, which is what the ORIGINAL
+       painted farm panels did -- loadPanels has laid them overlapping with an
+       alpha ramp down one edge since long before any of this. A wall that fades
+       over its last 7% reads as distance; a wall that stops on a pixel column
+       reads as a mistake."""
+    a = np.asarray(im).astype(np.float32).copy()
+    h, w = a.shape[:2]
+    al = a[..., 3] > 24
+    cols = al.any(axis=0)
+    if not cols.any():
+        return im
+    xs = cols.nonzero()[0]
+    x0, x1 = int(xs.min()), int(xs.max())
+    n = max(4, int((x1 - x0)*EDGE_FADE))
+    ramp = np.ones(w, np.float32)
+    for i in range(n):
+        t = (i + 0.5)/n
+        t = t*t*(3 - 2*t)                     # smoothstep, so the fade has no visible start
+        if x0 + i < w:
+            ramp[x0 + i] = min(ramp[x0 + i], t)
+        if x1 - i >= 0:
+            ramp[x1 - i] = min(ramp[x1 - i], t)
+    a[..., 3] *= ramp[None, :]
+    return Image.fromarray(a.astype(np.uint8), 'RGBA')
+
+
 def trim_clipped(im, gap=6, max_bite=0.25):
     """Drop objects the generator drew running off its own edge.
 
@@ -401,6 +445,7 @@ def main():
 
         out = Image.new('RGBA', (W, H), (0, 0, 0, 0))
         out.alpha_composite(im, ((W - im.width) // 2, H - im.height))   # on the bottom edge
+        out = fade_edges(out)
         dst = os.path.join(dest_dir(name), name + '.webp')
         out.save(dst, 'WEBP', lossless=True, quality=100, method=6)
 
