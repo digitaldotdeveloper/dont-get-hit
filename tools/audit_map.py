@@ -47,10 +47,12 @@ REF_ASPECT = 830 / 240.0          # art/bg/mid.webp, which every panel is cut to
 # WHAT COUNTS AS THE HAZARD HUE, and it is narrower than "blue-ish".
 # The wire is #4CCFFF, hue 197. What competes with it is CYAN THROUGH BLUE,
 # 170-250. Violet past that does not: the haze in the lab set is 255-263 dark
-# purple-grey silhouettes, and the alien facility and space were given magenta
-# accents ON PURPOSE precisely because magenta is nowhere near the wire. A test
-# that flags those is a test that would strip the one cool accent the game is
-# allowed to have.
+# purple-grey silhouettes, which is haze rather than paint and has to stay.
+# This comment used to go on to defend the magenta accents in the alien facility
+# and in space. Those are gone now, for an unrelated reason worth knowing here:
+# the colour key deletes any bright pink or purple pixel, because that is how
+# the sky is removed -- so asking for magenta in the artwork was asking for a
+# hole through the middle of the picture.
 def hazard_px(a):
     op = a[..., 3] > 40
     if not op.any():

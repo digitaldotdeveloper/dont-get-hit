@@ -239,9 +239,16 @@ WORLDS = {
         "cable bundle running along the floor.",
   'x2': "A laboratory bench room: a long steel bench under a big domed lamp, a tray of "
         "glassware on a stand, two screens on a trolley, and a wheeled sample cabinet.",
+  # NEVER ASK FOR MAGENTA IN THE ARTWORK. The key deletes any bright pink or
+  # purple pixel -- r>150, b>150, g<110 -- and then desaturates whatever purple
+  # is left to a 190 alpha, because that is how the sky is removed. So "lit from
+  # inside in MAGENTA" was an instruction to punch a hole through the middle of
+  # the picture: x3 measured the emptiest panel in the whole map. It survived at
+  # all only because the model drew a muted purple rather than the flat key
+  # colour. Green is the accent these worlds actually get to keep.
   'x3': "A containment chamber: a thick curved glass wall in a heavy metal frame, lit from "
-        "inside in MAGENTA, an empty metal slab inside it, and a card panel beside the "
-        "door.",
+        "inside with a glowing GREEN light, an empty metal slab inside it, and a card panel "
+        "beside the door.",
   'x4': "Alien machinery grown into the room: smooth curved organic shells of dull bronze, "
         "glowing GREEN conduits threading between them, and a ring of standing stones of "
         "metal.",
@@ -250,7 +257,8 @@ WORLDS = {
   's1': "A launch gantry: a white rocket standing against a steel service tower with folded "
         "access arms, a flame trench at its foot, and floodlight masts either side.",
   's2': "A space station corridor: a row of round viewport windows showing BLACK space with "
-        "a MAGENTA nebula and small warm stars, handrails along the wall, and equipment "
+        "a deep ORANGE and dull RED nebula and small warm stars, handrails along the wall, "
+        "and equipment "
         "lockers between the windows.",
   's3': "A docking bay: a small shuttle on a cradle with its ramp down, stacked supply crates, "
         "a robotic loading arm, and a lit control booth.",
@@ -344,7 +352,7 @@ PALETTE = {
  'cia':    "warm grey-brown concrete, olive drab, dull grey steel, stencilled yellow and "
            "warm amber lamp light -- NO cream or white walls, NO red walls",
  'area51': "sand beige, grey steel, olive drab and warm amber work lights",
- 'alien':  "dull bronze, near-black metal, glowing green and magenta accents",
+ 'alien':  "dull bronze, near-black metal, glowing green and warm amber accents",
  'space':  "off-white wall panelling, grey steel, warm amber lights and black space",
 }
 WORLD_OF = {n: w for w in WORLDS for n in WORLDS[w]}
