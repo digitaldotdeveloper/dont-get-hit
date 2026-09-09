@@ -89,7 +89,8 @@ def render(s, name, timeout=780):
     before = len([j for j in jobs() if j.get('status') == 'done'])
     s.generate(prompt, runs=1, model='Pro')
     end = time.time() + timeout
-    while time.time() < end:
+    hard = time.time() + timeout*4        # even a queue has to end somewhere
+    while time.time() < end and time.time() < hard:
         mine = jobs()
         done = [j for j in mine if j.get('status') == 'done']
         bad = [j for j in mine if j.get('status') in ('failed', 'cancelled')]
@@ -97,8 +98,42 @@ def render(s, name, timeout=780):
             return True, 'done'
         if bad:
             return False, (bad[-1].get('error') or bad[-1].get('status'))
+        # QUEUE TIME IS NOT THINKING TIME, and this is the second way this
+        # watcher has invented a failure. The studio works one job at a time and
+        # it is SHARED: another session had a batch of sprite prompts in front
+        # of this one, so a prison panel sat `queued` -- not slow, not stuck,
+        # simply not started -- while the thirteen-minute patience ran out
+        # underneath it. The panel would then be "retried" into the back of the
+        # same queue and declared dead. The clock only runs once the studio has
+        # actually picked the job up.
+        if any(j.get('status') == 'queued' for j in mine):
+            end = time.time() + timeout
         time.sleep(6)
     return False, 'no result within %ds' % timeout
+
+
+def close_tabs(s, name):
+    """Close the tabs this script opened -- but only when nothing else is using
+       the studio.
+
+       The instruction is to close every tab this uses, and it stands. The
+       trouble is that `close_thread(all=True)` is the only lever the API offers
+       for these jobs -- they carry no threadId -- and the studio is shared
+       between sessions. Another session was pushing a batch of sprite prompts
+       through it while these panels rendered, and closing everything mid-flight
+       would have taken their conversation with it. So the sweep waits until the
+       studio is idle, and says when it did not run."""
+    needle = (PANELS.get(name) or LAYERS[name])[:48]
+    try:
+        others = [j for j in state_jobs(s)
+                  if j.get('status') in ('queued', 'running')
+                  and needle not in (j.get('prompt') or '')]
+        if others:
+            return '(tabs left open: %d other job(s) still running in the studio)' % len(others)
+        s.close_thread(all=True)
+        return ''
+    except Exception as e:
+        return '(could not close tabs: %s)' % str(e)[:60]
 
 
 def main():
@@ -112,17 +147,13 @@ def main():
         ok, why = render(s, name)
         if not ok and not looks_signed_out(why):
             print('%-6s %s -- one retry' % (name, why), flush=True)
-            try:
-                s.close_thread(all=True)
-            except Exception:
-                pass
+            close_tabs(s, name)
             ok, why = render(s, name)
         # the tab goes whether it worked or not; a failed conversation is still
         # a conversation sitting in the browser
-        try:
-            s.close_thread(all=True)
-        except Exception as e:
-            print('       (could not close tabs: %s)' % str(e)[:60])
+        note = close_tabs(s, name)
+        if note:
+            print('       %s' % note)
         print('%-6s %s' % (name, 'OK' if ok else 'FAILED: %s' % why), flush=True)
         if ok:
             run_of_failures = 0
