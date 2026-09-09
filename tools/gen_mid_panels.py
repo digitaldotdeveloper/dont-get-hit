@@ -318,9 +318,17 @@ LAYERS = {
                 "yellow runway marking, small rocks, a low sandbag row and tyre tracks",
  'area51_hang': "heavy steel hangar roof trusses seen from below with chains hanging from "
                 "them, two big floodlights on brackets, and a hanging hook block",
- 'alien_near':  "a strip of dark polished floor tiles with thin glowing GREEN seams between "
-                "them, two round floor ports lit from below in green, and a low bronze skirting "
-                "with organic curves",
+ # The first take came back with RED-ROOFED WOODEN SHEDS and a straw bale on
+ # it -- farm buildings, in an alien facility, repeating along the floor every
+ # tile. Context bleed from the farm prompts earlier in the same session is the
+ # likeliest cause, so the things it must not contain are now named: a
+ # generator that has just drawn twenty barns needs telling.
+ 'alien_near':  "the polished interior floor of an alien facility: dark tiles with thin glowing "
+                "GREEN seams between them, two round metal floor ports lit from below in green, "
+                "a low bronze skirting with smooth organic curves along the back, and a scatter "
+                "of small green-lit studs. Absolutely NO wooden buildings, NO barns, NO sheds, "
+                "NO straw and NO farm structures of any kind -- this is a smooth indoor floor "
+                "and nothing stands on it",
  'alien_hang':  "smooth curved organic bronze tendrils hanging down, thin glowing GREEN "
                 "conduits threading between them, and one bell-shaped hanging lamp glowing "
                 "warm amber",
