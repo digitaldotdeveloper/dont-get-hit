@@ -73,6 +73,19 @@ NOBLUE = ("NOTHING in the artwork is blue, cyan, turquoise or teal -- no blue ro
 # failure -- ask for a row and you get duplicates -- and it is worse here than
 # on a prop sheet, because a panel of three identical mounds is precisely the
 # repetition these panels exist to remove. A transition panel is ONE SCENE.
+# SAYING "LEAVE A MARGIN" IS NOT THE SAME AS SAYING "DO NOT CUT ANYTHING OFF",
+# and the approach panels are where that difference shows. EDGES asks for empty
+# magenta at the sides, and a mound is a shape that sprawls: the model obeys the
+# margin around the picture and still draws the bank running out of frame, so
+# the panel arrives ending in half a mound sliced by a straight vertical line.
+# That is the fault reported from a screenshot three times. The cure is to name
+# the object rather than the margin -- every thing in the picture is whole.
+BOUNDED = ("EVERY OBJECT IN THE PICTURE IS COMPLETE AND FREE-STANDING. Each mound, shed, "
+           "fence and tunnel is drawn WHOLE, with its far side visible, and none of them "
+           "touches or runs off the left or the right side of the image -- nothing is cut "
+           "in half by the edge of the picture. Draw the scene SMALLER if that is what it "
+           "takes to fit all of it in with empty space at both sides. ")
+
 SCENE = ("MIDDLE LAYER ONLY. This is ONE CONTINUOUS SCENE spread across the picture, "
          "NOT a row of repeated copies: each thing described appears exactly ONCE and "
          "they are all different from each other. Everything stands on ONE STRAIGHT "
@@ -530,7 +543,8 @@ def prompt_for(name, chained=False):
         pal = 'COLOURS: the whole picture is painted in %s. ' % PALETTE[WORLD_OF[name]]
         return STYLE + PANELS[name] + ' ' + OUTDOOR + pal + MAGENTA + NOBLUE
     comp = SCENE if (name in TRANSITION or name in SINGULAR) else ROW
-    return STYLE + PANELS[name] + ' ' + comp + EDGES + MAGENTA + NOBLUE
+    bound = BOUNDED if name in TRANSITION else ''
+    return STYLE + PANELS[name] + ' ' + comp + EDGES + bound + MAGENTA + NOBLUE
 
 
 def main():

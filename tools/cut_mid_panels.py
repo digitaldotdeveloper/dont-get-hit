@@ -293,6 +293,88 @@ def fade_edges(im):
     return Image.fromarray(a.astype(np.uint8), 'RGBA')
 
 
+def checkerboard(im):
+    """Did the generator paint the TRANSPARENCY CHECKER as artwork?
+
+       Asked for a picture whose background is empty, a model will sometimes
+       draw the thing that means "empty" in an image editor: a grey-and-white
+       chequered board, in paint, opaque. No colour key touches it -- it is not
+       the key colour, it is not enclosed, and it is not a slab of one tone --
+       and it shipped as a chequered rectangle around the approach panel.
+
+       Pale-and-neutral on its own does not identify it: the prison's breeze
+       block is 33-38% pale neutral and the space station is off-white
+       panelling, and both are correct. What identifies it is that a checker
+       ALTERNATES. Measured across the map, tr2 alternated at 0.23 transitions
+       per pale pixel and the next highest picture in the game was 0.05, with
+       every prison panel at 0.0000. The line is at 0.12, in the middle of that
+       gap.
+
+       Returns (pale fraction, alternation rate)."""
+    a = np.asarray(im.convert('RGBA'))
+    op = a[..., 3] > 40
+    if op.sum() < 500:
+        return 0.0, 0.0
+    rgb = a[..., :3].astype(int)
+    mx, mn = rgb.max(axis=2), rgb.min(axis=2)
+    sat = np.where(mx > 0, (mx - mn) / np.maximum(mx, 1), 0)
+    pale = op & (sat < 0.12) & (mx > 140)
+    frac = pale.sum() / float(op.sum())
+    if frac < 0.20:
+        return frac, 0.0
+    lum = rgb.mean(axis=2)
+    lo, hi = np.percentile(lum[pale], 20), np.percentile(lum[pale], 80)
+    if hi - lo < 40:
+        return frac, 0.0
+    b = (lum > (lo + hi) / 2).astype(np.int8)
+    tr = n = 0
+    for y in range(0, a.shape[0], 3):
+        xs = pale[y].nonzero()[0]
+        if len(xs) < 40:
+            continue
+        seg = b[y, xs]
+        tr += int((seg[1:] != seg[:-1]).sum()); n += len(seg)
+    return frac, tr / float(max(1, n))
+
+
+def sliced(im, frac=0.20):
+    """Is the outermost object CUT with a straight vertical line?
+
+       This is the fault that got screenshotted three times and survived every
+       check in the audit, because every check was looking in the wrong place.
+       CUTOUT EDGE asks whether content touches the FRAME; the cutter then
+       centres the picture and leaves 8% clear, so a mound that the generator
+       sliced with its own canvas edge ends up sitting comfortably INSIDE the
+       margin -- still sliced, and now invisible to a test that only reads the
+       frame's own edge columns.
+
+       What a slice actually looks like is a tall straight wall of alpha at the
+       end of the content: the outermost column of a mound is 52% of the picture
+       high, where the outermost column of a tree or a barn is a few pixels of
+       its rounded corner. So that is what gets measured -- how tall the content
+       is in its own first and last columns, as a fraction of the picture.
+
+       Full-bleed pictures are exempt: their content reaches the edge on purpose
+       and their outermost column is supposed to be a whole wall.
+
+       THE LINE IS AT 30% AND IT WAS PUT THERE BY LOOKING. Run at 20% this
+       flagged three panels; two were real -- a milking shed cut clean through
+       its left wall, and the mound the player screenshotted, sliced with a
+       straight vertical line at 63% -- and the third was a chicken coop whose
+       outermost column is 25% because a coop HAS a vertical wall and that one
+       is drawn complete. A check that sends good panels back to be re-rendered
+       spends a day's quota on nothing, so the threshold sits above the coop and
+       below the shed."""
+    a = np.asarray(im)
+    al = a[..., 3] > 24
+    cols = al.any(axis=0)
+    if not cols.any():
+        return 0.0
+    xs = cols.nonzero()[0]
+    h = float(a.shape[0])
+    return max(al[:, int(xs.min())].sum(), al[:, int(xs.max())].sum()) / h
+
+
 def trim_clipped(im, gap=6, max_bite=0.25):
     """Drop objects the generator drew running off its own edge.
 
@@ -462,6 +544,28 @@ def main():
                       'drawn on a coloured card. Re-render it.'
                       % (name, 100.0 * slab.sum() / opq.sum()))
                 continue
+
+        # AND REFUSE A PANEL THAT ENDS MID-OBJECT. trim_clipped drops a clipped
+        # thing when there is a gap to cut back to; when the generator draws
+        # edge to edge with no gap at all there is nothing to cut back to, and
+        # the panel simply ends in half a mound. That cannot be repaired here --
+        # no crop invents what is past the edge -- so it is sent back rather
+        # than centred, margined and quietly shipped looking fixed.
+        if not interior:
+            sl = sliced(im)
+            if sl > 0.30:
+                print('  %-6s REFUSED: it ends mid-object -- the outermost column is %d%% of '
+                      'the picture tall, so something is cut off with a straight vertical '
+                      'line. Re-render it.' % (name, sl * 100))
+                continue
+
+        pale, alt = checkerboard(im)
+        if alt > 0.12:
+            print('  %-6s REFUSED: the scene is painted on a TRANSPARENCY CHECKERBOARD '
+                  '(%.0f%% pale, alternating %.2f). The generator drew the thing that means '
+                  '"empty background" instead of leaving it empty. Re-render it.'
+                  % (name, pale * 100, alt))
+            continue
 
         bands = row_bands(im)
         if len(bands) > 1:

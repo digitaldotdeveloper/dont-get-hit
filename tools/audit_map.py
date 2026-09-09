@@ -9,6 +9,11 @@ invisible until it is beside its neighbour, and by then it is in the game. Each
 check below is a fault that actually reached a screenshot, written down so it
 cannot reach one twice:
 
+  SLICED        the picture ends MID-OBJECT -- a mound or a shed cut off with
+                a straight vertical line. Screenshotted three times and missed
+                by every check here, because the cutter centres the picture
+                afterwards and the slice ends up sitting inside the margin,
+                where a test that reads the frame's edge columns cannot see it.
   RAMP BITE     content sitting inside the 7% the game ramps as it draws. That
                 ramp is what dissolves one panel into the next; landing it on a
                 real object is what made a coop and a tree see-through.
@@ -90,6 +95,59 @@ def wall_cover(a):
     al = a[..., 3] > 24
     edge = min(al[:, 0].mean(), al[:, -1].mean())
     return float(cols), float(edge)
+
+
+def checkerboard(a):
+    """Did the generator paint the TRANSPARENCY CHECKER as artwork?
+
+       Asked for a picture whose background is empty, a model will sometimes
+       draw the thing that means "empty" in an image editor: a grey-and-white
+       chequered board, in paint, opaque. No colour key touches it -- it is not
+       the key colour, it is not enclosed, and it is not a slab of one tone --
+       and it shipped as a chequered rectangle around the approach panel.
+
+       Pale-and-neutral on its own does not identify it: the prison's breeze
+       block is 33-38% pale neutral and the space station is off-white
+       panelling, and both are correct. What identifies it is that a checker
+       ALTERNATES. Measured across the map, tr2 alternated at 0.23 transitions
+       per pale pixel and the next highest picture in the game was 0.05, with
+       every prison panel at 0.0000. The line is at 0.12, in the middle of that
+       gap.
+
+       Returns (pale fraction, alternation rate)."""
+    op = a[..., 3] > 40
+    if op.sum() < 500:
+        return 0.0, 0.0
+    rgb = a[..., :3].astype(int)
+    mx, mn = rgb.max(axis=2), rgb.min(axis=2)
+    sat = np.where(mx > 0, (mx - mn) / np.maximum(mx, 1), 0)
+    pale = op & (sat < 0.12) & (mx > 140)
+    frac = pale.sum() / float(op.sum())
+    if frac < 0.20:
+        return frac, 0.0
+    lum = rgb.mean(axis=2)
+    lo, hi = np.percentile(lum[pale], 20), np.percentile(lum[pale], 80)
+    if hi - lo < 40:
+        return frac, 0.0
+    b = (lum > (lo + hi) / 2).astype(np.int8)
+    tr = n = 0
+    for y in range(0, a.shape[0], 3):
+        xs = pale[y].nonzero()[0]
+        if len(xs) < 40:
+            continue
+        seg = b[y, xs]
+        tr += int((seg[1:] != seg[:-1]).sum()); n += len(seg)
+    return frac, tr / float(max(1, n))
+
+
+def sliced(a):
+    """How tall the content is in its own outermost columns -- see SLICED."""
+    al = a[..., 3] > 24
+    cols = al.any(axis=0)
+    if not cols.any():
+        return 0.0
+    xs = cols.nonzero()[0]
+    return max(al[:, int(xs.min())].sum(), al[:, int(xs.max())].sum()) / float(a.shape[0])
 
 
 def edge_contact(a):
@@ -224,6 +282,10 @@ def main():
             if edge < 0.35:
                 faults.append('WALL STOPS the wall covers %d%% of an edge column, so it '
                               'ends instead of running into the next panel' % (edge*100))
+        elif not is_tile and sliced(a) > 0.30:
+            faults.append('SLICED the outermost column is %d%% of the picture tall; '
+                          'something is cut off with a straight vertical line'
+                          % (sliced(a)*100))
         elif not is_tile and edge_contact(a) > 0.10:
             faults.append('CUTOUT EDGE %d%% of an edge column has content' % (edge_contact(a)*100))
         if not is_tile and name not in INTERIORS and name not in OUTDOORS:
@@ -248,6 +310,10 @@ def main():
         g = 0.0 if (is_tile or name in INTERIORS or name in OUTDOORS) else ground_rule(a)
         if g > 0.30:
             faults.append('GROUND RULE a dark bar %d%% under the picture' % (g*100))
+        pale, alt = checkerboard(a)
+        if alt > 0.12:
+            faults.append('CHECKERBOARD the scene is painted on a transparency checker '
+                          '(%d%% pale, alternating %.2f)' % (pale*100, alt))
         hz = hazard_px(a)
         if hz > 40:
             faults.append('HAZARD HUE ~%d px in the wire colour' % hz)
