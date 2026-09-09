@@ -322,6 +322,33 @@ OUTDOOR = (SCENE + "The GROUND runs unbroken from the far left of the artwork to
            "hills -- runs along behind everything so the picture never shows a hole "
            "straight through to nothing. ")
 
+# ONE WORLD, ONE PALETTE -- and this only became a fault once the walls joined up.
+#
+# While every panel was an object floating on the sky wash, the wash separated
+# them and it did not matter that the guard station was cream and the canteen
+# was red: you never saw the two touch. Butt them into a continuous wall and the
+# mismatch is the loudest thing in the frame -- four rooms from four different
+# buildings, with a hard vertical colour step at every join. Fixing the gaps
+# created this, which is worth writing down: the panels were always this
+# inconsistent, the gaps were hiding it.
+#
+# Four panels are rendered independently and nothing else makes them agree, so
+# the colours are named per world rather than left to the model, the same way
+# the wall height is.
+PALETTE = {
+ 'empire': "packed red-brown earth, dark timber, pale straw and warm amber lantern light",
+ 'prison': "cool grey concrete and grey breeze block, dull grey-green steel doors, brown "
+           "rust stains and warm amber lamp light -- NO cream or white walls, NO red walls",
+ 'cherno': "grey concrete, olive green, orange rust, faded yellow markings and dull steel "
+           "-- NO cream or white walls",
+ 'cia':    "warm grey-brown concrete, olive drab, dull grey steel, stencilled yellow and "
+           "warm amber lamp light -- NO cream or white walls, NO red walls",
+ 'area51': "sand beige, grey steel, olive drab and warm amber work lights",
+ 'alien':  "dull bronze, near-black metal, glowing green and magenta accents",
+ 'space':  "off-white wall panelling, grey steel, warm amber lights and black space",
+}
+WORLD_OF = {n: w for w in WORLDS for n in WORLDS[w]}
+
 # WHICH PANELS ARE INSIDE SOMETHING. Named one at a time rather than by world,
 # because two worlds are mixed: Area 51 is a hangar and a maintenance bay INDOORS
 # and an airstrip and a radar dish OUTSIDE, and the space set is a corridor and a
@@ -458,7 +485,9 @@ def prompt_for(name):
         return (STYLE + 'A seamless side-scrolling background layer showing ' +
                 LAYERS[name] + '. ' + shape + LOOPS + MAGENTA + NOBLUE)
     if name in INTERIORS:
-        return STYLE + PANELS[name] + ' ' + INTERIOR + JOIN + MAGENTA + NOBLUE
+        pal = ('COLOURS: the whole picture is painted in %s. '
+               % PALETTE[WORLD_OF[name]])
+        return STYLE + PANELS[name] + ' ' + INTERIOR + JOIN + pal + MAGENTA + NOBLUE
     comp = (OUTDOOR if name in OUTDOORS else
             SCENE if (name in TRANSITION or name in SINGULAR) else ROW)
     return STYLE + PANELS[name] + ' ' + comp + EDGES + MAGENTA + NOBLUE

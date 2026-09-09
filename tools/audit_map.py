@@ -228,7 +228,14 @@ def main():
         # of the bank, and flagging it is the audit not knowing what it is
         # looking at. Checked and confirmed on cia/near: a cable tray and a
         # floor plate, exactly as drawn.
-        g = 0.0 if is_tile else ground_rule(a)
+        # An INTERIOR is exempt for the same reason a tile is. The check exists
+        # to catch the solid dark bar the generator paints UNDER a row of
+        # objects, which makes a panel read as pasted onto the sky. An interior
+        # has no "under": it fills its frame to the bottom edge, so its lowest
+        # rows are floor, skirting and dado -- checked on p2, where the 54% bar
+        # it flagged is a wooden skirting board in a guard station that is
+        # otherwise the best panel in the world.
+        g = 0.0 if (is_tile or name in INTERIORS) else ground_rule(a)
         if g > 0.30:
             faults.append('GROUND RULE a dark bar %d%% under the picture' % (g*100))
         hz = hazard_px(a)
