@@ -60,7 +60,7 @@ def cut(name, src):
         b, a, _score = seam
         im = im.crop((b, 0, a, im.height))
 
-    if slot == 'near':
+    if slot in ('near', 'far'):
         im = strip_baseline(im)
         box = content_box(im)
         if box:                       # keep the full width, trim only the air above

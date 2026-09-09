@@ -37,6 +37,9 @@ import sys
 import numpy as np
 from PIL import Image
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from gen_mid_panels import INTERIORS                        # noqa: E402
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REF_ASPECT = 830 / 240.0          # art/bg/mid.webp, which every panel is cut to
 
@@ -59,6 +62,29 @@ def hazard_px(a):
         if 170 <= h * 360 <= 250 and s > 0.25 and v > 0.25:
             n += 1
     return n * 7
+
+
+def wall_cover(a):
+    """For an INTERIOR panel: how much of the frame the space actually fills.
+
+       This is the check that was missing while the map was at its worst. Every
+       one of the 65 pictures passed every test in this file, and the map still
+       looked like an asset flip, because nothing here asked the question a
+       person asks in one glance: is this a PLACE, or is it four objects with
+       nothing between them? A prison panel drawn as four detached cell doors
+       has a clean key, clean edges, no hazard hue, one row and the right
+       aspect. It passes, and it looks cheap.
+
+       An interior is one continuous space, so its columns should nearly all
+       have something in them and its wall should reach both edges. Returns
+       (covered fraction of columns, worst edge coverage) -- low is bad, and
+       low is what "floating props" measures as."""
+    h = a.shape[0]
+    band = a[int(h*0.25):, :, 3] > 24          # ignore the empty air at the top
+    cols = band.any(axis=0).mean()
+    al = a[..., 3] > 24
+    edge = min(al[:, 0].mean(), al[:, -1].mean())
+    return float(cols), float(edge)
 
 
 def edge_contact(a):
@@ -176,9 +202,22 @@ def main():
         a = np.asarray(Image.open(f).convert('RGBA'))
         faults = []
 
-        if not is_tile and edge_contact(a) > 0.10:
+        # An interior panel is judged by the OPPOSITE rules to a farm panel: it
+        # is supposed to reach both edges, because the wall runs on into its
+        # neighbour, and it is supposed to fill its frame. Testing it for empty
+        # margins and a soft fade is testing it for being the thing that made
+        # the map look cheap.
+        if not is_tile and name in INTERIORS:
+            cov, edge = wall_cover(a)
+            if cov < 0.90:
+                faults.append('VOID only %d%% of the columns have anything in them; this '
+                              'reads as props floating apart, not a place' % (cov*100))
+            if edge < 0.35:
+                faults.append('WALL STOPS the wall covers %d%% of an edge column, so it '
+                              'ends instead of running into the next panel' % (edge*100))
+        elif not is_tile and edge_contact(a) > 0.10:
             faults.append('CUTOUT EDGE %d%% of an edge column has content' % (edge_contact(a)*100))
-        if not is_tile:
+        if not is_tile and name not in INTERIORS:
             e = hard_edge(a)
             if e < 0.02:
                 faults.append('HARD EDGE the picture goes from nothing to solid in %.1f%% '

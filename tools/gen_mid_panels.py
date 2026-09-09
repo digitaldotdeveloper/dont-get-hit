@@ -361,11 +361,44 @@ HANG_SHAPE = ("ONLY things hanging DOWN from the top edge of the image, each han
               "the top. Each shape stops well before the bottom, and the BOTTOM HALF of the "
               "image is completely empty. ")
 
+# THE BACK OF THE SCREEN, and until now there was only one of it.
+#
+# Every world past the empire owned its floor and its ceiling and nothing else,
+# on the reasoning that "the haze behind it is the same cavern seen from the
+# same distance". That reasoning is why the run reads as one place with the
+# props changing -- which is exactly the complaint: "the background dont change,
+# the scene still the same and just the props change". The far slot is the
+# largest area on screen and it held ONE picture from the empire to the end of
+# the run, over three thousand metres.
+#
+# A far tile is a SILHOUETTE. It sits at f=0.10, barely moving, behind
+# everything, and it is the wrong place for detail: what it has to do is give
+# each world a different skyline.
+FAR_SHAPE = ("This is the FAR DISTANCE seen through thick haze. Draw it as SIMPLE FLAT "
+             "SILHOUETTE SHAPES in ONE OR TWO muted, pale, desaturated colours, with NO "
+             "black outlines, NO small details, NO texture and NO lighting -- only the "
+             "outline of the shapes matters at this distance. The shapes make a CONTINUOUS "
+             "band standing along the BOTTOM of the image, full width, edge to edge, with "
+             "an uneven skyline of different heights across it; the top third of the image "
+             "is completely empty. ")
+
 LAYERS = {
  # A flat floor is a thin band however firmly the shape clause asks for half
  # the picture -- there is simply nothing tall in "concrete". So this one is
  # given something with HEIGHT in it: a low wall along the back of the strip.
  # The tile is scaled by its height, so the art has to contain some.
+ 'prison_far':  "a distant block of stacked cell galleries three tiers high with narrow "
+                "walkways along them, and one taller square watchtower to one side",
+ 'cherno_far':  "distant wide cooling towers with sloped waists, a tall chimney stack, and a "
+                "low tangle of pipework and gantries between their feet",
+ 'cia_far':     "a distant back wall of tall equipment cabinets and a raised gantry walkway "
+                "crossing in front of it, with two square vent housings above",
+ 'area51_far':  "a distant row of huge rounded hangar doors, a square control tower with a mast, "
+                "and low flat-topped desert mesas behind them",
+ 'alien_far':   "distant smooth organic arches and tall tapering spires with rounded tops, "
+                "growing into each other like a coral reef",
+ 'space_far':   "the distant far wall of a station hangar with one huge open bay door, a docked "
+                "craft on a cradle in silhouette and two gantry towers",
  'prison_near': "a low wall of grey breeze blocks running along the back at about waist "
                 "height with chipped paint and a dark stain down it, a worn concrete floor in "
                 "front of it with a painted white line, two square drain grates, and a "
@@ -420,7 +453,8 @@ def prompt_for(name):
        because the composition rules differ per KIND and a caller that
        assembles its own prompt will eventually assemble the wrong one."""
     if name in LAYERS:
-        shape = HANG_SHAPE if name.endswith('_hang') else NEAR_SHAPE
+        shape = (HANG_SHAPE if name.endswith('_hang') else
+                 FAR_SHAPE if name.endswith('_far') else NEAR_SHAPE)
         return (STYLE + 'A seamless side-scrolling background layer showing ' +
                 LAYERS[name] + '. ' + shape + LOOPS + MAGENTA + NOBLUE)
     if name in INTERIORS:
