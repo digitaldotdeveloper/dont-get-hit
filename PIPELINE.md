@@ -125,6 +125,15 @@ angle and every speed. Twelve baked frames would be bigger, blurry between the
 stills, and wrong at any pace they were not timed for. Bake frames only for
 things with no rule, like fire.
 
+The saucer is the same call taken for a whole vehicle. `art/ufo.webp` is ONE
+picture: its lean is a rule (it leans with its vertical speed) and its
+underlight is a rule (it burns with the button), so a sheet of three tilts was
+asked for, generated, and then deliberately not used — the level frame was cut
+out of it and the other two were thrown away. Three baked tilts would be three
+times the bytes, wrong at every angle between them, and a baked flare cannot
+answer a press on the frame it happened, which is the only frame the player is
+looking at.
+
 ---
 
 ## What a map actually is
@@ -187,6 +196,7 @@ check Settings before queueing a pack.
 | `gen_bg.py` | parallax layers, on magenta |
 | `gen_crow.py` | the flap cycle + the badge head, on green |
 | `gen_truckfx.py` | the wheel and the flame strip |
+| `gen_ufo.py` | the fried-egg saucer, from **two** attachments — the game's style and pilot, and the user's design render — with which is which said out loud in the prompt |
 
 **Cut** — key, split, trim, register, write lossless WebP.
 
@@ -196,6 +206,7 @@ check Settings before queueing a pack.
 | `cut_obstacles.py` | the prop and electric-hardware sheets (`--contact` for a numbered contact sheet) |
 | `cut_crow.py` | the flap cycle, registered on the beak tip |
 | `cut_truck.py` / `cut_truckfx.py` | the rig on its axle line; the wheel and flames |
+| `cut_ufo.py` | the saucer — one still, plus the three lamp anchors **measured** off it (`--check` draws them back onto the art) |
 | `cut_eggs.py` | the golden egg's spin from a painted turnaround |
 | `npc_frames.py` | the cow/pig/goat sheets, keyed from the border |
 | `bg_layers.py` | the three layers, cut to loop |

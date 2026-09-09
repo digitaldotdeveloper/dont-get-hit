@@ -2792,12 +2792,16 @@ recognisably the same character rather than a palette swap.
 `SPECTRE` is gated on `game.best >= 3000` before it can be bought at all, which
 is the one place the shop reads the run rather than the other way round.
 
-### The one thing still deliberately not for sale
+### The slot that was deliberately not for sale, and now is (2026-09-09)
 
-`CROP DUSTER` is in the catalogue with `dev:true` and renders as IN DEVELOPMENT.
-A button that takes 12,000 eggs for a vehicle that does not exist is worse than
-a button that does nothing, and the slot is worth more as a visible next thing
-than as a broken purchase.
+`CROP DUSTER` used to sit here with `dev:true`, rendering as IN DEVELOPMENT --
+a placeholder for "the flying one", on the principle that a button taking
+12,000 eggs for a vehicle that does not exist is worse than a button that does
+nothing. **The `FRIED EGG UFO` is that vehicle, built, and it has replaced the
+placeholder.** See *The fried egg UFO* below. Both vehicles now start OWNED
+(`SAVE.veh = {trolley:1, ufo:1}`, merged so old saves get it), because what is
+sold on this tab is what a vehicle DOES when the run hands it to you, never
+whether it is handed to you.
 
 ### The death beat, and the score card that follows it (2026-09-06, later)
 
@@ -3322,6 +3326,114 @@ word METRES because the picture already says it.
 
 The ad button keeps its triangle. A triangle is already the clearest thing a
 play button can be, and a painted one would only be bigger.
+
+## The fried egg UFO -- the second vehicle (2026-09-09)
+
+The mystery egg now contains one of two things. The trolley is the ground half
+of Jetpack Joyride's contract; this is the flying half, and it is the vehicle
+the `CROP DUSTER` slot was holding open.
+
+**It came out of the Studio from two attachments** (`tools/gen_ufo.py`), and
+which is which is *stated in the prompt* -- with one reference "in the EXACT
+style of the attached picture" is unambiguous and with two it is not:
+`art/truck_drive.webp` for the game's style AND the pilot (same bird, same teal
+cap, same shades), and the user's own fried-egg saucer render for the design,
+with an explicit *redraw this, do not match its shading* because the reference
+is a soft 3D render. Three takes; the best came back as three saucers at three
+sizes in a staggered layout rather than the row that was asked for, which is
+the usual outcome and why nothing slices by column.
+
+**It ships as ONE picture**, `art/ufo.webp`, 142 KB. That is the wheel's
+decision again: a saucer's lean has a rule (it leans with its vertical speed)
+and its underlight has a rule (it burns with the button), so both are solved in
+code. Three baked tilts would be three times the bytes, wrong at every angle
+between them, and -- the part that matters -- a baked flare cannot answer a
+press on the frame it happened, which is the only frame the player is looking
+at. `tools/cut_ufo.py` takes the largest blob off the sheet and **measures the
+three lamps**, printing their centres and radii as fractions of the finished
+picture straight into the shape `UFO_LAMPS` wants. `--check` draws them back
+onto the sprite, because every anchor in this project that was estimated by eye
+was wrong.
+
+### What is actually different about flying it
+
+- **Same movement model, three constants.** `UFO_G 0.42`, `UFO_D 1.00`,
+  `UFO_T 0.50`. Drag is the BIRD'S on purpose: the ease is not what makes this
+  feel different, the SPEEDS are. Terminal is about ±750/1100 against his
+  ±1780/1920, so it crosses the band in about 0.6s up and 0.9s down while
+  answering the button in a fifth of a second. It goes where it is pointed and
+  stops there; he darts and overshoots.
+- **The trolley's thrust multiplier is now ZERO rather than a condition.** The
+  term used to read `p.thrusting && !riding()`, which would have needed a third
+  clause the moment a vehicle wanted to be held. It is a number in the same
+  place the other two constants are.
+- **`riding()` vs `onWheels()` vs `inUfo()`.** `game.ride` still answers "is he
+  in something" and everything true of any vehicle still reads it, unchanged.
+  `game.veh` says which. Making it `game.ride = 1|2` instead would have left
+  every truck-specific `riding()` silently firing for the saucer.
+- **THE GRID STAYS LIVE.** `wireHot` asks `onWheels()`. The blackout is the
+  trolley's whole moment and is spent once; and a flying vehicle with nothing
+  electric left to dodge is the game with the game taken out.
+- **`UFO_PAT` is the flying roster, not a new one** -- the opposite decision to
+  `RIDE_PAT` and right for the same reason. Every piece the bird meets, the
+  saucer can answer; what it cannot answer is the bird's SPACING, because it is
+  246 units wide against his 96 and sits in a column two and a half times as
+  long. So the tokens are identical and the numbers are not: tails ~20% longer,
+  gaps inside a pattern 1.35-1.55s against his 0.85-1.15, and `CLEAR_UFO` 380.
+  No corn -- a saucer stopped by a maize plant is the trolley's joke with
+  nobody laughing.
+- **`clearNow()`.** `rollZap` read the bare `CLEAR` for as long as only one
+  thing flew; the trolley never meets a zapper so nothing noticed. Both it and
+  the hang clamp ask the vehicle now.
+- **Vertically it is EASIER than the bird** -- 117 tall against his 142 -- and
+  its ceiling is its belly, with half the dome allowed over the top edge. The
+  first version kept the whole craft inside the play area, which cost 200 units
+  off a band the hazards are still laid across the full height of. His own rail
+  is his FEET, with a hundred units of him already above it.
+- **It never lands.** Its floor is `UFO_LOW` 30, so the whole touchdown branch
+  is unreachable while it is up: no `onGround`, no run cycle to fall back into.
+
+### The beam is the reward
+
+`eggAim()` replaced four numbers written into the collection test (the bird's
+chest at +74, a 46x62 grab box, the magnet's radius and pull). The saucer's
+reward is that it does not pick eggs up, it hoovers them: a radius wider than
+the craft, at more than twice the pull. The magnet perk still stacks by
+`Math.max`, because a player who paid for reach should never watch it shrink
+when they take a vehicle.
+
+The three shafts are drawn, for the same reason the exhaust is, and they
+**stop at the road** -- `len` is capped at the distance from the lamp to the
+ground, so the beam pools on the dirt as he comes down instead of punching
+through it. At the hover floor the craft is 30 units up, so any fixed length
+punched through. Motes climb the beam off `game.t` and an index: no particle
+allocated, culled or carried, and it is what sells suction rather than torch.
+
+**No abduction.** It was designed and dropped: `NPC_REACT` is `false`, every
+background reaction is deliberately switched off, and the run is nine worlds
+now rather than a farm. Adding a livestock reaction would have been fighting an
+explicit decision to get a joke that only lands in world one.
+
+### The rest
+
+- **`pickVeh()` ALTERNATES rather than rolls.** A run that finds two eggs
+  should show both vehicles, and a fair coin gives the same one twice a quarter
+  of the time. Which one the run opens with is the coin flip.
+- **The egg still does not say which.** That is why the pickup is a mystery egg
+  rather than a picture of the reward, and it is worth twice as much now.
+- **The free hit moved to the pickup.** `game.rideTough` was set once per run
+  from the trolley's level, which with two vehicles spends the saucer's charge
+  on the trolley and leaves a second pickup with nothing. `vehTough()` is asked
+  when a vehicle arrives.
+- **`S.ufoget()` is a theremin** -- one continuous rise with nothing struck in
+  it, against the trolley's three beats of weight. There is no recording behind
+  it, so the synth IS the sound rather than a fallback. Level set with
+  `tools/sfx.py`: **0.243**, against `truckget` 0.296 and `hit` 0.216. Never by
+  ear.
+- **`?ufo=1`** starts a run already in it. `?ride=1` still gives the trolley.
+- **`?ridetest` reports 6 TIGHT roadblocks with a 0px window, and it did so at
+  `109ded3` too** -- verified by serving `git show HEAD:index.html` side by
+  side. It is not from this work, and it is the next thing worth chasing.
 
 ## Next
 

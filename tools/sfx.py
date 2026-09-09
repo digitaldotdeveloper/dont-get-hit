@@ -43,6 +43,9 @@ ONE = [
     ("powerdown", None, 1.20),
     ("truckjump", None, 1.00), ("truckboost", None, 0.90),
     ("truckland", None, 0.90),
+    # the saucer, which has no recording behind it -- the synth IS the sound,
+    # so this is the only place its level can be set against anything
+    ("ufoget",   None, 1.40),
 ]
 # name, [args], gap between them, seconds each
 RUNS = [
