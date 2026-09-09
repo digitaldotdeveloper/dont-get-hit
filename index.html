@@ -3389,6 +3389,16 @@ function pickFrame(p){
     return ['hit', Math.min(n-1, Math.floor(clamp(game.dyingT/1.15,0,1) * n))];
   }
   if(game.mode === 'dead') return ['hit', FRAME_DATA.hit.length - 1];
+  /* THE BLAST IS THE HIT SET, NOT THE RUN SET. Without this he leaves the
+     explosion in a running pose, because pickFrame falls through to onGround
+     and he is, technically, on the ground. Frames 1-4 are launched, tumbling,
+     tumbling, face down -- exactly the sequence, and it already exists. */
+  if(game.mode === 'blast'){
+    const n = FRAME_DATA.hit.length;
+    if(game.blastPhase !== 'fly') return ['hit', n - 1];      // still lying there
+    if(rag.y < 26) return ['hit', 4];                          // skidding, face down
+    return ['hit', 1 + (Math.floor(game.blastT * 11) % 3)];    // tumbling
+  }
   if(pl.state === 'land'){
     const k = clamp(1 - pl.stateT/0.26, 0, 1);          // 1 at touchdown -> 0 recovered
     return ['land', k > 0.66 ? 1 : (k > 0.28 ? 2 : 3)];
@@ -9137,6 +9147,7 @@ function render(){
   }
   if(inCage || cageSX > -VW*1.3) drawCageBack(cageSX);
   if(game.mode==='dying' || game.mode==='blast'){
+    if(game.mode==='blast') drawTnt();
     drawPlayerShadow(rag.x - cam.x, Math.max(0, GROUND - rag.y - CK.standH));
     ctx.save(); ctx.translate(-cam.x, 0);
     rag.draw();
@@ -9906,7 +9917,7 @@ function deathTnt(i){
   if(!spend(tntCost(i))){ toast('NOT ENOUGH EGGS', true); S.bonk(); return; }
   game.usedTnt = true;
   deathClose();
-  startBlast(Math.round(t.m * PERK.bang()));
+  startBlast(Math.round(t.m * PERK.bang()), i);
 }
 
 /* ---- the blast -----------------------------------------------------------
@@ -9920,29 +9931,148 @@ function deathTnt(i){
    The world scrolls because game.dist and cam.x advance together, which is the
    same agreement the odometer fix established -- so a long enough blast can
    carry you across a zone boundary, and that is a feature. */
+/* The three bundles, lazily. They are wanted for one second after a death that
+   has already happened, so there is no case for putting three more requests on
+   the boot path the loading gate is counting. A bundle that has not arrived
+   draws as the fallback below and nothing waits for it. */
+const TNT_IMG = [null, null, null];
+function tntArt(i){
+  if(TNT_IMG[i] === null){
+    const im = new Image(); im.src = 'art/shop/tnt' + (i+1) + '.webp';
+    TNT_IMG[i] = im;
+  }
+  const im = TNT_IMG[i];
+  return (im && im.complete && im.naturalWidth) ? im : null;
+}
+/* And when it has not, a stick drawn in code -- red cylinder, cream band, black
+   outline. It is on screen for a second at the size of a fist, so this is close
+   enough to never look like a missing asset. */
+function drawTntFallback(n){
+  for(let k = 0; k < n; k++){
+    const dx = (k - (n-1)/2) * 17;
+    ctx.save(); ctx.translate(dx, 0);
+    ctx.fillStyle = '#C1352B'; ctx.strokeStyle = '#0B0A12'; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.roundRect(-11, -34, 22, 68, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#F2E3C0';
+    ctx.beginPath(); ctx.rect(-11, -9, 22, 18); ctx.fill();
+    ctx.strokeStyle = '#0B0A12'; ctx.lineWidth = 3.5; ctx.stroke();
+    ctx.restore();
+  }
+  ctx.strokeStyle = '#0B0A12'; ctx.lineWidth = 5; ctx.beginPath();
+  ctx.moveTo(0, -34); ctx.quadraticCurveTo(16, -54, 4, -70); ctx.stroke();
+}
+/* THE THREE BEATS. A body that is simply thrown the instant you press the
+   button is a number going up; the second and a half before it is what makes
+   it an event. Drop, then burn, then throw. */
+const TNT_DROP = 0.42, TNT_FUSE = 0.58;
 const BLAST_T = 2.3;
-function startBlast(metres){
+/* Bounces, not one arc. Jetpack Joyride's blast skips the body down the road
+   and every landing is a beat -- dust, a thud and a shake. One long parabola
+   is a cannonball, and a cannonball is somebody else's game. Heights are
+   fractions of the first hop; the durations sum to BLAST_T. */
+const HOPS = [{h:1, d:0.90}, {h:0.42, d:0.62}, {h:0.18, d:0.45}, {h:0.07, d:0.33}];
+const HOP_PEAK = 330;
+function startBlast(metres, tier){
   game.mode = 'blast';
   game.blastT = 0; game.blastM = metres; game.blastDone = 0;
+  game.blastPhase = 'drop'; game.blastHop = 0; game.blastFuse = 0;
   game.spawnT = 1e9; game.crowT = 1e9; game.dropT = 1e9;
   game.obstacles.length = 0; game.crows.length = 0; game.drop = null;
-  game.freeze = 0.09; game.timeScale = 1; game.tsTarget = 1;
-  addShake(34); game.flash = 1;
-  S.zap(); S.hit(); S.timber();
-  const gy = GROUND - (rag.alive ? rag.y : player.y);
-  spark(rag.x, gy - 60, 42, {col:C.amber, s0:260,s1:900, l0:0.4,l1:1.0, r0:5,r1:14});
-  spark(rag.x, gy - 60, 26, {col:C.coral, s0:180,s1:700, l0:0.4,l1:0.9, r0:6,r1:16});
-  smoke(rag.x, GROUND - 8, 22, {a0:Math.PI*0.75, a1:Math.PI*2.1, s0:180, s1:520,
-                                r0:26, r1:56, l0:0.6, l1:1.3});
-  featherBurst(rag.x, gy - 60, 26, 520);
-  rag.vy = -520; rag.vrot = 9;
-  if(navigator.vibrate) try{ navigator.vibrate([40,60,90]); }catch(e){}
+  game.timeScale = 1; game.tsTarget = 1;
+  /* IT LANDS BEHIND HIM. He faces right and it has to throw him right, so the
+     charge goes down on his left -- and it arrives from off the left edge on a
+     throw, which reads as somebody lobbing it rather than as it materialising. */
+  game.tnt = { n: Math.min(3, (tier|0) + 1), x: rag.x - 430, y: 560, rot: -2.2,
+               x0: rag.x - 430, y0: 560, x1: rag.x - 78 };
+  S.whoosh();
   elHud.classList.add('on');
+}
+function blastBoom(){
+  game.blastPhase = 'fly';
+  game.blastT = 0;
+  const t = game.tnt, gy = GROUND - rag.y;
+  game.boomT = 0;                       // the cage's own explosion frames
+  game.freeze = 0.10; addShake(40); game.flash = 1;
+  S.zap(); S.hit(); S.timber();
+  spark(t.x, GROUND - 40, 46, {col:C.amber, s0:280,s1:980, l0:0.4,l1:1.0, r0:5,r1:15});
+  spark(t.x, GROUND - 40, 30, {col:C.coral, s0:200,s1:760, l0:0.4,l1:0.9, r0:6,r1:17});
+  smoke(t.x, GROUND - 8, 26, {a0:Math.PI*0.72, a1:Math.PI*2.2, s0:200, s1:580,
+                              r0:28, r1:62, l0:0.7, l1:1.4});
+  featherBurst(rag.x, gy - 60, 30, 560);
+  rag.vrot = 9;
+  if(navigator.vibrate) try{ navigator.vibrate([40,60,90]); }catch(e){}
+}
+/* Where he is, vertically, this far into the flight. The hops are walked rather
+   than solved because each one has to announce its own landing, and a closed
+   form would give the height without ever telling us a bounce had happened. */
+function hopY(t){
+  let acc = 0;
+  for(let i = 0; i < HOPS.length; i++){
+    const h = HOPS[i];
+    if(t < acc + h.d || i === HOPS.length - 1){
+      const u = Math.min(1, (t - acc) / h.d);
+      if(i > game.blastHop){
+        game.blastHop = i;              // a landing, and it gets a landing's beat
+        addShake(9 - i*2); S.thud();
+        smoke(rag.x, GROUND - 6, 6 - i, {a0:Math.PI*0.85, a1:Math.PI*2.15,
+              s0:110, s1:300, r0:16, r1:38, l0:0.4, l1:0.9});
+        spark(rag.x, GROUND - 20, 5, {col:'rgba(210,180,140,.9)', s0:90, s1:260,
+              l0:0.2, l1:0.45, r0:3, r1:8, g:900});
+      }
+      return HOP_PEAK * h.h * Math.sin(u * Math.PI);
+    }
+    acc += h.d;
+  }
+  return 0;
 }
 function updateBlast(dt){
   game.blastT += dt;
-  const t = Math.min(1, game.blastT / BLAST_T);
-  const p = 1 - Math.pow(1 - t, 2.2);              // fast out of the blast, easing down
+  const t = game.tnt;
+
+  /* ---- it is still in the air ---- */
+  // he is not moving while it falls, so a damp is the right thing here --
+  // framed further left to leave room for the throw coming in off-screen
+  if(game.blastPhase === 'drop' || game.blastPhase === 'fuse'){
+    cam.x = damp(cam.x, rag.x - VW*0.52, 5, dt);
+  }
+  if(game.blastPhase === 'drop'){
+    const u = Math.min(1, game.blastT / TNT_DROP);
+    t.x = t.x0 + (t.x1 - t.x0) * u;
+    t.y = t.y0 * (1 - u*u);                       // falls, rather than eases down
+    t.rot = -2.2 + u * 7.5;
+    if(u >= 1){
+      t.y = 0; t.rot = -0.35;
+      game.blastPhase = 'fuse'; game.blastT = 0;
+      addShake(5); S.thud();
+      smoke(t.x, GROUND - 6, 5, {a0:Math.PI*0.9, a1:Math.PI*2.1, s0:70, s1:190,
+            r0:12, r1:28, l0:0.3, l1:0.7});
+    }
+    return;
+  }
+
+  /* ---- the fuse, which is the whole reason this reads as an explosion ---- */
+  if(game.blastPhase === 'fuse'){
+    const u = Math.min(1, game.blastT / TNT_FUSE);
+    /* Accelerating: eight ticks over the burn, closer together as it goes, so
+       the last half second is unmistakably a countdown. */
+    game.blastFuse -= dt;
+    if(game.blastFuse <= 0){
+      game.blastFuse = 0.115 - u*0.075;
+      S.tick(); addShake(1 + u*3);
+      spark(t.x + 4, GROUND - 70, 3, {col:C.amber, s0:70, s1:210, l0:0.15, l1:0.35,
+            r0:2, r1:5, g:400});
+    }
+    if(u >= 1) blastBoom();
+    return;
+  }
+
+  /* ---- and away ---- */
+  /* The blast owns its own boom clock. The one that already existed lives
+     inside updateIntro, which does not run here -- so boomT sat at zero and the
+     fireball drew its first frame, forever. */
+  if(game.boomT !== undefined && game.boomT < BOOM_T) game.boomT += dt;
+  const k = Math.min(1, game.blastT / BLAST_T);
+  const p = 1 - Math.pow(1 - k, 2.2);              // fast off the blast, easing down
   const want = game.blastM * p;
   const step = want - game.blastDone;
   game.blastDone = want;
@@ -9951,23 +10081,75 @@ function updateBlast(dt){
   game.score += step * SCORE_PER_M;
   player.x   += units;
   rag.x      += units;
-  /* An arc, not a fall: he goes up out of the explosion and comes down as the
-     metres run out, so the landing and the last metre happen together. */
-  rag.y  = Math.max(0, Math.sin(t * Math.PI) * 260 * (1 - t*0.35));
-  rag.rot += 8.5 * dt * (1 - t*0.6);
-  cam.x = player.x - PX;
-  if(Math.random() < dt*44) smoke(rag.x - 30, GROUND - 6, 1,
+  rag.y = hopY(game.blastT);
+  rag.rot += (7.5 * (1 - k*0.85)) * dt;
+  /* THE FRAMING MOVES, THE TRACKING DOES NOT. He covers a thousand metres in
+     2.3s -- twenty-six thousand world units a second -- and a damped camera
+     settles about three thousand units behind that, which put the entire
+     animation a screen and a half off the right edge. rag.x and player.x
+     advance by the same delta every frame, so pinning is exact and lag-free;
+     easing the OFFSET instead walks the shot forward to leave room for the road
+     without ever letting him slide out of it. Cutting straight to the flight's
+     framing threw him a fifth of a screen sideways on the frame of the
+     explosion, which read as a jump rather than a launch. */
+  const fr = 0.52 - 0.18 * Math.min(1, game.blastT / 0.32);
+  cam.x = rag.x - VW*fr;
+  if(Math.random() < dt*40) smoke(rag.x - 30, GROUND - 6, 1,
       {a0:Math.PI*0.9, a1:Math.PI*1.6, s0:90, s1:280, r0:14, r1:34, l0:0.4, l1:0.9});
-  if(Math.random() < dt*18) spark(rag.x, GROUND - rag.y - 40, 2,
+  if(Math.random() < dt*16) spark(rag.x, GROUND - rag.y - 40, 2,
       {col:C.amber, s0:120,s1:340, l0:0.2,l1:0.5, r0:3,r1:7, g:700});
   setScore(game.score);
-  if(t >= 1){
+  if(k >= 1){
     addShake(12); S.thud();
     smoke(rag.x, GROUND - 6, 10, {a0:Math.PI*0.85, a1:Math.PI*2.15, s0:120, s1:340,
                                   r0:20, r1:44, l0:0.5, l1:1.0});
     game.mode = 'dead'; game.deadT = 0; game.recover = 0;
+    game.tnt = null;
     player.recX = rag.x; player.state = 'sit';
     finishNow();
+  }
+}
+/* The charge on the ground, and the fireball over it. Drawn from the render
+   chain rather than from the update, so it sits in the world at the same
+   camera offset as everything else. */
+function drawTnt(){
+  const t = game.tnt; if(!t) return;
+  const x = t.x - cam.x;
+  // the charge stays where it went off, so it is allowed to leave; the
+  // fireball below is hung on him and must not be culled with it
+  if(game.blastPhase !== 'fly' && (x < -420 || x > VW + 420)) return;
+  if(game.blastPhase !== 'fly'){
+    ctx.save();
+    ctx.translate(x, GROUND - t.y - 34);
+    ctx.rotate(t.rot);
+    const im = tntArt(t.n - 1);
+    if(im){
+      const h = 104, w = h * (im.naturalWidth / im.naturalHeight);
+      ctx.drawImage(im, -w*0.5, -h*0.5, w, h);
+    } else drawTntFallback(t.n);
+    ctx.restore();
+  }
+  /* THE FIREBALL TRAVELS WITH HIM, and that is not a cheat. Anchored to where
+     the charge went off it is correct and invisible: the world scrolls at
+     twenty-six thousand units a second, so a static explosion is off the left
+     edge about eighty milliseconds after it starts and nobody ever sees the
+     thing they paid for. Hung just behind him it lasts its full half second and
+     reads as the blast still throwing him, which is what it is. */
+  if(game.boomT !== undefined && game.boomT < BOOM_T){
+    const list = FRAME_DATA.boom;
+    if(list && list.length){
+      const q = game.boomT / BOOM_T;
+      const fr = list[Math.min(list.length-1, Math.floor(q*list.length))];
+      const im = FR.img[fr.f];
+      if(im && im.complete && im.naturalWidth){
+        const sc = (430 / fr.w) * (0.7 + q*0.7);
+        ctx.save();
+        ctx.globalAlpha = q > 0.72 ? (1 - (q-0.72)/0.28) : 1;
+        ctx.translate(rag.x - cam.x - 130, GROUND - rag.y - 70);
+        ctx.drawImage(im, -fr.w*sc*0.5, -fr.h*sc*0.5, fr.w*sc, fr.h*sc);
+        ctx.restore();
+      }
+    }
   }
 }
 
@@ -10117,7 +10299,7 @@ function boot(){
     startRide, loseRide, spawnBasketDrop, dropClearAt, spawnElec, spawnPattern, spawnEggs,
     SAVE, SHOP, PERK, SKIN, SKINS, buy, buySkin, eggs, spend, earn,
     deathOffer, deathHeart, deathAd, deathTnt, deathSkip, startBlast, TNT, HEART_COST,
-    tntCost, heartCost, runMul,
+    tntCost, heartCost, runMul, drawTnt, hopY,
     die, finish, finishNow, softSave, dailyClaim, dailyState, skinApply, shopDraw, META,
     layRideCourse, rideApex, rideRise, rideCeil, truckGeom, truckFrame,
     elecDist, riding, wireHot, smoke, spark, pop, updateParticles, render,
