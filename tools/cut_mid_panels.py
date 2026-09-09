@@ -37,7 +37,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from PIL import Image                                       # noqa: E402
 import numpy as np                                          # noqa: E402
-from gen_mid_panels import PANELS                           # noqa: E402
+from gen_mid_panels import PANELS, INTERIORS                           # noqa: E402
 
 # Phrases from earlier wordings, so a re-prompt never orphans what came back.
 EXTRA_NEEDLES = {
@@ -377,7 +377,17 @@ def main():
         if not src:
             print('  %-6s no render yet -- skipped' % name)
             continue
-        im = trim_clipped(strip_baseline(key_panel(src)))
+        # AN INTERIOR IS CUT FULL-BLEED, and it is the opposite of everything
+        # below. A farm panel wants margins so two barns never touch; a wall
+        # wants NO margin, because panels butt in the game and a margin is a
+        # hole punched to the sky at every join -- the reported "walls suddenly
+        # appear". So the interior path keeps the full width, scales to fill the
+        # frame edge to edge, and does not fade its ends: the wall is supposed
+        # to run straight on into the next picture.
+        interior = name in INTERIORS
+        im = strip_baseline(key_panel(src))
+        if not interior:
+            im = trim_clipped(im)
         box = content_box(im)
         if not box:
             print('  %-6s nothing survived the key' % name)
@@ -408,7 +418,7 @@ def main():
             rows, junk = [], []
             for b in bands:
                 (rows if is_row(im, b, main) else junk).append(b)
-            if len(rows) > 1:
+            if len(rows) > 1 and not interior:
                 print('  %-6s REFUSED: the generator drew %d stacked rows (%s). A panel is '
                       'one row on one ground line -- re-prompt it.'
                       % (name, len(rows), ', '.join('%d-%d' % (b[0], b[1]) for b in rows)))
@@ -426,6 +436,25 @@ def main():
                 if box2:
                     im = im.crop(box2)
                 print('  %-6s (cleared %d stray speck(s) off the panel)' % (name, len(junk)))
+
+        if interior:
+            # fill the frame by WIDTH; the ground line is the bottom edge, so
+            # any overflow comes off the TOP, where the wall is only wall.
+            k = W / float(im.width)
+            im = im.resize((W, max(1, round(im.height * k))), Image.LANCZOS)
+            if im.height > H:
+                im = im.crop((0, im.height - H, W, im.height))
+            out = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+            out.alpha_composite(im, (0, H - im.height))
+            dst = os.path.join(dest_dir(name), name + '.webp')
+            out.save(dst, 'WEBP', lossless=True, quality=100, method=6)
+            edge = np.asarray(out)[..., 3]
+            reach = min((edge[:, 0] > 24).sum(), (edge[:, -1] > 24).sum()) / float(H)
+            print('  %-6s %4dx%-4d -> %dx%d  full-bleed, edges %d%% covered  %5.1f KB%s'
+                  % (name, box[2] - box[0], box[3] - box[1], W, H, reach * 100,
+                     os.path.getsize(dst) / 1024.0,
+                     '' if reach > 0.35 else '   <-- the wall does NOT reach an edge; re-render'))
+            continue
 
         # scale off the tallest structure, not the bounding box
         k = ref_tall / float(tallest_run(im))

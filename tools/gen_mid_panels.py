@@ -264,6 +264,74 @@ for _w in WORLDS:
 
 
 # ---------------------------------------------------------------------------
+# AN INTERIOR IS NOT A ROW OF PROPS, and this clause is the fix for the single
+# biggest thing wrong with the map.
+#
+# ROW says "evenly spaced with clear empty gaps between them". That is right for
+# a farm -- you see sky between the barns -- and completely wrong for the inside
+# of a prison. Rendered with it, every indoor world came back as four detached
+# objects standing on a ground line with the sky wash showing between them: cell
+# doors with no wall around them, a desk, a filing cabinet, a lectern. Butt those
+# four panels together (tools/joins.py draws exactly that strip) and you get
+# furniture floating in a void. Nothing was BROKEN -- the cut is clean, the key
+# is clean, the blend works -- it just looks cheap, and no amount of edge-fading
+# fixes props standing in nothing. Asked to judge real frames, Gemini called it
+# "an unpolished asset flip", and it was reading this clause's output.
+#
+# An interior has to read as ONE CONTINUOUS SPACE with things set INTO it, and it
+# needs somewhere for the eye to go PAST the front plane -- a recess, a lit
+# opening -- or it is still a flat wall of stickers. Both halves matter: the
+# first stops the gaps, the second stops it reading as a painted backdrop.
+INTERIOR = ("MIDDLE LAYER ONLY, and this matters more than any single object listed: this "
+            "is the INSIDE of a place and must read as ONE CONTINUOUS SPACE. A back wall "
+            "runs UNBROKEN from the far left of the artwork to the far right, standing "
+            "from the ground line up to at least two thirds of the image height, and "
+            "everything described is SET INTO that wall or BUILT AGAINST it -- recessed "
+            "doorways, alcoves, mounted fittings, built-in shelving. There are NO gaps of "
+            "empty background between the things and NOTHING stands alone in space. "
+            "DEPTH: put at least one darker RECESS or lit opening in the wall that the eye "
+            "can see back into, and run one pipe, beam, cable or rail across in FRONT of "
+            "it, so the picture has a front, a middle and a back instead of one flat "
+            "plane. Each thing described appears exactly ONCE. ")
+
+# EDGES IS THE WRONG RULE FOR A WALL, and this is its opposite.
+#
+# EDGES asks for empty magenta margins so a panel can sit beside a different
+# panel without their contents colliding, and the cutter enforces a 4% gap on
+# top of that. Correct for a farm: two barns should not touch. But panels BUTT
+# in the game -- the draw loop steps by exactly one panel width -- so on an
+# interior those margins are a hole punched through the wall to the sky every
+# time one panel ends, which is the "walls suddenly appear" seam reported from
+# a screenshot. A wall has to be CUT OFF by the frame and continue into the
+# next picture, and the two ends have to meet at the SAME HEIGHT or the join
+# steps. That height is named outright rather than left to the model, because
+# four panels are rendered independently and nothing else makes them line up.
+JOIN = ("The back wall REACHES BOTH the far LEFT edge and the far RIGHT edge of the image "
+        "and is CUT OFF by them -- this picture is placed in a row beside other pictures of "
+        "the SAME wall and it must run on into them, so do NOT leave an empty margin and do "
+        "NOT finish the wall with a corner or a return. The TOP of the wall is a STRAIGHT "
+        "HORIZONTAL line at exactly TWO THIRDS of the image height, at the same height where "
+        "it meets the left edge and where it meets the right edge. ")
+
+# The outdoor panels of the later worlds have the opposite problem and a milder
+# fix: gaps between things are FINE at night in a desert, what is not fine is a
+# ground line that stops. So they keep SCENE's one-of-each rule and gain a
+# continuous mass along the back to sit against.
+OUTDOOR = (SCENE + "The GROUND runs unbroken from the far left of the artwork to the far "
+           "right, and a continuous low mass of land -- dunes, banked earth, distant "
+           "hills -- runs along behind everything so the picture never shows a hole "
+           "straight through to nothing. ")
+
+# WHICH PANELS ARE INSIDE SOMETHING. Named one at a time rather than by world,
+# because two worlds are mixed: Area 51 is a hangar and a maintenance bay INDOORS
+# and an airstrip and a radar dish OUTSIDE, and the space set is a corridor and a
+# docking bay indoors against a launch pad and a moon surface out in the open.
+INTERIORS = set(list(WORLDS['empire']) + list(WORLDS['prison']) + list(WORLDS['cherno'])
+                + list(WORLDS['cia']) + list(WORLDS['alien']) + ['a1', 'a3', 's2', 's3'])
+OUTDOORS = {'a2', 'a4', 's1', 's4'}
+
+
+# ---------------------------------------------------------------------------
 # THE FLOOR AND THE CEILING. These are not panels -- they are the world's own
 # looping TILES, so they obey the opposite composition rule to everything
 # above: their left and right edges must MATCH, because each one is tiled
@@ -355,7 +423,10 @@ def prompt_for(name):
         shape = HANG_SHAPE if name.endswith('_hang') else NEAR_SHAPE
         return (STYLE + 'A seamless side-scrolling background layer showing ' +
                 LAYERS[name] + '. ' + shape + LOOPS + MAGENTA + NOBLUE)
-    comp = SCENE if (name in TRANSITION or name in SINGULAR) else ROW
+    if name in INTERIORS:
+        return STYLE + PANELS[name] + ' ' + INTERIOR + JOIN + MAGENTA + NOBLUE
+    comp = (OUTDOOR if name in OUTDOORS else
+            SCENE if (name in TRANSITION or name in SINGULAR) else ROW)
     return STYLE + PANELS[name] + ' ' + comp + EDGES + MAGENTA + NOBLUE
 
 
@@ -374,9 +445,7 @@ def main():
             # ONE take each. The last round burned a day's window on three
             # takes of ten prompts and half of them failed on capacity anyway;
             # a panel that comes back wrong is cheaper to re-queue by name.
-            comp = SCENE if (name in TRANSITION or name in SINGULAR) else ROW
-            s.generate(STYLE + PANELS[name] + ' ' + comp + EDGES + MAGENTA + NOBLUE,
-                       runs=1, model='Pro')
+            s.generate(prompt_for(name), runs=1, model='Pro')
         print('queued %d panel(s). Run with --fetch, or cut with '
               'tools/cut_mid_panels.py' % len(want))
 
