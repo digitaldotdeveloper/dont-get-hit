@@ -3511,3 +3511,42 @@ nothing else is running rather than closing someone else's conversation.
 `python tools/join_page.py prison cia > page.html` builds the before/after
 review page; stages live in `tools/_before/` and `tools/_step1/`.
 
+### The join fix that worked, and the one that did not
+
+**Panels OVERLAP, they do not butt.** `MID_OVERLAP` is 7%: the draw loop steps by
+`g.W * (1 - MID_OVERLAP)` and every panel carries an alpha ramp down its LEFT
+edge, baked once at load in `rampLeft()`. A panel's soft edge therefore dissolves
+onto the picture BEHIND it instead of onto the sky. This is what finally made the
+joins invisible -- fading the ends and butting them, which is what the cutter used
+to do, punches a hole through an interior wall at every join. Only the left edge
+is ramped; the right is the one that gets covered. Everything downstream keys off
+`step`, not the panel width, including which metre a panel thinks it stands at.
+
+**Attaching the previous panel does NOT work, and it was measured twice.** The
+obvious fix -- upload panel N, ask Gemini to continue it into panel N+1 -- is
+implemented and working in `tools/render_chain.py`, and on the prison it scored:
+
+    without it   colour 67.5   profile  0.0%
+    with it      colour 90.4   profile 21.7%
+    with the height rule restated to fight it   123.6 / 99.6%
+
+Given a reference the model REFRAMES. The style matches beautifully and the wall
+comes back lower, leaving a gap of sky above it -- and a profile step is a hole,
+which is worse than a colour step. Keep the tool; do not reach for it before
+reading this.
+
+`python tools/joins.py -v` scores every join in the map, including the WRAP (the
+last panel is followed by the first again, and no left-to-right chain can fix
+that one). It measures the FILES; since the game overlaps them, treat the numbers
+as a worst case and a ranking, not as what a player sees.
+
+`python tools/mapshot.py 1700 2600` photographs the map from inside the running
+game. It needs `python -m http.server 8899` in the project root, and it works
+because of two flags: `?noboot` (the loading gate runs on requestAnimationFrame,
+which headless Chrome throttles -- without it every shot is the loader frozen at
+97%) and a real TAP (nothing is on `window`, so there is no function to call).
+
+`python tools/harmonise.py --write` pulls each world's panels onto one tone by
+partial Reinhard transfer. It runs BEFORE `opt_panels.py`, never on the farm or
+the approach -- those are meant to be separate buildings with sky between them.
+
