@@ -8169,6 +8169,97 @@ function slotFor(zone, key){
   const L = BG.find(x => x.key === key);
   return (L && L.ready) ? L : null;
 }
+/* THE ROAD CHANGES BEFORE YOU REACH IT.
+
+   Every slot used to cut on the seam, and for the floor that is a straight
+   vertical line sweeping across the screen: one stride you are on a prison
+   floor and the next you are on rubble, with a ruler-edge between them.
+   Reported as "the scene just appears suddenly, like a bug", and it is the
+   right complaint -- the props already arrive early, because a mid panel is
+   chosen by the TILE's own metre, so the next world's buildings are visible
+   long before you get there. The ground was the only thing still snapping.
+
+   A crossfade is not the answer here: two opaque floors at half alpha is the
+   double exposure this file has warned about since the empire was built. What
+   works is the same idea as the farm's approach, in space rather than in
+   probability -- the new ground arrives in PATCHES.
+
+   Patches are anchored to WORLD position, not screen position, so they scroll
+   with the ground and never shimmer; they grow as the seam approaches; and
+   past the seam a few islands of the old world hang on and shrink. You see the
+   road change before you cross, which is what walking into another place
+   actually looks like. */
+/* IN SCREENS, NOT IN METRES OF TRAVEL. The first value here was 260m, which
+   sounds like a gentle approach and is seven screens wide: each "patch" came
+   out bigger than the view, so what the player saw was still one edge, just a
+   slower one. The blend has to happen inside what the eye can hold, so it is
+   sized off the screen -- about a screen and a third, which at this speed is
+   two or three seconds of the new ground arriving in pieces. */
+const ZONE_BLEND_SCREENS = 1.9;
+
+function patchClip(seamX, band, ahead){
+  /* `ahead` true: patches of the NEW world BEFORE the seam.
+     `ahead` false: islands of the OLD world AFTER it. */
+  /* NO beginPath HERE. The caller has already started a path and added the
+     region past the seam to it; starting a new one wipes that and leaves the
+     clip as patches alone -- which is how the first version of this drew
+     nothing at all where it mattered. This adds rects to whatever path is
+     open. */
+  /* Nine slots, and each takes a share of its slot equal to how near the seam
+     it is: unbroken next to the boundary, a sliver at the far end. That ramp
+     is the whole effect -- the ground going from "one odd patch of rubble" to
+     "this is rubble now" over about two screens, which at this speed is three
+     or four seconds of watching it arrive. */
+  const n = 9;
+  const slot = band/n;
+  for(let i = 0; i < n; i++){
+    const f = (i + 0.5)/n;                       // 0 at the seam, 1 at the far end
+    const grow = clamp(1.25*(1 - f), 0, 1);
+    if(grow <= 0.02) continue;
+    const centre = ahead ? seamX - band*f : seamX + band*f;
+    const w = slot*grow;
+    /* RAGGED, NOT RECTANGULAR. A rect clip puts a ruler-straight vertical edge
+       between two kinds of ground, which is the same artefact as the seam it
+       replaces -- just several of them. Each patch is a polygon with a stepped
+       edge instead, hashed off its own index so the shape is fixed and slides
+       with the patch. Ground meeting ground is never a straight line. */
+    const x0 = centre - w*0.5, x1 = centre + w*0.5;
+    const jag = (n2, sp) => (hash(n2*7.31 + sp*3.17) - 0.5)*slot*0.42;
+    const steps = 4;
+    ctx.moveTo(x0 + jag(i, 0), -2);
+    for(let sp = 1; sp <= steps; sp++) ctx.lineTo(x0 + jag(i, sp), VH*sp/steps);
+    for(let sp = steps; sp >= 0; sp--) ctx.lineTo(x1 + jag(i + 41, sp), VH*sp/steps);
+    ctx.closePath();
+  }
+}
+
+function drawGroundBlend(A, B, key, seamX){
+  const band = VW*ZONE_BLEND_SCREENS;          // screen units; this layer is drawn 1:1
+  drawLayerSlot(A, key, 1);                    // the world you are still in
+  if(!B || B === A) return;
+
+  ctx.save();                                  // the new world: past the seam, plus patches before it
+  ctx.beginPath();
+  ctx.rect(seamX, 0, VW - seamX + 2, VH);
+  patchClip(seamX, band, true);
+  ctx.clip();
+  drawLayerSlot(B, key, 1);
+  ctx.restore();
+
+  /* ...and a few islands of the old world hanging on PAST the seam. Islands
+     only: this used to clip to everything left of the seam as well, which
+     repainted the old ground straight back over the patches the block above
+     had just drawn -- so the approach did nothing at all and the change still
+     landed on one line. Everything left of the seam is already the old world
+     from the first draw; there is nothing to do there. */
+  ctx.save();
+  ctx.beginPath();
+  patchClip(seamX, band*0.45, false);
+  ctx.clip();
+  drawLayerSlot(A, key, 1);
+  ctx.restore();
+}
+
 function drawBgLayers(keys){
   const z = zoneAt(game.dist/UPM);
   const same = z.a === z.b;
@@ -8230,6 +8321,12 @@ function drawBgLayers(keys){
        the mounds grow for hundreds of metres, the light dims, the livestock
        thin out, and the formation itself is visible from a long way off with
        the lit city already showing through its mouth. */
+    if(key === 'near'){
+      /* The ground the player is running on is the one thing a hard cut is
+         unforgivable on, because it is the thing they are looking at. */
+      drawGroundBlend(A, B, key, Math.max(-2, Math.min(VW + 2, seam)));
+      continue;
+    }
     const cut = Math.max(-2, Math.min(VW + 2, seam));
     drawLayerSlot(A, key, 1, -2, cut);
     drawLayerSlot(B, key, 1, cut, VW + 2);
