@@ -280,7 +280,9 @@ WORLDS = {
         "shapes suspended in two of them, a console of switches between the tanks, and a "
         "cable bundle running along the floor.",
   'x2': "A laboratory bench room: a long steel bench under a big domed lamp, a tray of "
-        "glassware on a stand, two screens on a trolley, and a wheeled sample cabinet.",
+        "glassware on a stand, two screens on a trolley, and a wheeled sample cabinet. "
+        "Absolutely NO straw, NO hay, NO bales, NO wooden farm furniture -- everything in "
+        "this room is metal, glass or bronze.",
   # NEVER ASK FOR MAGENTA IN THE ARTWORK. The key deletes any bright pink or
   # purple pixel -- r>150, b>150, g<110 -- and then desaturates whatever purple
   # is left to a 190 alpha, because that is how the sky is removed. So "lit from
@@ -475,11 +477,67 @@ FAR_SHAPE = ("This is the FAR DISTANCE seen through thick haze. Draw it as SIMPL
              "an uneven skyline of different heights across it; the top third of the image "
              "is completely empty. ")
 
+# THE WALL ABOVE THE WALL, and the COLUMN that hides every join.
+#
+# UPPER fills the empty upper third. It is a looping tile like the floor, so its
+# two edges have to meet, and it must go DARK toward the top: the flight lane has
+# to stay the clearest part of the screen, and a fully lit wall up there competes
+# with the thing the player is actually looking at.
+UPPER_SHAPE = ("This is the UPPER PART OF A WALL, seen from below and running the full width "
+               "of the image edge to edge. The BOTTOM of the image is the lit part of the "
+               "wall with its material clearly drawn; going UP the wall gets steadily DARKER "
+               "and simpler until the TOP EDGE of the image is nearly black, as if the light "
+               "comes from below and the ceiling is lost in shadow. There is no ceiling drawn "
+               "across the top and no sky -- it is wall all the way up, just unlit. Along the "
+               "very BOTTOM edge runs one horizontal structural band -- a steel beam, a "
+               "concrete ledge or a duct -- straight and full width. ")
+
+# PILLAR is the fix for the other half of the complaint. Panels join on a shared
+# connector band, which was chosen for being FEATURELESS -- and two featureless
+# bands meeting means about 190px of dead flat wall at every join, reported as a
+# fade. A column there instead is what a real building has at that spacing, and
+# it makes the join deliberate. It is drawn SYMMETRIC on purpose: each panel
+# carries half of it at each end, so any two panels that meet compose one whole
+# column.
+PILLAR_SHAPE = ("ONE SINGLE VERTICAL COLUMN standing alone, seen straight on, filling the "
+                "full height of the image from the very bottom edge to the very top edge. "
+                "It is PERFECTLY SYMMETRIC about its own vertical centre line. It is narrow "
+                "-- about one fifth as wide as it is tall. Nothing else is in the picture: "
+                "everything around the column is SOLID FLAT MAGENTA #FF00FF. No floor, no "
+                "shadow on the ground, no background. ")
+
 LAYERS = {
  # A flat floor is a thin band however firmly the shape clause asks for half
  # the picture -- there is simply nothing tall in "concrete". So this one is
  # given something with HEIGHT in it: a low wall along the back of the strip.
  # The tile is scaled by its height, so the art has to contain some.
+ 'empire_upper': "the upper part of a packed red-brown earth wall in an ant city, with pale "
+                 "root threads and small stones in it and a heavy timber beam along the bottom",
+ 'prison_upper': "the upper part of a grey breeze block prison wall with a steel beam along the "
+                 "bottom and a run of conduit clipped to it",
+ 'cherno_upper': "the upper part of a grey concrete reactor hall wall with rust streaks and a "
+                 "riveted steel beam along the bottom",
+ 'cia_upper':    "the upper part of a warm grey-brown concrete bunker wall with a stencilled "
+                 "band and a riveted steel beam along the bottom",
+ 'area51_upper': "the upper part of a corrugated steel hangar wall with vertical ribs and a "
+                 "heavy truss beam along the bottom",
+ 'alien_upper':  "the upper part of a wall of dull bronze alien panelling with faint green "
+                 "seams and a smooth curved bronze rib along the bottom",
+ 'space_upper':  "the upper part of an off-white space station wall of bolted panels with a "
+                 "grey steel beam along the bottom",
+ 'empire_pillar': "a thick round column of packed red-brown earth bound with rope and timber "
+                  "bracing, with a carved band near its top",
+ 'prison_pillar': "a square grey concrete pillar with chipped corners, a rust stain down one "
+                  "side and a steel collar near its top",
+ 'cherno_pillar': "a square grey concrete pillar with peeling paint, rust streaks and a "
+                  "riveted steel collar near its top",
+ 'cia_pillar':    "a riveted steel stanchion painted olive drab, with bolt plates at top and "
+                  "bottom and a stencilled band",
+ 'area51_pillar': "a steel lattice hangar column of riveted girders with a bolted base plate",
+ 'alien_pillar':  "a smooth organic column of dull bronze that swells slightly at its middle, "
+                  "with a thin glowing GREEN seam running up it",
+ 'space_pillar':  "a white bolted structural column with a grey steel collar and a yellow and "
+                  "black hazard band near its base",
  'prison_far':  "a distant block of stacked cell galleries three tiers high with narrow "
                 "walkways along them, and one taller square watchtower to one side",
  'cherno_far':  "distant wide cooling towers with sloped waists, a tall chimney stack, and a "
@@ -644,7 +702,14 @@ def prompt_for(name, chained=False):
        assembles its own prompt will eventually assemble the wrong one."""
     if name in LAYERS:
         shape = (HANG_SHAPE if name.endswith('_hang') else
-                 FAR_SHAPE if name.endswith('_far') else NEAR_SHAPE)
+                 FAR_SHAPE if name.endswith('_far') else
+                 UPPER_SHAPE if name.endswith('_upper') else
+                 PILLAR_SHAPE if name.endswith('_pillar') else NEAR_SHAPE)
+        if name.endswith('_pillar'):
+            # a pillar does not loop and must not be asked to: it is one object,
+            # cut out and stamped onto the ends of the panels.
+            return (STYLE + 'A single object on a flat magenta background: ' +
+                    LAYERS[name] + '. ' + shape + MAGENTA + NOBLUE)
         return (STYLE + 'A seamless side-scrolling background layer showing ' +
                 LAYERS[name] + '. ' + shape + LOOPS + MAGENTA + NOBLUE)
     if name in INTERIORS:

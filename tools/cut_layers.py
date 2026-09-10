@@ -62,12 +62,28 @@ def cut(name, src):
     world, slot = name.split('_')
     im = BL.key_magenta(Image.open(src))
 
+    # A PILLAR IS NOT A TILE. It is a single object, cut out and stamped onto the
+    # ends of a world's panels by tools/connect.py so that any two of them meet
+    # on a column instead of on a strip of blank wall. It never repeats, so it
+    # gets no loop seam and no anchoring -- just the cut-out, trimmed to itself.
+    if slot == 'pillar':
+        box = content_box(im)
+        if box:
+            im = im.crop(box)
+        out_dir = os.path.join(ROOT, 'tools', 'pillars')
+        os.makedirs(out_dir, exist_ok=True)
+        dst = os.path.join(out_dir, world + '.webp')
+        im.save(dst, 'WEBP', lossless=True, quality=100, method=6)
+        return dst, im.size, ''
+
     seam = BL.loop_seam(im, WINDOW)
     if seam:
         b, a, _score = seam
         im = im.crop((b, 0, a, im.height))
 
-    if slot.startswith('near') or slot == 'far':
+    if slot == 'upper':
+        pass
+    elif slot.startswith('near') or slot == 'far':
         im = strip_baseline(im)
         box = content_box(im)
         if box:                       # keep the full width, trim only the air above

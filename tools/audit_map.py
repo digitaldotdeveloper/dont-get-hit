@@ -287,7 +287,7 @@ def main():
         # to reach both edges, and flagging them as cut-outs is the audit being
         # wrong rather than the art. Only the numbered panels are placed beside
         # a different picture.
-        is_tile = (name.rstrip('23') in ('near', 'hang', 'far', 'mid')
+        is_tile = (name.rstrip('23') in ('near', 'hang', 'far', 'mid', 'upper')
                    or rel.startswith('art/ant/') or rel.startswith('art/deep/')
                    or rel.startswith('art/lab/'))
         a = np.asarray(Image.open(f).convert('RGBA'))
@@ -357,7 +357,7 @@ def main():
         if name.startswith('near') and a.shape[0] < 140:
             faults.append('THIN FLOOR only %dpx tall; it gets magnified' % a.shape[0])
         siblings = len(glob.glob(os.path.join(os.path.dirname(f), name.rstrip('23') + '*.webp')))
-        if is_tile and name.rstrip('23') in ('near', 'hang') and siblings < 2:
+        if is_tile and name.rstrip('23') in ('near', 'hang', 'upper') and siblings < 2:
             sm = seam(a)
             if sm > 60:
                 faults.append('OPEN SEAM edges differ by %.0f' % sm)

@@ -79,7 +79,7 @@ def dehue(im):
         # pixels per file. Correcting a wider band (155-275, and down to lower
         # saturation) leaves quantisation nowhere to drift TO, and costs
         # nothing: the extra pixels are near-blue anyway.
-        if 160 <= h*360 <= 258 and sat > 0.18 and v > 0.20:
+        if 160 <= h*360 <= 258 and sat > 0.18 and v > 0.10:
             nr, ng, nb = colorsys.hsv_to_rgb(0.09, sat*0.45, v)   # keep the light, warm the hue
             a[y, x, 0], a[y, x, 1], a[y, x, 2] = int(nr*255), int(ng*255), int(nb*255)
             changed += 1

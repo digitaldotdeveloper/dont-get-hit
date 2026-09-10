@@ -36,7 +36,7 @@ def main():
         attach.append(s.upload(p))
         print('attached', os.path.basename(p))
     before = {j['id'] for j in s.state()['jobs']}
-    s.generate(question, runs=1, model='Pro', attach=attach)
+    s.generate(question, mode='chat', runs=1, model='Pro', attach=attach)
     end = time.time() + 420
     while time.time() < end:
         for j in s.state()['jobs']:
@@ -47,7 +47,13 @@ def main():
                 print('\n--- status: %s ---\n' % j.get('status'))
                 print(txt if txt else '(no text came back; error: %s)' % j.get('error'))
                 try:
-                    s.close_thread(all=True)
+                    busy = [x for x in s.state()['jobs']
+                            if x.get('status') in ('queued', 'running')]
+                    if busy:
+                        print('(tabs left open: %d other job(s) in the studio)'
+                              % len(busy))
+                    else:
+                        s.close_thread(all=True)
                 except Exception:
                     pass
                 return 0

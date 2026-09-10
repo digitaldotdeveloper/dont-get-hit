@@ -42,7 +42,7 @@ from PIL import Image
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PURE = 40      # columns of pure connector at each end -- these must match exactly
 BLEND = 56     # columns over which the connector merges into the picture's own art
-TILES = ('near', 'near2', 'near3', 'hang', 'far', 'mid')
+TILES = ('near', 'near2', 'near3', 'hang', 'far', 'mid', 'upper')
 
 
 def groups():
@@ -67,6 +67,46 @@ def groups():
 def busy(a):
     """How much each column differs from the one beside it -- low is plain wall."""
     return np.abs(np.diff(a[..., :3].astype(float), axis=1)).mean(axis=(0, 2))
+
+
+def pillar_connector(world, arrs):
+    """Build the connector out of that world's COLUMN, if one has been drawn.
+
+       The plain-band connector works -- the joins measure zero -- and it reads
+       flat: two featureless bands meeting is about 190px of dead wall every time
+       two panels touch, which came back as "I don't like this fade". A column
+       there is what a building actually has at that spacing.
+
+       The column is SPLIT DOWN THE MIDDLE, and the arithmetic matters. Panels
+       butt when the LAST column of one equals the FIRST column of the next, and
+       stamp() achieves that by mirroring. So the connector's column 0 -- the one
+       that lands on the frame edge at both ends -- has to be the PILLAR'S CENTRE,
+       and column PURE-1 its outer edge. Then a join reads outer edge, centre,
+       centre, outer edge: one whole symmetric column, assembled from two halves
+       that were never in the same picture.
+
+       Behind it, the rest of the band is the plainest wall in the world, so the
+       column has something to stand against and the blend inward has somewhere
+       to go."""
+    f = os.path.join(ROOT, 'tools', 'pillars', world + '.webp')
+    if not os.path.exists(f):
+        return None
+    base, _score = pick_connector(arrs)          # plain wall, full PURE+BLEND wide
+    h = arrs[0].shape[0]
+    p = Image.open(f).convert('RGBA')
+    p = p.resize((max(2, int(round(p.width * h / float(p.height)))), h), Image.LANCZOS)
+    a = np.asarray(p)
+    half = a[:, a.shape[1] // 2:]                # centre -> outer edge, left to right
+    if half.shape[1] < PURE:
+        pad = np.repeat(half[:, -1:], PURE - half.shape[1], axis=1)
+        half = np.concatenate([half, pad], axis=1)
+    half = half[:, :PURE].astype(float)
+
+    conn = base.astype(float).copy()
+    al = half[..., 3:4] / 255.0                  # composite the column over the wall
+    conn[:, :PURE, :3] = half[..., :3] * al + conn[:, :PURE, :3] * (1 - al)
+    conn[:, :PURE, 3] = np.maximum(conn[:, :PURE, 3], half[..., 3])
+    return np.clip(conn, 0, 255).astype(np.uint8)
 
 
 def pick_connector(arrs):
@@ -130,12 +170,17 @@ def main():
         if len(set(a.shape for a in arrs)) > 1:
             print('  %-14s mixed sizes -- skipped' % name)
             continue
-        conn, score = pick_connector(arrs)
+        world = name.split()[0]
+        pill = None if name.endswith('floor') else pillar_connector(world, arrs)
+        if pill is not None:
+            conn, score, how = pill, 0.0, 'pillar'
+        else:
+            conn, score = pick_connector(arrs); how = 'plain'
         before = edge_gap(arrs)
         outs = [stamp(a, conn) for a in arrs]
         after = edge_gap(outs)
-        print('  %-14s %d pictures  connector busy %.1f  worst join %5.1f -> %5.1f%s'
-              % (name, len(files), score, before, after, '' if write else '   [dry run]'))
+        print('  %-14s %d pictures  %-6s connector  worst join %5.1f -> %5.1f%s'
+              % (name, len(files), how, before, after, '' if write else '   [dry run]'))
         if write:
             for f, o in zip(files, outs):
                 Image.fromarray(o, 'RGBA').save(f, 'WEBP', lossless=True, quality=100, method=6)
