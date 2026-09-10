@@ -4001,3 +4001,51 @@ Tiles live where the game has always loaded them: `art/bg/` for the farm and the
 approach (which share a floor), `art/ant/` for the empire, `art/panels/<world>/`
 for the six after it.
 
+## How the map scrolls, and why the panels butt instead of fading
+
+Four parallax slots, each tiling horizontally in a loop: `far` at f=0.10, `mid`
+at 0.26, `near` (the floor) at 0.60, `hang` (the ceiling) at 0.60 anchored to the
+top. `far` and `hang` repeat one picture; `mid` and `near` pick from a list by
+the tile's own world metre, cycling and never repeating adjacently. A zone change
+cross-fades `far` and `mid` over a 150m band while the floor swaps in ragged
+patches (`drawGroundBlend`).
+
+That is the same family as Jetpack Joyride -- parallax layers over a segment
+loop. **The difference is how segments meet, and it is the whole ball game.**
+Jetpack Joyride's room segments are authored so every segment's right edge is
+identical to every segment's left edge: one connector profile per set, so any
+segment can follow any other and butt perfectly, with no fade, ever.
+
+Six independently generated panels do not have that, and the first answer here
+was to overlap them by 7% with an alpha ramp down each left edge. It hid the
+join and caused two things that were both reported as bugs:
+
+    "the floor fading"                      the ramp eating the near tile's edge
+    "scene from behind suddenly appearing"  what an overlap band IS -- two walls
+                                            on screen at once, the new one
+                                            materialising through the old
+
+`tools/connect.py` makes the connector true after the fact. For each world it
+finds the most FEATURELESS band of columns across all that world's pictures --
+plain wall, no door, no crate -- and stamps that band on both ends of every one
+of them, blending inward over each picture's own art. The blend is INSIDE the
+picture, never at the edge, so nothing is faded to transparent and nothing shows
+sky through it.
+
+**The right end is the MIRROR of the left**, and that is easy to get subtly
+wrong. For two pictures to butt invisibly the LAST column of one must equal the
+FIRST column of the next; stamping the same band the same way round at both ends
+gives a right edge ending on the connector's last column against a left edge
+starting on its first. Close, because the band is plain -- and it measured 10-45
+RMSE instead of 0. Mirror, stamp the left, mirror back.
+
+Result: every join in every world measures **0.0 colour and 0.0% profile** before
+compression, and 0.8-3.8 after -- two to four levels out of 255, which is below
+the dithering noise in a gradient. `MID_OVERLAP` is now 0 and `rampLeft` returns
+the picture untouched; both are left wired so the overlap can be turned back on
+for a set whose art cannot carry a connector.
+
+Run `python tools/joins.py` after ANY panel re-render: a new panel does not have
+the connector on it until `python tools/connect.py --write` has been run again,
+and it will show up as a join of 60+ against its neighbours.
+

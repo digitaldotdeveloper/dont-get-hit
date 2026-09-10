@@ -521,6 +521,67 @@
   .s-buy.soon{background:none;box-shadow:none;color:rgba(255,242,222,.38);
               border:1.5px dashed rgba(255,242,222,.22);
               font:900 9px/1 'Archivo',sans-serif;letter-spacing:.14em;padding:10px}
+  /* --- missions -----------------------------------------------------------
+     Three rows, and they are ROWS rather than cards for the same reason the
+     power-ups are: a mission is read left to right -- what, how far, what it
+     pays -- and a grid of squares makes you hunt for the bar. */
+  .m-list{display:flex;flex-direction:column;gap:8px;overflow-y:auto;flex:1;min-height:0;padding-right:2px}
+  .m-list::-webkit-scrollbar{width:0}
+  .m-row{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:14px;
+         background:linear-gradient(180deg,rgba(61,31,85,.92),rgba(29,13,52,.96));
+         border:1.5px solid rgba(255,242,222,.13)}
+  .m-row.done{border-color:var(--mint);box-shadow:0 0 0 1px rgba(63,224,176,.3)}
+  .m-tier{flex:0 0 auto;width:26px;height:26px;border-radius:9px;display:grid;place-items:center;
+          font:900 9px/1 'Archivo',sans-serif;letter-spacing:.06em;color:rgba(255,242,222,.9)}
+  .m-tier.t1{background:rgba(63,224,176,.22);color:var(--mint)}
+  .m-tier.t2{background:rgba(255,180,71,.22);color:var(--amber)}
+  .m-tier.t3{background:rgba(242,104,79,.24);color:var(--coral)}
+  .m-body{flex:1;min-width:0}
+  .m-txt{margin:0 0 5px;font-size:10.5px;font-weight:800;letter-spacing:.02em;
+         color:rgba(255,242,222,.78);line-height:1.35}
+  .m-txt b{color:var(--cream);font-weight:900}
+  /* The bar carries the whole read, so it is the one element here allowed a
+     gradient -- and it is gold rather than mint because mint is reserved for
+     "done" and a full gold bar handing over to a mint border is the beat. */
+  .m-bar{height:5px;border-radius:99px;background:rgba(255,242,222,.12);overflow:hidden}
+  .m-bar i{display:block;height:100%;border-radius:99px;
+           background:linear-gradient(90deg,var(--amber),var(--gold))}
+  .m-row.done .m-bar i{background:linear-gradient(90deg,var(--mint),#8CF3D2)}
+  .m-num{margin:4px 0 0;font:900 8.5px/1 'Archivo',sans-serif;letter-spacing:.1em;
+         color:rgba(255,242,222,.45)}
+  .m-pay,.m-claim{flex:0 0 auto;display:flex;align-items:center;gap:5px;white-space:nowrap}
+  .m-pay{font:900 10px/1 'Archivo',sans-serif;letter-spacing:.06em;color:rgba(255,242,222,.42)}
+  .m-pay .e,.m-claim .e{width:11px;height:14px;flex:0 0 auto;
+                        background:url(art/egg_icon.webp) center/contain no-repeat}
+  .m-pay .e{filter:grayscale(1) opacity(.5)}
+  .m-claim{border:0;cursor:pointer;border-radius:11px;padding:8px 11px 9px;
+           font-family:'Bungee',cursive;font-size:11px;color:#2A1206;
+           background:linear-gradient(180deg,#7CF0CE,var(--mint));box-shadow:0 3px 0 #14795C}
+  .m-claim:active{transform:translateY(3px);box-shadow:0 0 0 #14795C}
+  /* FIVE TABS DO NOT FIT A PHONE IN LANDSCAPE. The strip is back button, egg
+     pill, tabs and the NO ADS chip, and on a 667px screen that left about
+     250px for five labels -- so STORE, the one tab that takes money, scrolled
+     off the right edge where nobody would find it.
+     The chip is what goes, because it is the only control on the strip with a
+     duplicate: it opens the store, and so does the STORE tab. */
+  @media (max-width:820px){
+    #shop .noads{display:none}
+    .tab{padding:9px 7px 8px;letter-spacing:.07em;font-size:9.5px}
+    .m-txt{font-size:10px}
+  }
+  /* A tab badge is a bare dot: the tab already says MISSIONS, so a number
+     would be the only digit on the strip and would read as a price. */
+  .tdot{display:none;width:6px;height:6px;border-radius:99px;background:var(--mint);
+        margin-left:5px;vertical-align:middle}
+  .tdot.on{display:inline-block}
+  .door .dot:empty{width:9px;height:9px;right:-1px;top:-1px}
+  /* The score card's one line about the board. Never a modal -- interrupting
+     the score beat to announce a mission costs the retry, which is the only
+     thing on that screen that matters. */
+  .msnFlag{display:none;margin:0 0 2px;font:900 9px/1.3 'Archivo',sans-serif;letter-spacing:.14em;
+           text-align:center;color:var(--mint)}
+  .msnFlag.show{display:block}
+
   /* Vehicles are few and big; power-ups are many and scanned, so they are rows
      in two columns rather than five tall cards with dead air in them. */
   .s-grid{flex:1;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;
@@ -876,6 +937,7 @@
       <button id="play" class="big pulse">PLAY</button>
       <p class="hint">HOLD ANYWHERE &nbsp;•&nbsp; SPACE</p>
       <div class="doors" data-meta>
+        <button class="door" data-tab="msn"><i class="art" style="background-image:url(art/egg_icon.webp)"></i><span class="lb">MISSIONS</span><span class="dot" id="msnDoorDot"></span></button>
         <button class="door" data-tab="veh"><i class="art" style="background-image:url(art/truck_drive.webp)"></i><span class="lb">VEHICLES</span></button>
         <button class="door" data-tab="pow"><i class="art" style="background-image:url(art/mystery_egg.webp)"></i><span class="lb">POWER-UPS</span><span class="dot">1</span></button>
         <button class="door" data-tab="app"><i class="art" style="background-image:url(art/shop/hat_bucket.webp)"></i><span class="lb">APPEARANCE</span></button>
@@ -900,6 +962,7 @@
           <div class="stat amber"><span class="v" id="stCombo">x0</span><span class="k">BEST COMBO</span></div>
         </div>
       </div>
+      <p class="msnFlag" id="overMsn"></p>
       <div class="overFoot">
         <button id="tomenu" class="ghost">MENU</button>
         <button id="retry" class="big">RETRY</button>
@@ -920,6 +983,7 @@
       <div class="eggPill"><i class="ic"></i><span class="n" id="sEggs">0</span
         ><button class="plus" data-tab="store" aria-label="Get more eggs">+</button></div>
       <div class="mid"><div class="tabs">
+        <button class="tab" data-tab="msn">MISSIONS<span class="tdot" id="msnDot"></span></button>
         <button class="tab" data-tab="veh">VEHICLES</button>
         <button class="tab" data-tab="pow">POWER-UPS</button>
         <button class="tab" data-tab="app">APPEARANCE</button>
@@ -932,6 +996,7 @@
       <!-- Every pane is filled by shopDraw() from the SHOP catalogue: a price,
            a level and an owned state cannot be written into static markup and
            still be true after the first purchase. -->
+      <div class="pane" data-pane="msn"></div>
       <div class="pane" data-pane="veh"></div>
       <div class="pane" data-pane="pow"></div>
       <div class="pane" data-pane="app"></div>
@@ -7021,7 +7086,13 @@ function updateCrows(dt){
       S.crowpass(near);                // doppler: it sounds different once it is past
       if(near && game.mode === 'play') nearMiss(c);
     }
-    if(c.x < cam.x - 340) game.crows.splice(i,1);
+    /* A crow that leaves behind you is a crow you got past, and that is the
+       only place a dodge can honestly be counted -- counting it on spawn
+       would pay for one that is still on its way to kill you. */
+    if(c.x < cam.x - 340){
+      if(!c.hitBy && game.mode === 'play') game.crowPass = (game.crowPass||0) + 1;
+      game.crows.splice(i,1);
+    }
   }
 }
 
@@ -7689,6 +7760,8 @@ function toMenu(){
 }
 function startRun(){
   game.runCount = (game.runCount||0) + 1;
+  game.deathCause = '';
+  track('run_start', { n: msnTot('runs') + 1, head: PERK.head() });
   applyTheme();
   game.mode='play'; game.runT=game.presetRunT||0; game.score=0;
   /* HEAD START rides the same rail as ?dist, and that is why the perk is sold
@@ -7713,6 +7786,7 @@ function startRun(){
   game.leg=Math.floor(game.dist/UPM/SPEED_STEP_M);   // ...and ?dist does not announce
 
   game.near=0; game.combo=0; game.comboBest=0; game.comboT=0;
+  game.runRides=0; game.crowPass=0;              // the two counters missions read
   game.speed=340*PACE; game.diff=0; game.spawnT=2.6; game.cornT=0; game.goT=0;
   game.obstacles.length=0; game.parts.length=0; game.pops.length=0; game.ui.length=0;
   game.eggs.length=0; game.eggT=1.6; game.runEggs=0; game.eggStreak=0;
@@ -7881,6 +7955,7 @@ function startUfo(){
 const vehTough = () => ((V().tough && V().tough()) ? 1 : 0);
 function startRide(which){
   game.ride = RIDE_ON; game.rideGrace = 0;
+  game.runRides = (game.runRides||0) + 1;    // missions count vehicles FOUND, not ridden well
   game.veh = VEH[which] ? which : 'trolley';
   game.rideTough = vehTough();
   game.drop = null;
@@ -8625,6 +8700,15 @@ function drawDrop(){
     ctx.globalAlpha = 1;
   }
 }
+/* WHAT KILLED YOU, as a string the funnel can group by. Read off the same
+   object the collision already passed in, so it costs nothing and cannot
+   disagree with what actually happened. */
+function deathCauseOf(o){
+  if(!o) return 'ground';
+  if(o.crow) return 'crow';
+  if(o.spec && o.spec.elec) return 'elec:' + (o.key || '?');
+  return 'prop:' + (o.key || '?');
+}
 function die(o){
   if(game.mode!=='play') return;
   /* Two things can refuse a death before anything else happens. Invulnerability
@@ -8633,6 +8717,7 @@ function die(o){
      and they all end up in this one function. */
   if((game.invuln||0) > 0) return;
   if(softSave(o)) return;
+  game.deathCause = deathCauseOf(o);          // the funnel groups by this
   elTut.classList.remove('show');   // the prompt has no business over the score card
   game.mode='dying'; game.dyingT=0;
   game.freeze = 0.11; addShake(30); game.flash=0.75;
@@ -8705,10 +8790,46 @@ function finishNow(){
   if(cb) cb.parentNode.innerHTML = game.blastM
     ? '<span class="v" id="stCombo">+' + money(game.blastM) + 'm</span><span class="k">DYNAMITE</span>'
     : '<span class="v" id="stCombo">x'+Math.max(1,game.comboBest)+'</span><span class="k">BEST COMBO</span>';
+  /* THE MISSION BOARD IS SETTLED HERE, and here only. finishNow is the one
+     place a run is definitively over -- finish() can still hand the run back
+     to the player through the death offer, so scoring the board there would
+     bank a run that had not ended and then bank it again when it did. */
+  const st = {
+    dist:  Math.floor(game.dist/UPM),
+    eggs:  game.runEggs||0,
+    near:  game.near||0,
+    combo: game.comboBest||0,
+    rides: game.runRides||0,
+    crows: game.crowPass||0,
+    zone:  zoneAt(game.dist/UPM).i,
+    tnt:   game.blastM ? 1 : 0
+  };
+  const msnWon = msnRun(st);
+  /* ONE event per run, carrying everything the run knows. A dozen small
+     events would cost a dozen writes and still need joining back together
+     to answer the only question worth asking of a runner: how far, how long,
+     and what stopped it. */
+  track('run_end', {
+    m: st.dist, sec: +(game.runT||0).toFixed(1), sc: Math.floor(game.score),
+    eggs: st.eggs, near: st.near, combo: st.combo, rides: st.rides,
+    zone: st.zone, cause: game.deathCause || 'unknown',
+    rev: game.revived ? 1 : 0, tnt: st.tnt, best: game.newBest ? 1 : 0,
+    n: msnTot('runs')
+  });
   elOverTitle.textContent = overTxt;
   elCard.classList.toggle('best', game.newBest);
   elOver.classList.add('show');
   elHud.classList.remove('on');
+  /* One line on the card rather than a modal: the claim lives in the shop,
+     and interrupting the score beat to announce it would cost the retry. */
+  const mb = $('#overMsn');
+  if(mb){
+    mb.classList.toggle('show', msnWon > 0);
+    if(msnWon > 0) mb.textContent = msnWon === 1
+      ? 'MISSION COMPLETE — CLAIM IT IN THE SHOP'
+      : msnWon + ' MISSIONS COMPLETE — CLAIM THEM IN THE SHOP';
+  }
+  metaNums();
   if(game.newBest){ S.best(); confettiBurst(); }
   musicScene('menu');            // the score card gets the menu theme back
 }
@@ -9874,7 +9995,26 @@ const MID_SEQ = {};         // zone id -> [Image], dense and ordered
    enough to dissolve a wall and narrow enough not to lose an object off the
    end. The difference is where the fade lands: it used to fade onto the sky and
    now it falls on the panel behind. */
-const MID_OVERLAP = 0.07;
+/* ZERO, AND THE PANELS BUTT.
+
+   This was 0.07: panels overlapped by 7% and each carried an alpha ramp down its
+   left edge, so the next one dissolved in over the current one. It was covering
+   for six independently generated pictures having six different edges, and it
+   cost two things that were both reported as bugs -- "the floor fading", which
+   is the ramp eating the near tile, and "scene from behind suddenly appearing",
+   which is exactly what an overlap band IS: two walls on screen at once, the new
+   one materialising through the old.
+
+   tools/connect.py removed the need for it. Every picture in a world now carries
+   the SAME connector band on both ends -- the plainest strip of wall in that
+   world, stamped on and blended inward over its own art -- so any panel's last
+   column is identical to any other panel's first column. Measured across all
+   fourteen groups the join is 0.0 RMSE. They butt, the way a side-scroller's
+   room segments are supposed to, and nothing fades into anything.
+
+   Left here rather than deleted: it is the one number that turns the mechanism
+   back on if a world is ever added whose art cannot carry a connector. */
+const MID_OVERLAP = 0;
 
 /* THE RAMP IS BAKED ONCE, NOT APPLIED PER FRAME.
    A gradient composite is cheap, and cheap times four panels times sixty
@@ -9883,7 +10023,12 @@ const MID_OVERLAP = 0.07;
    before. Only the LEFT edge is ramped: the right edge is the one that gets
    covered by the next panel, and ramping both would thin the overlap to
    nothing. */
+/* With MID_OVERLAP at 0 this returns the picture untouched, and that is the
+   point -- the ramp only ever existed to hide a join that is now exact. It
+   stays wired so the overlap can be turned back on for a set whose art cannot
+   carry a connector edge. */
 function rampLeft(im){
+  if(!MID_OVERLAP) return im;
   const c = document.createElement('canvas');
   c.width = im.naturalWidth || im.width; c.height = im.naturalHeight || im.height;
   const g = c.getContext('2d');
@@ -11380,7 +11525,52 @@ function gateStart(){
    ============================================================ */
 
 const $$ = s => Array.prototype.slice.call(document.querySelectorAll(s));
+/* ---- the save, and keeping it -------------------------------------------
+   A SAVE THAT CORRUPTS ON UPDATE COSTS A PLAYER PERMANENTLY. They do not
+   file a bug, they uninstall -- so the two failures worth engineering
+   against are a half-finished write and a version this build does not know.
+
+   The half-write is handled by keeping a SECOND COPY. localStorage.setItem
+   is not atomic across a process kill, and a phone kills a suspended tab
+   whenever it likes; writing the main key and then the backup means a kill
+   can only ever land between them, and one of the two is always whole.
+
+   The unknown version is handled by MIGRATING FORWARD rather than by the
+   `raw.v === 1` equality this used to do. That test quietly discarded every
+   save from a future build -- which is exactly what a player who reinstalls
+   an older APK, or who has two devices, ends up holding. Silently wiping
+   their vehicles is the worst outcome available; keeping what is recognised
+   and dropping only what is not is the least bad. */
 const SAVE_KEY = 'dgh.save.v1';
+const SAVE_BAK = 'dgh.save.bak';
+const SAVE_V   = 1;
+/* Both copies parsed, the newest usable one wins. A backup that is NEWER
+   than the main key means the main write is the one that was interrupted. */
+function saveRead(){
+  const load = k => {
+    try{
+      const o = JSON.parse(localStorage.getItem(k) || 'null');
+      return (o && typeof o === 'object' && typeof o.v === 'number') ? o : null;
+    }catch(e){ return null; }
+  };
+  const a = load(SAVE_KEY), b = load(SAVE_BAK);
+  if(a && b) return (b.w||0) > (a.w||0) ? b : a;
+  return a || b;
+}
+/* Returns whether anything in `raw` is worth reading. Older saves are
+   upgraded in place; a newer one is read for the fields this build still
+   understands, because forward fields are additive by construction here. */
+function saveMigrate(raw){
+  if(raw.v > SAVE_V){
+    /* From the future. Everything below merges field by field and ignores
+       what it does not recognise, so this is safe -- and far better than
+       throwing the save away. */
+    return true;
+  }
+  /* v0 -> v1 was the first numbered save; anything without a `v` never
+     shipped. Future steps chain here, each one narrow and one-way. */
+  return raw.v >= 1;
+}
 const SAVE = (() => {
   /* BOTH VEHICLES START OWNED, and the merge below is what makes that safe on
      a save written before the saucer existed: `Object.assign(d.veh, raw.veh)`
@@ -11389,10 +11579,17 @@ const SAVE = (() => {
      something the run is going to hand them anyway. What is sold here is what
      a vehicle DOES when you find it, never whether you find it. */
   const d = { v:1, veh:{trolley:1, ufo:1, rocket:1, hopper:1, spoon:1, toaster:1}, pow:{bang:0,magnet:0,head:0,lucky:0,nerve:0,soft:0},
-              skin:'nugget', skins:['nugget'], noAds:false, daily:{day:1,last:0} };
+              skin:'nugget', skins:['nugget'], noAds:false, daily:{day:1,last:0},
+              /* THE MISSION BOARD. `slots` is deliberately empty here and
+                 dealt lazily by msnSlots(), so a save written before missions
+                 existed opens with a full board rather than an empty one --
+                 and so does a save whose board was orphaned by a catalogue
+                 edit. `tot` is the cumulative half of the pool and has to
+                 survive a reload, which `game` does not. */
+              msn:{ slots:[], done:[], tot:{runs:0,eggsT:0,distT:0,nearT:0,crowsT:0} } };
   try{
-    const raw = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
-    if(raw && raw.v === 1){
+    const raw = saveRead();
+    if(raw && saveMigrate(raw)){
       // merged rather than replaced, so a save written before a perk existed
       // still opens and simply has that perk at zero
       d.veh = Object.assign(d.veh, raw.veh||{});
@@ -11401,6 +11598,14 @@ const SAVE = (() => {
       d.skin = raw.skin || d.skin;
       d.skins = Array.isArray(raw.skins) && raw.skins.length ? raw.skins : d.skins;
       d.noAds = !!raw.noAds;
+      /* Each of the three merged on its own, because a half-written board is
+         the shape a crash leaves behind and `raw.msn || d.msn` would take it
+         whole -- slots without totals, or totals without done. */
+      if(raw.msn){
+        if(Array.isArray(raw.msn.slots)) d.msn.slots = raw.msn.slots.filter(s => s && s.id);
+        if(Array.isArray(raw.msn.done))  d.msn.done  = raw.msn.done.filter(x => typeof x === 'string');
+        d.msn.tot = Object.assign(d.msn.tot, raw.msn.tot || {});
+      }
     }
   }catch(e){}
   return d;
@@ -11557,6 +11762,284 @@ const PERK = {
   }
 };
 
+/* ---- analytics -----------------------------------------------------------
+   EVERY GATE METRIC HAS TO BE READABLE FROM DAY ONE OF LAUNCH, and none of
+   them can be recovered afterwards: a cohort you did not tag on the day it
+   installed is a cohort you never had. So the event layer goes in now, while
+   the call sites are being written anyway, rather than at the end.
+
+   There is deliberately NO NETWORK CALL HERE. The wrapper has not been built
+   and the vendor has not been chosen, and guessing at either would mean
+   writing this twice. What this does instead is give every event one shape,
+   one queue and one drain -- `AN.sink` -- so wiring GA4, Firebase or a plain
+   endpoint later is one function and no edits anywhere else.
+
+   The queue is capped and it persists. Capped because an untouched phone must
+   not grow a buffer for a week; persisted because the events worth the most
+   -- the last session before an uninstall -- are the ones a page unload would
+   otherwise drop. */
+const AN_KEY = 'dgh.an.v1', AN_MAX = 400;
+const AN = {
+  on: true,
+  q: [],
+  sink: null,             // set by the native wrapper: fn(events) => Promise
+  /* THE COHORT IS THE INSTALL DAY, not today. It is written once and never
+     again, and it is the only reason a D7 number can be computed at all. */
+  cohort: (() => {
+    try{
+      let c = localStorage.getItem('dgh.cohort');
+      if(!c){ c = new Date().toISOString().slice(0,10); localStorage.setItem('dgh.cohort', c); }
+      return c;
+    }catch(e){ return '0000-00-00'; }
+  })(),
+  session: Math.random().toString(36).slice(2,10),
+  t0: Date.now(),
+  n: 0
+};
+try{
+  const raw = JSON.parse(localStorage.getItem(AN_KEY) || '[]');
+  if(Array.isArray(raw)) AN.q = raw.slice(-AN_MAX);
+}catch(e){}
+function anSave(){ try{ localStorage.setItem(AN_KEY, JSON.stringify(AN.q.slice(-AN_MAX))); }catch(e){} }
+
+/* ---- crash reporting -----------------------------------------------------
+   The publish gate is "crash-free at or above 99.5%", and that is a number
+   you either measure or guess at. This is the measurement: every uncaught
+   error and every rejected promise becomes one event on the same queue as
+   everything else, so whatever sink is wired later gets crashes for free.
+
+   THE RATE IS THE POINT, not the stack. `crash_free` is computed from
+   sessions with zero `crash` events over all sessions, which is why the
+   session id is on every event and why a crash must never be allowed to stop
+   the session being reported.
+
+   Capped per session on purpose: one error inside the frame loop fires sixty
+   times a second, and an unbounded handler would fill the queue with one
+   bug and evict every other event in the run. */
+let anCrashes = 0;
+const AN_CRASH_MAX = 5;
+function anCrash(kind, msg, src, line){
+  if(anCrashes >= AN_CRASH_MAX) return;
+  anCrashes++;
+  track('crash', {
+    kind,
+    /* Truncated because a minified stack can run to kilobytes and the queue
+       is a phone's localStorage, not a log server. */
+    msg: String(msg || '').slice(0, 200),
+    src: String(src || '').split('/').pop().slice(0, 60),
+    line: line || 0,
+    mode: game.mode, m: Math.floor((game.dist||0)/UPM), n: anCrashes
+  });
+}
+addEventListener('error', e => {
+  try{ anCrash('error', e.message || (e.error && e.error.message), e.filename, e.lineno); }catch(x){}
+});
+addEventListener('unhandledrejection', e => {
+  try{ anCrash('reject', e.reason && (e.reason.message || e.reason)); }catch(x){}
+});
+/* Day 0 is install day, so this IS the retention bucket: D1 is everyone whose
+   `d` is 1 on their second session, and no server-side join is needed. */
+function anDay(){
+  const ms = Date.now() - Date.parse(AN.cohort + 'T00:00:00Z');
+  return Math.max(0, Math.floor(ms / 86400000));
+}
+function track(ev, props){
+  if(!AN.on) return;
+  AN.q.push(Object.assign({
+    e: ev, t: Date.now(), s: AN.session, d: anDay(), i: ++AN.n
+  }, props || {}));
+  if(AN.q.length > AN_MAX) AN.q.splice(0, AN.q.length - AN_MAX);
+  anSave();
+  anFlush();
+}
+/* Fire-and-forget, and it must never throw into the caller: an analytics
+   failure that kills a run is a far worse bug than a lost event. */
+function anFlush(){
+  if(!AN.sink || !AN.q.length || AN.busy) return;
+  const batch = AN.q.slice(0, 50);
+  AN.busy = true;
+  Promise.resolve()
+    .then(() => AN.sink(batch))
+    .then(() => { AN.q.splice(0, batch.length); anSave(); })
+    .catch(() => {})
+    .then(() => { AN.busy = false; });
+}
+
+/* ---- missions ------------------------------------------------------------
+   THREE ACTIVE, TIERED, REFRESHING ON COMPLETION. Three rather than a list
+   because a list is a chore and three is a choice of what to chase on the
+   next run.
+
+   A mission is a counter and a target, and the pool is split down the middle
+   on purpose. `run:1` missions read a SINGLE RUN and keep the best one since
+   the mission was dealt; the rest accumulate across every run ever played. A
+   board that was all-cumulative would pay for time served and ask nothing; a
+   board that was all-per-run would never pay a player having a bad night.
+
+   Progress is applied ONCE, from `msnRun()` inside finishNow(), out of a
+   stats object the run already had to compute for the score card. Nothing
+   here runs per frame, and nothing here is read by the run loop.
+
+   THE CUMULATIVE TOTALS LIVE IN THE SAVE, not in `game`. They have to
+   survive a reload, and `game` is rebuilt on every one. */
+const MSN = [
+  /* tier 1 -- reachable inside the first few runs */
+  { id:'d300',  t:1, s:'dist',   n:300,   pay:150, run:1, txt:'Run <b>300 m</b> in one go' },
+  { id:'e40',   t:1, s:'eggs',   n:40,    pay:150, run:1, txt:'Collect <b>40 eggs</b> in one run' },
+  { id:'n3',    t:1, s:'near',   n:3,     pay:180, run:1, txt:'Squeeze past <b>3 things</b> in one run' },
+  { id:'v1',    t:1, s:'rides',  n:1,     pay:200, run:1, txt:'Find <b>a vehicle</b>' },
+  { id:'c3',    t:1, s:'crows',  n:3,     pay:180, run:1, txt:'Dodge <b>3 crows</b> in one run' },
+  { id:'k3',    t:1, s:'combo',  n:3,     pay:200, run:1, txt:'Reach a <b>x3</b> egg combo' },
+  { id:'z2',    t:1, s:'zone',   n:1,     pay:250, run:1, txt:'Reach <b>Ant Territory</b>' },
+  { id:'r5',    t:1, s:'runs',   n:5,     pay:150,        txt:'Play <b>5 runs</b>' },
+  { id:'eT500', t:1, s:'eggsT',  n:500,   pay:200,        txt:'Bank <b>500 eggs</b> all told' },
+  { id:'dT2k',  t:1, s:'distT',  n:2000,  pay:250,        txt:'Cover <b>2 km</b> all told' },
+
+  /* tier 2 -- a good run, or a week of ordinary ones */
+  { id:'d800',  t:2, s:'dist',   n:800,   pay:400, run:1, txt:'Run <b>800 m</b> in one go' },
+  { id:'e120',  t:2, s:'eggs',   n:120,   pay:400, run:1, txt:'Collect <b>120 eggs</b> in one run' },
+  { id:'n10',   t:2, s:'near',   n:10,    pay:450, run:1, txt:'Squeeze past <b>10 things</b> in one run' },
+  { id:'v2',    t:2, s:'rides',  n:2,     pay:500, run:1, txt:'Find <b>two vehicles</b> in one run' },
+  { id:'c8',    t:2, s:'crows',  n:8,     pay:450, run:1, txt:'Dodge <b>8 crows</b> in one run' },
+  { id:'k6',    t:2, s:'combo',  n:6,     pay:500, run:1, txt:'Reach a <b>x6</b> egg combo' },
+  { id:'z4',    t:2, s:'zone',   n:3,     pay:600, run:1, txt:'Reach <b>The Prison</b>' },
+  { id:'tnt1',  t:2, s:'tnt',    n:1,     pay:400, run:1, txt:'Go out with <b>a bang</b>' },
+  { id:'r25',   t:2, s:'runs',   n:25,    pay:400,        txt:'Play <b>25 runs</b>' },
+  { id:'eT4k',  t:2, s:'eggsT',  n:4000,  pay:550,        txt:'Bank <b>4,000 eggs</b> all told' },
+  { id:'dT15k', t:2, s:'distT',  n:15000, pay:600,        txt:'Cover <b>15 km</b> all told' },
+  { id:'nT50',  t:2, s:'nearT',  n:50,    pay:550,        txt:'<b>50 near misses</b> all told' },
+
+  /* tier 3 -- the long chase */
+  { id:'d1500', t:3, s:'dist',   n:1500,  pay:900,  run:1, txt:'Run <b>1,500 m</b> in one go' },
+  { id:'d2500', t:3, s:'dist',   n:2500,  pay:1400, run:1, txt:'Run <b>2,500 m</b> in one go' },
+  { id:'e250',  t:3, s:'eggs',   n:250,   pay:900,  run:1, txt:'Collect <b>250 eggs</b> in one run' },
+  { id:'n25',   t:3, s:'near',   n:25,    pay:1000, run:1, txt:'Squeeze past <b>25 things</b> in one run' },
+  { id:'v3',    t:3, s:'rides',  n:3,     pay:1200, run:1, txt:'Find <b>three vehicles</b> in one run' },
+  { id:'c20',   t:3, s:'crows',  n:20,    pay:1000, run:1, txt:'Dodge <b>20 crows</b> in one run' },
+  { id:'k10',   t:3, s:'combo',  n:10,    pay:1100, run:1, txt:'Reach a <b>x10</b> egg combo' },
+  { id:'z6',    t:3, s:'zone',   n:6,     pay:1600, run:1, txt:'Reach <b>Area 51</b>' },
+  { id:'z8',    t:3, s:'zone',   n:8,     pay:1800, run:1, txt:'Reach <b>Space</b>' },
+  { id:'r100',  t:3, s:'runs',   n:100,   pay:900,         txt:'Play <b>100 runs</b>' },
+  { id:'eT20k', t:3, s:'eggsT',  n:20000, pay:1300,        txt:'Bank <b>20,000 eggs</b> all told' },
+  { id:'dT60k', t:3, s:'distT',  n:60000, pay:1500,        txt:'Cover <b>60 km</b> all told' },
+  { id:'cT100', t:3, s:'crowsT', n:100,   pay:1200,        txt:'Dodge <b>100 crows</b> all told' }
+];
+const MSN_BY = {}; MSN.forEach(m => MSN_BY[m.id] = m);
+const msnDef = id => MSN_BY[id];
+const MSN_SLOTS = 3;
+
+/* Declared ahead of msnSlots because msnSlots reads it, and metaNums() can
+   reach msnSlots through msnReady() during boot -- a const arrow below would
+   still be in its temporal dead zone on that path. */
+const msnTot = k => (SAVE.msn.tot[k] || 0);
+
+/* Deal the shallowest undone mission the board is not already showing.
+   Tier order rather than random: the board is meant to escalate with the
+   player, and a random deal hands a brand-new player "reach Space". */
+function msnDeal(taken){
+  const S = SAVE.msn;
+  const free = MSN.filter(m => S.done.indexOf(m.id) < 0 && taken.indexOf(m.id) < 0);
+  if(!free.length) return null;
+  const lowest = Math.min.apply(null, free.map(m => m.t));
+  const pool = free.filter(m => m.t === lowest);
+  return pool[(Math.random()*pool.length)|0].id;
+}
+/* Called on every read, so a save written before a mission existed -- or one
+   whose board was emptied by a catalogue edit -- still opens with three. */
+function msnSlots(){
+  const S = SAVE.msn;
+  let changed = false;
+  S.slots = S.slots.filter(s => s && msnDef(s.id));
+  while(S.slots.length < MSN_SLOTS){
+    const id = msnDeal(S.slots.map(s => s.id));
+    if(!id) break;                                   // catalogue exhausted
+    S.slots.push({ id, p:0 }); changed = true;
+  }
+  /* A CUMULATIVE SLOT READS THE TOTAL, ALWAYS -- including the moment it is
+     dealt. Leaving it at zero until the next run ends showed "0 / 500" to a
+     player already holding 130, which reads as the board having lost their
+     progress rather than as the mission having just arrived. */
+  for(const s of S.slots){
+    const d = msnDef(s.id);
+    if(!d.run){ const v = msnTot(d.s); if(v !== s.p){ s.p = v; changed = true; } }
+  }
+  if(changed) saveNow();
+  return S.slots;
+}
+const msnDone = s => s.p >= msnDef(s.id).n;
+const msnReady = () => msnSlots().filter(msnDone).length;
+
+/* ONE RUN, APPLIED ONCE. `st` is what the score card already knows.
+   Cumulative stats are summed into the save first, then every slot re-reads
+   its own counter -- which is why a cumulative mission dealt today is
+   already part-done: it is measuring your whole history, and pretending
+   otherwise would mean storing a baseline per slot for no gain. */
+function msnRun(st){
+  const T = SAVE.msn.tot;
+  T.runs   = (T.runs||0)   + 1;
+  T.eggsT  = (T.eggsT||0)  + (st.eggs||0);
+  T.distT  = (T.distT||0)  + (st.dist||0);
+  T.nearT  = (T.nearT||0)  + (st.near||0);
+  T.crowsT = (T.crowsT||0) + (st.crows||0);
+  let won = 0;
+  for(const slot of msnSlots()){
+    const d = msnDef(slot.id);
+    if(msnDone(slot)) continue;                      // waiting to be claimed
+    /* PER-RUN KEEPS THE BEST, never the sum: "800 m in one go" is a
+       different promise from "800 m eventually", and adding the runs up
+       would quietly turn every per-run mission into the second one. */
+    const v = d.run ? (st[d.s] || 0) : msnTot(d.s);
+    slot.p = d.run ? Math.max(slot.p, v) : v;
+    if(msnDone(slot)) won++;
+  }
+  saveNow();
+  return won;
+}
+function msnClaim(i){
+  const slot = msnSlots()[i];
+  if(!slot || !msnDone(slot)) return;
+  const d = msnDef(slot.id);
+  earn(d.pay);
+  track('mission_claimed', { id:d.id, tier:d.t, pay:d.pay, done:SAVE.msn.done.length + 1 });
+  SAVE.msn.done.push(d.id);
+  const id = msnDeal(SAVE.msn.slots.map(s => s.id));
+  /* A claimed slot is REPLACED, not emptied. An empty slot on a board of
+     three reads as a bug, and the whole point of the refresh is that there
+     is always something to chase on the next run. */
+  if(id) SAVE.msn.slots[i] = { id, p:0 };
+  else   SAVE.msn.slots.splice(i, 1);
+  saveNow();
+  S.best(); toast('+' + money(d.pay) + ' EGGS');
+  msnDraw(); metaNums();
+}
+
+function msnDraw(){
+  const pane = $('#shop .pane[data-pane="msn"]'); if(!pane) return;
+  const slots = msnSlots();
+  if(!slots.length){
+    pane.innerHTML = '<p class="blurb">Every mission is done. That is the whole board — ' +
+                     'more will arrive with the next map.</p>';
+    return;
+  }
+  pane.innerHTML = '<p class="blurb">Three at a time. Finish one and the next is dealt straight away — ' +
+    'the <b>eggs are claimed here</b>, not banked automatically.</p>' +
+    '<div class="m-list">' + slots.map((s, i) => {
+      const d = msnDef(s.id), done = msnDone(s);
+      const pct = Math.max(0, Math.min(100, 100 * s.p / d.n));
+      return '<div class="m-row' + (done ? ' done' : '') + '">' +
+        '<div class="m-tier t' + d.t + '">' + ['','I','II','III'][d.t] + '</div>' +
+        '<div class="m-body">' +
+          '<p class="m-txt">' + d.txt + '</p>' +
+          '<div class="m-bar"><i style="width:' + pct.toFixed(1) + '%"></i></div>' +
+          '<p class="m-num">' + money(Math.min(s.p, d.n)) + ' / ' + money(d.n) + '</p>' +
+        '</div>' +
+        (done
+          ? '<button class="m-claim" data-claim="' + i + '"><i class="e"></i>' + money(d.pay) + '</button>'
+          : '<div class="m-pay"><i class="e"></i>' + money(d.pay) + '</div>') +
+      '</div>';
+    }).join('') + '</div>';
+}
+
 /* ---- skins ---------------------------------------------------------------
    THE CHICKEN IN A RUN IS A PAINTED SPRITE. `drawChickenFrames` draws one
    image per frame and never touches the cosmetic slot rig, which is why hats
@@ -11676,6 +12159,10 @@ function rewardedAd(){
 }
 /* And the only place money is asked for. Same shape, same reason. */
 function iapBuy(sku, label){
+  /* The store is not wired to a biller yet, so this is where the funnel
+     stops -- but the INTENT is still the most valuable event in the game and
+     it costs nothing to record now. */
+  track('iap_intent', { sku });
   return rewardedAd().then(() => { toast('PLACEHOLDER: ' + label); return true; });
 }
 
@@ -11692,8 +12179,12 @@ function buy(kind, id){
   const it = shopItem(kind, id); if(!it || it.dev) return;
   const n = lvl(kind, id), cost = it.cost[n];
   if(cost === undefined){ return; }
-  if(!spend(cost)){ toast('NOT ENOUGH EGGS', true); S.bonk(); return; }
+  if(!spend(cost)){
+    track('purchase_failed', { kind, id, lvl:n + 1, cost, had:eggs() });
+    toast('NOT ENOUGH EGGS', true); S.bonk(); return;
+  }
   setLvl(kind, id, n + 1);
+  track('purchase', { kind, id, lvl:n + 1, cost, left:eggs() });
   S.best(); toast((it.says[n+1] || it.name).toUpperCase());
   shopDraw();
 }
@@ -11703,6 +12194,7 @@ function buySkin(id){
   if(!skinReady(d)){ toast('REACH ' + d.need.toLocaleString('en-US') + ' m FIRST', true); return; }
   if(!spend(d.cost)){ toast('NOT ENOUGH EGGS', true); S.bonk(); return; }
   SAVE.skins.push(id); saveNow(); skinEquip(id);
+  track('purchase', { kind:'skin', id, lvl:1, cost:d.cost, left:eggs() });
   S.best(); toast(d.name + ' UNLOCKED'); shopDraw();
 }
 
@@ -11791,6 +12283,10 @@ function drawStore(){
 }
 function shopDraw(){
   const pane = $('#shop .pane[data-pane="' + META.tab + '"]'); if(!pane) return;
+  /* Missions draw themselves, because the board is state rather than a
+     catalogue row: msnDraw() has to deal the slots before it can render them
+     and returning a string from here would hide that. */
+  if(META.tab === 'msn'){ msnDraw(); metaNums(); return; }
   pane.innerHTML = META.tab === 'veh' ? drawVeh() : META.tab === 'pow' ? drawPow()
                  : META.tab === 'app' ? drawApp() : drawStore();
   if(META.tab === 'app') skinShots();
@@ -11898,6 +12394,7 @@ function dailyDraw(){
    `game.blastM` is what the last blast added, kept so the score card can show
    it. Everything else is a boolean, reset in startRun. */
 const DEATH_SECS = 8;
+let dthOpenT = 0;               // when the offer went up, for revive_declined
 const HEART_COST = 400;
 /* THE PRICE IS THE RUN. A flat 250 bought the same thousand metres whether you
    died at 200 or at 2,000, which is the wrong way round twice over: at the top
@@ -11961,6 +12458,9 @@ function deathOffer(){
   $('#dthTitle').textContent = (bst > 0 && game.score >= bst*0.85) ? 'SO CLOSE' : 'NUGGET DOWN';
   deathDraw();
   el.classList.add('show');
+  dthOpenT = Date.now();          // how long it was actually looked at
+  track('revive_shown', { m: Math.floor(game.dist/UPM), heart: heartCost(),
+                          used: (game.usedHeart?1:0) + (game.usedAd?1:0) });
   /* Any press is a retry once game.mode is 'dead', so without this the one
      press an impatient player makes throws the offer away and starts a new
      run. META.open is already the flag thrustOn rejects on. */
@@ -12003,7 +12503,15 @@ function deathDraw(){
   }).join('');
 }
 function deathClose(){ clearTimeout(dthTimer); META.open = false; $('#death').classList.remove('show'); }
-function deathSkip(){ deathClose(); finishNow(); }
+function deathSkip(){
+  /* Declined OR timed out -- and they are one event on purpose. The
+     difference is `left`: a decline still has bar left on the clock, a
+     timeout does not, so one field separates them and the funnel stays one
+     row instead of two that have to be added together. */
+  track('revive_declined', { m: Math.floor(game.dist/UPM),
+                             saw: +(((Date.now() - (dthOpenT||Date.now()))/1000)).toFixed(1) });
+  deathClose(); finishNow();
+}
 
 /* Both revives land here. The only difference is what was paid. */
 function reviveNow(){
@@ -12036,12 +12544,19 @@ function deathHeart(){
      on screen the whole time it is wrong -- the trolley taught that once
      already. */
   if(!spend(heartCost())){ toast('NOT ENOUGH EGGS', true); S.bonk(); return; }
-  game.usedHeart = true; reviveNow();
+  game.usedHeart = true;
+  track('revive_taken', { how:'eggs', cost:heartCost(), m:Math.floor(game.dist/UPM) });
+  reviveNow();
 }
 function deathAd(){
   if(game.usedAd) return;
   clearTimeout(dthTimer);                  // the clock stops while the ad runs
-  rewardedAd().then(() => { game.usedAd = true; reviveNow(); });
+  track('rewarded_start', { slot:'revive', m:Math.floor(game.dist/UPM) });
+  rewardedAd().then(() => {
+    game.usedAd = true;
+    track('revive_taken', { how:'ad', m:Math.floor(game.dist/UPM) });
+    reviveNow();
+  });
 }
 function deathTnt(i){
   if(game.usedTnt) return;
@@ -12412,6 +12927,13 @@ function metaNums(){
   if(c) c.textContent = money(Math.round(game.best || 0));
   const noads = $('#mNoAds');
   if(noads) noads.style.display = SAVE.noAds ? 'none' : '';
+  /* Both badges read the same count, and the count is "claimable" rather than
+     "active" -- a dot that is always lit because you always have three
+     missions is a dot nobody looks at twice. */
+  const ready = msnReady();
+  const td = $('#msnDot'); if(td) td.classList.toggle('on', ready > 0);
+  const dd = $('#msnDoorDot');
+  if(dd){ dd.style.display = ready > 0 ? '' : 'none'; dd.textContent = ready > 1 ? ready : ''; }
 }
 function metaSync(){
   try{ game.firstRun = !localStorage.getItem('dgh.played'); }catch(e){}
@@ -12424,14 +12946,44 @@ function metaBind(){
   META.el = $('#shop');
   if(!META.el) return;
   skinApply(SAVE.skin);
+
+  /* SESSION START, and the shape of the player at the moment it began. Every
+     retention gate in the plan is a count of these grouped by `d`. */
+  track('session_start', {
+    eggs: eggs(), best: Math.round(game.best||0), runs: msnTot('runs'),
+    skins: SAVE.skins.length, noAds: SAVE.noAds ? 1 : 0, first: game.firstRun ? 1 : 0
+  });
+  /* SESSION END IS THE HARD ONE. A phone does not close a tab, it suspends
+     it -- so `pagehide` and a hidden `visibilitychange` are the only two
+     events that reliably fire, `beforeunload` does not fire on iOS at all,
+     and both can fire twice. Hence the latch: length is what matters and a
+     double-counted session halves the average. */
+  let ended = false;
+  const endSession = () => {
+    if(ended) return; ended = true;
+    track('session_end', { sec: Math.round((Date.now() - AN.t0)/1000), runs: game.runCount||0 });
+  };
+  addEventListener('pagehide', endSession);
+  addEventListener('visibilitychange', () => {
+    if(document.visibilityState === 'hidden') endSession();
+    /* Coming back is a NEW session, because that is how a phone is used and
+       counting a whole day of suspension as one session makes the length
+       meaningless. */
+    else if(ended){
+      ended = false; AN.t0 = Date.now(); AN.session = Math.random().toString(36).slice(2,10);
+      track('session_start', { eggs: eggs(), best: Math.round(game.best||0),
+                               runs: msnTot('runs'), resume: 1 });
+    }
+  });
   /* One listener for the whole shell: every control says what it is in a data
      attribute, so adding one is a row in the catalogue and nothing else. */
   document.addEventListener('click', e => {
     const t = e.target && e.target.closest ? e.target.closest(
-      '[data-tab],[data-buy],[data-skin],[data-iap],[data-eggs]') : null;
+      '[data-tab],[data-buy],[data-skin],[data-iap],[data-eggs],[data-claim]') : null;
     if(!t) return;
     e.stopPropagation();
     if(t.dataset.tab){ S.click(); META.show(t.dataset.tab); return; }
+    if(t.dataset.claim){ msnClaim(+t.dataset.claim); return; }
     if(t.dataset.buy){ const p = t.dataset.buy.split(':'); buy(p[0], p[1]); return; }
     if(t.dataset.skin){ buySkin(t.dataset.skin); return; }
     if(t.dataset.eggs){
@@ -12493,7 +13045,20 @@ function softSave(o){
   return true;
 }
 
+let booted = false;
 function boot(){
+  /* BOOT ONCE, WHOEVER CALLS. There are three callers -- the font timeout,
+     the font promise resolving, and the promise rejecting -- and the timeout
+     cannot be cancelled once it has already fired, so a font load slower than
+     1400ms ran the whole of boot() twice: two metaBind() (every shell click
+     listener bound twice, so one tap called buy() and spend() twice), two
+     toMenu(), and two requestAnimationFrame(frame) loops stepping the game
+     twice per frame.
+     It is worst exactly where it can least be afforded -- a slow device is
+     slow at fonts too, which is the sub-$100 Android the frame-rate gate is
+     aimed at. Found by the analytics: session_start fired twice. */
+  if(booted) return;
+  booted = true;
   document.body.classList.toggle('poster', POSTER_TITLE);
   resize();
   metaBind();
@@ -12519,6 +13084,8 @@ function boot(){
     startRun, startQuick, startIntro, toMenu, updatePlay, thrustOn, thrustOff,
     startRide, loseRide, spawnBasketDrop, dropClearAt, spawnElec, spawnPattern, spawnEggs,
     SAVE, SHOP, PERK, SKIN, SKINS, buy, buySkin, eggs, spend, earn,
+    MSN, msnSlots, msnRun, msnClaim, msnDraw, msnReady, msnDeal, zoneAt,
+    AN, track, anDay, anFlush, deathCauseOf,
     deathOffer, deathHeart, deathAd, deathTnt, deathSkip, startBlast, TNT, HEART_COST,
     tntCost, heartCost, runMul, drawTnt, hopY,
     die, finish, finishNow, softSave, dailyClaim, dailyState, skinApply, shopDraw, META,
