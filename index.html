@@ -10072,7 +10072,6 @@ const underSet = keys => UNDER_SLOTS
 
 const BG_ANT  = underSet(['upper','far','mid','near','hang']);   // earth, wood, lanterns
 const BG_DEEP = underSet(['mid','near','hang']);         // ...with technology through it
-const BG_LAB  = underSet(['far','mid','near','hang']);   // ...and where it came from
 /* Each world past the empire owns its FAR HAZE, its FLOOR and its CEILING. It
    still inherits the MIDDLE distance, because its own panels ride on top of
    that slot and cover it.
@@ -10090,7 +10089,7 @@ const BG_LAB  = underSet(['far','mid','near','hang']);   // ...and where it came
    made 404s on every load; these six are drawn
    when you are running along it, so those are what each world gets. */
 const UNDER_WORLDS = ['prison','cherno','cia','area51','alien','space'];
-const LAYERSETS = { farm:BG, ant:BG_ANT, deep:BG_DEEP, lab:BG_LAB };
+const LAYERSETS = { farm:BG, ant:BG_ANT, deep:BG_DEEP };
 UNDER_WORLDS.forEach(w => { LAYERSETS[w] = underSet(['upper','far','near','hang']); });
 // stamp each layer with the world it belongs to: drawLayerSlot now receives a
 // resolved LAYER rather than a set, and the spy pigeons are a farm thing
@@ -10101,7 +10100,7 @@ Object.keys(LAYERSETS).forEach(k => LAYERSETS[k].forEach(L => { L.set = k; }));
    made yet simply has no ready layers, and drawBgLayers falls back to the set
    before it -- so an unfinished zone is a zone that still looks like the last
    one, never a hole. */
-[[BG,'art/bg/',0], [BG_ANT,'art/ant/',20], [BG_DEEP,'art/deep/',40], [BG_LAB,'art/lab/',60]]
+[[BG,'art/bg/',0], [BG_ANT,'art/ant/',20], [BG_DEEP,'art/deep/',40]]
 .concat(UNDER_WORLDS.map((w, i) => [LAYERSETS[w], 'art/panels/' + w + '/', 80 + i * 10]))
 .forEach(([set, dir, prio]) => {
   set.forEach(L => {

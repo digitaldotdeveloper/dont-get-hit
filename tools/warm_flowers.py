@@ -30,8 +30,8 @@ from PIL import Image                                        # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FARM = ['art/bg/near.webp']
-UNDER = ['art/ant/near.webp', 'art/deep/near.webp', 'art/lab/near.webp',
-         'art/ant/hang.webp', 'art/deep/hang.webp', 'art/lab/hang.webp']
+UNDER = ['art/ant/near.webp', 'art/deep/near.webp',
+         'art/ant/hang.webp', 'art/deep/hang.webp']
 
 # Warm ramp, dark -> light, sampled off the game's own gold and cream so the
 # flowers land in a palette the map already contains.
@@ -131,7 +131,11 @@ MUSH = ['art/ant/near.webp', 'art/deep/near.webp']
 # liquid is not cyan and is left alone; only the lighting moves, to the amber
 # these places would actually be lit in. Originals are in git if the lab ever
 # wants its cold light back.
-LAB = ['art/lab/far.webp', 'art/lab/mid.webp', 'art/lab/near.webp', 'art/lab/hang.webp']
+# The lab set is gone -- no zone has used it since the doorway at 2500 became
+# the military base, and the four tiles were still being fetched on every cold
+# boot and never drawn. Kept as an empty list rather than deleted so the --lab
+# pass below still parses; there is simply nothing left for it to warm.
+LAB = []
 MUSH_RAMP = [(0.00, (122, 74, 22)), (0.45, (216, 154, 42)), (0.75, (245, 214, 138)),
              (1.00, (255, 240, 200))]
 

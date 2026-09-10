@@ -274,7 +274,7 @@ def main():
     show_all = '--all' in sys.argv
     files = sorted(glob.glob(os.path.join(ROOT, 'art', 'bg', '*.webp')) +
                    glob.glob(os.path.join(ROOT, 'art', 'panels', '*', '*.webp')) +
-                   [f for w in ('ant', 'deep', 'lab')
+                   [f for w in ('ant', 'deep')
                     for f in glob.glob(os.path.join(ROOT, 'art', w, '*.webp'))
                     if os.path.basename(f).split('.')[0].rstrip('23')
                        in ('far', 'mid', 'near', 'hang')])
@@ -288,8 +288,7 @@ def main():
         # wrong rather than the art. Only the numbered panels are placed beside
         # a different picture.
         is_tile = (name.rstrip('23') in ('near', 'hang', 'far', 'mid', 'upper')
-                   or rel.startswith('art/ant/') or rel.startswith('art/deep/')
-                   or rel.startswith('art/lab/'))
+                   or rel.startswith('art/ant/') or rel.startswith('art/deep/'))
         a = np.asarray(Image.open(f).convert('RGBA'))
         faults = []
 
