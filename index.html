@@ -1253,6 +1253,45 @@ const LOAD = {
   lastAt: Date.now(),
   hit(){ LOAD.done++; LOAD.lastAt = Date.now(); },
 };
+/* ---- DEFERRED ART -------------------------------------------------------
+   THE GATE WAITS FOR EVERY IMAGE THE FILE ASKS FOR, and until now the file
+   asked for all of them: 329 requests and 9.3 MB before the menu would take a
+   press. Nine worlds of panels, six vehicles and every effect sheet, on a
+   screen showing a barn.
+
+   Nothing here changes WHAT loads -- only WHEN. An image whose `src` is set
+   after the gate has drained is not counted by the interceptor below, so
+   deferring is the same thing as un-gating; there is no second flag to keep
+   in step.
+
+   It is safe because the draw code already had to tolerate missing art: every
+   vehicle draws behind an `if(X.ready)`, and `drawBgLayers` walks back through
+   the zones behind an unbuilt one. An asset that has not arrived is a case the
+   renderer was already written for, so late is a state it already knows.
+
+   Order is by distance into the run, so ant territory is fetched before space,
+   and the trickle is four at a time on a timer -- a burst of forty decodes on
+   the frame the menu appears is a stutter the player reads as the game being
+   slow, which is exactly what this is meant to fix. */
+const DEFER = [];
+let deferOpen = false;
+function deferSrc(im, src, prio){
+  if(deferOpen){ im.src = src; return im; }
+  DEFER.push({ im, src, prio: prio || 0 });
+  return im;
+}
+function deferDrain(){
+  if(deferOpen) return;
+  deferOpen = true;
+  DEFER.sort((a, b) => a.prio - b.prio);
+  (function next(){
+    const batch = DEFER.splice(0, 4);
+    if(!batch.length) return;
+    for(const j of batch) j.im.src = j.src;
+    setTimeout(next, 60);
+  })();
+}
+
 (function trackEveryImage(){
   const d = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
   if(!d || !d.set) return;                      // no interception, no gate: fail open
@@ -4295,7 +4334,7 @@ const TRUCK_FR = [
    the painted art it comes out of. */
 const WHEEL = { img:new Image(), ready:false };
 WHEEL.img.onload = () => { WHEEL.ready = true; };
-WHEEL.img.src = 'art/fx/wheel.webp';
+deferSrc(WHEEL.img, 'art/fx/wheel.webp', 1);
 const FLAME_FR = [
   { w:545, h:217, ay:109.5 }, { w:529, h:251, ay:122.5 }, { w:538, h:238, ay:120.0 },
   { w:568, h:247, ay:124.5 }, { w:507, h:260, ay:123.0 }, { w:473, h:226, ay:113.5 },
@@ -4305,14 +4344,14 @@ const FLAME = { ready:false, n:0 };
 FLAME_FR.forEach((f, i) => {
   const im = new Image();
   im.onload = () => { if(++FLAME.n >= FLAME_FR.length) FLAME.ready = true; };
-  im.src = 'art/fx/flame' + i + '.webp';
+  deferSrc(im, 'art/fx/flame' + i + '.webp', 2);
   f.img = im;
 });
 const TRUCK = { ready:false, n:0 };
 TRUCK_FR.forEach(f => {
   const im = new Image();
   im.onload = () => { if(++TRUCK.n >= TRUCK_FR.length) TRUCK.ready = true; };
-  im.src = 'art/' + f.n + '.webp';
+  deferSrc(im, 'art/' + f.n + '.webp', 3);
   f.img = im;
 });
 const MEGG = { img:new Image(), ready:false };
@@ -4474,7 +4513,7 @@ const UFO_LAMPS = [ {cx:0.3119, cy:0.8402, r:0.0356},
                     {cx:0.6769, cy:0.8402, r:0.0356} ];
 const UFO = { img:new Image(), ready:false };
 UFO.img.onload = () => { UFO.ready = true; };
-UFO.img.src = 'art/ufo.webp';
+deferSrc(UFO.img, 'art/ufo.webp', 4);
 /* Sized off GROUND like the rig, and anchored on its BELLY -- the line the
    lamps sit on -- because that is the part that has to clear the road and the
    part the beam comes out of. Everything else about the craft is above it. */
@@ -4663,7 +4702,7 @@ const ROC_W = 820, ROC_H = 518;
 const ROC_EX = 0.035, ROC_EY = 0.4817, ROC_ESPLIT = 0.085;
 const ROCKET = { img:new Image(), ready:false };
 ROCKET.img.onload = () => { ROCKET.ready = true; };
-ROCKET.img.src = 'art/veh_rocket.webp';
+deferSrc(ROCKET.img, 'art/veh_rocket.webp', 5);
 function rocGeom(){
   const rw = GROUND*0.46;
   return { rw, rh: rw*(ROC_H/ROC_W) };
@@ -4690,7 +4729,7 @@ const HOP_SQ_K = 130, HOP_SQ_C = 10;     // the spring, as a spring
 const HOP_W = 560, HOP_H = 690, HOP_FOOTX = 0.4821;
 const HOPPER = { img:new Image(), ready:false };
 HOPPER.img.onload = () => { HOPPER.ready = true; };
-HOPPER.img.src = 'art/veh_hopper.webp';
+deferSrc(HOPPER.img, 'art/veh_hopper.webp', 6);
 /* The shell is sized off its WIDTH and the coil is drawn under it, so the
    sprite's own height is not what sits on the road -- `sh` is how tall the
    shell is and `spring` is how much air is under it at rest. */
@@ -4721,7 +4760,7 @@ const SPN_COILS = [ {cx:0.1579, cy:0.2203, r:0.0829},
                     {cx:0.6980, cy:0.8245, r:0.0901} ];
 const SPOON = { img:new Image(), ready:false };
 SPOON.img.onload = () => { SPOON.ready = true; };
-SPOON.img.src = 'art/veh_spoon.webp';
+deferSrc(SPOON.img, 'art/veh_spoon.webp', 7);
 function spnGeom(){
   const sw = GROUND*0.40;
   return { sw, sh: sw*(SPN_H/SPN_W) };
@@ -4751,7 +4790,7 @@ const TST_W = 620, TST_H = 574, TST_SLOTX = 0.3806, TST_SLOTY = 0.3902;
 const TST_TW = 200, TST_TH = 180;
 const TOASTER = { img:new Image(), ready:false };
 TOASTER.img.onload = () => { TOASTER.ready = true; };
-TOASTER.img.src = 'art/veh_toaster.webp';
+deferSrc(TOASTER.img, 'art/veh_toaster.webp', 8);
 const TOAST = { img:new Image(), ready:false };
 TOAST.img.onload = () => { TOAST.ready = true; };
 TOAST.img.src = 'art/veh_toast.webp';
@@ -10056,11 +10095,12 @@ Object.keys(LAYERSETS).forEach(k => LAYERSETS[k].forEach(L => { L.set = k; }));
    made yet simply has no ready layers, and drawBgLayers falls back to the set
    before it -- so an unfinished zone is a zone that still looks like the last
    one, never a hole. */
-[[BG,'art/bg/'], [BG_ANT,'art/ant/'], [BG_DEEP,'art/deep/'], [BG_LAB,'art/lab/']]
-.concat(UNDER_WORLDS.map(w => [LAYERSETS[w], 'art/panels/' + w + '/']))
-.forEach(([set, dir]) => {
+[[BG,'art/bg/',0], [BG_ANT,'art/ant/',20], [BG_DEEP,'art/deep/',40], [BG_LAB,'art/lab/',60]]
+.concat(UNDER_WORLDS.map((w, i) => [LAYERSETS[w], 'art/panels/' + w + '/', 80 + i * 10]))
+.forEach(([set, dir, prio]) => {
   set.forEach(L => {
     L.img = new Image();
+    L.prio = prio;
     L.img.onload = () => {
       L.ready = true; warmDecode(L.img);
       // variant zero has to be ramped like the rest of them: it is drawn over
@@ -10070,7 +10110,9 @@ Object.keys(LAYERSETS).forEach(k => LAYERSETS[k].forEach(L => { L.set = k; }));
       if(SCALE) buildLayers();
     };
     L.img.onerror = () => { L.ready = false; };
-    L.img.src = dir + L.key + '.webp';
+    /* prio 0 is the farm, and the farm is what the first screen is made of. */
+    if(prio) deferSrc(L.img, dir + L.key + '.webp', prio);
+    else     L.img.src = dir + L.key + '.webp';
   });
 });
 /* FORCE THE DECODE AT LOAD, NOT AT FIRST DRAW.
@@ -10269,8 +10311,19 @@ function rampLeft(im){
   return c;
 }
 
-function midPanel(zone, i, src){
+function midPanel(zone, i, src, prio){
   const im = new Image();
+  /* A deferred panel skips the queue entirely: IMQ exists to cap concurrency
+     against the gate, and after the gate there is nothing to protect. */
+  if(prio){
+    deferSrc(im, src, prio);
+    im.onload = () => {
+      (MID_PANELS[zone] = MID_PANELS[zone] || {})[i] = rampLeft(im);
+      MID_SEQ[zone] = Object.keys(MID_PANELS[zone]).sort((a,b)=>a-b)
+                            .map(k => MID_PANELS[zone][k]);
+    };
+    return;
+  }
   imqLoad(im, src, () => {
     (MID_PANELS[zone] = MID_PANELS[zone] || {})[i] = rampLeft(im);
     MID_SEQ[zone] = Object.keys(MID_PANELS[zone]).sort((a,b)=>a-b)
@@ -10293,12 +10346,22 @@ const MID_SETS = {
   alien:  ['x1','x2','x3','x4','x5','x6'],
   space:  ['s1','s2','s3','s4','s5','s6'],
 };
+/* THE FIRST TWO WORLDS ARE EAGER; THE REST ARRIVE WHILE YOU PLAY THEM.
+   The farm and ant territory are the first 1,000 m, which the measured median
+   run only just reaches -- so those two gate, and the seven behind them are
+   fetched in the order you would meet them. `ZONE_ORDER` is the priority, not
+   the route: a player with a head start still gets them all, just sooner than
+   they need them. */
+const ZONE_EAGER = ['farm', 'terr'];
+const ZONE_ORDER = ['empire','prison','cherno','cia','area51','alien','space'];
 Object.keys(MID_SETS).forEach(zone => {
+  const eager = ZONE_EAGER.indexOf(zone) >= 0;
+  const prio  = eager ? 0 : (ZONE_ORDER.indexOf(zone) + 1) * 10;
   MID_SETS[zone].forEach((f, i) => {
     // the farm's eight live in art/bg beside the painting they were matched to;
     // every other world keeps its own folder
     const dir = zone === 'farm' || zone === 'terr' ? 'art/bg/' : 'art/panels/' + zone + '/';
-    midPanel(zone, i + 1, dir + f + '.webp');
+    midPanel(zone, i + 1, dir + f + '.webp', eager ? 0 : prio + i);
   });
 });
 
@@ -11688,8 +11751,8 @@ function gateStart(){
   const pct2 = document.getElementById('bootPct2');
   const setPct = t => { pct.textContent = t; if(pct2) pct2.textContent = t; };
   const what = document.getElementById('bootWhat');
-  if(!el) { LOAD.ready = true; return; }
-  if(/[?&]noboot/.test(location.search)){ LOAD.ready = true; el.remove(); return; }
+  if(!el) { LOAD.ready = true; deferDrain(); return; }
+  if(/[?&]noboot/.test(location.search)){ LOAD.ready = true; deferDrain(); el.remove(); return; }
   document.body.classList.add('booting');
 
   /* What it says while you wait. Not a lie about phases -- the queue is one
@@ -11718,6 +11781,7 @@ function gateStart(){
     const stalled = LOAD.sealed && (Date.now() - LOAD.lastAt) > LOAD.STALL_MS;
     if(drained || stalled || waited > LOAD.CEILING_MS){
       LOAD.ready   = true;
+      deferDrain();          // the rest of the art, now the player is not waiting on it
       prefetchSamples();     // the bytes, now; the decode waits for a gesture
       LOAD.waitMs  = waited;
       LOAD.timedOut = !drained;

@@ -183,7 +183,16 @@ def main():
               % (name, len(files), how, before, after, '' if write else '   [dry run]'))
         if write:
             for f, o in zip(files, outs):
-                Image.fromarray(o, 'RGBA').save(f, 'WEBP', lossless=True, quality=100, method=6)
+                # LOSSLESS HERE UNDOES opt_panels.py, and it did: re-running this
+                # over an optimised set put 4 MB back on the download, because a
+                # connector stamp is a few edge columns and this rewrote the whole
+                # picture at quality 100 to place them.
+                # q84 is opt_panels' own measured floor for a panel -- the number
+                # it arrives at on nearly every one of these -- so writing at it
+                # keeps the join work and leaves the file the size that tool
+                # already proved was honest. Run `python tools/opt_panels.py`
+                # after this to re-check, not to re-shrink.
+                Image.fromarray(o, 'RGBA').save(f, 'WEBP', quality=84, method=6, exact=True)
     if not write:
         print('\n[dry run; pass --write]')
 
