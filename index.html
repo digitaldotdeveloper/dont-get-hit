@@ -10453,6 +10453,15 @@ function trSpan(){
    property of ADJACENCY, so they are enforced separately: pick by distance,
    then if the answer equals the tile before it, step one along the same list.
    `avoid` is that neighbour, handed in by the draw loop. */
+/* Which world's upper wall stands at this tile, decided the same way a mid
+   panel is: by the tile's OWN metre, not the player's. Falls back to the
+   picture it was given, so a world without an upper tile keeps the one behind
+   it rather than opening a hole in the top of the room. */
+function upperTileAt(worldM, fallback){
+  const U = slotFor(zoneAt(worldM).a, 'upper');
+  return (U && U.ready && U.img) ? U.img : fallback;
+}
+
 function midPanelAt(worldM, k, base, avoid){
   const zone = zoneAt(worldM).a;
   const cyc = (list) => list[((k % list.length) + list.length) % list.length];
@@ -10507,7 +10516,26 @@ function drawLayerSlot(L, key, alpha, clipL, clipR){
      overlap WITH. One tile blended with a 93%-offset copy of itself ghosts the
      whole pattern, so a world without variants keeps butting -- which is right,
      because a lone tile is cut to loop against itself. */
-  const seq = (key === 'mid') ||
+  /* THE WALL ABOVE AND THE WALL BELOW MUST CHANGE WORLD IN THE SAME PLACE.
+
+     `mid` picks its picture per TILE, from that tile's own world metre, which is
+     what lets the approach escalate and the farm dither into the territory. But
+     `upper` was a plain repeating tile keyed off the ZONE, so it flipped to the
+     next world all at once while the panels under it were still the old one --
+     prison brick above an ant-city wall, for as long as it takes the seam to
+     cross. Reported as "the layers are merging with each other", and that is
+     exactly what it was: one surface changing world in two places.
+
+     So upper walks the same list, tile by tile, on the same pitch as the mid
+     panels -- which means the whole wall changes at a PANEL BOUNDARY, and a
+     panel boundary is where a pillar stands. The change happens at a column,
+     the way it does in a building. */
+  const isUpper = (key === 'upper');
+  if(isUpper){
+    const M = slotFor(zoneAt(game.dist/UPM).a, 'mid');
+    if(M && M.ready) g.W = bgGeom(M).W;      // share the mid pitch, so they line up
+  }
+  const seq = (key === 'mid') || isUpper ||
               (key === 'near' && (NEAR_SEQ[zoneAt(game.dist/UPM).a.id] || []).length > 0);
   const step = seq ? g.W * (1 - MID_OVERLAP) : g.W;
   const off = ((cam.x*L.f) % step + step) % step;
@@ -10534,6 +10562,7 @@ function drawLayerSlot(L, key, alpha, clipL, clipR){
        you stand still. */
     const im = !seq ? L.img
               : key === 'mid' ? midPanelAt((seqK*step/L.f)/UPM, seqK, [L.img], lastIm)
+              : isUpper ? upperTileAt((seqK*step/L.f)/UPM, L.img)
               : nearTileAt((seqK*step/L.f)/UPM, seqK, [L.ramp || L.img], lastIm);
     lastIm = im;
     ctx.drawImage(im, x, g.y, g.W, g.H);

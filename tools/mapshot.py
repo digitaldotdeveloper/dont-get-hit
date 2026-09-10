@@ -35,7 +35,7 @@ OUT = os.path.join(ROOT, 'tools', '_mapshots')
 BASE = 'http://127.0.0.1:8899/index.html'
 
 
-def shoot(dists, w=900, h=420, dpr=2, settle=2.4):
+def shoot(dists, w=900, h=420, dpr=2, settle=2.4, load=3.0):
     os.makedirs(OUT, exist_ok=True)
     s = socket.socket(); s.bind(('127.0.0.1', 0)); port = s.getsockname()[1]; s.close()
     prof = os.path.join(os.environ.get('TEMP', '.'), 'cdp-mapshot-%d' % port)
@@ -81,7 +81,7 @@ def shoot(dists, w=900, h=420, dpr=2, settle=2.4):
         call('Page.enable')
         for d in dists:
             call('Page.navigate', {'url': '%s?noboot=1&dist=%s' % (BASE, d)})
-            time.sleep(3.0)
+            time.sleep(load)
             for kind in ('mousePressed', 'mouseReleased'):
                 call('Input.dispatchMouseEvent',
                      {'type': kind, 'x': w // 2, 'y': h // 2, 'button': 'left',
