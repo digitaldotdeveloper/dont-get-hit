@@ -172,6 +172,16 @@ PANELS.update(TRANSITION)
 # index.html -- these are the things standing in it, not the lighting.
 WORLDS = {
  'empire': {
+ # A PLAIN STRETCH, and this is the Jetpack Joyride shape. Its lab is ONE wall
+  # that repeats, with occasional features on it -- you never get a new room
+  # every three seconds. Ours changed the entire room every panel, which at this
+  # pitch is one every 57 world metres, and that churn is what "the background
+  # suddenly changes" describes. Alternating a plain stretch with a feature
+  # halves the rate and gives the eye somewhere to rest between the interesting
+  # bits, which is what makes a corridor read as one place.
+  'e0': "A plain stretch of packed red-brown earth wall in an ant city, running edge to edge "
+        "with nothing standing in front of it: just the earth itself with pale root threads "
+        "and small stones in it, one dark round tunnel mouth low down, and a lantern on a hook.",
   'e1': "A row of big rounded earth chambers in an ant city: one stacked with white sugar "
         "cubes, one with golden biscuit crumbs, a small wooden crane between them and a "
         "plank walkway across the top, warm lanterns hanging on hooks.",
@@ -203,6 +213,9 @@ WORLDS = {
         "the tiers and a lantern on a hook.",
  },
  'prison': {
+  'p0': "A plain run of grey breeze block prison wall, edge to edge, with nothing standing "
+        "in front of it: block courses, a brown rust stain running down from a bracket, a "
+        "conduit clipped along it and one caged bulb.",
   'p1': "A row of four prison cell fronts set into grey concrete: heavy vertical steel bars, "
         "a bunk and a bucket visible inside one, worn numbers stencilled over each door, a "
         "bare bulb on a wire above.",
@@ -227,6 +240,9 @@ WORLDS = {
         "light over the bench.",
  },
  'cherno': {
+  'c0': "A plain run of grey concrete reactor wall, edge to edge, with nothing standing in "
+        "front of it: poured concrete with rust streaks, a seam of bolted plate and one "
+        "yellow and black hazard stripe low down.",
   'c1': "A reactor hall wall: enormous grey pipes with flanged joints and big red valve "
         "wheels, a control panel of dials and levers, and a yellow and black hazard stripe "
         "along the base.",
@@ -244,6 +260,9 @@ WORLDS = {
         "them, a shower head over a tiled bay, and a wall of ventilation louvres above.",
  },
  'cia': {
+  'b0': "A plain run of warm grey-brown bunker wall, edge to edge, with nothing standing in "
+        "front of it: concrete panels, a stencilled band, a conduit run and one small vent "
+        "grille.",
   'b1': "A row of tall grey server racks with cable trays running overhead, a map table with "
         "a lit glass top between them, and coiled cables looping down the fronts.",
   'b2': "A supply store: steel lockers in a row, stencilled wooden crates stacked two high, "
@@ -259,6 +278,8 @@ WORLDS = {
         "cleaning kit laid out on a cloth, and a steel cage door standing open at one end.",
  },
  'area51': {
+  'a0': "A plain run of corrugated steel hangar wall, edge to edge, with nothing standing in "
+        "front of it: vertical ribs, a riveted seam, one bolted access hatch and a strip lamp.",
   'a1': "A hangar interior: a large craft hidden under a heavy canvas tarpaulin on a wheeled "
         "cradle, two floodlights on tripod stands aimed at it, a rolling toolbox, and a "
         "gantry stair.",
@@ -276,6 +297,9 @@ WORLDS = {
         "rack of clipboards on the wall.",
  },
  'alien': {
+  'x0': "A plain run of dull bronze alien panelling, edge to edge, with nothing standing in "
+        "front of it: smooth curved plates with thin glowing GREEN seams between them and one "
+        "small round port lit from within.",
   'x1': "A row of tall glass specimen tanks filled with glowing GREEN liquid, odd rounded "
         "shapes suspended in two of them, a console of switches between the tanks, and a "
         "cable bundle running along the floor.",
@@ -303,6 +327,9 @@ WORLDS = {
         "arching over the whole wall.",
  },
  'space': {
+  's0': "A plain run of off-white space station wall, edge to edge, with nothing standing in "
+        "front of it: bolted panels, a grey handrail along it, one recessed light and a small "
+        "square hatch.",
   's1': "A launch gantry on a concrete pad: a white rocket standing against a steel service "
         "tower with folded access arms, a flame trench at its foot, and floodlight masts "
         "either side. Absolutely NO barns, NO wooden farm buildings, NO red-roofed sheds and "
@@ -422,7 +449,7 @@ WORLD_OF = {n: w for w in WORLDS for n in WORLDS[w]}
 # docking bay indoors against a launch pad and a moon surface out in the open.
 INTERIORS = set(list(WORLDS['empire']) + list(WORLDS['prison']) + list(WORLDS['cherno'])
                 + list(WORLDS['cia']) + list(WORLDS['alien'])
-                + ['a1', 'a3', 'a5', 'a6', 's2', 's3', 's5', 's6'])
+                + ['a0', 'a1', 'a3', 'a5', 'a6', 's0', 's2', 's3', 's5', 's6'])
 OUTDOORS = {'a2', 'a4', 's1', 's4'}
 
 

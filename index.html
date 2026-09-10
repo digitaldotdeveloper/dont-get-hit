@@ -10343,13 +10343,13 @@ function midPanel(zone, i, src, prio){
 const MID_SETS = {
   farm:   ['mid1','mid2','mid3','mid4','mid5','mid6','mid7','mid8'],
   terr:   ['tr1','tr2','tr3','tr4'],
-  empire: ['e1','e2','e3','e4','e5','e6'],
-  prison: ['p1','p2','p3','p4','p5','p6'],
-  cherno: ['c1','c2','c3','c4','c5','c6'],
-  cia:    ['b1','b2','b3','b4','b5','b6'],
-  area51: ['a1','a2','a3','a4','a5','a6'],
-  alien:  ['x1','x2','x3','x4','x5','x6'],
-  space:  ['s1','s2','s3','s4','s5','s6'],
+  empire: ['e1','e0','e2','e0','e3','e0','e4','e0','e5','e0','e6','e0'],
+  prison: ['p1','p0','p2','p0','p3','p0','p4','p0','p5','p0','p6','p0'],
+  cherno: ['c1','c0','c2','c0','c3','c0','c4','c0','c5','c0','c6','c0'],
+  cia:    ['b1','b0','b2','b0','b3','b0','b4','b0','b5','b0','b6','b0'],
+  area51: ['a1','a0','a3','a0','a5','a0','a6','a0','a2','a4'],
+  alien:  ['x1','x0','x2','x0','x3','x0','x4','x0','x5','x0','x6','x0'],
+  space:  ['s2','s0','s3','s0','s5','s0','s6','s0','s1','s4'],
 };
 /* THE FIRST TWO WORLDS ARE EAGER; THE REST ARRIVE WHILE YOU PLAY THEM.
    The farm and ant territory are the first 1,000 m, which the measured median
@@ -10397,9 +10397,18 @@ function nearTile(zone, src){
   }, ()=>{}, 'gp');
 }
 function nearTileAt(worldM, k, base, avoid){
-  const list = NEAR_SEQ[zoneAt(worldM).a.id];
-  if(!list || !list.length) return base[0];
-  const all = base.concat(list);
+  /* THE BASE TILE MUST COME FROM THE SAME WORLD AS THE VARIANTS.
+     `base` is the floor of the zone the PLAYER is standing in, and the variants
+     were looked up from the zone this TILE stands in. Anywhere near a boundary
+     those are different worlds, so the shuffle was dealing a farm verge against
+     two prison floors -- "the floors are being randomly merged together", and
+     it was exactly that: one hand of cards from two decks. */
+  const z = zoneAt(worldM).a;
+  const own = slotFor(z, 'near');
+  const b = (own && own.ready) ? (own.ramp || own.img) : base[0];
+  const list = NEAR_SEQ[z.id];
+  if(!list || !list.length) return b;
+  const all = [b].concat(list);
   const at = i => all[((i % all.length) + all.length) % all.length];
   let im = at(k);
   if(im === avoid && all.length > 1) im = at(k + 1);
@@ -10560,10 +10569,14 @@ function drawLayerSlot(L, key, alpha, clipL, clipR){
        its layer position divided back out. Get that wrong and the approach
        escalates at the wrong place -- or worse, changes panel under you while
        you stand still. */
+    const m = (i) => (i*step/L.f)/UPM;
     const im = !seq ? L.img
-              : key === 'mid' ? midPanelAt((seqK*step/L.f)/UPM, seqK, [L.img], lastIm)
-              : isUpper ? upperTileAt((seqK*step/L.f)/UPM, L.img)
-              : nearTileAt((seqK*step/L.f)/UPM, seqK, [L.ramp || L.img], lastIm);
+              : key === 'mid'
+                ? midPanelAt(m(seqK), seqK, [L.img],
+                             midPanelAt(m(seqK - 1), seqK - 1, [L.img], null))
+              : isUpper ? upperTileAt(m(seqK), L.img)
+              : nearTileAt(m(seqK), seqK, [L.ramp || L.img],
+                           nearTileAt(m(seqK - 1), seqK - 1, [L.ramp || L.img], null));
     lastIm = im;
     ctx.drawImage(im, x, g.y, g.W, g.H);
     /* The lookouts live on the watchtower painted into panel ZERO, so they
