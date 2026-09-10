@@ -155,7 +155,18 @@ await evalJS(`(() => {
     }
     // restart once the death card has settled
     if(g.mode === 'dead' && cur && cur.closed && now - deadAt > 1400){
-      if(R.runs.length < ${RUNS}){ cur = null; D.thrustOff(); D.startQuick ? D.startQuick() : D.startRun(); }
+      if(R.runs.length < ${RUNS}){
+        /* DISMISS THE OFFER FIRST, or the next run is played with a dead button.
+           Any run past 100m opens the death offer, which sets META.open, and
+           thrustOn returns early on META.open -- for the full DEATH_SECS (8s),
+           which is far longer than the 1.4s we wait here. Restarting without
+           closing it handed the pilot a bird that could not fly: it ran along
+           the ground into the first ground hazard at ~57m, and the run after
+           that caught the tail of the same lockout and died at ~11m. That
+           read as a three-run cycle in the game. It was this line. */
+        if(D.deathSkip) D.deathSkip();
+        cur = null; D.thrustOff(); D.startQuick ? D.startQuick() : D.startRun();
+      }
     }
     requestAnimationFrame(tick);
   }

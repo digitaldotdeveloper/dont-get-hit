@@ -569,12 +569,77 @@
     .tab{padding:9px 7px 8px;letter-spacing:.07em;font-size:9.5px}
     .m-txt{font-size:10px}
   }
+  /* --- settings -----------------------------------------------------------
+     A switch, not a checkbox: the row is the target, so the whole strip is
+     tappable rather than a 20px box at the end of it. */
+  #opts{background:radial-gradient(120% 80% at 50% 45%,rgba(36,16,67,.5) 0%,rgba(21,8,39,.9) 70%);
+        align-items:center;justify-content:center}
+  .ocard{position:relative;width:min(420px,88vw);max-height:88vh;overflow-y:auto;border-radius:20px;
+         padding:16px 18px 14px;
+         background:linear-gradient(180deg,rgba(61,31,85,.97),rgba(29,13,52,.99));
+         border:1.5px solid rgba(255,242,222,.16);box-shadow:var(--shadow)}
+  .ocard::-webkit-scrollbar{width:0}
+  .otitle{margin:0 0 12px;font-family:'Bungee',cursive;font-size:15px;letter-spacing:.06em;
+          color:var(--gold);text-align:center}
+  .orows{display:flex;flex-direction:column;gap:7px}
+  .orow{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;
+        border-radius:13px;padding:10px 12px;cursor:pointer;text-align:left;
+        background:rgba(255,242,222,.05);border:1.5px solid rgba(255,242,222,.11);
+        font-family:inherit;color:inherit}
+  .ol{font:900 10px/1.3 'Archivo',sans-serif;letter-spacing:.12em;color:rgba(255,242,222,.86);
+      display:flex;flex-direction:column;gap:3px}
+  .ol em{font-style:normal;font-size:8.5px;font-weight:700;letter-spacing:.06em;
+         color:rgba(255,242,222,.42)}
+  .sw{flex:0 0 auto;width:38px;height:21px;border-radius:99px;position:relative;
+      background:rgba(255,242,222,.16);transition:background .16s}
+  .sw::after{content:'';position:absolute;left:3px;top:3px;width:15px;height:15px;border-radius:99px;
+             background:var(--cream);transition:transform .16s}
+  .orow.on .sw{background:var(--mint)}
+  .orow.on .sw::after{transform:translateX(17px)}
+  .ofoot{display:flex;gap:8px;margin-top:11px}
+  .olink{flex:1;text-align:center;text-decoration:none;border-radius:11px;padding:9px 8px;cursor:pointer;
+         background:none;border:1.5px solid rgba(255,242,222,.18);
+         font:900 8.5px/1.2 'Archivo',sans-serif;letter-spacing:.12em;color:rgba(255,242,222,.6);
+         display:flex;align-items:center;justify-content:center}
+  .over{margin:10px 0 0;text-align:center;font:900 8px/1 'Archivo',sans-serif;letter-spacing:.14em;
+        color:rgba(255,242,222,.28)}
+  /* The gear sits inboard of the mute button and shares its look. */
+  #cog{position:absolute;right:calc(env(safe-area-inset-right,0px) + 62px);
+       top:calc(env(safe-area-inset-top,0px) + 12px);width:38px;height:38px;border-radius:13px;
+       display:grid;place-items:center;cursor:pointer;z-index:8;
+       background:rgba(36,16,67,.62);border:1.5px solid rgba(255,242,222,.14);
+       color:rgba(255,242,222,.82);font-family:inherit}
+  #cog svg{width:19px;height:19px;fill:currentColor}
+  #cog:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+  @media (max-width:820px){ #cog{right:calc(env(safe-area-inset-right,0px) + 58px);width:34px;height:34px} }
+
   /* A tab badge is a bare dot: the tab already says MISSIONS, so a number
      would be the only digit on the strip and would read as a price. */
   .tdot{display:none;width:6px;height:6px;border-radius:99px;background:var(--mint);
         margin-left:5px;vertical-align:middle}
   .tdot.on{display:inline-block}
   .door .dot:empty{width:9px;height:9px;right:-1px;top:-1px}
+  /* THE HIGHEST-CONVERTING PLACEMENT IN THE GENRE, and it goes on the score
+     card rather than the death offer because it is not a second chance -- it
+     is a reward for a run that already ended, which is why it can sit next to
+     RETRY without competing with it. Mint, never gold: gold is PLAY and the
+     claim, and a gold button here would pull the thumb off RETRY. */
+  .dblBtn{display:none;align-items:center;justify-content:center;gap:7px;margin:0 auto 8px;
+          border:0;cursor:pointer;border-radius:13px;padding:9px 16px 10px;
+          font-family:'Bungee',cursive;font-size:12px;color:#08301F;
+          background:linear-gradient(180deg,#7CF0CE,var(--mint));box-shadow:0 3px 0 #14795C}
+  .dblBtn.show{display:flex}
+  .dblBtn b{font-family:inherit}
+  .dblBtn:active{transform:translateY(3px);box-shadow:0 0 0 #14795C}
+  .dblBtn .adg{width:0;height:0;border-style:solid;border-width:5px 0 5px 8px;
+               border-color:transparent transparent transparent #08301F}
+  /* A reroll is a small, quiet control: it is a convenience, not an offer,
+     and dressing it up would make the board look like it was selling. */
+  .m-roll{flex:0 0 auto;border:1.5px solid rgba(255,242,222,.2);background:none;cursor:pointer;
+          border-radius:10px;padding:7px 8px;margin-left:6px;display:flex;align-items:center;gap:4px;
+          font:900 8px/1 'Archivo',sans-serif;letter-spacing:.1em;color:rgba(255,242,222,.55)}
+  .m-roll .adg{width:0;height:0;border-style:solid;border-width:4px 0 4px 6px;
+               border-color:transparent transparent transparent rgba(255,242,222,.55)}
   /* The score card's one line about the board. Never a modal -- interrupting
      the score beat to announce a mission costs the retry, which is the only
      thing on that screen that matters. */
@@ -899,6 +964,9 @@
       <div id="eggWrap"><span id="eggIcon"></span><span id="eggCount">0</span></div>
     </div>
     <div id="combo"><span id="comboTxt">x2</span></div>
+    <button id="cog" aria-label="Settings">
+      <svg viewBox="0 0 24 24"><path d="M19.4 13a7.8 7.8 0 0 0 0-2l2-1.6-2-3.4-2.5 1a7.6 7.6 0 0 0-1.7-1l-.4-2.6h-4l-.4 2.6a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.4L6.6 11a7.8 7.8 0 0 0 0 2l-2 1.6 2 3.4 2.5-1a7.6 7.6 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.4zM12 15a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg>
+    </button>
     <button id="mute" aria-label="Toggle sound">
       <svg class="on" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4zm12.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 2.2v2.1a7.8 7.8 0 0 1 0 15.4v2.1a9.9 9.9 0 0 0 0-19.6z"/></svg>
       <svg class="off" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4zm17.3-2.3-1.4-1.4L17 8.2l-2.9-2.9v3l1.5 1.5-1.5 1.5v3l2.9-2.9 2.9 2.9 1.4-1.4-2.9-2.9 2.9-2.9z"/></svg>
@@ -963,6 +1031,7 @@
         </div>
       </div>
       <p class="msnFlag" id="overMsn"></p>
+      <button class="dblBtn" id="dblEggs"><i class="adg"></i>DOUBLE YOUR <b id="dblN">0</b> EGGS</button>
       <div class="overFoot">
         <button id="tomenu" class="ghost">MENU</button>
         <button id="retry" class="big">RETRY</button>
@@ -1001,6 +1070,28 @@
       <div class="pane" data-pane="pow"></div>
       <div class="pane" data-pane="app"></div>
       <div class="pane" data-pane="store"></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS. Audio, haptics, motion, and the two links the Play listing
+       cannot go live without. Deliberately a panel rather than a shop tab:
+       none of it is bought, and putting it behind the egg pill would say it
+       was. -->
+  <div id="opts" class="screen" data-meta>
+    <div class="ocard">
+      <button class="xBtn" id="optX" aria-label="Close">&times;</button>
+      <h2 class="otitle">SETTINGS</h2>
+      <div class="orows">
+        <button class="orow" data-opt="sfx"><span class="ol">SOUND EFFECTS</span><i class="sw"></i></button>
+        <button class="orow" data-opt="music"><span class="ol">MUSIC</span><i class="sw"></i></button>
+        <button class="orow" data-opt="haptics"><span class="ol">VIBRATION</span><i class="sw"></i></button>
+        <button class="orow" data-opt="reduced"><span class="ol">REDUCED MOTION<em>Less shake, no slow-motion</em></span><i class="sw"></i></button>
+      </div>
+      <div class="ofoot">
+        <button class="olink" id="optRestore">RESTORE PURCHASES</button>
+        <a class="olink" id="optPriv" href="privacy.html" target="_blank" rel="noopener">PRIVACY POLICY</a>
+      </div>
+      <p class="over">DON&rsquo;T GET HIT &middot; <span id="optVer">1.0.0</span></p>
     </div>
   </div>
 
@@ -1188,7 +1279,20 @@ const easeInCubic = t => t*t*t;
 function hash(n){ const s=Math.sin(n*127.1+311.7)*43758.5453; return s-Math.floor(s); }
 function pad6(n){ n=Math.max(0,Math.floor(n)); return String(n).padStart(6,'0'); }
 
-const REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const REDUCED_OS = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+/* READ THROUGH A FUNCTION, not a const. This used to be captured once at load
+   and could therefore only ever be what the OS said -- so the settings toggle
+   would have drawn a switch that did nothing until the next reload. */
+function reducedNow(){
+  const o = (typeof SAVE !== 'undefined' && SAVE.opt) ? SAVE.opt.reduced : null;
+  return o === null || o === undefined ? REDUCED_OS : !!o;
+}
+/* Haptics are opt-out, and the check is here rather than at each of the four
+   call sites so a new one cannot forget it. */
+function buzz(pattern){
+  if(typeof SAVE !== 'undefined' && SAVE.opt && !SAVE.opt.haptics) return;
+  if(navigator.vibrate) try{ navigator.vibrate(pattern); }catch(e){}
+}
 /* ?crow=1 pulls the crow attack forward to the first few seconds and sends
    them back to back, because otherwise every look at one costs half a minute
    of run. It scales the unlock AND the gap and nothing else, so what you are
@@ -6487,8 +6591,8 @@ function pop(x,y,text,col,size,vy){
 
 /* ---------- camera ---------- */
 const cam = { x:0, y:0, shakeX:0, shakeY:0 };
-function addShake(v){ game.shake = Math.min(game.shake + (REDUCED? v*0.25 : v), 40); }
-function slowmo(scale, dur){ if(REDUCED) return; game.tsTarget=scale; game.smT=dur; }
+function addShake(v){ game.shake = Math.min(game.shake + (reducedNow()? v*0.25 : v), 40); }
+function slowmo(scale, dur){ if(reducedNow()) return; game.tsTarget=scale; game.smT=dur; }
 
 /* ============================================================
    SPAWNING / DIFFICULTY
@@ -7044,7 +7148,7 @@ function updateCrows(dt){
         c.x = cam.x + VW + 190;                // off the right edge of the CAMERA
         c.y = c.ty;
         S.caw();
-        if(navigator.vibrate) try{ navigator.vibrate(18); }catch(e){}
+        buzz(18);
       }
       continue;
     }
@@ -7787,6 +7891,7 @@ function startRun(){
 
   game.near=0; game.combo=0; game.comboBest=0; game.comboT=0;
   game.runRides=0; game.crowPass=0;              // the two counters missions read
+  game.usedDouble=false;                         // the score card's rewarded offer
   game.speed=340*PACE; game.diff=0; game.spawnT=2.6; game.cornT=0; game.goT=0;
   game.obstacles.length=0; game.parts.length=0; game.pops.length=0; game.ui.length=0;
   game.eggs.length=0; game.eggT=1.6; game.runEggs=0; game.eggStreak=0;
@@ -8725,7 +8830,7 @@ function die(o){
   S.hit();
   if(o && o.spec && o.spec.elec && o.spec.wired !== false){ S.zap(); game.flash = 1; }
   if(o && o.crow) S.crowhit();         // feathers and a beak, not wood
-  if(navigator.vibrate) try{ navigator.vibrate([26,40,60]); }catch(e){}
+  buzz([26,40,60]);
   const gy = GROUND;
   spark(player.x, gy - player.y - 90, 26, {col:C.gold, s0:180,s1:620, l0:0.4,l1:0.9, r0:4,r1:11});
   spark(player.x, gy - player.y - 90, 14, {col:C.coral, s0:120,s1:420, l0:0.4,l1:0.8, r0:5,r1:13});
@@ -8822,6 +8927,16 @@ function finishNow(){
   elHud.classList.remove('on');
   /* One line on the card rather than a modal: the claim lives in the shop,
      and interrupting the score beat to announce it would cost the retry. */
+  /* THE OFFER ONLY EXISTS IF THERE IS SOMETHING TO DOUBLE. Showing "double
+     your 0 eggs" is worse than showing nothing: it teaches the player the
+     button is noise, and they stop reading it on the run where it is worth
+     two hundred. */
+  const db = $('#dblEggs'), dn = $('#dblN');
+  if(db){
+    const n = game.runEggs || 0;
+    db.classList.toggle('show', n > 0 && !game.usedDouble);
+    if(dn) dn.textContent = money(n);
+  }
   const mb = $('#overMsn');
   if(mb){
     mb.classList.toggle('show', msnWon > 0);
@@ -8998,7 +9113,7 @@ function updateIntro(dt){
     game.doorBow = 0;
     addShake(46); game.flash = 0.95; game.freeze = 0.13;
     slowmo(0.34, 0.34);
-    if(navigator.vibrate) try{ navigator.vibrate([40,30,70]); }catch(e){}
+    buzz([40,30,70]);
     featherBurst(cam.x + game.cageX, GROUND-cageGeom().h*0.34, 14, 420);
     game.cheerT = 0.12;                                  // the roof joins in
     game.titleT = -1;                                    // and the title goes with it
@@ -11541,6 +11656,9 @@ const $$ = s => Array.prototype.slice.call(document.querySelectorAll(s));
    an older APK, or who has two devices, ends up holding. Silently wiping
    their vehicles is the worst outcome available; keeping what is recognised
    and dropping only what is not is the least bad. */
+/* Bumped by hand at release. Shown in settings so a bug report can name a
+   build, and sent with every analytics event's session for the same reason. */
+const GAME_VERSION = '1.0.0';
 const SAVE_KEY = 'dgh.save.v1';
 const SAVE_BAK = 'dgh.save.bak';
 const SAVE_V   = 1;
@@ -11586,7 +11704,13 @@ const SAVE = (() => {
                  and so does a save whose board was orphaned by a catalogue
                  edit. `tot` is the cumulative half of the pool and has to
                  survive a reload, which `game` does not. */
-              msn:{ slots:[], done:[], tot:{runs:0,eggsT:0,distT:0,nearT:0,crowsT:0} } };
+              msn:{ slots:[], done:[], tot:{runs:0,eggsT:0,distT:0,nearT:0,crowsT:0} },
+              /* SETTINGS. `reduced` starts as whatever the OS says and is then
+                 the player's to change -- the media query is a default, not a
+                 verdict, and a player who wants the shake off on a device that
+                 never asked for it had no way to say so. `null` means "follow
+                 the OS", which is not the same as false. */
+              opt:{ sfx:true, music:true, haptics:true, reduced:null } };
   try{
     const raw = saveRead();
     if(raw && saveMigrate(raw)){
@@ -11601,6 +11725,7 @@ const SAVE = (() => {
       /* Each of the three merged on its own, because a half-written board is
          the shape a crash leaves behind and `raw.msn || d.msn` would take it
          whole -- slots without totals, or totals without done. */
+      if(raw.opt) d.opt = Object.assign(d.opt, raw.opt);
       if(raw.msn){
         if(Array.isArray(raw.msn.slots)) d.msn.slots = raw.msn.slots.filter(s => s && s.id);
         if(Array.isArray(raw.msn.done))  d.msn.done  = raw.msn.done.filter(x => typeof x === 'string');
@@ -11610,7 +11735,22 @@ const SAVE = (() => {
   }catch(e){}
   return d;
 })();
-function saveNow(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE)); }catch(e){} }
+/* MAIN FIRST, THEN THE BACKUP, and `w` is what tells them apart on the way
+   back in. A kill between the two leaves the backup one write behind, which
+   saveRead() detects and prefers over a main key it cannot parse. */
+function saveNow(){
+  SAVE.v = SAVE_V; SAVE.w = Date.now();
+  let s;
+  try{ s = JSON.stringify(SAVE); }catch(e){ return; }   // never write half an object
+  try{ localStorage.setItem(SAVE_KEY, s); }catch(e){
+    /* Out of quota is the realistic failure, and the analytics queue is the
+       one thing here that is expendable -- drop it and try once more before
+       giving up on the player's progress. */
+    try{ localStorage.removeItem(AN_KEY); AN.q.length = 0;
+         localStorage.setItem(SAVE_KEY, s); }catch(e2){ return; }
+  }
+  try{ localStorage.setItem(SAVE_BAK, s); }catch(e){}
+}
 
 function eggs(){ return game.eggBank|0; }
 function eggsSet(n){
@@ -12013,6 +12153,32 @@ function msnClaim(i){
   msnDraw(); metaNums();
 }
 
+/* SWAP A MISSION YOU ARE NEVER GOING TO DO, for a video. The fourth
+   rewarded placement, and the least aggressive of the four: it sells a way
+   OUT of content rather than more of it, which is exactly why it converts --
+   the player is already annoyed at the slot when they look at it.
+
+   The old mission is NOT marked done. It goes back in the pool and can be
+   dealt again later, because burning it would let a player reroll the
+   catalogue down to nothing and leave the board permanently short. */
+function msnReroll(i){
+  const slots = msnSlots(), slot = slots[i];
+  if(!slot || msnDone(slot)) return;                 // never reroll a payout
+  const old = slot.id;
+  const id = msnDeal(slots.map(s => s.id));
+  if(!id){ toast('NOTHING LEFT TO SWAP TO', true); S.bonk(); return; }
+  rewardedAd('reroll').then(() => {
+    /* Re-read the board rather than trusting `slot`: the video is seconds
+       long and a claim in another tab could have replaced this row. */
+    const now = msnSlots();
+    if(!now[i] || now[i].id !== old) { msnDraw(); return; }
+    now[i] = { id, p:0 };
+    saveNow();
+    track('mission_reroll', { from:old, to:id });
+    S.click(); msnDraw(); metaNums();
+  });
+}
+
 function msnDraw(){
   const pane = $('#shop .pane[data-pane="msn"]'); if(!pane) return;
   const slots = msnSlots();
@@ -12035,7 +12201,9 @@ function msnDraw(){
         '</div>' +
         (done
           ? '<button class="m-claim" data-claim="' + i + '"><i class="e"></i>' + money(d.pay) + '</button>'
-          : '<div class="m-pay"><i class="e"></i>' + money(d.pay) + '</div>') +
+          : '<div class="m-pay"><i class="e"></i>' + money(d.pay) + '</div>' +
+            '<button class="m-roll" data-roll="' + i + '" title="Swap this mission">' +
+              '<i class="adg"></i>SWAP</button>') +
       '</div>';
     }).join('') + '</div>';
 }
@@ -12147,13 +12315,29 @@ function skinEquip(id){
 /* THE ONLY PLACE AN AD IS ASKED FOR. It resolves after the length of pause a
    rewarded video makes, and says on screen that it is not one. Replace the
    body with the network's callback and every caller keeps working. */
-function rewardedAd(){
+/* EVERY REWARDED VIDEO IN THE GAME COMES THROUGH HERE, and it takes the
+   placement name because that is the only number that matters when the
+   mediation is wired: which slot earns, not how many videos played. The four
+   live slots are `revive`, `daily`, `double` and `reroll`.
+
+   It still resolves `true` unconditionally because there is no SDK yet -- but
+   the CALLERS are already written against a promise that can resolve false,
+   so swapping this body for a real network fill is one function and no edits
+   at the call sites. */
+function rewardedAd(slot){
+  slot = slot || 'unknown';
+  track('rewarded_start', { slot });
+  const t0 = Date.now();
   return new Promise(resolve => {
     const el = $('#adFake'), cd = $('#adCd');
     let n = 3; cd.textContent = n; el.classList.add('show');
     const t = setInterval(() => {
       n--; cd.textContent = Math.max(0, n);
-      if(n <= 0){ clearInterval(t); el.classList.remove('show'); resolve(true); }
+      if(n <= 0){
+        clearInterval(t); el.classList.remove('show');
+        track('rewarded_done', { slot, sec: Math.round((Date.now()-t0)/1000) });
+        resolve(true);
+      }
     }, 700);
   });
 }
@@ -12163,7 +12347,7 @@ function iapBuy(sku, label){
      stops -- but the INTENT is still the most valuable event in the game and
      it costs nothing to record now. */
   track('iap_intent', { sku });
-  return rewardedAd().then(() => { toast('PLACEHOLDER: ' + label); return true; });
+  return rewardedAd('iap:' + sku).then(() => { toast('PLACEHOLDER: ' + label); return true; });
 }
 
 let toastT = 0;
@@ -12329,7 +12513,7 @@ const hhmmss = ms => {
 };
 function dailyClaim(){
   const st = dailyState(); if(!st.ready) return;
-  rewardedAd().then(() => {
+  rewardedAd('daily').then(() => {
     const r = RUNGS[st.day - 1];
     if(typeof r === 'number'){ earn(r); toast('+' + money(r) + ' EGGS'); }
     else {
@@ -12551,8 +12735,7 @@ function deathHeart(){
 function deathAd(){
   if(game.usedAd) return;
   clearTimeout(dthTimer);                  // the clock stops while the ad runs
-  track('rewarded_start', { slot:'revive', m:Math.floor(game.dist/UPM) });
-  rewardedAd().then(() => {
+  rewardedAd('revive').then(() => {
     game.usedAd = true;
     track('revive_taken', { how:'ad', m:Math.floor(game.dist/UPM) });
     reviveNow();
@@ -12712,7 +12895,7 @@ function blastBoom(){
        r0:22+i*3, r1:40+i*4, l0:0.7+i*0.05, l1:1.5+i*0.06});
   }
   rag.vrot = 16;                        // he leaves it spinning, and it decays
-  if(navigator.vibrate) try{ navigator.vibrate([40,60,90]); }catch(e){}
+  buzz([40,60,90]);
 }
 /* Where he is, vertically, this far into the flight. The hops are walked rather
    than solved because each one has to announce its own landing, and a closed
@@ -12950,6 +13133,7 @@ function metaBind(){
   /* SESSION START, and the shape of the player at the moment it began. Every
      retention gate in the plan is a count of these grouped by `d`. */
   track('session_start', {
+    v: GAME_VERSION,
     eggs: eggs(), best: Math.round(game.best||0), runs: msnTot('runs'),
     skins: SAVE.skins.length, noAds: SAVE.noAds ? 1 : 0, first: game.firstRun ? 1 : 0
   });
@@ -12979,11 +13163,12 @@ function metaBind(){
      attribute, so adding one is a row in the catalogue and nothing else. */
   document.addEventListener('click', e => {
     const t = e.target && e.target.closest ? e.target.closest(
-      '[data-tab],[data-buy],[data-skin],[data-iap],[data-eggs],[data-claim]') : null;
+      '[data-tab],[data-buy],[data-skin],[data-iap],[data-eggs],[data-claim],[data-roll]') : null;
     if(!t) return;
     e.stopPropagation();
     if(t.dataset.tab){ S.click(); META.show(t.dataset.tab); return; }
     if(t.dataset.claim){ msnClaim(+t.dataset.claim); return; }
+    if(t.dataset.roll){ msnReroll(+t.dataset.roll); return; }
     if(t.dataset.buy){ const p = t.dataset.buy.split(':'); buy(p[0], p[1]); return; }
     if(t.dataset.skin){ buySkin(t.dataset.skin); return; }
     if(t.dataset.eggs){
@@ -13002,6 +13187,70 @@ function metaBind(){
         });
     }
   });
+  /* DOUBLE THE RUN'S EGGS. Latched twice over -- `usedDouble` so a run
+     cannot be doubled again after a retry, and `disabled` so a double tap
+     during the video does not queue two payouts. */
+  const dbl = $('#dblEggs');
+  if(dbl) dbl.addEventListener('click', () => {
+    if(game.usedDouble) return;
+    const n = game.runEggs || 0; if(n <= 0) return;
+    game.usedDouble = true; dbl.disabled = true;
+    rewardedAd('double').then(() => {
+      earn(n);
+      track('double_eggs', { n, m: Math.floor(game.dist/UPM) });
+      toast('+' + money(n) + ' EGGS');
+      dbl.classList.remove('show'); dbl.disabled = false;
+      S.best();
+    });
+  });
+  /* ---- settings ----------------------------------------------------------
+     Applied on every change AND on open, because three of the four are read
+     live by other systems and the fourth (music) has to be pushed. */
+  const OPT_EL = $('#opts');
+  function optApply(){
+    const o = SAVE.opt;
+    /* SFX and music share one master today, so switching either off when the
+       other is already off is what actually mutes -- and the HUD button is
+       the same state, not a second one. */
+    A.on = !!(o.sfx || o.music);
+    if(elMute) elMute.classList.toggle('muted', !A.on);
+    try{ if(A.master) A.master.gain.value = A.on ? 0.9 : 0; }catch(e){}
+    try{ if(typeof musicScene === 'function' && !o.music) trackTick && trackTick(0); }catch(e){}
+    $$('#opts .orow').forEach(r => r.classList.toggle('on',
+      r.dataset.opt === 'reduced' ? reducedNow() : !!o[r.dataset.opt]));
+  }
+  function optShow(){
+    S.click(); optApply();
+    elMenu.classList.remove('show'); OPT_EL.classList.add('show');
+    META.open = true; thrustOff();
+    track('settings_open', {});
+  }
+  function optHide(){
+    OPT_EL.classList.remove('show');
+    if(game.mode === 'menu') elMenu.classList.add('show');
+    META.open = false;
+  }
+  $('#cog').addEventListener('click', optShow);
+  $('#optX').addEventListener('click', ()=>{ S.click(); optHide(); });
+  OPT_EL.addEventListener('click', e => { if(e.target === OPT_EL) optHide(); });
+  $$('#opts .orow').forEach(row => row.addEventListener('click', () => {
+    const k = row.dataset.opt;
+    /* `reduced` is tri-state on disk (null = follow the OS) but binary to the
+       player, so the first tap writes an explicit boolean and it stays
+       explicit from then on. */
+    SAVE.opt[k] = k === 'reduced' ? !reducedNow() : !SAVE.opt[k];
+    saveNow(); S.click(); optApply();
+    track('setting', { k, v: SAVE.opt[k] ? 1 : 0 });
+  }));
+  $('#optRestore').addEventListener('click', () => {
+    S.click();
+    /* Nothing to talk to yet, so it tells the truth rather than pretending to
+       succeed. Play requires the control to exist; it does not require it to
+       lie before the biller is wired. */
+    toast('NO PURCHASES TO RESTORE');
+    track('restore_tapped', {});
+  });
+  const ver = $('#optVer'); if(ver) ver.textContent = GAME_VERSION;
   $('#shopBack').addEventListener('click', ()=>{ S.click(); META.hide(); });
   $('#mNoAds').addEventListener('click', ()=>{ S.click(); META.show('store'); });
   const dm = $('#dailyM');
@@ -13084,7 +13333,9 @@ function boot(){
     startRun, startQuick, startIntro, toMenu, updatePlay, thrustOn, thrustOff,
     startRide, loseRide, spawnBasketDrop, dropClearAt, spawnElec, spawnPattern, spawnEggs,
     SAVE, SHOP, PERK, SKIN, SKINS, buy, buySkin, eggs, spend, earn,
-    MSN, msnSlots, msnRun, msnClaim, msnDraw, msnReady, msnDeal, zoneAt,
+    MSN, msnSlots, msnRun, msnClaim, msnDraw, msnReady, msnDeal, msnReroll, zoneAt,
+    saveRead, saveMigrate, saveNow,
+    reducedNow, buzz, GAME_VERSION,
     AN, track, anDay, anFlush, deathCauseOf,
     deathOffer, deathHeart, deathAd, deathTnt, deathSkip, startBlast, TNT, HEART_COST,
     tntCost, heartCost, runMul, drawTnt, hopY,
