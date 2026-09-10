@@ -3836,6 +3836,68 @@ second at pickup level becomes the run's texture.
 `?veh=NAME` starts a run in any of them. `?ride` and `?ufo` still work, because
 they are in every note written before today.
 
+## The rocket was the saucer with different numbers (2026-09-10, later)
+
+Reported by the user: *"the corn rocket movement is like the ufo we need
+different play for each vehicle."* Correct, and the table made it easy to miss
+-- the two specs looked completely different (`g` 0.26 against 0.18, `d` 0.40
+against 0.50, boost 1.62 against 1.18) while sharing the only thing that
+matters, which is the VERB. Both were "hold and I go up, release and I come
+down". You can tune numbers until they are unrecognisable and the vehicle still
+plays the same, because what a player learns is the verb.
+
+**So the rocket steers instead of lifting.** The button is a torque on the
+NOSE; the craft flies along its heading at a constant 2100; vertical motion is
+a consequence of the angle rather than a thing you command. There is no
+altitude button on it at all.
+
+And the nose has INERTIA -- this is the second-order bit and it is what makes
+the vehicle. `rocSpin` is how fast the nose is swinging, the button accelerates
+it (`ROC_ACC`), and letting go does not stop the swing, it starts pushing the
+other way. Levelling out therefore costs a press in the OPPOSITE direction,
+begun before you are level: the brief's "slight overshoot / inertia when
+direction changes", and the only second-order control in the game.
+
+A rate-limited nose was tried FIRST and measured as still the same game -- the
+altitude traces came back the same shape, just faster. Only making the pitch
+itself accelerate broke the resemblance.
+
+**Gravity, thrust and drag are all OFF for it** (`ROC_G` 0, `ROC_T` 0, `ROC_D`
+a hair above zero so the solved integrator's `acc/k` stays a number). `feel`
+sets `vy` from `sin(rocRot)` and the shared movement model carries it through
+and integrates the position exactly -- so this is one vehicle expressed THROUGH
+the one model, not a second model to keep in step with it.
+
+### It was measured, and the first tuning was wrong
+
+Holding a line at y=400 with a bang-bang controller, by how far ahead it looks:
+
+| lead | rocket band | saucer band |
+|---|---|---|
+| none (pure reaction) | **+/-313** | +/-6 |
+| 0.35s | +/-71 | +/-0 |
+| 0.55s | +/-17 | -- |
+
+That table IS the design: the saucer is a cursor -- point and it goes there --
+and the rocket punishes reacting with the whole screen and rewards anticipating
+with a tighter line than the saucer needs. "You can go anywhere, but you need
+to anticipate obstacles" is now a number rather than a hope.
+
+The FIRST tuning failed the second half of that. At `ROC_SPINDAMP` 0.6 an
+autopilot leading by half a second still lost the vehicle **five times in
+twenty-five seconds** of real course: every correction overshot and the next
+obstacle arrived during the recovery. 1.4 keeps the overshoot -- reactive
+flying still costs the whole screen -- and settles it inside one obstacle
+instead of two. Losses went 5 -> 2, which is the saucer's own rate.
+
+`ROC_BOOST` also came down, 1.62 -> 1.42. A vehicle that costs a second of
+anticipation AND arrives 62% sooner is paying twice for one idea; it is still
+comfortably the fastest thing here (trolley 1.34, saucer 1.18) and the
+difference is now in the flying rather than in the reading. `CLEAR_ROC` 440 ->
+470 with it.
+
+`?selftest`, `?obtest` and `?ridetest` all still green.
+
 ## Next
 
 - **Nothing spends the eggs yet** -- the shop exists and none of it

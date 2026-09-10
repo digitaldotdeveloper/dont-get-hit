@@ -56,13 +56,17 @@ BEATS = {
    ("ROOF",       "P.y=D.ufoCeil();P.vy=-20;G.ufoLamp=1;G.ufoWob=0.5;G.ufoRot=-0.1", "at its ceiling"),
    ("SETTLED",    "P.y=30;P.vy=0;G.ufoLamp=0.28;G.ufoWob=-1.2;G.ufoRot=0", "squished on the hover floor"),
  ],
+ # The rocket is set by ANGLE now, not by velocity: `feel` derives vy from the
+ # nose, so writing vy would be overwritten on the next tick. rocSpin is how
+ # fast the nose is still swinging, which is the half of this vehicle that a
+ # single frame cannot show -- hence the captions.
  'rocket': [
-   ("CRUISE",     "P.y=340;P.vy=0;G.rocRot=0", "level, engines idling hot"),
-   ("CLIMB",      "P.y=340;P.vy=-1430;G.rocRot=-0.34", "nose up, full burn"),
-   ("DIVE",       "P.y=340;P.vy=1150;G.rocRot=0.34", "nose down, flame short"),
-   ("TOP",        "P.y=D.ufoCeil()*0.92;P.vy=-120;G.rocRot=-0.15", "near the roof"),
-   ("FLOOR",      "P.y=30;P.vy=90;G.rocRot=0.10", "skimming the road"),
-   ("TURNING",    "P.y=300;P.vy=-420;G.rocRot=0.18", "still leaning the OLD way -- the inertia"),
+   ("LEVEL",      "P.y=340;G.rocRot=0;G.rocSpin=0", "nose flat: it flies dead level"),
+   ("NOSE UP",    "P.y=340;G.rocRot=-0.62;G.rocSpin=0", "full deflection, ~1200/s of climb"),
+   ("NOSE DOWN",  "P.y=340;G.rocRot=0.62;G.rocSpin=0", "full deflection the other way"),
+   ("SWINGING",   "P.y=340;G.rocRot=-0.08;G.rocSpin=-1.5", "button just let go -- the nose has NOT stopped"),
+   ("OVERSHOOT",  "P.y=430;G.rocRot=-0.46;G.rocSpin=-0.7", "released at level and it kept coming round"),
+   ("ROOF",       "P.y=D.ufoCeil();G.rocRot=-0.30;G.rocSpin=0", "pinned, and the nose bleeds off"),
  ],
  'hopper': [
    ("FALL",       "P.onGround=false;P.y=300;P.vy=900;G.hopSq=-0.35", "coming down, spring extended"),

@@ -4598,9 +4598,64 @@ const ABDUCT_T = 1.05, ABDUCT_SCORE = 40;
    second of holding before the nose is really climbing and another half after
    letting go before it is really diving. You do not steer this thing, you aim
    it and then live with the aim. */
-const ROC_G = 0.26, ROC_D = 0.40, ROC_T = 0.28;
-const ROC_BOOST = 1.62;          // by a distance the fastest thing in the game
-const CLEAR_ROC = 440;           // ...so the openings have to be that much wider
+/* THE ROCKET DOES NOT USE GRAVITY, THRUST OR DRAG, and that is the whole
+   point of this rewrite.
+
+   The first version was the saucer with different numbers: hold to rise,
+   release to sink, floatier or less floaty depending on the constants. Which
+   is the same VERB, and a vehicle that shares a verb shares a game -- you can
+   tune it until the numbers are unrecognisable and it will still play the
+   same, because what a player learns is "hold makes me go up".
+
+   So this one steers instead. The button controls PITCH, the craft flies along
+   its heading at a constant speed, and vertical motion is a CONSEQUENCE of the
+   angle rather than a thing you command. Hold and the nose swings up; let go
+   and it swings down; neither is instant, and there is no altitude button at
+   all. It is an aeroplane in a game full of lifts, and it is the brief's own
+   words -- "hold = gradually tilt upward, release = gradually tilt downward,
+   it needs time to redirect".
+
+   AND THE PITCH ITSELF HAS INERTIA. A rate-limited nose was measured against
+   the saucer and it was still the same game -- the traces came back the same
+   shape, just faster, because "hold and I go up, release and I come down" had
+   survived the rewrite. What breaks that is making the button control the
+   pitch's ACCELERATION rather than its rate: hold and the nose swings up ever
+   faster; let go and it does not stop, it starts being pushed the other way.
+
+   So levelling out costs a press in the OPPOSITE direction, started before you
+   are level. That is the brief's "slight overshoot / inertia when direction
+   changes", it is the one control in the game with a second-order feel, and it
+   cannot be mistaken for a lift by anybody who has held it for two seconds.
+
+   The four constants ARE the vehicle:
+     MAXA  how far the nose can point, either way (35 degrees)
+     ACC   how hard the button pushes the swing
+     SPIN  the fastest the nose may swing, so it cannot wind up for ever
+     SPD   how fast it travels along that heading -- at full deflection about
+           1200 units of climb a second
+
+   Gravity, thrust and drag are all switched OFF (`d` is a hair above zero
+   rather than zero so the solved integrator's `acc/k` stays a number). The
+   shared movement model still does the position integral -- `feel` sets `vy`
+   and the exact solution carries it -- so this is one vehicle expressed
+   THROUGH the one model, not a second model to keep in step. */
+const ROC_MAXA = 0.62, ROC_ACC = 3.4, ROC_SPIN = 1.5, ROC_SPD = 2100;
+/* How fast the swing bleeds off with the button untouched. MEASURED, not
+   guessed: at 0.6 an autopilot that leads by half a second still lost the
+   vehicle five times in twenty-five seconds of real course, because the nose
+   overshot every correction and spent the next one recovering. At 1.4 the
+   overshoot is still there -- reactive flying still costs the whole screen,
+   which is the vehicle's whole identity -- but it settles inside one obstacle
+   rather than two. */
+const ROC_SPINDAMP = 1.4;
+const ROC_G = 0, ROC_D = 0.0002, ROC_T = 0;
+/* 1.62 was too fast for a vehicle that also needs a second of anticipation:
+   the two costs multiply, and the corridor arrived before the nose had come
+   round. Still comfortably the fastest thing here -- the trolley is 1.34 and
+   the saucer 1.18 -- and the difference is now in the flying rather than in
+   the reading. */
+const ROC_BOOST = 1.42;
+const CLEAR_ROC = 470;           // ...so the openings have to be that much wider
 const ROC_W = 820, ROC_H = 518;
 /* Where the nozzles are, measured by tools/cut_veh4.py. One anchor, two jets:
    the pair sit symmetrically about it, which is cheaper than measuring both
@@ -4997,14 +5052,46 @@ const VEH = {
     ceil(){ return GROUND - CEIL - rocGeom().rh*0.55; },
     draw(){ drawRocket(); },
     feel(dt){
-      /* The lean is the velocity, eased HARD -- rate 5 against the saucer's 9,
-         so the nose is still coming round after the button has changed. It is
-         the same trick and a different number, and the number is the vehicle. */
-      game.rocRot = damp(game.rocRot || 0, clamp(player.vy/2000, -0.34, 0.34), 5, dt);
+      /* THE NOSE IS THE CONTROL. A rate limit rather than a damp, because a
+         damp is fastest when it is furthest from the target -- which would
+         make a big correction quick and a small one slow, the exact opposite
+         of a heavy thing. At a constant rate every degree costs the same and
+         the player can count it.
+
+         Nose-up is NEGATIVE (canvas rotation is clockwise-positive), and so is
+         rising, which is why the same sign falls out of the sine below. */
+      /* The button is a torque on the nose, not a position for it. `rocSpin`
+         is how fast the nose is swinging and it survives the button being let
+         go -- which is the whole feel. A whisper of damping so it is heavy
+         rather than frictionless; without it the nose never settles and the
+         craft reads as ice. */
+      game.rocSpin = clamp(((game.rocSpin || 0)
+                            + (player.thrusting ? -ROC_ACC : ROC_ACC)*dt)
+                           * (1 - ROC_SPINDAMP*dt), -ROC_SPIN, ROC_SPIN);
+      game.rocRot = clamp((game.rocRot || 0) + game.rocSpin*dt, -ROC_MAXA, ROC_MAXA);
+      /* At the end of its travel the swing stops rather than banking up
+         momentum it would spend the moment the nose came off the stop. */
+      if(Math.abs(game.rocRot) >= ROC_MAXA - 1e-6
+         && game.rocSpin*game.rocRot > 0) game.rocSpin = 0;
+      /* ...and it flies where it points. `vy` is set, not accelerated: with
+         gravity, thrust and drag all off, the solved integrator carries this
+         velocity through the frame untouched and integrates the position from
+         it exactly. */
+      player.vy = ROC_SPD*Math.sin(game.rocRot);
+      /* AT THE ROOF AND AT THE FLOOR THE NOSE GIVES UP FIRST. Without this the
+         craft parks against a rail with the nose still pointed into it and the
+         player's input does nothing visible -- which reads as the button
+         having stopped working. Bleeding the angle back means holding against
+         the ceiling levels you out, which is what a pilot would get. */
+      const roof = this.ceil(), floor = this.low;
+      if((player.y >= roof && game.rocRot < 0) || (player.y <= floor && game.rocRot > 0)){
+        game.rocRot += (game.rocRot > 0 ? -1 : 1)*1.5*dt;
+        game.rocSpin = 0;
+      }
     },
     start(){
       player.y = Math.max(player.y, 90);
-      game.rocRot = 0;
+      game.rocRot = 0; game.rocSpin = 0;
       game.flash = 0.34; addShake(10);
       S.rocketget();
       pop(player.x, GROUND - player.y - 300, 'IGNITION', '#FFD447', 44, -46);
@@ -7709,7 +7796,7 @@ function thrustOn(){
     player.flapT = 0.13;                       // start the wingbeat animation
     player.powerT = 1;
     try{
-      if(!player.onGround && !inUfo()) featherBurst(player.x-24, GROUND-player.y-30, 3, 180);
+      if(!player.onGround && !riding()) featherBurst(player.x-24, GROUND-player.y-30, 3, 180);
     }catch(e){ game.fxErr = e.message; }
   }
   if(game.tut){ game.tut=false; elTut.classList.remove('show'); }
@@ -7910,7 +7997,8 @@ function startRun(){
      "roll for it" -- so the coin is tossed once per run and the alternation
      runs from wherever it lands. */
   game.veh=game.forceVeh||'trolley'; game.vehBag=null;
-  game.pol=1; game.spnT=0; game.spnCool=0; game.spnFlipA=0; game.rocRot=0;
+  game.pol=1; game.spnT=0; game.spnCool=0; game.spnFlipA=0;
+  game.rocRot=0; game.rocSpin=0;
   game.hopSq=0; game.hopSqV=0; game.tstChg=0; game.tstPop=0; player.hopArm=0;
   game.rideTough=game.ride ? vehTough() : 0;      // ?ride / ?ufo skip startRide
   game.ufoRot=0; game.ufoLamp=0;
