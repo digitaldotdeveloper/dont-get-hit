@@ -10,9 +10,18 @@
 <meta name="description" content="One tap. Don't get hit. A fast arcade runner.">
 <title>Don't Get Hit</title>
 <link rel="preload" as="image" href="art/title.webp">
-<!-- Inline, because the only console error on a clean load was the browser
-     asking for a favicon.ico nobody had made. An egg, in the game's gold. -->
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cellipse cx='16' cy='18' rx='10' ry='13' fill='%23FFD54A' stroke='%23241043' stroke-width='3'/%3E%3C/svg%3E">
+<!-- THE REAL ICON. This was an inline SVG egg, which existed only to stop the
+     browser asking for a favicon.ico nobody had made. Now it is Nugget, from
+     one master in icon/ -- rebuild the whole set with tools/make_icons.py.
+     The PNGs have TRANSPARENT corners and the apple-touch one does not: iOS
+     masks with a rounded rect of very nearly the artwork's own shape, so its
+     baked corners never show, while everything else applies its own mask and
+     would put a black notch behind the artwork's. -->
+<link rel="icon" href="icon/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="icon/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icon/favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icon/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Archivo:wght@500;700;900&display=swap">
