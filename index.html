@@ -9895,6 +9895,21 @@ const BG = [
    overhead -- so they get one set of numbers and differ only in their art. A
    fourth world is one line in UNDER_SETS. */
 const UNDER_SLOTS = [
+  /* THE WALL ABOVE THE WALL.
+
+     Everything indoors used to stop at about two thirds of the frame and the
+     whole upper third was flat theme colour with pipes dangling into it. Nugget
+     flies up there, so it can never be closed off -- but "not closed off" was
+     being drawn as "nothing at all", and it read as unfinished: a hard
+     horizontal line where the room began, and a void above it.
+
+     This is the same wall carried up. It scrolls at the MID rate, not slower,
+     because it is the same surface: anything else and it slides against the
+     wall it is supposed to be part of, which is worse than the void. It is
+     anchored to the TOP and overlaps the mid band by a few pixels so no strip of
+     bare sky can show between them, and its own art darkens toward the top edge
+     so the flight lane stays the brightest, clearest part of the screen. */
+  { key:'upper', f:0.26, hf:0.500, top:true },
   { key:'far',  f:0.10, hf:0.150, base:-206 },
   { key:'mid',  f:0.26, hf:0.430, base:-150 },
   { key:'near', f:0.60, hf:0.232, base:  14 },
@@ -9922,7 +9937,7 @@ const underSet = keys => UNDER_SLOTS
   .filter(o => keys.indexOf(o.key) >= 0)
   .map(o => Object.assign({}, o));
 
-const BG_ANT  = underSet(['far','mid','near','hang']);   // earth, wood, lanterns
+const BG_ANT  = underSet(['upper','far','mid','near','hang']);   // earth, wood, lanterns
 const BG_DEEP = underSet(['mid','near','hang']);         // ...with technology through it
 const BG_LAB  = underSet(['far','mid','near','hang']);   // ...and where it came from
 /* Each world past the empire owns its FAR HAZE, its FLOOR and its CEILING. It
@@ -9943,7 +9958,7 @@ const BG_LAB  = underSet(['far','mid','near','hang']);   // ...and where it came
    when you are running along it, so those are what each world gets. */
 const UNDER_WORLDS = ['prison','cherno','cia','area51','alien','space'];
 const LAYERSETS = { farm:BG, ant:BG_ANT, deep:BG_DEEP, lab:BG_LAB };
-UNDER_WORLDS.forEach(w => { LAYERSETS[w] = underSet(['far','near','hang']); });
+UNDER_WORLDS.forEach(w => { LAYERSETS[w] = underSet(['upper','far','near','hang']); });
 // stamp each layer with the world it belongs to: drawLayerSlot now receives a
 // resolved LAYER rather than a set, and the spy pigeons are a farm thing
 Object.keys(LAYERSETS).forEach(k => LAYERSETS[k].forEach(L => { L.set = k; }));
@@ -10507,7 +10522,7 @@ function drawBgLayers(keys){
   const same = z.a === z.b;
   const seam = z.seamM === Infinity ? Infinity : z.seamM*UPM - cam.x;
 
-  for(const key of ['hang','far','mid','near']){
+  for(const key of ['upper','hang','far','mid','near']){
     if(keys.indexOf(key) < 0) continue;
     /* The green field band belongs to the farm and has to go with it, or the
        empire gets a strip of daylit meadow across its middle distance. */
@@ -10940,7 +10955,7 @@ function drawProps(){
      farmer, the fence crossed them and they read as being in the field no
      matter what scale they were given. */
   if(!bgReady()){ drawFarmProps(); drawFarmer(); drawSpectators(); return; }
-  drawBgLayers(['hang', 'far', 'mid']);
+  drawBgLayers(['upper', 'hang', 'far', 'mid']);
   drawFarmer();
   drawBgLayers(['near']);
   drawZoneScenery();          // mounds, signs, and the formation on the seam
