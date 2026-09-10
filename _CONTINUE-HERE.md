@@ -984,6 +984,57 @@ has the CDP screenshot helper; `--headless --screenshot` lays out at 500px
 regardless of `--window-size` and crops, which reads as a layout bug that is not
 there.
 
+    python tools/assets.py          # ...and this one, if anything touched art
+
+**A MISSING ASSET IS A SILENT FALLBACK HERE.** That is deliberate and it is
+right -- a prop that has not arrived draws as a flat block, a layer that is
+missing is simply not drawn, a hat nobody cut leaves the chicken bare-headed.
+Nothing throws, nothing is logged, and the screen looks completely fine. Which
+means **looking at it proves nothing**, and the only way to know is to count the
+requests.
+
+It had already cost this project twice before there was a script for it.
+`slotFor()` declared nine layer slots nobody had drawn and 404'd on every single
+load. `NEAR_SETS` then declared eighteen floor variants across nine zones and
+404'd sixteen times a load for as long as the art was outstanding. **Both were
+found by accident**, in passing, while looking for something else.
+
+`assets.py` drives the real page and reports every 404 with what asked for it --
+the initiator's top stack frame where there is one, the initiator type where
+there is not, because a CSS background has neither a stack nor a url of its own
+and "parser" still points at markup rather than at a loader. **It exits 1**, so
+it can gate a push.
+
+**What it goes out of its way to touch is the point.** A cold load is 315
+requests; the full sweep is about 1,900 across 350-odd distinct files. The
+difference is everything that requests art LAZILY, which is exactly where a
+missing file hides:
+
+- the shop's four tabs are CSS backgrounds on `display:none` panes and ask for
+  nothing at all until the pane is opened
+- the death card warms the fireball and the dynamite bundles, which nothing else
+  requests
+- each vehicle and each late zone loads its own art on pickup or on arrival
+
+**It is mutation-tested**, because "nothing missing" is unfalsifiable otherwise:
+hiding `art/shop/tnt3.webp` is reported and exits 1, restoring it goes green.
+Confirming even that needed care -- `$?` after a pipe reads `tail`, which
+cheerfully said 0 while the script was correctly saying 1.
+
+`--url` runs the same sweep against the live site, which is the check worth
+doing after a push: GitHub Pages is not atomic, and a new folder can 404 for a
+minute after the HTML that references it is already being served.
+
+### A note about reading a tree two sessions are editing
+
+Twice in one afternoon a real-looking finding turned out to be work-in-progress
+landing between two of my own probes -- "four vehicles are unsellable" (the shop
+rows appeared ninety seconds later) and "sixteen floor variants are missing"
+(the art appeared while I was writing it up). **Re-measure immediately before
+saying anything**, and prefer a script that reports the current state to a
+reading taken five minutes ago. `git status` and a file listing are true only at
+the instant you read them.
+
 ## What difficulty is, and is not
 
 Difficulty is **speed, spacing, and how many hazards share a screen**. It is not
@@ -1089,6 +1140,8 @@ dropped frame every 26s, for tens of MB of canvas held on a phone.
     python tools/probe.py URL [wait]        # run a ?test flag, print the panel
     python tools/clip.py URL out.gif [s]    # real-time GIF over screencast
     python tools/shot.py URL out.png        # one screenshot, real device metrics
+    python tools/assets.py                  # anything the page asks for and is not there
+    python tools/assets.py --url URL        # ...against the live site instead
     python tools/title_art.py               # rebuild the title poster from ref/
     python tools/npc_frames.py              # recut the cow, pig and goat frames
     python tools/farm_seams.py              # where the farm panels should be cut
