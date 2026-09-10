@@ -5040,7 +5040,7 @@ const VEH = {
     boost:RIDE_BOOST, ease:3.2, clear:CLEAR_RIDE,
     pat:() => RIDE_PAT, tracks:() => RIDE_TRACKS,
     tough:() => PERK.trolleyTough(),
-    lost:{ word:'POP!', col:'#FF6B6B' },
+    lost:{ word:'POP!', col:'#FF6B6B' }, held:'HELD!',
     box(){
       const p = player, g = truckGeom();
       /* Wider than the bird and about as tall, because he is sitting in it. */
@@ -5062,7 +5062,7 @@ const VEH = {
     boost:UFO_BOOST, ease:5.5, clear:CLEAR_UFO,
     pat:() => UFO_PAT, tracks:() => UFO_TRACKS,
     tough:() => PERK.ufoTough(),
-    lost:{ word:'SCRAMBLED!', col:'#FFC01F' },
+    lost:{ word:'SCRAMBLED!', col:'#FFC01F' }, held:'SHIELDS!',
     box(){ return ufoBox(); },
     ceil(){ return ufoCeil(); },
     draw(){ drawUfo(); },
@@ -5078,7 +5078,7 @@ const VEH = {
     boost:ROC_BOOST, ease:2.2, clear:CLEAR_ROC,
     pat:() => ROC_PAT, tracks:() => ROC_TRACKS,
     tough:() => PERK.vehTough('rocket'),
-    lost:{ word:'POPCORN!', col:'#FFD447' },
+    lost:{ word:'POPCORN!', col:'#FFD447' }, held:'HUSKED!',
     box(){
       const p = player, g = rocGeom();
       /* Long and shallow. The nose cone and the engine bells are the ends of
@@ -5149,7 +5149,7 @@ const VEH = {
     boost:HOP_BOOST, ease:4.0, clear:CLEAR_RIDE,
     pat:() => JUMP_PAT, tracks:() => HOP_TRACKS,
     tough:() => PERK.vehTough('hopper'),
-    lost:{ word:'CRACKED!', col:'#FFE2B0' },
+    lost:{ word:'CRACKED!', col:'#FFE2B0' }, held:'BOUNCED!',
     box(){
       const p = player, g = hopGeom();
       /* Measured off the SHELL, which sits a spring's height off the road --
@@ -5209,7 +5209,7 @@ const VEH = {
     boost:SPN_BOOST, ease:4.6, clear:CLEAR_RIDE,
     pat:() => SPN_PAT, tracks:() => SPN_TRACKS,
     tough:() => PERK.vehTough('spoon'),
-    lost:{ word:'DEMAGNETISED!', col:'#7FE6FF' },
+    lost:{ word:'DEMAGNETISED!', col:'#7FE6FF' }, held:'REPELLED!',
     sgn(){ return game.pol || 1; },
     /* Its roof is the SURFACE it rides, not a rail it bumps -- so it is stated
        here rather than left to `rideCeil()`, which would put an invisible stop
@@ -5257,7 +5257,7 @@ const VEH = {
     boost:TST_BOOST, ease:3.6, clear:CLEAR_RIDE,
     pat:() => RIDE_PAT, tracks:() => TST_TRACKS,
     tough:() => PERK.vehTough('toaster'),
-    lost:{ word:'BURNT!', col:'#FF9E2C' },
+    lost:{ word:'BURNT!', col:'#FF9E2C' }, held:'CRUMBS!',
     box(){
       const p = player, g = tstGeom();
       return { l: p.x - g.tw*0.42, r: p.x + g.tw*0.42,
@@ -8504,7 +8504,13 @@ function loseRide(o){
     game.rideTough = 0;
     if(o) o.hitBy = true;
     addShake(10); game.flash = 0.22; S.bonk();
-    pop(player.x, GROUND - player.y - 230, inUfo() ? 'SHIELDS!' : 'HELD!', C.mint, 40, -60);
+    /* OUT OF THE TABLE, like `lost` already was. This read
+       `inUfo() ? 'SHIELDS!' : 'HELD!'` -- harmless today, because HELD! is a
+       fair default for the other five, and exactly the shape that goes wrong
+       silently: a seventh vehicle inherits the trolley's word and nobody ever
+       sees a bug, only a slightly wrong game. Flagged by git-27 sweeping for
+       the same class of thing the featherBurst guard turned out to be. */
+    pop(player.x, GROUND - player.y - 230, V().held || 'HELD!', C.mint, 40, -60);
     spark(player.x, GROUND - player.y - 150, 14,
           {col:C.mint, s0:160,s1:420, l0:0.25,l1:0.6, r0:3,r1:8});
     return;

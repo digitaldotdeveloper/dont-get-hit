@@ -290,6 +290,20 @@ check Settings before queueing a pack.
 - **Reading anchor points off a grid by eye does not work.** Three of four
   truck exhaust anchors came out wrong that way. Draw a crosshair at the
   candidate point onto the art and look at whether it is on the metal.
+- **Counting the game's requests? Both obvious instruments lie, in opposite
+  directions.** `performance.getEntriesByType('resource')` stops recording at
+  **250 entries** and says nothing about it — the array just stops growing —
+  and a cold boot of this page is ~336 requests. A probe built on it reported
+  five vehicle sprites as never fetched, with no page errors, for sixteen
+  seconds; the frozen count of exactly 250 was the only tell.
+  `performance.setResourceTimingBufferSize(5000)` before the page script and
+  they turn out to arrive in 733–969 ms. The other direction: a CDP counter
+  that only tallies requests whose `loadingFinished` has fired silently drops
+  everything still in flight when it samples, so its totals are a FLOOR rather
+  than a count. Use CDP `Network` events for "how many requests does this make",
+  resource timing (buffer raised) for "when did this particular file land", and
+  do not expect the two totals to agree.
+
 - **Sound cannot be screenshotted.** `?sfx=1` + `tools/sfx.py` renders it. That
   is what caught the glide rustle at peak 0.005.
 - **`git status` is only true at the instant you read it.** Other sessions have
