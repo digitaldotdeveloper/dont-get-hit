@@ -320,7 +320,7 @@ def checkerboard(im):
     sat = np.where(mx > 0, (mx - mn) / np.maximum(mx, 1), 0)
     pale = op & (sat < 0.12) & (mx > 140)
     frac = pale.sum() / float(op.sum())
-    if frac < 0.20:
+    if frac < 0.45:
         return frac, 0.0
     lum = rgb.mean(axis=2)
     lo, hi = np.percentile(lum[pale], 20), np.percentile(lum[pale], 80)
@@ -328,12 +328,35 @@ def checkerboard(im):
         return frac, 0.0
     b = (lum > (lo + hi) / 2).astype(np.int8)
     tr = n = 0
+    runs = []
     for y in range(0, a.shape[0], 3):
         xs = pale[y].nonzero()[0]
         if len(xs) < 40:
             continue
         seg = b[y, xs]
         tr += int((seg[1:] != seg[:-1]).sum()); n += len(seg)
+        cur = 1
+        for i in range(1, len(seg)):
+            if seg[i] == seg[i - 1]:
+                cur += 1
+            else:
+                runs.append(cur); cur = 1
+        runs.append(cur)
+    if not runs:
+        return frac, 0.0
+    # WHAT MAKES A CHECKER A CHECKER IS THAT IT IS REGULAR, and that is the only
+    # property that holds for every size of one. Two other tests were tried and
+    # both were wrong: the alternation RATE alone called the launch gantry a
+    # checkerboard, because its lattice towers flip light and dark every three
+    # pixels; and requiring big blocks would have missed the panel that started
+    # all this, whose squares were about four pixels after the render was scaled
+    # down. A checker's runs are all the SAME LENGTH -- a truss, a wall, a row of
+    # windows are not -- so the spread of the run lengths is the test, and it
+    # does not care whether the squares are four pixels or forty.
+    r = np.asarray(runs, dtype=float)
+    spread = r.std() / max(1e-6, r.mean())
+    if spread > 0.6:
+        return frac, 0.0
     return frac, tr / float(max(1, n))
 
 
@@ -560,7 +583,7 @@ def main():
                 continue
 
         pale, alt = checkerboard(im)
-        if alt > 0.12:
+        if alt > 0.02:
             print('  %-6s REFUSED: the scene is painted on a TRANSPARENCY CHECKERBOARD '
                   '(%.0f%% pale, alternating %.2f). The generator drew the thing that means '
                   '"empty background" instead of leaving it empty. Re-render it.'

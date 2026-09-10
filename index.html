@@ -4649,10 +4649,22 @@ function drawHopper(){
 function drawSpoon(){
   const g = spnGeom(), w = g.sw, h = g.sh;
   const x = player.x - cam.x, y = GROUND - player.y;
-  const up = (game.pol || 1) < 0;
+  /* IT TURNS OVER, it does not blink. The first version read `pol` directly
+     and flipped the sprite on the frame the button was pressed, which left the
+     craft upside down for the whole crossing -- and the brief is explicit that
+     the switch must not feel like a teleport.
+
+     `spnFlipA` eases 0 -> PI across the transit and the drawing scales by its
+     COSINE, so the spoon rolls through edge-on and comes out inverted. That is
+     one number doing the work of a whole animation: the same cosine also moves
+     the craft from above the attach point to below it, so the picture and the
+     surface it is heading for never disagree. Clamped off zero because a
+     degenerate transform is a frame the canvas may simply decline to draw. */
+  const c = Math.cos(game.spnFlipA || 0);
+  const cs = Math.abs(c) < 0.06 ? (c < 0 ? -0.06 : 0.06) : c;
   ctx.save();
-  ctx.translate(x, y + (up ? h*0.5 : -h*0.5));
-  if(up) ctx.scale(1, -1);
+  ctx.translate(x, y - h*0.5*cs);
+  ctx.scale(1, cs);
   ctx.rotate(game.spnRot || 0);
   const fly = clamp((game.spnT || 0)/0.5, 0, 1);
   if(fly > 0.02){
@@ -4913,11 +4925,17 @@ const VEH = {
     press(){ spoonFlip(); },
     feel(dt){
       game.spnT = Math.max(0, (game.spnT || 0) - dt);
+      /* The roll. Rate 10 puts it a shade over a third of a second, which sits
+         inside the half-second crossing -- the craft is the right way up again
+         before it arrives, rather than still turning as it lands. */
+      game.spnFlipA = damp(game.spnFlipA || 0,
+                           (game.pol || 1) < 0 ? Math.PI : 0, 10, dt);
       game.spnRot = damp(game.spnRot || 0,
                          clamp(player.vy*(game.pol||1)/2600, -0.20, 0.20), 11, dt);
     },
     start(){
       game.pol = 1; game.spnT = 0; game.spnRot = 0; game.spnCool = 0;
+      game.spnFlipA = 0;
       player.vy = Math.max(player.vy, 240);
       game.flash = 0.30; addShake(9);
       S.spoonget();
@@ -7704,7 +7722,7 @@ function startRun(){
      "roll for it" -- so the coin is tossed once per run and the alternation
      runs from wherever it lands. */
   game.veh=game.forceVeh||'trolley'; game.vehBag=null;
-  game.pol=1; game.spnT=0; game.spnCool=0; game.rocRot=0;
+  game.pol=1; game.spnT=0; game.spnCool=0; game.spnFlipA=0; game.rocRot=0;
   game.hopSq=0; game.hopSqV=0; game.tstChg=0; game.tstPop=0; player.hopArm=0;
   game.rideTough=game.ride ? vehTough() : 0;      // ?ride / ?ufo skip startRide
   game.ufoRot=0; game.ufoLamp=0;
@@ -9895,13 +9913,13 @@ function midPanel(zone, i, src){
 const MID_SETS = {
   farm:   ['mid1','mid2','mid3','mid4','mid5','mid6','mid7','mid8'],
   terr:   ['tr1','tr2','tr3','tr4'],
-  empire: ['e1','e2','e3','e4'],
-  prison: ['p1','p2','p3','p4'],
-  cherno: ['c1','c2','c3','c4'],
-  cia:    ['b1','b2','b3','b4'],
-  area51: ['a1','a2','a3','a4'],
-  alien:  ['x1','x2','x3','x4'],
-  space:  ['s1','s2','s3','s4'],
+  empire: ['e1','e2','e3','e4','e5','e6'],
+  prison: ['p1','p2','p3','p4','p5','p6'],
+  cherno: ['c1','c2','c3','c4','c5','c6'],
+  cia:    ['b1','b2','b3','b4','b5','b6'],
+  area51: ['a1','a2','a3','a4','a5','a6'],
+  alien:  ['x1','x2','x3','x4','x5','x6'],
+  space:  ['s1','s2','s3','s4','s5','s6'],
 };
 Object.keys(MID_SETS).forEach(zone => {
   MID_SETS[zone].forEach((f, i) => {
@@ -12523,6 +12541,14 @@ function boot(){
        the only way to check from outside that the saucer got the alien
        loop and not the trolley's metal. */
     rideSrc: () => RIDE_TRACK && (RIDE_TRACK.src || '').split('/').pop(),
+    /* THE WORLD-TO-SCREEN MAPPING, for capture tools. `SCALE`, `GROUND` and
+       `VW` live in the closure, so anything outside it that wants to crop a
+       screenshot around the vehicle has to reconstruct the mapping by eye --
+       which is the exact class of guess the rest of this file spends its time
+       banning. One function, behind the debug flag, and a contact sheet can be
+       cropped to the thing it is a sheet of. */
+    metrics: () => ({ SCALE, GROUND, VW, VH, PX, CW, CH, DPR,
+                      camx: cam.x, box: rideBox() }),
     ENG, engineBedTick, engineBedOn, engineBedOff, vroom, ENG_H,
     STEPB, stepBedTick, stepBedOn, stepBedOff, STEP_LEN,
     samples: () => Object.keys(SMP.buf),

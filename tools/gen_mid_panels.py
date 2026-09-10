@@ -194,6 +194,13 @@ WORLDS = {
   'e4': "The queen's hall of an ant city: one tall arched earth chamber with a raised throne "
         "of packed earth and a red leaf canopy over it, tall lanterns either side, and two "
         "smaller arches beside it.",
+  # ---- and two more so the empire does not come round twice in 500m ----
+  'e5': "A grain store hollowed into the earth wall: three tiers of round clay jars set into "
+        "the packed earth, a wooden chute running down from a hole above into an open sack, "
+        "and plank shelves of seed heads with a lantern hanging over them.",
+  'e6': "A mushroom farm chamber: rows of pale round mushrooms growing out of shelves cut "
+        "into the earth wall, small wooden watering cans on a ledge, a short ladder between "
+        "the tiers and a lantern on a hook.",
  },
  'prison': {
   'p1': "A row of four prison cell fronts set into grey concrete: heavy vertical steel bars, "
@@ -212,6 +219,12 @@ WORLDS = {
         "and a battered grey metal door set into the wall.",
   'p4': "A prison canteen: two long steel tables with benches bolted down, a serving counter "
         "with trays and a steam tray, and fat steam pipes running along behind it.",
+  'p5': "A prison laundry: three big steel washing drums set into a tiled wall, folded grey "
+        "blankets stacked on a wheeled rack, a mangle with a hand crank beside them and a low "
+        "sink with a dripping tap.",
+  'p6': "A prison workshop: a long bench bolted along the wall with a board of hand tools "
+        "hung above it, a vice at one end, a stack of blank metal plates and a caged strip "
+        "light over the bench.",
  },
  'cherno': {
   'c1': "A reactor hall wall: enormous grey pipes with flanged joints and big red valve "
@@ -224,6 +237,11 @@ WORLDS = {
   'c4': "A corridor of heavy grey doors set into concrete, a stack of rusted metal drums "
         "with faded yellow markings stencilled on them, a small forklift with a flat tyre, "
         "and a grey instrument cabinet on the wall.",
+  'c5': "A turbine hall: an enormous horizontal machine casing with bolted access covers "
+        "running along the wall, a bank of dials on a floor stand, and a rusted overhead "
+        "crane rail on brackets.",
+  'c6': "A decontamination corridor: a row of open steel lockers with heavy suits hanging in "
+        "them, a shower head over a tiled bay, and a wall of ventilation louvres above.",
  },
  'cia': {
   'b1': "A row of tall grey server racks with cable trays running overhead, a map table with "
@@ -234,6 +252,11 @@ WORLDS = {
         "camera on a bracket over each, and a stencilled floor stripe running past them.",
   'b4': "A briefing room: rows of folding chairs facing a big board of pinned photographs "
         "and a projector on a trolley, with a lectern to one side.",
+  'b5': "A radio room: a wall of rack-mounted transmitters with big round meters and toggle "
+        "switches, a swivel chair pushed up to a desk shelf, a headset on a hook and a coiled "
+        "aerial cable.",
+  'b6': "An armoury: a wall rack of stencilled wooden crates with padlocks, a workbench with "
+        "cleaning kit laid out on a cloth, and a steel cage door standing open at one end.",
  },
  'area51': {
   'a1': "A hangar interior: a large craft hidden under a heavy canvas tarpaulin on a wheeled "
@@ -245,6 +268,12 @@ WORLDS = {
         "stencilled crates, and a rack of long tools.",
   'a4': "A radar dish on a wheeled trailer beside a small guard hut with a lit window, "
         "sandbags stacked around them and a generator on skids.",
+  'a5': "A hangar workshop wall: a shadow board painted with the outlines of missing tools, a "
+        "rolling gantry stair pushed against it, drums on a low rack and a hoist chain hanging "
+        "from a rail.",
+  'a6': "An observation room: a long window of thick glass looking into a dark bay beyond, "
+        "warm amber light spilling through it, a console of switches beneath the sill and a "
+        "rack of clipboards on the wall.",
  },
  'alien': {
   'x1': "A row of tall glass specimen tanks filled with glowing GREEN liquid, odd rounded "
@@ -265,10 +294,17 @@ WORLDS = {
   'x4': "Alien machinery grown into the room: smooth curved organic shells of dull bronze, "
         "glowing GREEN conduits threading between them, and a ring of standing stones of "
         "metal.",
+  'x5': "A specimen store: a grid of small round bronze hatches set into the wall, each with "
+        "a GREEN-lit porthole, a rolling ladder on a rail in front of them and a low bench.",
+  'x6': "An alien control chamber: a curved console of smooth bronze with glowing GREEN "
+        "markings, a tall standing stone of dull metal behind it, and smooth organic ribs "
+        "arching over the whole wall.",
  },
  'space': {
-  's1': "A launch gantry: a white rocket standing against a steel service tower with folded "
-        "access arms, a flame trench at its foot, and floodlight masts either side.",
+  's1': "A launch gantry on a concrete pad: a white rocket standing against a steel service "
+        "tower with folded access arms, a flame trench at its foot, and floodlight masts "
+        "either side. Absolutely NO barns, NO wooden farm buildings, NO red-roofed sheds and "
+        "NO straw -- this is a launch site and nothing on it is made of wood.",
   's2': "A space station corridor: a row of round viewport windows showing BLACK space with "
         "a deep ORANGE and dull RED nebula and small warm stars, handrails along the wall, "
         "and equipment "
@@ -278,6 +314,11 @@ WORLDS = {
   's4': "A grey moon surface: a four-legged lander with a ladder, a small rover with wire "
         "wheels, a planted flag, and a cluster of instrument boxes, with low grey hills "
         "behind them.",
+  's5': "A crew quarters corridor: a row of sleeping bunks set into the wall behind half-drawn "
+        "fabric curtains, storage nets bulging beside them, handrails along the wall and a "
+        "small round mirror.",
+  's6': "An engine bay: an enormous bell-shaped rocket nozzle resting in a steel cradle, "
+        "pipework running down to it, a tool trolley and an inspection platform on wheels.",
  },
 }
 for _w in WORLDS:
@@ -378,7 +419,8 @@ WORLD_OF = {n: w for w in WORLDS for n in WORLDS[w]}
 # and an airstrip and a radar dish OUTSIDE, and the space set is a corridor and a
 # docking bay indoors against a launch pad and a moon surface out in the open.
 INTERIORS = set(list(WORLDS['empire']) + list(WORLDS['prison']) + list(WORLDS['cherno'])
-                + list(WORLDS['cia']) + list(WORLDS['alien']) + ['a1', 'a3', 's2', 's3'])
+                + list(WORLDS['cia']) + list(WORLDS['alien'])
+                + ['a1', 'a3', 'a5', 'a6', 's2', 's3', 's5', 's6'])
 OUTDOORS = {'a2', 'a4', 's1', 's4'}
 
 

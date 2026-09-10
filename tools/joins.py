@@ -50,8 +50,9 @@ def panels_for(world):
     if world == 'terr':
         return sorted(glob.glob(os.path.join(ROOT, 'art', 'bg', 'tr[0-9].webp')))
     d = os.path.join(ROOT, 'art', 'panels', world)
+    TILES = ('near', 'near2', 'near3', 'hang', 'far', 'mid')
     return sorted(f for f in glob.glob(os.path.join(d, '*.webp'))
-                  if os.path.basename(f) not in ('near.webp', 'hang.webp'))
+                  if os.path.basename(f).split('.')[0] not in TILES)
 
 
 def join_step(a, b):
