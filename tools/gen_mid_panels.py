@@ -283,12 +283,21 @@ WORLDS = {
   'a1': "A hangar interior: a large craft hidden under a heavy canvas tarpaulin on a wheeled "
         "cradle, two floodlights on tripod stands aimed at it, a rolling toolbox, and a "
         "gantry stair.",
-  'a2': "The edge of a desert airstrip at night: three fuel drums, an open-top jeep, a "
-        "windsock on a pole, a chain-link fence panel and a low sandbag wall.",
+  # SEEN THROUGH THE WALL, NOT INSTEAD OF IT. These four were the only OUTDOOR
+  # panels left, and an interior wall butting open night sky is a discontinuity
+  # no matching edge can soften -- the wall simply stops and there is weather.
+  # Jetpack Joyride's lab solves this with windows, and so does this: the outside
+  # is still there, framed by the same wall that runs either side of it.
+  'a2': "A huge hangar window of thick glass in a corrugated steel wall, its frame and "
+        "mullions in the foreground, and BEYOND THE GLASS a desert airstrip at night with "
+        "fuel drums, an open-top jeep and a windsock on a pole. The WALL runs edge to edge "
+        "and the view is a rectangle set INTO it.",
   'a3': "An aircraft maintenance bay: a steel gantry on wheels, a robotic arm on a pedestal, "
         "stencilled crates, and a rack of long tools.",
-  'a4': "A radar dish on a wheeled trailer beside a small guard hut with a lit window, "
-        "sandbags stacked around them and a generator on skids.",
+  'a4': "A wide roller door standing open in a corrugated steel hangar wall, its runners and "
+        "frame in the foreground, and THROUGH THE OPENING a radar dish on a trailer with "
+        "sandbags and a generator outside. The WALL runs edge to edge and the opening is a "
+        "rectangle set INTO it.",
   'a5': "A hangar workshop wall: a shadow board painted with the outlines of missing tools, a "
         "rolling gantry stair pushed against it, drums on a low rack and a hoist chain hanging "
         "from a rail.",
@@ -330,19 +339,20 @@ WORLDS = {
   's0': "A plain run of off-white space station wall, edge to edge, with nothing standing in "
         "front of it: bolted panels, a grey handrail along it, one recessed light and a small "
         "square hatch.",
-  's1': "A launch gantry on a concrete pad: a white rocket standing against a steel service "
-        "tower with folded access arms, a flame trench at its foot, and floodlight masts "
-        "either side. Absolutely NO barns, NO wooden farm buildings, NO red-roofed sheds and "
-        "NO straw -- this is a launch site and nothing on it is made of wood.",
+  's1': "A tall observation window in an off-white space station wall, its frame and bracing "
+        "in the foreground, and BEYOND THE GLASS a white rocket standing on a launch gantry "
+        "with floodlight masts. The WALL runs edge to edge and the window is set INTO it. "
+        "Absolutely NO barns, NO wooden farm buildings and NO straw.",
   's2': "A space station corridor: a row of round viewport windows showing BLACK space with "
         "a deep ORANGE and dull RED nebula and small warm stars, handrails along the wall, "
         "and equipment "
         "lockers between the windows.",
   's3': "A docking bay: a small shuttle on a cradle with its ramp down, stacked supply crates, "
         "a robotic loading arm, and a lit control booth.",
-  's4': "A grey moon surface: a four-legged lander with a ladder, a small rover with wire "
-        "wheels, a planted flag, and a cluster of instrument boxes, with low grey hills "
-        "behind them.",
+  's4': "A wide viewing bay in an off-white space station wall, its frame and handrail in the "
+        "foreground, and BEYOND THE GLASS a grey moon surface with a four-legged lander, a "
+        "small rover and a planted flag. The WALL runs edge to edge and the bay is set INTO "
+        "it.",
   's5': "A crew quarters corridor: a row of sleeping bunks set into the wall behind half-drawn "
         "fabric curtains, storage nets bulging beside them, handrails along the wall and a "
         "small round mirror.",
@@ -449,8 +459,11 @@ WORLD_OF = {n: w for w in WORLDS for n in WORLDS[w]}
 # docking bay indoors against a launch pad and a moon surface out in the open.
 INTERIORS = set(list(WORLDS['empire']) + list(WORLDS['prison']) + list(WORLDS['cherno'])
                 + list(WORLDS['cia']) + list(WORLDS['alien'])
-                + ['a0', 'a1', 'a3', 'a5', 'a6', 's0', 's2', 's3', 's5', 's6'])
-OUTDOORS = {'a2', 'a4', 's1', 's4'}
+                + list(WORLDS['area51']) + list(WORLDS['space']))
+# Nothing is OUTDOOR any more: the four that were are now windows and open doors
+# in the wall, so every panel in the late worlds is a continuous interior and the
+# view outside is framed rather than substituted for the room.
+OUTDOORS = set()
 
 
 # ---------------------------------------------------------------------------

@@ -40,8 +40,10 @@ import numpy as np
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PURE = 40      # columns of pure connector at each end -- these must match exactly
-BLEND = 56     # columns over which the connector merges into the picture's own art
+PURE = 40         # columns of pure connector at each end -- these must match exactly
+BLEND_PILLAR = 8  # behind a column: just enough to stop the edge aliasing
+BLEND_PLAIN = 56  # no column to hide it, so the join is eased in properly
+BLEND = BLEND_PLAIN
 TILES = ('near', 'near2', 'near3', 'hang', 'far', 'mid', 'upper')
 
 
@@ -67,6 +69,44 @@ def groups():
 def busy(a):
     """How much each column differs from the one beside it -- low is plain wall."""
     return np.abs(np.diff(a[..., :3].astype(float), axis=1)).mean(axis=(0, 2))
+
+
+def share_back(arrs):
+    """Make a floor's variants share the structure along the back of the band.
+
+       A floor tile is two things stacked: the BACK -- a kerb, a low wall, a
+       hazard-striped lip, a fence -- which runs continuously down the whole
+       corridor, and the SURFACE in front of it, which is where the variation
+       belongs. Generating both twice gets you variants whose back structure is
+       in a different place, or is a different thing entirely, and then the
+       continuous element stops dead every time the floor shuffles: sand meeting
+       a hard line and becoming red dirt, hazard chevrons that do not line up
+       across the cut.
+
+       That is the farm's fence again -- three rails across the top of the tile
+       that two variants simply did not have -- and the cure is the same one, and
+       the same rule: anything that has to LINE UP between two pictures is
+       composited, never prompted. The tiles are all the same size, so the base's
+       back is copied onto the variants and feathered where it meets their own
+       ground.
+
+       The surface in front is left alone. That is the half that is supposed to
+       differ, and it is the half a player actually looks at."""
+    if len(arrs) < 2:
+        return arrs
+    base = arrs[0].astype(float)
+    h = base.shape[0]
+    cut = int(h * 0.45)                  # back structure above, walking surface below
+    feather = max(6, int(h * 0.05))
+    out = [arrs[0]]
+    for a in arrs[1:]:
+        b = a.astype(float).copy()
+        b[:cut] = base[:cut]
+        t = np.linspace(0, 1, feather)[:, None, None]
+        b[cut:cut + feather] = (base[cut:cut + feather] * (1 - t)
+                                + b[cut:cut + feather] * t)
+        out.append(np.clip(b, 0, 255).astype(np.uint8))
+    return out
 
 
 def pillar_connector(world, arrs):
@@ -96,17 +136,22 @@ def pillar_connector(world, arrs):
     p = Image.open(f).convert('RGBA')
     p = p.resize((max(2, int(round(p.width * h / float(p.height)))), h), Image.LANCZOS)
     a = np.asarray(p)
+    # THE BAND IS THE PILLAR'S OWN HALF-WIDTH. Padding a narrow pillar out to a
+    # fixed 40 columns by repeating its outermost column puts twenty columns of
+    # horizontal smear beside every join -- a stretched sliver of wall reading as
+    # a hard stripe, which is what was left once the cross-fade went. Scaled to
+    # the panel's height the pillar is about 39 columns, so half of it is about
+    # 19. Only the outermost column has to agree between two panels; the rest of
+    # the band exists to carry the column, so it is exactly as wide as the column.
     half = a[:, a.shape[1] // 2:]                # centre -> outer edge, left to right
-    if half.shape[1] < PURE:
-        pad = np.repeat(half[:, -1:], PURE - half.shape[1], axis=1)
-        half = np.concatenate([half, pad], axis=1)
-    half = half[:, :PURE].astype(float)
+    pure = int(max(12, min(PURE, half.shape[1])))
+    half = half[:, :pure].astype(float)
 
     conn = base.astype(float).copy()
     al = half[..., 3:4] / 255.0                  # composite the column over the wall
-    conn[:, :PURE, :3] = half[..., :3] * al + conn[:, :PURE, :3] * (1 - al)
-    conn[:, :PURE, 3] = np.maximum(conn[:, :PURE, 3], half[..., 3])
-    return np.clip(conn, 0, 255).astype(np.uint8)
+    conn[:, :pure, :3] = half[..., :3] * al + conn[:, :pure, :3] * (1 - al)
+    conn[:, :pure, 3] = np.maximum(conn[:, :pure, 3], half[..., 3])
+    return np.clip(conn, 0, 255).astype(np.uint8), pure
 
 
 def pick_connector(arrs):
@@ -132,15 +177,15 @@ def pick_connector(arrs):
     return arrs[i][:, x:x + w].copy(), best
 
 
-def _stamp_left(out, conn):
-    ramp = np.linspace(0.0, 1.0, BLEND)[None, :, None]
-    out[:, :PURE] = conn[:, :PURE]
-    out[:, PURE:PURE + BLEND] = (conn[:, PURE:PURE + BLEND] * (1 - ramp)
-                                 + out[:, PURE:PURE + BLEND] * ramp)
+def _stamp_left(out, conn, blend, pure):
+    ramp = np.linspace(0.0, 1.0, blend)[None, :, None]
+    out[:, :pure] = conn[:, :pure]
+    out[:, pure:pure + blend] = (conn[:, pure:pure + blend] * (1 - ramp)
+                                 + out[:, pure:pure + blend] * ramp)
     return out
 
 
-def stamp(a, conn):
+def stamp(a, conn, blend=BLEND_PLAIN, pure=PURE):
     """Both ends, and the right one is the MIRROR of the left.
 
        This is the whole trick and it is easy to get subtly wrong: for two
@@ -155,8 +200,8 @@ def stamp(a, conn):
        join is exact by construction, whichever two pictures the game happens to
        pick, and no fade is needed to cover it."""
     out = a.astype(float).copy()
-    out = _stamp_left(out, conn)
-    out = _stamp_left(out[:, ::-1].copy(), conn)[:, ::-1]
+    out = _stamp_left(out, conn, blend, pure)
+    out = _stamp_left(out[:, ::-1].copy(), conn, blend, pure)[:, ::-1]
     return np.clip(out, 0, 255).astype(np.uint8)
 
 
@@ -173,11 +218,13 @@ def main():
         world = name.split()[0]
         pill = None if name.endswith('floor') else pillar_connector(world, arrs)
         if pill is not None:
-            conn, score, how = pill, 0.0, 'pillar'
+            (conn, pure), score, how = pill, 0.0, 'pillar'
         else:
-            conn, score = pick_connector(arrs); how = 'plain'
+            conn, score = pick_connector(arrs); how = 'plain'; pure = PURE
+        arrs = share_back(arrs)
         before = edge_gap(arrs)
-        outs = [stamp(a, conn) for a in arrs]
+        outs = [stamp(a, conn, BLEND_PILLAR if how == 'pillar' else BLEND_PLAIN, pure)
+                for a in arrs]
         after = edge_gap(outs)
         print('  %-14s %d pictures  %-6s connector  worst join %5.1f -> %5.1f%s'
               % (name, len(files), how, before, after, '' if write else '   [dry run]'))
