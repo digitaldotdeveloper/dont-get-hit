@@ -1001,6 +1001,22 @@
   .stat.amber .v{color:var(--amber)}
   .overFoot{display:flex;align-items:center;justify-content:center;gap:10px;width:100%}
   .overFoot .big{padding:13px 40px 15px;font-size:clamp(18px,4.6vmin,26px);min-width:0}
+  /* ---- the score card on a SHORT landscape screen ----------------------
+     At its tallest -- NEW BEST, DOUBLE YOUR EGGS and the mission strip all
+     showing -- the card is 383px, and a Samsung held sideways is 360px tall:
+     it lost 11px off the top and the bottom. Tighter, not smaller. */
+  @media (max-height:400px){
+    #over .card{padding:9px 16px 10px}
+    .card.best .ribbon{margin-bottom:5px;padding:5px 16px 6px;font-size:13px}
+    .overTitle{margin:0 0 4px;font-size:16px}
+    .overBody{margin:3px 0 7px}
+    #over .cardScore{font-size:42px}
+    #over .stat{padding:3px 4px}
+    .msnStrip{margin:0 0 6px}
+    .msnStrip .ms-c{padding:5px 9px 6px}
+    .dblBtn{margin:0 auto 5px;padding:7px 14px 8px}
+    .overFoot .big{padding:10px 36px 12px}
+  }
 </style>
 </head>
 <body>
