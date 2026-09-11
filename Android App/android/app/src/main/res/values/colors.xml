@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- the game's own ink and gold custom properties (index.html :root) -->
+    <color name="dgh_ink">#241043</color>
+    <color name="dgh_gold">#FFD54A</color>
+</resources>

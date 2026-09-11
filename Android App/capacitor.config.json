@@ -1,0 +1,19 @@
+{
+  "appId": "com.digitaldotdeveloper.dontgethit",
+  "appName": "Don't Get Hit",
+  "webDir": "www",
+  "backgroundColor": "#241043",
+  "loggingBehavior": "debug",
+  "android": {
+    "backgroundColor": "#241043",
+    "allowMixedContent": false,
+    "minWebViewVersion": 90,
+    "appendUserAgent": "DGHAndroid"
+  },
+  "plugins": {
+    "SystemBars": {
+      "hidden": true,
+      "insetsHandling": "css"
+    }
+  }
+}

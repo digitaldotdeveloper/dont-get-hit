@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- The game's ink (#241043) is every window's background, so nothing flashes
+         white between the launcher and the page's first paint. -->
+    <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/dgh_ink</item>
+        <item name="colorPrimaryDark">@color/dgh_ink</item>
+        <item name="colorAccent">@color/dgh_gold</item>
+        <item name="android:windowBackground">@color/dgh_ink</item>
+    </style>
+
+    <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:background">@null</item>
+        <item name="android:windowBackground">@color/dgh_ink</item>
+    </style>
+
+    <!-- Android 12+ draws its own launch screen from the first two items: the launcher
+         icon on the ink. Older versions show drawable/splash (the badge on the ink).
+         Capacitor's template shipped a full-screen PNG with its own logo here. -->
+    <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/dgh_ink</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
+        <item name="android:background">@drawable/splash</item>
+    </style>
+</resources>

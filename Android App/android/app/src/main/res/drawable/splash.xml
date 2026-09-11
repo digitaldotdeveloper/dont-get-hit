@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The launch window before Android 12: Nugget's badge on the game's ink.
+     splash_badge is built by scripts/make_icons.py from icon/icon-master.png. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/dgh_ink" />
+    <item
+        android:width="120dp"
+        android:height="120dp"
+        android:gravity="center"
+        android:drawable="@drawable/splash_badge" />
+</layer-list>

@@ -4169,7 +4169,11 @@ and it will show up as a join of 60+ against its neighbours.
 A Capacitor 8 shell that never edits this folder. `npm run build` in there
 copies the game out of git HEAD, strips it for a phone (no MP3s, Google Fonts
 bundled, esbuild-minified, an allowlist so `tools/` never ships) and produces a
-signed APK + AAB in `Android App/dist/`. Its `README.md` is the handover. Two
+signed APK + AAB in `Android App/dist/`. Its `README.md` is the handover, including
+"Shipping an update": `npm run release` there builds AND uploads to Play's
+internal testing track through the service account whose key is in
+`Android App/keystore/` (with the upload key -- never commit that folder), so
+shipping is: commit the game, then `npm run release`. Two
 things in it touch how this file is written:
 
 - `Android App/src/shim.js` runs first in the APK's copy. It pauses `<audio>`
