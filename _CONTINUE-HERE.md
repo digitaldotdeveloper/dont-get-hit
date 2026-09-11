@@ -4164,3 +4164,48 @@ Run `python tools/joins.py` after ANY panel re-render: a new panel does not have
 the connector on it until `python tools/connect.py --write` has been run again,
 and it will show up as a join of 60+ against its neighbours.
 
+## The Android app lives in `Android App/` (2026-09-11)
+
+A Capacitor 8 shell that never edits this folder. `npm run build` in there
+copies the game out of git HEAD, strips it for a phone (no MP3s, Google Fonts
+bundled, esbuild-minified, an allowlist so `tools/` never ships) and produces a
+signed APK + AAB in `Android App/dist/`. Its `README.md` is the handover. Two
+things in it touch how this file is written:
+
+- `Android App/src/shim.js` runs first in the APK's copy. It pauses `<audio>`
+  and HOLDS `AudioContext.resume()` while the app is in the background --
+  because `actx()` resumes a suspended context on every sound -- and the Back
+  button clicks `#dayX` / `#optX` / `#shopBack`. **Renaming those ids, or
+  adding a panel with its own close button, needs a line in the shim's
+  `CLOSERS`.** Back deliberately leaves the death card alone.
+- The native side owns fullscreen and landscape, so in the app
+  `goImmersive()` finds no `requestFullscreen` and falls through harmlessly.
+
+`node scripts/verify.mjs` there checks the APK's copy in Chrome set up as a
+phone; `tools/assets.py` runs against it with `assets.ROOT` pointed at
+`Android App/www` (2042 requests, nothing missing, on 513c9b5).
+
+## Missions on screen, and a score card whose buttons are not retries (2026-09-11)
+
+**MENU on the score card started a new run, on every phone.** Once `game.mode`
+is `'dead'` ANY press is a retry (`thrustOn` -> `startQuick`), and `touchDown`
+only leaves a press alone when it lands on `#mute` or `[data-meta]`. The score
+card had neither, so touching MENU restarted the run on `touchstart`, the card
+vanished, and MENU's own click landed on the canvas. SHOP did the same and then
+opened the shop over the run it had just started; DOUBLE YOUR EGGS too. They
+carry `data-meta` now. **Anything clickable added to `#over` needs `data-meta`
+-- except RETRY, which is meant to fly as well as start.** Found by TOUCHING
+the button over CDP (`Input.dispatchTouchEvent`); a `.click()` walks straight
+past this bug. MENU and SHOP are outlined buttons now, not ghost text.
+
+**The mission board is on screen three times** (search `the board, during the
+run`): the three missions as a run starts (`#msnHud`, 3.6s), MISSION COMPLETE
+the moment one lands (with `S.best()`), and a strip on the score card
+(`msnCard`; a tap opens the MISSIONS tab, where they are still claimed). It
+still SETTLES once, in `finishNow()`. The run only PREVIEWS, through
+`msnLive()`, which reads the same `runStats()` finishNow settles from -- so a
+pop-up is a promise the card keeps. `runs` never pops (it would fire on the
+first frame of the fifth run), per-run missions show no number in the brief
+(their progress is the best run so far, not a head start), and none of it shows
+on the first run, like the rest of the meta layer.
+

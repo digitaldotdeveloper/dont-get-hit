@@ -652,9 +652,54 @@
   /* The score card's one line about the board. Never a modal -- interrupting
      the score beat to announce a mission costs the retry, which is the only
      thing on that screen that matters. */
-  .msnFlag{display:none;margin:0 0 2px;font:900 9px/1.3 'Archivo',sans-serif;letter-spacing:.14em;
-           text-align:center;color:var(--mint)}
-  .msnFlag.show{display:block}
+  /* ---- missions, where the player can see them ------------------------
+     The board used to live only behind the MISSIONS tab, so a run could end
+     with no idea there was anything to chase. It shows three times now: as
+     the run starts, the moment one completes, and on the score card. */
+  .msnStrip{display:none;width:100%;margin:0 0 10px;padding:0;border:0;background:none;
+            cursor:pointer;gap:6px;align-items:stretch;text-align:left;font:inherit;color:inherit}
+  .msnStrip.show{display:flex}
+  .msnStrip .ms-h{flex:0 0 auto;align-self:center;padding:0 2px;
+                  font:900 9px/1.25 'Archivo',sans-serif;letter-spacing:.2em;color:var(--gold);text-align:center}
+  .msnStrip .ms-c{flex:1 1 0;min-width:0;display:flex;flex-direction:column;justify-content:space-between;gap:5px;
+                  padding:6px 9px 7px;border-radius:11px;background:rgba(255,242,222,.06);
+                  border:1.5px solid rgba(255,242,222,.10)}
+  .msnStrip .ms-t{font:800 10px/1.25 'Archivo',sans-serif;color:rgba(255,242,222,.78);
+                  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .msnStrip .ms-t b{color:#FFF2DE;font-weight:900}
+  .msnStrip .ms-r{display:flex;align-items:center;gap:6px}
+  .msnStrip .ms-bar{flex:1;height:4px;border-radius:3px;background:rgba(255,242,222,.12);overflow:hidden}
+  .msnStrip .ms-bar i{display:block;height:100%;background:var(--gold);border-radius:inherit}
+  .msnStrip .ms-n{font:900 9px/1 'Archivo',sans-serif;letter-spacing:.06em;color:rgba(255,242,222,.6);
+                  font-variant-numeric:tabular-nums;white-space:nowrap}
+  .msnStrip .ms-c.done{border-color:rgba(63,224,176,.55);background:rgba(63,224,176,.10)}
+  .msnStrip .ms-c.done .ms-bar i{background:var(--mint)}
+  .msnStrip .ms-c.done .ms-n{color:var(--mint)}
+  .msnStrip .ms-c.now{animation:msnNow .5s .3s cubic-bezier(.2,1.7,.4,1) both}
+  @keyframes msnNow{from{transform:scale(.86);opacity:.25}to{transform:scale(1);opacity:1}}
+  #msnHud{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 10px);
+          transform:translate(-50%,-10px);opacity:0;pointer-events:none;
+          transition:opacity .22s,transform .22s;max-width:min(420px,50vw);
+          padding:8px 13px 9px;border-radius:14px;background:rgba(21,8,39,.76);
+          border:1.5px solid rgba(255,242,222,.14);box-shadow:0 6px 18px rgba(0,0,0,.28)}
+  #hud.on #msnHud.on{opacity:1;transform:translate(-50%,0)}
+  #msnHud .mh{margin:0 0 6px;font:900 9px/1 'Archivo',sans-serif;letter-spacing:.24em;color:var(--gold)}
+  #msnHud .mr{margin:0;display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+              font:800 11px/1.45 'Archivo',sans-serif;color:rgba(255,242,222,.86);white-space:nowrap}
+  #msnHud .mr span:first-child{overflow:hidden;text-overflow:ellipsis}
+  #msnHud .mr b{color:#FFF2DE;font-weight:900}
+  #msnHud .mr .n{font-weight:900;font-size:10px;color:rgba(255,242,222,.55);font-variant-numeric:tabular-nums}
+  #msnHud .mr.done .n{color:var(--mint)}
+  #msnHud.win{text-align:center;border-color:rgba(63,224,176,.65);background:rgba(10,42,33,.86)}
+  #msnHud.win .mh{margin:0 0 3px;font-family:'Bungee',cursive;font-size:15px;letter-spacing:.04em;color:var(--mint)}
+  #msnHud.win .mt{margin:0;font:800 11px/1.3 'Archivo',sans-serif;color:#FFF2DE;white-space:nowrap}
+  #msnHud.win .mp{margin:5px 0 0;font:900 9px/1 'Archivo',sans-serif;letter-spacing:.14em;color:var(--gold)}
+  /* MENU and SHOP on the score card are real buttons now. As bare ghost text
+     beside RETRY they read as labels, and MENU is the only way home. */
+  .overFoot .ghost{border:1.5px solid rgba(255,242,222,.32);border-radius:14px;
+                   background:rgba(255,242,222,.05);color:rgba(255,242,222,.92);
+                   font-size:12.5px;padding:11px 18px}
+  .overFoot .ghost:active{transform:translateY(2px);background:rgba(255,242,222,.12)}
 
   /* Vehicles are few and big; power-ups are many and scanned, so they are rows
      in two columns rather than five tall cards with dead air in them. */
@@ -973,6 +1018,9 @@
       <div id="eggWrap"><span id="eggIcon"></span><span id="eggCount">0</span></div>
     </div>
     <div id="combo"><span id="comboTxt">x2</span></div>
+    <!-- The mission board, in the run: the three missions as the run starts,
+         then MISSION COMPLETE the moment one lands. Fed by msnTick(); never takes a press. -->
+    <div id="msnHud" aria-live="polite"></div>
     <button id="cog" aria-label="Settings">
       <svg viewBox="0 0 24 24"><path d="M19.4 13a7.8 7.8 0 0 0 0-2l2-1.6-2-3.4-2.5 1a7.6 7.6 0 0 0-1.7-1l-.4-2.6h-4l-.4 2.6a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.4L6.6 11a7.8 7.8 0 0 0 0 2l-2 1.6 2 3.4 2.5-1a7.6 7.6 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.4zM12 15a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg>
     </button>
@@ -1039,12 +1087,18 @@
           <div class="stat amber"><span class="v" id="stCombo">x0</span><span class="k">BEST COMBO</span></div>
         </div>
       </div>
-      <p class="msnFlag" id="overMsn"></p>
-      <button class="dblBtn" id="dblEggs"><i class="adg"></i>DOUBLE YOUR <b id="dblN">0</b> EGGS</button>
+      <!-- The board after the run: all three missions, where this run left them.
+           A tap opens the MISSIONS tab, which is where they are claimed. -->
+      <button class="msnStrip" id="overMsn" data-meta data-tab="msn"></button>
+      <button class="dblBtn" id="dblEggs" data-meta><i class="adg"></i>DOUBLE YOUR <b id="dblN">0</b> EGGS</button>
+      <!-- data-meta on everything but RETRY. Once the run is over ANY press is a
+           retry, so without it a touch on MENU started a new run before MENU's own
+           click could land -- and SHOP opened the shop over a run already going.
+           RETRY is left alone: flying as well as starting is what it is for. -->
       <div class="overFoot">
-        <button id="tomenu" class="ghost">MENU</button>
+        <button id="tomenu" class="ghost" data-meta>MENU</button>
         <button id="retry" class="big">RETRY</button>
-        <button id="toshop" class="ghost" data-tab="pow">SHOP</button>
+        <button id="toshop" class="ghost" data-meta data-tab="pow">SHOP</button>
       </div>
     </div>
   </div>
@@ -8026,6 +8080,7 @@ function startRun(){
 
   game.near=0; game.combo=0; game.comboBest=0; game.comboT=0;
   game.runRides=0; game.crowPass=0;              // the two counters missions read
+  game.msnSaid={}; game.msnQ=[]; game.msnPollT=0; game.msnBrief=true; msnHud(null);  // the run's own board
   game.usedDouble=false;                         // the score card's rewarded offer
   game.speed=340*PACE; game.diff=0; game.spawnT=2.6; game.cornT=0; game.goT=0;
   game.obstacles.length=0; game.parts.length=0; game.pops.length=0; game.ui.length=0;
@@ -9041,16 +9096,8 @@ function finishNow(){
      place a run is definitively over -- finish() can still hand the run back
      to the player through the death offer, so scoring the board there would
      bank a run that had not ended and then bank it again when it did. */
-  const st = {
-    dist:  Math.floor(game.dist/UPM),
-    eggs:  game.runEggs||0,
-    near:  game.near||0,
-    combo: game.comboBest||0,
-    rides: game.runRides||0,
-    crows: game.crowPass||0,
-    zone:  zoneAt(game.dist/UPM).i,
-    tnt:   game.blastM ? 1 : 0
-  };
+  const st = runStats();
+  const open = msnSlots().filter(s => !msnDone(s)).map(s => s.id);   // what this run could finish
   const msnWon = msnRun(st);
   /* ONE event per run, carrying everything the run knows. A dozen small
      events would cost a dozen writes and still need joining back together
@@ -9079,13 +9126,7 @@ function finishNow(){
     db.classList.toggle('show', n > 0 && !game.usedDouble);
     if(dn) dn.textContent = money(n);
   }
-  const mb = $('#overMsn');
-  if(mb){
-    mb.classList.toggle('show', msnWon > 0);
-    if(msnWon > 0) mb.textContent = msnWon === 1
-      ? 'MISSION COMPLETE — CLAIM IT IN THE SHOP'
-      : msnWon + ' MISSIONS COMPLETE — CLAIM THEM IN THE SHOP';
-  }
+  msnCard(open);
   metaNums();
   if(game.newBest){ S.best(); confettiBurst(); }
   musicScene('menu');            // the score card gets the menu theme back
@@ -9321,6 +9362,7 @@ function updateBlink(p, dt){
 function updatePlay(dt){
   const p = player;
   game.runT += dt;
+  msnTick(dt);
   game.diff = clamp(game.runT/95, 0, 1);
   /* The truck is faster than running, which is half of why it feels like a
      reward -- the other half being that it takes the hit for you. */
@@ -12357,6 +12399,93 @@ function msnRun(st){
   }
   saveNow();
   return won;
+}
+/* ---- the board, during the run and on the card --------------------------
+   PREVIEW, NEVER SETTLE. The board is still settled once, by msnRun() inside
+   finishNow(). msnLive() only asks what it WOULD read if the run ended this
+   instant, from the same runStats() finishNow settles from and by the same
+   per-run / cumulative rules -- so a MISSION COMPLETE in the run is a promise
+   the card is certain to keep. It writes nothing. */
+function runStats(){
+  return {
+    dist:  Math.floor(game.dist/UPM),
+    eggs:  game.runEggs||0,
+    near:  game.near||0,
+    combo: game.comboBest||0,
+    rides: game.runRides||0,
+    crows: game.crowPass||0,
+    zone:  zoneAt(game.dist/UPM).i,
+    tnt:   game.blastM ? 1 : 0
+  };
+}
+function msnLive(){
+  const st = runStats(), T = SAVE.msn.tot;
+  const tot = { runs:(T.runs||0) + 1, eggsT:(T.eggsT||0) + st.eggs, distT:(T.distT||0) + st.dist,
+                nearT:(T.nearT||0) + st.near, crowsT:(T.crowsT||0) + st.crows };
+  return msnSlots().map(s => {
+    const d = msnDef(s.id);
+    const v = d.run ? Math.max(s.p, st[d.s] || 0) : (tot[d.s] || 0);
+    return { d, v, done: v >= d.n, was: msnDone(s) };
+  });
+}
+/* Per frame from updatePlay, polling the board four times a second. NONE OF
+   IT ON THE FIRST RUN, for the reason the menu hides the whole meta layer on
+   it: the first sixty seconds are for learning to fly. `runs` never pops --
+   "play 5 runs" would complete on the first frame of the fifth, which
+   announces the run starting rather than anything the player did. */
+function msnTick(dt){
+  if(game.firstRun) return;
+  if(game.msnBrief){ game.msnBrief = false; msnHud('brief'); }
+  if((game.msnPollT = (game.msnPollT || 0) - dt) <= 0){
+    game.msnPollT = 0.25;
+    for(const r of msnLive())
+      if(r.done && !r.was && r.d.s !== 'runs' && !game.msnSaid[r.d.id]){
+        game.msnSaid[r.d.id] = 1; game.msnQ.push(r);
+      }
+  }
+  if(game.msnHudT > 0){ if((game.msnHudT -= dt) <= 0) msnHud(null); return; }
+  if(game.msnQ.length) msnHud('win', game.msnQ.shift());
+}
+/* A PER-RUN MISSION SHOWS NO NUMBER in the brief: its progress is the best
+   single run so far, and "210 / 300" before this run has moved reads as a
+   head start the player does not have. Cumulative ones do, because they are. */
+function msnHud(kind, r){
+  const el = $('#msnHud'); if(!el) return;
+  if(!kind){ el.classList.remove('on'); game.msnHudT = 0; return; }
+  el.classList.toggle('win', kind === 'win');
+  if(kind === 'brief'){
+    const rows = msnLive(); if(!rows.length) return;
+    el.innerHTML = '<p class="mh">MISSIONS</p>' + rows.map(x =>
+      '<p class="mr' + (x.was ? ' done' : '') + '"><span>' + x.d.txt + '</span><span class="n">' +
+      (x.was ? 'CLAIM IN SHOP' : x.d.run ? '' : money(Math.min(x.v, x.d.n)) + ' / ' + money(x.d.n)) +
+      '</span></p>').join('');
+    game.msnHudT = 3.6;
+  } else {
+    el.innerHTML = '<p class="mh">MISSION COMPLETE!</p><p class="mt">' + r.d.txt + '</p>' +
+                   '<p class="mp">+' + money(r.d.pay) + ' EGGS &middot; CLAIM IN THE SHOP</p>';
+    game.msnHudT = 2.8;
+    S.best();
+  }
+  el.classList.add('on');
+}
+/* THE CARD'S STRIP: all three, where this run left them. It is drawn after
+   msnRun() has settled, so it reads the board, not the run. `open` is what was
+   still undone when the run ended; one of those that is done now is this
+   run's, and pops in. One already waiting to be claimed just says CLAIM. */
+function msnCard(open){
+  const el = $('#overMsn'); if(!el) return;
+  const slots = msnSlots();
+  el.classList.toggle('show', slots.length > 0);
+  if(!slots.length) return;
+  el.innerHTML = '<span class="ms-h">MIS&shy;SIONS<br>&rsaquo;</span>' + slots.map(s => {
+    const d = msnDef(s.id), done = msnDone(s);
+    const pct = Math.max(0, Math.min(100, 100 * s.p / d.n));
+    return '<span class="ms-c' + (done ? ' done' : '') + (done && open.indexOf(d.id) >= 0 ? ' now' : '') + '">' +
+      '<span class="ms-t">' + d.txt + '</span>' +
+      '<span class="ms-r"><span class="ms-bar"><i style="width:' + pct.toFixed(1) + '%"></i></span>' +
+      '<span class="ms-n">' + (done ? 'CLAIM &rsaquo;' : money(Math.min(s.p, d.n)) + '/' + money(d.n)) + '</span></span>' +
+    '</span>';
+  }).join('');
 }
 function msnClaim(i){
   const slot = msnSlots()[i];
